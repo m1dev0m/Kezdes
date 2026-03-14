@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Управление списком гостей - Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Header Section -->
+<header class="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 ios-blur border-b border-slate-200 dark:border-slate-800 px-4 pt-6 pb-4">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100 cursor-pointer">arrow_back_ios</span>
+<h1 class="text-xl font-extrabold tracking-tight">Список гостей</h1>
+</div>
+<button class="text-primary font-semibold text-sm">Экспорт</button>
+</div>
+<!-- Progress Counter -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-end">
+<span class="text-sm font-medium text-slate-500 dark:text-slate-400">Статус заполнения</span>
+<span class="text-sm font-bold text-primary">12 / 20 подтверждено</span>
+</div>
+<div class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 60%;"></div>
+</div>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto pb-40">
+<!-- Search Bar -->
+<div class="px-4 py-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border-none rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 text-sm font-medium placeholder:text-slate-400 transition-all" placeholder="Поиск по имени..." type="text"/>
+</div>
+</div>
+<!-- Filter Tabs -->
+<div class="px-4 mb-4">
+<div class="flex p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl">
+<button class="flex-1 py-2 text-xs font-bold rounded-lg bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white">Все</button>
+<button class="flex-1 py-2 text-xs font-bold text-slate-500 dark:text-slate-400">Подтвержденные</button>
+<button class="flex-1 py-2 text-xs font-bold text-slate-500 dark:text-slate-400">Ожидают</button>
+</div>
+</div>
+<!-- Guest List -->
+<div class="px-4 space-y-3">
+<!-- Guest Card 1 -->
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">АИ</div>
+<div>
+<h3 class="font-bold text-sm">Александр Иванов</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[10px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">Подтвердил</span>
+</div>
+</div>
+</div>
+<button class="text-primary text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span>
+                    Редактировать
+                </button>
+</div>
+<!-- Guest Card 2 -->
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 font-bold">ЕС</div>
+<div>
+<h3 class="font-bold text-sm">Елена Смирнова</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="text-[10px] uppercase tracking-wider font-bold text-amber-600 dark:text-amber-400">Ожидание</span>
+</div>
+</div>
+</div>
+<button class="text-primary text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span>
+                    Редактировать
+                </button>
+</div>
+<!-- Guest Card 3 -->
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 font-bold">ДП</div>
+<div>
+<h3 class="font-bold text-sm">Дмитрий Петров</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span>
+<span class="text-[10px] uppercase tracking-wider font-bold text-rose-600 dark:text-rose-400">Отклонил</span>
+</div>
+</div>
+</div>
+<button class="text-primary text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span>
+                    Редактировать
+                </button>
+</div>
+<!-- Guest Card 4 -->
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">МК</div>
+<div>
+<h3 class="font-bold text-sm">Мария Кузнецова</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[10px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">Подтвердил</span>
+</div>
+</div>
+</div>
+<button class="text-primary text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span>
+                    Редактировать
+                </button>
+</div>
+<!-- Guest Card 5 -->
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between opacity-80">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold">ВС</div>
+<div>
+<h3 class="font-bold text-sm">Виктор Соколов</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="text-[10px] uppercase tracking-wider font-bold text-amber-600 dark:text-amber-400">Ожидание</span>
+</div>
+</div>
+</div>
+<button class="text-primary text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span>
+                    Редактировать
+                </button>
+</div>
+</div>
+</main>
+<!-- Bottom Actions & Navigation -->
+<div class="fixed bottom-0 left-0 right-0 z-50">
+<!-- Action Buttons Area -->
+<div class="px-4 py-4 bg-white/95 dark:bg-background-dark/95 ios-blur border-t border-slate-200 dark:border-slate-800 flex flex-col gap-3">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">person_add</span>
+                Добавить гостя
+            </button>
+<button class="w-full bg-primary/10 dark:bg-primary/20 text-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">contacts</span>
+<span class="text-sm">Импортировать из контактов</span>
+</button>
+</div>
+<!-- Tab Bar -->
+<nav class="flex justify-around items-center bg-white dark:bg-background-dark border-t border-slate-100 dark:border-slate-800 pb-8 pt-2">
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold">Главная</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-[10px] font-bold">События</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">group</span>
+<span class="text-[10px] font-bold">Гости</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="text-[10px] font-bold">Профиль</span>
+</a>
+</nav>
+</div>
+</body></html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Профиль ресторана - Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+<div class="relative mx-auto max-w-[430px] min-h-screen bg-white dark:bg-slate-900 shadow-xl flex flex-col pb-32">
+<!-- Header Overlay -->
+<div class="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4">
+<button class="flex items-center justify-center size-10 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-900 dark:text-white shadow-sm">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex gap-2">
+<button class="flex items-center justify-center size-10 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-900 dark:text-white shadow-sm">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="flex items-center justify-center size-10 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-900 dark:text-white shadow-sm">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+</div>
+<!-- Cover Image Section -->
+<div class="relative h-72 w-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Интерьер современного элитного ресторана с панорамными окнами" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0Gj1LrkgZijdL_H_wP5F76o3hjhtclsfR8itrZvCvKtxqQKKXDU8ioYaQp7hlD5D2OpUgeTBsvCzKWZj4BkBvqX3jIDRG0-2eIRyMMsrlNxfx05gAsDTBuWSh0KL85uu8lxv5HoC3aYOWa03gMpOKrZsvosM6rUfgZr9XQ-m_bWQDOMlNt8aivri8JIPj_vaCA2eF2RljL665wOCkJ-eSSfmMOqDMFAxT5B5NPSC1cntoezYH2Ui2SJzFuQ-IIDfLn8IYrJ1jVdM"/>
+<div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent"></div>
+</div>
+<!-- Restaurant Info -->
+<div class="px-5 -mt-6 relative z-20">
+<div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-lg border border-slate-100 dark:border-slate-700">
+<div class="flex justify-between items-start mb-2">
+<h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ресторан Панорама</h1>
+<div class="flex items-center bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-lg">
+<span class="text-green-600 dark:text-green-400 text-xs font-bold uppercase tracking-wider">Открыто</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-4">
+<span class="material-symbols-outlined text-primary text-lg">location_on</span>
+<p class="text-sm font-medium">ул. Абая, 42, Алматы</p>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 rounded-lg p-3">
+<p class="text-[10px] uppercase font-bold text-primary/70 tracking-widest mb-1">Вместимость</p>
+<p class="text-lg font-bold text-slate-800 dark:text-slate-100">до 100 чел.</p>
+</div>
+<div class="bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 rounded-lg p-3">
+<p class="text-[10px] uppercase font-bold text-primary/70 tracking-widest mb-1">Средний чек</p>
+<p class="text-lg font-bold text-slate-800 dark:text-slate-100">15 000 ₸</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Details Section -->
+<div class="px-5 mt-8">
+<h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">О заведении</h2>
+<p class="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
+                Идеальное место для проведения деловых встреч и корпоративных ужинов. Панорамный вид на город, безупречный сервис и изысканная авторская кухня создадут необходимую атмосферу для успешных переговоров.
+            </p>
+</div>
+<!-- Menu Section -->
+<div class="mt-8">
+<div class="flex items-center justify-between px-5 mb-4">
+<h2 class="text-xl font-bold text-slate-900 dark:text-white">Меню</h2>
+<button class="text-primary text-sm font-semibold flex items-center gap-1">
+                    Смотреть все <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+<div class="flex gap-4 overflow-x-auto px-5 pb-4 hide-scrollbar">
+<!-- Menu Item 1 -->
+<div class="min-w-[160px] flex flex-col gap-2">
+<div class="aspect-[4/5] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+<img class="w-full h-full object-cover" data-alt="Фирменный стейк с гарниром из овощей" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzsK9T9zvGT-9mxCTobbffdgNkLeW7-WtGVheNlDOqt_HJlBI0KW-WXQIJuSjKpmIBojTDbR2aroIrQmfRfnwTNAJG4QjjLli7rSqtfRf9bkATILu2-kkHJVbSCr_Su0T0e0kZAGlelkhC1SbNkZt53c0IvyS5EeahEIhGTiwtNQtSbpxWcgd7Uw8lXmEuiCxgEgBFXlvvCMytTTyOFrU8C3cCaaL44uC0TL32hfGIWh3hCvSNYUENOEztmsOhjxfidfa640LX2TI"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900 dark:text-white truncate">Рибай стейк</p>
+<p class="text-primary font-bold text-sm">8 500 ₸</p>
+</div>
+</div>
+<!-- Menu Item 2 -->
+<div class="min-w-[160px] flex flex-col gap-2">
+<div class="aspect-[4/5] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+<img class="w-full h-full object-cover" data-alt="Свежий салат с авокадо и креветками" src="https://lh3.googleusercontent.com/aida-public/AB6AXuACWYSbQO3waBn_0LsGobmDIndpgjIMhCDb0Gn4q5-yWXerJY4_iu_a1pDLozh0LhlnydtpmTsiHbI2MvF0XNqmoNAHEQtV0FeXSTDCQOAgIEK3q8hLkDYji3XkugsnXcJBLY9PLfiyjWfkAByvBtzZ45kvXeq_9tRnmLkFwmPhUO8VMStAsjRTGBhDY8ss8PTqep45Ke_dKvsSEDJJ0cy0KT_glWFAliJWSIrxVvn6tkYuAj0zr1XjKlnpQ5_lzQbILHdfN9AYAN4"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900 dark:text-white truncate">Салат Цезарь</p>
+<p class="text-primary font-bold text-sm">4 200 ₸</p>
+</div>
+</div>
+<!-- Menu Item 3 -->
+<div class="min-w-[160px] flex flex-col gap-2">
+<div class="aspect-[4/5] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+<img class="w-full h-full object-cover" data-alt="Паста карбонара с классическим соусом" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtxg6NImXBzBhAiAq9dhvaE3wHIC2GZWxrI7tDFPJQSuZqbAY91FPONypreNyGTDp5JwLb53xCUYpYC-uuxWQsseYWfJ0UfBzCLyg6VaHDqZabHk8MOdzjoGcXQePWFQWw_hcXTu5i2ESDjCxEunmzt7-cQ9ye6KPlS4IYQ4TXgVBGzaHpGyuKeIwSBRw456Lh0H-JjnYyKo62MoUWwCCNNn7Zgcc1nmc03j5unKY7oifLpCPkpn1D3eHIrbhLqPioW4L3_a2Srmc"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900 dark:text-white truncate">Паста Карбонара</p>
+<p class="text-primary font-bold text-sm">3 800 ₸</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Location Section -->
+<div class="px-5 mt-6 mb-8">
+<h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Расположение</h2>
+<div class="w-full h-40 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 relative">
+<img class="w-full h-full object-cover opacity-60" data-alt="Карта города с отметкой местоположения" data-location="Almaty" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdJsppxh9Qlr8qT9skAAN-9czLp9g8nHJJKbUO-3BVp64rURgCTyDmHcIuaRqGLR3I4wN58usbQDIMhi4f6PxrcRmzCqHI5VbYCPU0nBkLir_p1XtqYOXGC0YRo4VU4PBqQ6oCR-_-ncm7sc2y3JJLmyFB9pPDulNeWVtQMLCg4FHQ2Lx7UF-Ut5GsnmYjCEIKqgWiOAmL1JYYEWhx-3eBPuUzR3ehLGDMGHWieh8G6JFl_nuvHgSDYppV6r0gUeiiR77Wjdx3smU"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="size-12 rounded-full bg-primary flex items-center justify-center shadow-lg animate-pulse">
+<span class="material-symbols-outlined text-white">location_on</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom CTA -->
+<div class="fixed bottom-0 left-0 right-0 z-50 flex justify-center p-4 pointer-events-none">
+<div class="w-full max-w-[430px] bg-white dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pointer-events-auto border-t border-slate-100 dark:border-slate-800">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">calendar_today</span>
+                    Забронировать стол
+                </button>
+<div class="h-6 w-full flex items-center justify-center mt-1">
+<div class="w-32 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Дополнения и Заметки - Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .custom-checkbox:checked {
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center px-4 py-3 justify-between">
+<button class="text-primary flex items-center justify-center p-2 -ml-2 hover:bg-primary/10 rounded-full transition-colors">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<div class="flex flex-col items-center">
+<h1 class="text-slate-900 dark:text-slate-100 text-base font-semibold leading-tight">Дополнения и Заметки</h1>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider">Шаг 4 из 4</p>
+</div>
+<div class="w-10"></div> <!-- Placeholder for layout balance -->
+</div>
+<!-- Progress Bar Indicator -->
+<div class="flex w-full flex-row items-center justify-center gap-2 py-3">
+<div class="h-1.5 w-8 rounded-full bg-primary/30"></div>
+<div class="h-1.5 w-8 rounded-full bg-primary/30"></div>
+<div class="h-1.5 w-8 rounded-full bg-primary/30"></div>
+<div class="h-1.5 w-12 rounded-full bg-primary"></div>
+</div>
+</header>
+<main class="flex-1 flex flex-col p-4 max-w-md mx-auto w-full space-y-6">
+<!-- Additional Services Section -->
+<section class="space-y-3">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold px-1">Дополнительные услуги</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+<!-- Catering Option -->
+<label class="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<div>
+<p class="text-slate-900 dark:text-slate-100 font-medium text-base">Кейтеринг</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs">Организация питания</p>
+</div>
+</div>
+<input class="custom-checkbox h-6 w-6 rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary checked:bg-primary focus:ring-primary focus:ring-offset-0 focus:outline-none transition-all" type="checkbox"/>
+</label>
+<!-- Special Requests Option -->
+<label class="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">settings_input_component</span>
+</div>
+<div>
+<p class="text-slate-900 dark:text-slate-100 font-medium text-base">Спец. запросы</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs">Оборудование или декор</p>
+</div>
+</div>
+<input class="custom-checkbox h-6 w-6 rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary checked:bg-primary focus:ring-primary focus:ring-offset-0 focus:outline-none transition-all" type="checkbox"/>
+</label>
+</div>
+</section>
+<!-- Comments Section -->
+<section class="space-y-3 flex-1">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold px-1">Комментарии</h3>
+<div class="relative group">
+<textarea class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all resize-none shadow-sm" placeholder="Укажите предпочтения по рассадке, аллергии или другие важные детали для ресторана..." rows="6"></textarea>
+<div class="absolute bottom-3 right-3 text-slate-400 dark:text-slate-500 text-[10px] font-medium uppercase tracking-widest">
+                    Опционально
+                </div>
+</div>
+<!-- Context Hint Card -->
+<div class="bg-primary/5 border border-primary/10 rounded-lg p-3 flex gap-3">
+<span class="material-symbols-outlined text-primary text-xl">info</span>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                    Ваши заметки помогут ресторану подготовиться к вашему бизнес-мероприятию на высшем уровне.
+                </p>
+</div>
+</section>
+</main>
+<!-- Fixed Bottom Action Area -->
+<footer class="p-4 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 pb-8">
+<div class="max-w-md mx-auto space-y-4">
+<div class="flex items-center justify-between text-xs px-1">
+<span class="text-slate-500 dark:text-slate-400">Стоимость доп. услуг</span>
+<span class="font-semibold text-slate-900 dark:text-slate-100">Уточняется у менеджера</span>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-[0.98]">
+<span>Создать запрос</span>
+<span class="material-symbols-outlined text-xl">check_circle</span>
+</button>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Панель управления - Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<!-- Mobile Container (Simulating iOS Viewport) -->
+<div class="relative flex min-h-screen w-full flex-col bg-background-light dark:bg-background-dark overflow-x-hidden max-w-md mx-auto border-x border-slate-200 dark:border-slate-800">
+<!-- Top Header -->
+<header class="sticky top-0 z-10 flex items-center bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-4 pb-2 pt-4 justify-between border-b border-slate-200 dark:border-slate-800">
+<div class="flex size-10 shrink-0 items-center">
+<div class="bg-primary/10 rounded-full size-10 flex items-center justify-center overflow-hidden border border-primary/20">
+<img class="w-full h-full object-cover" data-alt="Admin user profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVB9mIZypo2J9ZV2SxOmhjMnt1DXGvrE2gxarAmPErmkIVmshO8Rw5zienvE1x49nUMsI3dvY0PEFA_LFMuX630VSA-6zX5Thea4TwS7fJ1vw0WJIAf-IvBUb2vmxCdK99zks--YZDFZr_nxgZXalEDAgnx3XX01BdeHqIOIq6MmAmujRA9_rG63WCH7asG4bqig4r-Rau3dvDiCPNKQ34rbc_1-J4EqlbK-IbcVW4bWmjICxXkzZxKAn9lSEJjZoBLVnHjnFRYpI"/>
+</div>
+</div>
+<div class="flex-1 px-3">
+<p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Kezdes SaaS</p>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">Панель управления</h2>
+</div>
+<div class="flex gap-2 items-center">
+<button class="relative flex size-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-[22px]">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+</button>
+</div>
+</header>
+<!-- Main Scrollable Content -->
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Period Filter -->
+<div class="px-4 py-4">
+<div class="flex bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-lg">
+<button class="flex-1 py-1.5 text-xs font-bold rounded-md bg-white dark:bg-slate-700 shadow-sm text-primary">Сегодня</button>
+<button class="flex-1 py-1.5 text-xs font-bold rounded-md text-slate-500">Неделя</button>
+<button class="flex-1 py-1.5 text-xs font-bold rounded-md text-slate-500">Месяц</button>
+</div>
+</div>
+<!-- Quick Stats Grid -->
+<section class="grid grid-cols-2 gap-3 px-4 mb-6">
+<div class="flex flex-col gap-2 rounded-xl p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">inbox</span>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Новые заявки</p>
+</div>
+<div class="flex items-end justify-between mt-1">
+<p class="text-slate-900 dark:text-white text-2xl font-bold leading-none tracking-tight">8</p>
+<span class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">+2</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">event_available</span>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Встречи сегодня</p>
+</div>
+<div class="flex items-end justify-between mt-1">
+<p class="text-slate-900 dark:text-white text-2xl font-bold leading-none tracking-tight">12</p>
+<span class="text-slate-400 dark:text-slate-500 text-[10px] font-bold px-1.5 py-0.5">В норме</span>
+</div>
+</div>
+</section>
+<!-- Revenue Chart Section -->
+<section class="px-4 mb-6">
+<div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-slate-900 dark:text-white text-sm font-bold">Выручка (₸)</h3>
+<div class="flex items-center gap-1 text-green-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>14%</span>
+</div>
+</div>
+<!-- Mock Chart Visualization -->
+<div class="relative h-32 w-full flex items-end gap-2 px-1">
+<div class="flex-1 bg-primary/10 dark:bg-primary/5 rounded-t-sm h-[40%] transition-all"></div>
+<div class="flex-1 bg-primary/20 dark:bg-primary/10 rounded-t-sm h-[60%] transition-all"></div>
+<div class="flex-1 bg-primary/30 dark:bg-primary/20 rounded-t-sm h-[55%] transition-all"></div>
+<div class="flex-1 bg-primary/40 dark:bg-primary/30 rounded-t-sm h-[80%] transition-all"></div>
+<div class="flex-1 bg-primary/60 dark:bg-primary/50 rounded-t-sm h-[70%] transition-all"></div>
+<div class="flex-1 bg-primary rounded-t-sm h-[95%] transition-all"></div>
+<div class="flex-1 bg-primary/40 dark:bg-primary/30 rounded-t-sm h-[65%] transition-all"></div>
+</div>
+<div class="flex justify-between mt-2 px-1">
+<span class="text-[10px] text-slate-400 font-medium">08:00</span>
+<span class="text-[10px] text-slate-400 font-medium">12:00</span>
+<span class="text-[10px] text-slate-400 font-medium">16:00</span>
+<span class="text-[10px] text-slate-400 font-medium">20:00</span>
+<span class="text-[10px] text-slate-400 font-medium">00:00</span>
+</div>
+</div>
+</section>
+<!-- Occupancy Section -->
+<section class="px-4 mb-6">
+<div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-slate-900 dark:text-white text-sm font-bold">Загрузка столов</h3>
+<span class="text-primary text-xs font-bold">Текущая: 72%</span>
+</div>
+<!-- Radial / Line Mockup -->
+<div class="flex items-center gap-4">
+<div class="relative size-20 flex items-center justify-center">
+<svg class="size-full" viewbox="0 0 36 36">
+<circle class="stroke-slate-100 dark:stroke-slate-800" cx="18" cy="18" fill="none" r="16" stroke-width="3"></circle>
+<circle class="stroke-primary" cx="18" cy="18" fill="none" r="16" stroke-dasharray="72, 100" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+<span class="absolute text-xs font-bold text-slate-900 dark:text-white">72%</span>
+</div>
+<div class="flex-1 space-y-2">
+<div class="flex justify-between text-[10px]">
+<span class="text-slate-500 font-medium">VIP залы</span>
+<span class="text-slate-900 dark:text-white font-bold">100%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-full"></div>
+</div>
+<div class="flex justify-between text-[10px]">
+<span class="text-slate-500 font-medium">Основной зал</span>
+<span class="text-slate-900 dark:text-white font-bold">64%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+<div class="bg-primary/60 h-full w-[64%]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Activity / Upcoming -->
+<section class="px-4">
+<div class="flex items-center justify-between mb-3">
+<h3 class="text-slate-900 dark:text-white text-base font-bold">Ближайшие встречи</h3>
+<button class="text-primary text-xs font-bold">Все</button>
+</div>
+<div class="space-y-3">
+<!-- Meeting Item 1 -->
+<div class="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+<div class="flex flex-col items-center justify-center size-12 bg-slate-50 dark:bg-slate-800 rounded-lg shrink-0">
+<span class="text-[10px] font-bold text-slate-500 uppercase">18:30</span>
+<span class="text-sm font-bold text-slate-900 dark:text-white">T-4</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">Арман Искаков</p>
+<p class="text-[11px] text-slate-500 font-medium">Деловая встреча · 4 чел.</p>
+</div>
+<button class="size-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+<!-- Meeting Item 2 -->
+<div class="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+<div class="flex flex-col items-center justify-center size-12 bg-slate-50 dark:bg-slate-800 rounded-lg shrink-0 border-l-4 border-l-primary">
+<span class="text-[10px] font-bold text-slate-500 uppercase">19:00</span>
+<span class="text-sm font-bold text-slate-900 dark:text-white">VIP-1</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">Алия Маратова</p>
+<p class="text-[11px] text-slate-500 font-medium">День рождения · 8 чел.</p>
+</div>
+<button class="size-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+<!-- Meeting Item 3 -->
+<div class="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+<div class="flex flex-col items-center justify-center size-12 bg-slate-50 dark:bg-slate-800 rounded-lg shrink-0">
+<span class="text-[10px] font-bold text-slate-500 uppercase">20:15</span>
+<span class="text-sm font-bold text-slate-900 dark:text-white">T-12</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">Иван Сергеев</p>
+<p class="text-[11px] text-slate-500 font-medium">Ужин · 2 чел.</p>
+</div>
+<button class="size-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (iOS style) -->
+<nav class="fixed bottom-0 left-0 right-0 z-20 max-w-md mx-auto bg-white/90 dark:bg-background-dark/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 pb-6 pt-2">
+<div class="flex items-center justify-around px-2">
+<a class="flex flex-col items-center justify-center gap-1 group" href="#">
+<div class="text-primary flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-[26px] fill-1">dashboard</span>
+</div>
+<p class="text-primary text-[10px] font-bold leading-normal">Дашборд</p>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-[26px]">list_alt</span>
+</div>
+<p class="text-[10px] font-medium leading-normal">Заявки</p>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-[26px]">restaurant_menu</span>
+</div>
+<p class="text-[10px] font-medium leading-normal">Меню</p>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-[26px]">settings</span>
+</div>
+<p class="text-[10px] font-medium leading-normal">Настройки</p>
+</a>
+</div>
+<!-- iOS Indicator Bar -->
+<div class="mx-auto mt-4 h-1 w-32 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+</nav>
+</div>
+</body></html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>История бронирований - Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="max-w-[430px] mx-auto bg-white dark:bg-background-dark min-h-screen flex flex-col shadow-xl">
+<!-- Header Section -->
+<header class="sticky top-0 z-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-4 pt-6 pb-2 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center justify-between mb-4">
+<button class="p-2 -ml-2 text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">arrow_back_ios</span>
+</button>
+<h1 class="text-xl font-bold tracking-tight">История бронирований</h1>
+<button class="p-2 -mr-2 text-primary">
+<span class="material-symbols-outlined">download</span>
+</button>
+</div>
+<!-- Search -->
+<div class="mb-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+<input class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500" placeholder="Поиск по имени клиента" type="text"/>
+</div>
+</div>
+<!-- Filters -->
+<div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+<button class="flex items-center gap-1.5 shrink-0 px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+                    Весь период
+                    <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 shrink-0 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium">
+                    Все статусы
+                    <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 shrink-0 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+                    Фильтры
+                </button>
+</div>
+</header>
+<!-- Booking List -->
+<main class="flex-1 px-4 py-4 space-y-3">
+<!-- Date Label -->
+<p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest pt-2">Сегодня, 24 Мая</p>
+<!-- Booking Item: Completed -->
+<div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            АВ
+                        </div>
+<div>
+<h3 class="font-semibold text-sm">Александр Волков</h3>
+<p class="text-xs text-slate-500">19:30 • 4 гостя</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                        Завершено
+                    </span>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-50 dark:border-slate-800">
+<span class="text-xs text-slate-400">Сумма счета</span>
+<span class="text-sm font-bold text-primary">54,200 ₸</span>
+</div>
+</div>
+<!-- Booking Item: Cancelled -->
+<div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold">
+                            МС
+                        </div>
+<div>
+<h3 class="font-semibold text-sm">Марина Сергеева</h3>
+<p class="text-xs text-slate-500">18:00 • 2 гостя</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400">
+                        Отменено
+                    </span>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-50 dark:border-slate-800">
+<span class="text-xs text-slate-400">Сумма счета</span>
+<span class="text-sm font-bold text-slate-400 line-through">12,500 ₸</span>
+</div>
+</div>
+<!-- Date Label -->
+<p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest pt-4">Вчера, 23 Мая</p>
+<!-- Booking Item: Completed -->
+<div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            КР
+                        </div>
+<div>
+<h3 class="font-semibold text-sm">Константин Романов</h3>
+<p class="text-xs text-slate-500">21:00 • 6 гостей</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                        Завершено
+                    </span>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-50 dark:border-slate-800">
+<span class="text-xs text-slate-400">Сумма счета</span>
+<span class="text-sm font-bold text-primary">128,000 ₸</span>
+</div>
+</div>
+<!-- Booking Item: Completed -->
+<div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            ДИ
+                        </div>
+<div>
+<h3 class="font-semibold text-sm">Дарья Иванова</h3>
+<p class="text-xs text-slate-500">14:20 • 3 гостя</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                        Завершено
+                    </span>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-50 dark:border-slate-800">
+<span class="text-xs text-slate-400">Сумма счета</span>
+<span class="text-sm font-bold text-primary">32,800 ₸</span>
+</div>
+</div>
+<!-- More space for scrolling -->
+<div class="h-20"></div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full max-w-[430px] bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 pb-8 pt-2 px-6 flex justify-between items-center z-30">
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Главная</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-[10px] font-medium">Бронь</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">history</span>
+<span class="text-[10px] font-medium">История</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Профиль</span>
+</a>
+</nav>
+</div>
+</body></html>

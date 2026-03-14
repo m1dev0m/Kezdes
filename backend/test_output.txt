@@ -1,0 +1,517 @@
+Creating test database for alias 'default'...
+E../home/m-slaptop/Desktop/kezdes/backend/analytics/views.py: Error [DashboardAnalyticsView]: unable to guess serializer. This is graceful fallback handling for APIViews. Consider using GenericAPIView as view base class, if view is under your control. Either way you may want to add a serializer_class (or method). Ignoring view for now.
+/home/m-slaptop/Desktop/kezdes/backend/analytics/views.py: Error [SystemAnalyticsView]: unable to guess serializer. This is graceful fallback handling for APIViews. Consider using GenericAPIView as view base class, if view is under your control. Either way you may want to add a serializer_class (or method). Ignoring view for now.
+/home/m-slaptop/Desktop/kezdes/backend/core/serializers.py: Warning [UserProfileView > UserMeSerializer]: unable to resolve type hint for function "get_restaurant_verified". Consider using a type hint or @extend_schema_field. Defaulting to string.
+/home/m-slaptop/Desktop/kezdes/backend/core/serializers.py: Warning [UserProfileView > UserMeSerializer]: unable to resolve type hint for function "get_restaurant_setup_required". Consider using a type hint or @extend_schema_field. Defaulting to string.
+/home/m-slaptop/Desktop/kezdes/backend/bookings/serializers.py: Warning [BookingViewSet > BookingSerializer]: unable to resolve type hint for function "get_preorder". Consider using a type hint or @extend_schema_field. Defaulting to string.
+/home/m-slaptop/Desktop/kezdes/backend/bookings/serializers.py: Warning [BookingViewSet > BookingSerializer]: unable to resolve type hint for function "get_table_ids". Consider using a type hint or @extend_schema_field. Defaulting to string.
+/home/m-slaptop/Desktop/kezdes/backend/core/views.py: Error [HealthLiveView]: unable to guess serializer. This is graceful fallback handling for APIViews. Consider using GenericAPIView as view base class, if view is under your control. Either way you may want to add a serializer_class (or method). Ignoring view for now.
+/home/m-slaptop/Desktop/kezdes/backend/core/views.py: Error [HealthReadyView]: unable to guess serializer. This is graceful fallback handling for APIViews. Consider using GenericAPIView as view base class, if view is under your control. Either way you may want to add a serializer_class (or method). Ignoring view for now.
+/home/m-slaptop/Desktop/kezdes/backend/reports/views.py: Error [AnalyticsExcelReportView]: unable to guess serializer. This is graceful fallback handling for APIViews. Consider using GenericAPIView as view base class, if view is under your control. Either way you may want to add a serializer_class (or method). Ignoring view for now.
+/home/m-slaptop/Desktop/kezdes/backend/reports/views.py: Error [BookingsExcelReportView]: unable to guess serializer. This is graceful fallback handling for APIViews. Consider using GenericAPIView as view base class, if view is under your control. Either way you may want to add a serializer_class (or method). Ignoring view for now.
+/home/m-slaptop/Desktop/kezdes/backend/reports/views.py: Error [CustomersExcelReportView]: unable to guess serializer. This is graceful fallback handling for APIViews. Consider using GenericAPIView as view base class, if view is under your control. Either way you may want to add a serializer_class (or method). Ignoring view for now.
+/home/m-slaptop/Desktop/kezdes/backend/restaurants/serializers.py: Warning [RestaurantViewSet > RestaurantSerializer]: unable to resolve type hint for function "get_photo_url". Consider using a type hint or @extend_schema_field. Defaulting to string.
+/home/m-slaptop/Desktop/kezdes/backend/venues/serializers.py: Warning [VenueViewSet > VenueSerializer]: unable to resolve type hint for function "get_capacity". Consider using a type hint or @extend_schema_field. Defaulting to string.
+/home/m-slaptop/Desktop/kezdes/backend/venues/serializers.py: Warning [VenueViewSet > VenueSerializer]: unable to resolve type hint for function "get_pricing". Consider using a type hint or @extend_schema_field. Defaulting to string.
+....FF..FEE......E...E......FE
+======================================================================
+ERROR: test_end_to_end_owner_customer_admin_flow (core.test_mvp_smoke.MvpSmokeFlowTests.test_end_to_end_owner_customer_admin_flow)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 32, in __call__
+    return self.__value__
+           ^^^^^^^^^^^^^^
+AttributeError: 'ChannelPromise' object has no attribute '__value__'. Did you mean: '__call__'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 474, in _reraise_as_library_errors
+    yield
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 461, in _ensure_connection
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 941, in _connection_factory
+    self._connection = self._establish_connection()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 863, in _establish_connection
+    conn = self.transport.establish_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/transport/pyamqp.py", line 203, in establish_connection
+    conn.connect()
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/connection.py", line 324, in connect
+    self.transport.connect()
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/transport.py", line 132, in connect
+    self._connect(self.host, self.port, self.connect_timeout)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/transport.py", line 187, in _connect
+    self.sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/test_mvp_smoke.py", line 91, in test_end_to_end_owner_customer_admin_flow
+    booking = self.client.post(
+              ^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 299, in post
+    response = super().post(
+               ^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 213, in post
+    return self.generic('POST', path, data, content_type, **extra)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 237, in generic
+    return super().generic(
+           ^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 289, in request
+    return super().request(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 241, in request
+    request = super().request(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/core/handlers/base.py", line 198, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/backend/bookings/views.py", line 104, in create
+    response = super().create(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/mixins.py", line 19, in create
+    self.perform_create(serializer)
+  File "/home/m-slaptop/Desktop/kezdes/backend/bookings/views.py", line 154, in perform_create
+    NotificationService.notify_restaurant_new_booking(booking)
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/notifications.py", line 39, in notify_restaurant_new_booking
+    NotificationService.notify_user(restaurant.owner, title, body, data)
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/notifications.py", line 14, in notify_user
+    send_notification_task.delay(user.id, title, body, data)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/task.py", line 444, in delay
+    return self.apply_async(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/task.py", line 608, in apply_async
+    return app.send_task(
+           ^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/base.py", line 947, in send_task
+    amqp.send_task_message(P, name, message, **options)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/amqp.py", line 559, in send_task_message
+    ret = producer.publish(
+          ^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 190, in publish
+    return _publish(
+           ^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 558, in _ensured
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 200, in _publish
+    channel = self.channel
+              ^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 224, in _get_channel
+    channel = self._channel = channel()
+                              ^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 34, in __call__
+    value = self.__value__ = self.__contract__()
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 240, in <lambda>
+    channel = ChannelPromise(lambda: connection.default_channel)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 960, in default_channel
+    self._ensure_connection(**conn_opts)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 460, in _ensure_connection
+    with ctx():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 478, in _reraise_as_library_errors
+    raise ConnectionError(str(exc)) from exc
+kombu.exceptions.OperationalError: [Errno 111] Connection refused
+
+======================================================================
+ERROR: test_push_token_creation (core.tests.PushTokenModelTest.test_push_token_creation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/tests.py", line 37, in test_push_token_creation
+    token = PushToken.objects.create(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/query.py", line 667, in create
+    obj = self.model(**kwargs)
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/base.py", line 590, in __init__
+    raise TypeError(
+TypeError: PushToken() got unexpected keyword arguments: 'platform'
+
+======================================================================
+ERROR: test_push_token_unique (core.tests.PushTokenModelTest.test_push_token_unique)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/tests.py", line 47, in test_push_token_unique
+    PushToken.objects.create(
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/query.py", line 667, in create
+    obj = self.model(**kwargs)
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/base.py", line 590, in __init__
+    raise TypeError(
+TypeError: PushToken() got unexpected keyword arguments: 'platform'
+
+======================================================================
+ERROR: test_d_booking_lifecycle_and_e_security (core.tests_critical.CriticalFlowsTestCase.test_d_booking_lifecycle_and_e_security)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 32, in __call__
+    return self.__value__
+           ^^^^^^^^^^^^^^
+AttributeError: 'ChannelPromise' object has no attribute '__value__'. Did you mean: '__call__'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 474, in _reraise_as_library_errors
+    yield
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 461, in _ensure_connection
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 941, in _connection_factory
+    self._connection = self._establish_connection()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 863, in _establish_connection
+    conn = self.transport.establish_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/transport/pyamqp.py", line 203, in establish_connection
+    conn.connect()
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/connection.py", line 324, in connect
+    self.transport.connect()
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/transport.py", line 132, in connect
+    self._connect(self.host, self.port, self.connect_timeout)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/transport.py", line 187, in _connect
+    self.sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/tests_critical.py", line 129, in test_d_booking_lifecycle_and_e_security
+    res_book = self.client.post('/api/v1/bookings/', b_data)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 299, in post
+    response = super().post(
+               ^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 213, in post
+    return self.generic('POST', path, data, content_type, **extra)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 237, in generic
+    return super().generic(
+           ^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 289, in request
+    return super().request(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 241, in request
+    request = super().request(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/core/handlers/base.py", line 198, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/backend/bookings/views.py", line 104, in create
+    response = super().create(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/mixins.py", line 19, in create
+    self.perform_create(serializer)
+  File "/home/m-slaptop/Desktop/kezdes/backend/bookings/views.py", line 154, in perform_create
+    NotificationService.notify_restaurant_new_booking(booking)
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/notifications.py", line 39, in notify_restaurant_new_booking
+    NotificationService.notify_user(restaurant.owner, title, body, data)
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/notifications.py", line 14, in notify_user
+    send_notification_task.delay(user.id, title, body, data)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/task.py", line 444, in delay
+    return self.apply_async(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/task.py", line 608, in apply_async
+    return app.send_task(
+           ^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/base.py", line 947, in send_task
+    amqp.send_task_message(P, name, message, **options)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/amqp.py", line 559, in send_task_message
+    ret = producer.publish(
+          ^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 190, in publish
+    return _publish(
+           ^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 558, in _ensured
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 200, in _publish
+    channel = self.channel
+              ^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 224, in _get_channel
+    channel = self._channel = channel()
+                              ^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 34, in __call__
+    value = self.__value__ = self.__contract__()
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 240, in <lambda>
+    channel = ChannelPromise(lambda: connection.default_channel)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 960, in default_channel
+    self._ensure_connection(**conn_opts)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 460, in _ensure_connection
+    with ctx():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 478, in _reraise_as_library_errors
+    raise ConnectionError(str(exc)) from exc
+kombu.exceptions.OperationalError: [Errno 111] Connection refused
+
+======================================================================
+ERROR: test_booking_cancel_autocancels_order (orders.tests.OrderFlowTests.test_booking_cancel_autocancels_order)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/orders/tests.py", line 97, in test_booking_cancel_autocancels_order
+    booking = Booking.objects.create(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/db/models/query.py", line 669, in create
+    obj.save(force_insert=True, using=self.db)
+  File "/home/m-slaptop/Desktop/kezdes/backend/bookings/models.py", line 112, in save
+    start_dt = datetime.combine(self.date, self.time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 1 must be datetime.date, not str
+
+======================================================================
+ERROR: test_organizer_booking_visible_for_restaurant_admin (test_end_to_end_booking.EndToEndBookingFlowTest.test_organizer_booking_visible_for_restaurant_admin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 32, in __call__
+    return self.__value__
+           ^^^^^^^^^^^^^^
+AttributeError: 'ChannelPromise' object has no attribute '__value__'. Did you mean: '__call__'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 474, in _reraise_as_library_errors
+    yield
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 461, in _ensure_connection
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 941, in _connection_factory
+    self._connection = self._establish_connection()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 863, in _establish_connection
+    conn = self.transport.establish_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/transport/pyamqp.py", line 203, in establish_connection
+    conn.connect()
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/connection.py", line 324, in connect
+    self.transport.connect()
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/transport.py", line 132, in connect
+    self._connect(self.host, self.port, self.connect_timeout)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/amqp/transport.py", line 187, in _connect
+    self.sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/test_end_to_end_booking.py", line 58, in test_organizer_booking_visible_for_restaurant_admin
+    create_res = self.client.post("/api/v1/bookings/", booking_payload, format="json")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 299, in post
+    response = super().post(
+               ^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 213, in post
+    return self.generic('POST', path, data, content_type, **extra)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 237, in generic
+    return super().generic(
+           ^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 289, in request
+    return super().request(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/test.py", line 241, in request
+    request = super().request(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/core/handlers/base.py", line 198, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/backend/bookings/views.py", line 104, in create
+    response = super().create(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/rest_framework/mixins.py", line 19, in create
+    self.perform_create(serializer)
+  File "/home/m-slaptop/Desktop/kezdes/backend/bookings/views.py", line 154, in perform_create
+    NotificationService.notify_restaurant_new_booking(booking)
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/notifications.py", line 39, in notify_restaurant_new_booking
+    NotificationService.notify_user(restaurant.owner, title, body, data)
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/notifications.py", line 14, in notify_user
+    send_notification_task.delay(user.id, title, body, data)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/task.py", line 444, in delay
+    return self.apply_async(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/task.py", line 608, in apply_async
+    return app.send_task(
+           ^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/base.py", line 947, in send_task
+    amqp.send_task_message(P, name, message, **options)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/celery/app/amqp.py", line 559, in send_task_message
+    ret = producer.publish(
+          ^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 190, in publish
+    return _publish(
+           ^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 558, in _ensured
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 200, in _publish
+    channel = self.channel
+              ^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 224, in _get_channel
+    channel = self._channel = channel()
+                              ^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/utils/functional.py", line 34, in __call__
+    value = self.__value__ = self.__contract__()
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/messaging.py", line 240, in <lambda>
+    channel = ChannelPromise(lambda: connection.default_channel)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 960, in default_channel
+    self._ensure_connection(**conn_opts)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 460, in _ensure_connection
+    with ctx():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/m-slaptop/Desktop/kezdes/.venv/lib/python3.12/site-packages/kombu/connection.py", line 478, in _reraise_as_library_errors
+    raise ConnectionError(str(exc)) from exc
+kombu.exceptions.OperationalError: [Errno 111] Connection refused
+
+======================================================================
+FAIL: test_token_refresh (core.tests.AuthenticationAPITest.test_token_refresh)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/tests.py", line 100, in test_token_refresh
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+AssertionError: 404 != 200
+
+======================================================================
+FAIL: test_health_check_endpoint (core.tests.HealthCheckAPITest.test_health_check_endpoint)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/tests.py", line 63, in test_health_check_endpoint
+    self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE])
+AssertionError: 404 not found in [200, 503]
+
+======================================================================
+FAIL: test_profile_str (core.tests.ProfileModelTest.test_profile_str)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/core/tests.py", line 25, in test_profile_str
+    self.assertEqual(str(self.user.profile), f'{self.user.username} profile')
+AssertionError: 'testuser - Гость' != 'testuser profile'
+- testuser - Гость
++ testuser profile
+
+
+======================================================================
+FAIL: test_admin_manual_booking_not_visible_in_organizer_personal_list (test_end_to_end_booking.EndToEndBookingFlowTest.test_admin_manual_booking_not_visible_in_organizer_personal_list)
+Admin creates a manual booking (walk-in guest) and it should NOT appear
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/m-slaptop/Desktop/kezdes/backend/test_end_to_end_booking.py", line 85, in test_admin_manual_booking_not_visible_in_organizer_personal_list
+    self.assertEqual(manual_res.status_code, status.HTTP_201_CREATED)
+AssertionError: 400 != 201
+
+----------------------------------------------------------------------
+Ran 33 tests in 23.950s
+
+FAILED (failures=4, errors=6)
+Destroying test database for alias 'default'...
+Found 33 test(s).
+System check identified no issues (0 silenced).

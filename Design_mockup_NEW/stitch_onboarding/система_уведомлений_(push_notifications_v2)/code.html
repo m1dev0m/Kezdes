@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<title>Система уведомлений Kezdes V2</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased">
+<!-- Main Device Wrapper -->
+<div class="flex items-center justify-center min-h-screen p-4 sm:p-8">
+<!-- Mock Phone Frame -->
+<div class="relative w-full max-w-[390px] h-[844px] bg-slate-900 rounded-[3rem] border-[8px] border-slate-800 shadow-2xl overflow-hidden ring-4 ring-slate-700/20">
+<!-- Lock Screen Wallpaper -->
+<div class="absolute inset-0 bg-gradient-to-br from-primary/40 via-background-light to-primary/20" data-alt="Abstract blue and white soft gradient background for phone wallpaper" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBxYLPiG3hIHiGaKDtEVdLJY5zd3VzQAPgWE_G1XbyTE2PPMi4T75cgNeElmtmj8vtXRuPvb-HPnohrGeaV7vpQCe45-A0Iwlo8ogOmsPxFko6miLsJ2uOCU2y2P0he4mbs6_qkv56lgEOcGavJpPJmEjrxF5R8CWf-ZduYNqYqrfS4OuhFwj3PB9j5ecprsHDptF1A3ORhb9LPvE1JNIrRdDHzENVfdb7N4ZqriRvMOepVRaGXbRFQUPGQwPvl2RotMVfbzfm8lMs'); background-size: cover; background-position: center;">
+<div class="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+</div>
+<!-- iOS Status Bar -->
+<div class="relative z-10 flex justify-between items-center px-8 pt-4 text-slate-900">
+<span class="text-sm font-bold">14:28</span>
+<div class="flex gap-1.5 items-center">
+<span class="material-symbols-outlined text-sm">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-sm">wifi</span>
+<span class="material-symbols-outlined text-sm rotate-90">battery_full</span>
+</div>
+</div>
+<!-- Lock Screen Clock -->
+<div class="relative z-10 mt-12 text-center text-slate-900/80">
+<h1 class="text-7xl font-light tracking-tight">14:28</h1>
+<p class="text-lg font-medium mt-1">Вторник, 24 Октября</p>
+</div>
+<!-- Notifications Container -->
+<div class="relative z-10 mt-12 px-4 flex flex-col gap-3">
+<!-- Notification 1: Restaurant to Customer -->
+<div class="bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-sm border border-white/20">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<div class="bg-primary rounded-lg p-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] font-bold">restaurant</span>
+</div>
+<span class="text-xs font-bold uppercase tracking-wider text-slate-500">Kezdes</span>
+</div>
+<span class="text-xs text-slate-400">сейчас</span>
+</div>
+<div class="flex gap-3">
+<div class="flex-shrink-0 mt-1">
+<div class="size-6 bg-green-100 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-green-600 text-[18px]">check_circle</span>
+</div>
+</div>
+<div>
+<h3 class="text-sm font-bold text-slate-900">Grand Cafe</h3>
+<p class="text-sm text-slate-600 leading-snug">Ваша бронь подтверждена. Ждем вас сегодня в 19:00.</p>
+</div>
+</div>
+</div>
+<!-- Notification 2: New Request to Admin -->
+<div class="bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-sm border border-white/20">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<div class="bg-primary rounded-lg p-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] font-bold">business_center</span>
+</div>
+<span class="text-xs font-bold uppercase tracking-wider text-slate-500">Kezdes Admin</span>
+</div>
+<span class="text-xs text-slate-400">5 мин. назад</span>
+</div>
+<div class="flex gap-3">
+<div class="flex-shrink-0 mt-1">
+<div class="size-6 bg-primary/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[18px]">calendar_month</span>
+</div>
+</div>
+<div>
+<h3 class="text-sm font-bold text-slate-900">Новая заявка на банкет</h3>
+<p class="text-sm text-slate-600 leading-snug">Деловой обед, 15 чел. Требуется подтверждение менеджера.</p>
+</div>
+</div>
+</div>
+<!-- Notification 3: Guest Reminder -->
+<div class="bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-sm border border-white/20">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<div class="bg-primary rounded-lg p-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] font-bold">notifications_active</span>
+</div>
+<span class="text-xs font-bold uppercase tracking-wider text-slate-500">Kezdes</span>
+</div>
+<span class="text-xs text-slate-400">12 мин. назад</span>
+</div>
+<div class="flex gap-3">
+<div class="flex-shrink-0 mt-1">
+<div class="size-6 bg-amber-100 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-amber-600 text-[18px]">schedule</span>
+</div>
+</div>
+<div>
+<h3 class="text-sm font-bold text-slate-900">Напоминание о событии</h3>
+<p class="text-sm text-slate-600 leading-snug">Событие начнется через 2 часа. Подготовьте QR-код для входа.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Home Indicator & Controls -->
+<div class="absolute bottom-12 inset-x-0 flex justify-between px-12 z-10">
+<div class="size-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-slate-900">
+<span class="material-symbols-outlined">flashlight_on</span>
+</div>
+<div class="size-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-slate-900">
+<span class="material-symbols-outlined">photo_camera</span>
+</div>
+</div>
+<div class="absolute bottom-2 inset-x-0 flex justify-center z-10">
+<div class="w-32 h-1 bg-slate-900/30 rounded-full"></div>
+</div>
+</div>
+<!-- Sidebar Info (Desktop Only) -->
+<div class="hidden xl:flex flex-col ml-12 max-w-sm gap-6">
+<div class="bg-white dark:bg-background-dark p-6 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 bg-primary rounded-lg">
+<span class="material-symbols-outlined text-white">notifications</span>
+</div>
+<h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Kezdes Push V2</h2>
+</div>
+<p class="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
+                    Современная система уведомлений для B2B сегмента. Фокус на чистоте интерфейса и мгновенном считывании контекста.
+                </p>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+<div>
+<span class="block font-semibold text-slate-900 dark:text-slate-100">Типографика Manrope</span>
+<p class="text-sm text-slate-500">Четкая иерархия заголовков для быстрого чтения на ходу.</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">branding_watermark</span>
+<div>
+<span class="block font-semibold text-slate-900 dark:text-slate-100">Брендинг Kezdes</span>
+<p class="text-sm text-slate-500">Узнаваемый стиль и логотип в каждом пуш-уведомлении.</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">category</span>
+<div>
+<span class="block font-semibold text-slate-900 dark:text-slate-100">Цветовое кодирование</span>
+<p class="text-sm text-slate-500">Иконки помогают разделить типы уведомлений: статус, заявка, напоминание.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="flex gap-4">
+<button class="flex-1 bg-primary text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all">
+                    Документация
+                </button>
+<button class="flex-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all">
+                    Демо
+                </button>
+</div>
+</div>
+</div>
+</body></html>

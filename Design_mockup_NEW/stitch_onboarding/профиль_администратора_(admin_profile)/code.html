@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Профиль администратора | Kezdes V2</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-list-item:active {
+            background-color: rgba(19, 127, 236, 0.05);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen pb-24">
+<!-- Header / Navigation -->
+<header class="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl">arrow_back_ios</span>
+<h1 class="text-lg font-bold tracking-tight">Профиль</h1>
+</div>
+<button class="text-primary font-semibold">Готово</button>
+</header>
+<!-- User Identity Section -->
+<section class="flex flex-col items-center py-8 px-4">
+<div class="relative group">
+<div class="size-28 rounded-full border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden bg-slate-200">
+<img alt="Admin Avatar" class="w-full h-full object-cover" data-alt="Close up portrait of a professional male administrator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKP_wU7mbg03EfIcQ4OBtzgkvU2VyOWTfHNp4mgVBrU2DaNehqNy6h89JLknj2sCG7hNftymNtGCzN65nKIhVFabgjHW1nUsa6hodtIOQ3TtpBl2CAwfGye-0ftnNJdTThXRmkJVPgMc_MhQc9D72esWBS63zc3UXUFOFJDgNFmRJw4lJJtiZzLW5nN_CJWSQyidPfMxncr9Xi9tOudvM1Mn6ngZHZkaBtVgf0xvhmGIOMOpModmGVb7TkpUS6PLuoM5_yJHyMCZM"/>
+</div>
+<button class="absolute bottom-0 right-0 bg-primary text-white size-8 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-md">
+<span class="material-symbols-outlined text-sm">photo_camera</span>
+</button>
+</div>
+<h2 class="mt-4 text-2xl font-bold">Иван Иванов</h2>
+<div class="mt-1 flex items-center gap-1.5 px-3 py-1 bg-primary/10 rounded-full">
+<span class="material-symbols-outlined text-primary text-[14px] font-bold">verified_user</span>
+<span class="text-primary text-xs font-bold uppercase tracking-wider">Главный администратор</span>
+</div>
+<p class="mt-2 text-slate-500 dark:text-slate-400 text-sm">Kezdes V2 Premium Plan</p>
+</section>
+<!-- Settings Groups -->
+<main class="px-4 space-y-6">
+<!-- Section 1: Личные данные -->
+<div class="space-y-2">
+<h3 class="px-1 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Личные данные</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="ios-list-item flex items-center gap-4 p-4 border-b border-slate-50 dark:border-slate-800 last:border-0" href="#">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold">ФИО, Email, Телефон</p>
+<p class="text-xs text-slate-500">ivanov@kezdes.kz • +7 707 123 4567</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Section 2: Мой ресторан -->
+<div class="space-y-2">
+<h3 class="px-1 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Мой ресторан</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="ios-list-item flex items-center gap-4 p-4 border-b border-slate-50 dark:border-slate-800" href="#">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">storefront</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Настройки заведения</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">chevron_right</span>
+</a>
+<a class="ios-list-item flex items-center gap-4 p-4 border-b border-slate-50 dark:border-slate-800" href="#">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">table_restaurant</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Схема залов</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">chevron_right</span>
+</a>
+<a class="ios-list-item flex items-center gap-4 p-4 last:border-0" href="#">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">schedule</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Часы работы</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Section 3: Безопасность -->
+<div class="space-y-2">
+<h3 class="px-1 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Безопасность</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="ios-list-item flex items-center gap-4 p-4 border-b border-slate-50 dark:border-slate-800" href="#">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">lock</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Смена пароля</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">chevron_right</span>
+</a>
+<div class="flex items-center gap-4 p-4">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">key</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Двухфакторная аутентификация</p>
+</div>
+<!-- iOS Toggle Mockup -->
+<div class="w-12 h-7 bg-primary rounded-full relative p-1 cursor-pointer">
+<div class="size-5 bg-white rounded-full ml-auto shadow-sm"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 4: Настройки уведомлений -->
+<div class="space-y-2">
+<h3 class="px-1 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Уведомления</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-4 p-4 border-b border-slate-50 dark:border-slate-800">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">notifications_active</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold">Push уведомления</p>
+</div>
+<div class="w-12 h-7 bg-primary rounded-full relative p-1">
+<div class="size-5 bg-white rounded-full ml-auto shadow-sm"></div>
+</div>
+</div>
+<div class="flex items-center gap-4 p-4 border-b border-slate-50 dark:border-slate-800">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">sms</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold">SMS-оповещения</p>
+</div>
+<div class="w-12 h-7 bg-slate-200 dark:bg-slate-700 rounded-full relative p-1">
+<div class="size-5 bg-white rounded-full shadow-sm"></div>
+</div>
+</div>
+<div class="flex items-center gap-4 p-4">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">mail</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold">Email-рассылка</p>
+</div>
+<div class="w-12 h-7 bg-primary rounded-full relative p-1">
+<div class="size-5 bg-white rounded-full ml-auto shadow-sm"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 5: Помощь и поддержка -->
+<div class="space-y-2">
+<h3 class="px-1 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Помощь и поддержка</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="ios-list-item flex items-center gap-4 p-4 border-b border-slate-50 dark:border-slate-800" href="#">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">support_agent</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Чат с техподдержкой</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">chevron_right</span>
+</a>
+<a class="ios-list-item flex items-center gap-4 p-4 last:border-0" href="#">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">quiz</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Часто задаваемые вопросы (FAQ)</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Logout Action -->
+<div class="pt-4 pb-12">
+<button class="w-full bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/30 text-red-500 font-bold py-4 rounded-xl shadow-sm ios-list-item transition-colors">
+                Выйти из аккаунта
+            </button>
+<p class="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-tighter">Kezdes V2.4.0 (Build 108)</p>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 inset-x-0 bg-white/95 dark:bg-background-dark/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex justify-around items-center px-4 pb-8 pt-3 z-50">
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Главная</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-[10px] font-medium">Брони</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-[10px] font-medium">Залы</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">account_circle</span>
+<span class="text-[10px] font-bold">Профиль</span>
+</a>
+</nav>
+</body></html>

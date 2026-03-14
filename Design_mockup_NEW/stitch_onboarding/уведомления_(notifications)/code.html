@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kezdes - Уведомления</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<!-- Wrapper for Phone Form Factor -->
+<div class="relative flex h-screen max-w-[430px] mx-auto flex-col bg-white dark:bg-background-dark shadow-2xl overflow-hidden border-x border-slate-200 dark:border-slate-800">
+<!-- Header / Navigation Bar -->
+<header class="sticky top-0 z-10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-4 pt-6 pb-2 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center justify-between mb-2">
+<h1 class="text-3xl font-bold tracking-tight">Уведомления</h1>
+<button class="text-primary text-sm font-semibold hover:opacity-80 transition-opacity">
+                    Прочитать все
+                </button>
+</div>
+<!-- Segmented Control Tabs -->
+<div class="flex gap-6 mt-4">
+<a class="flex flex-col items-center border-b-2 border-primary pb-2 text-slate-900 dark:text-white" href="#">
+<span class="text-sm font-bold">Все</span>
+</a>
+<a class="flex flex-col items-center border-b-2 border-transparent pb-2 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="text-sm font-bold">Непрочитанные</span>
+</a>
+</div>
+</header>
+<!-- Notification List Scroll Area -->
+<main class="flex-1 overflow-y-auto">
+<!-- Today Section -->
+<section>
+<h2 class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/50">Сегодня</h2>
+<!-- Admin Notification (Unread) -->
+<div class="group relative flex items-start gap-4 px-4 py-4 bg-primary/5 dark:bg-primary/10 border-b border-slate-100 dark:border-slate-800 transition-colors hover:bg-primary/10">
+<div class="absolute left-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full"></div>
+<div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
+<span class="material-symbols-outlined text-[28px]">business_center</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2">
+<p class="text-base font-bold text-slate-900 dark:text-white truncate">Новая заявка от Газпром</p>
+<span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">5 мин. назад</span>
+</div>
+<p class="mt-1 text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-snug">
+                            Забронирован VIP-зал на 12 персон. Проверьте детали бронирования и подтвердите статус.
+                        </p>
+</div>
+</div>
+<!-- Client Notification (Read) -->
+<div class="group flex items-start gap-4 px-4 py-4 bg-white dark:bg-background-dark border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
+<div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-[28px]">verified</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2">
+<p class="text-base font-semibold text-slate-900 dark:text-white truncate">Ваша бронь подтверждена</p>
+<span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">1 ч. назад</span>
+</div>
+<p class="mt-1 text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-snug">
+                            Ресторан "Astana Lounge", 19:00. Ждем вас и ваших гостей.
+                        </p>
+</div>
+</div>
+</section>
+<!-- Yesterday Section -->
+<section>
+<h2 class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/50">Вчера</h2>
+<!-- System Notification -->
+<div class="group flex items-start gap-4 px-4 py-4 bg-white dark:bg-background-dark border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
+<div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-[28px]">settings</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2">
+<p class="text-base font-semibold text-slate-900 dark:text-white truncate">Обновление системы</p>
+<span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">17:45</span>
+</div>
+<p class="mt-1 text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-snug">
+                            Обновление Kezdes 2.4.0 успешно завершено. Добавлены новые функции аналитики.
+                        </p>
+</div>
+</div>
+<!-- Business Lead -->
+<div class="group flex items-start gap-4 px-4 py-4 bg-white dark:bg-background-dark border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
+<div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-[28px]">event_repeat</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2">
+<p class="text-base font-semibold text-slate-900 dark:text-white truncate">Напоминание о встрече</p>
+<span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">14:20</span>
+</div>
+<p class="mt-1 text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-snug">
+                            Завтра в 10:00 состоится деловой завтрак с представителями Halyk Bank.
+                        </p>
+</div>
+</div>
+<!-- Offer Notification -->
+<div class="group flex items-start gap-4 px-4 py-4 bg-white dark:bg-background-dark border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
+<div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-[28px]">percent</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2">
+<p class="text-base font-semibold text-slate-900 dark:text-white truncate">Специальное предложение</p>
+<span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">10:15</span>
+</div>
+<p class="mt-1 text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-snug">
+                            Получите скидку 15% на корпоративные ужины в ресторанах-партнерах до конца недели.
+                        </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (iOS Style) -->
+<nav class="flex h-20 items-center justify-around border-t border-slate-100 dark:border-slate-800 bg-white/90 dark:bg-background-dark/90 backdrop-blur-md px-4 pb-4">
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[26px]">home</span>
+<span class="text-[10px] font-medium">Главная</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[26px]">calendar_month</span>
+<span class="text-[10px] font-medium">Брони</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined text-[26px]" style="font-variation-settings: 'FILL' 1">notifications</span>
+<span class="text-[10px] font-medium">Уведомления</span>
+<div class="absolute top-1 ml-6 size-1.5 rounded-full bg-red-500"></div>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[26px]">person</span>
+<span class="text-[10px] font-medium">Профиль</span>
+</a>
+</nav>
+<!-- iOS Home Indicator -->
+<div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+</div>
+</body></html>

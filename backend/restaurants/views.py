@@ -1,0 +1,430 @@
+from datetime import datetime, timedelta
+import random
+import string
+
+from django.contrib.auth.models import User
+from django.db import transaction
+from django.db.models import Case, IntegerField, Value, When
+from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_time
+from rest_framework import filters, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+
+from bookings.models import Booking
+from core.permissions import IsGlobalAdmin, IsRestaurantAdmin, IsRestaurantOrGlobalAdmin
+from core.models import Profile
+from orders.models import MenuCategory, MenuItem
+from orders.serializers import PublicMenuCategorySerializer, PublicMenuItemSerializer
+from core.responses import api_error
+
+from .models import Availability, Restaurant, RestaurantRequest, Review, Table
+from .serializers import (
+    AvailabilitySerializer,
+    RestaurantRequestSerializer,
+    RestaurantSerializer,
+    ReviewSerializer,
+    StaffSerializer,
+    TableSerializer,
+)
+
+
+from core.viewsets import OptionalPaginationMixin, TenantModelViewSet
+
+
+class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
+    queryset = Restaurant.objects.select_related("owner").prefetch_related("operating_hours")
+    serializer_class = RestaurantSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "address", "city"]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsRestaurantOrGlobalAdmin()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        queryset = Restaurant.objects.select_related("owner").prefetch_related("operating_hours")
+        user = self.request.user
+
+        if self.action == "list":
+            my_restaurants_only = self.request.query_params.get("my_restaurants") == "true"
+            
+            if my_restaurants_only and user.is_authenticated:
+                queryset = queryset.filter(owner=user)
+            else:
+                # Public discovery: showing all active restaurants for MVP
+                pass
+
+        city = self.request.query_params.get("city")
+        if city:
+            queryset = queryset.filter(city__icontains=city)
+
+        from django.db.models import Avg, Count
+        queryset = queryset.annotate(
+            priority=Case(
+                When(
+                    is_claimed=True,
+                    owner__isnull=False,
+                    average_price__isnull=False,
+                    capacity__isnull=False,
+                    then=Value(1),
+                ),
+                default=Value(2),
+                output_field=IntegerField(),
+            ),
+            calculated_rating=Avg('reviews__rating'),
+            total_reviews=Count('reviews')
+        ).order_by("priority", "-calculated_rating")
+
+        return queryset.distinct()
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not instance.is_verified:
+            is_owner = request.user.is_authenticated and instance.owner == request.user
+            is_global_admin = (
+                request.user.is_authenticated
+                and getattr(request.user, "profile", None)
+                and request.user.profile.role == "global_admin"
+            )
+            if not is_owner and not is_global_admin:
+                return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
+
+        if not request.user.is_authenticated or instance.owner != request.user:
+            instance.views_count += 1
+            instance.save(update_fields=["views_count"])
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        if Restaurant.objects.filter(owner=self.request.user).exists():
+            from rest_framework.exceptions import ValidationError
+
+            raise ValidationError({"detail": "You already have a restaurant."})
+        serializer.save(owner=self.request.user, is_claimed=True)
+
+    @action(detail=False, methods=["get", "patch"], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+        except Restaurant.DoesNotExist:
+            return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
+
+        if request.method == "PATCH":
+            serializer = self.get_serializer(restaurant, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+        serializer = self.get_serializer(restaurant)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated], url_path="favorites")
+    def favorites(self, request):
+        """MVP: return empty list. Favorites can be implemented later with a user-restaurant relation."""
+        return Response([])
+
+    @action(detail=True, methods=["delete"], permission_classes=[permissions.IsAuthenticated], url_path="favorite")
+    def favorite(self, request, pk=None):
+        """MVP: no-op delete so frontend does not 404."""
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    def claim(self, request, pk=None):
+        restaurant = self.get_object()
+        if restaurant.is_claimed:
+            return api_error("Already claimed", status.HTTP_400_BAD_REQUEST)
+        if getattr(request.user, "profile", None) and request.user.profile.role not in ("restaurant_admin", "restaurant_owner", "owner"):
+            return api_error("Only restaurant admins can claim venues", status.HTTP_403_FORBIDDEN)
+        restaurant.owner = request.user
+        restaurant.is_claimed = True
+        restaurant.save()
+        return Response({"status": "claimed"})
+
+    @action(detail=True, methods=["get", "post"], permission_classes=[permissions.IsAuthenticated])
+    def availability(self, request, pk=None):
+        restaurant = self.get_object()
+        if request.method == "GET":
+            avail = restaurant.availabilities.all()
+            serializer = AvailabilitySerializer(avail, many=True)
+            return Response(serializer.data)
+        if restaurant.owner != request.user:
+            return api_error("Not owner", status.HTTP_403_FORBIDDEN)
+        serializer = AvailabilitySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(restaurant=restaurant)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["get"], permission_classes=[permissions.AllowAny])
+    def menu(self, request, pk=None):
+        restaurant = self.get_object()
+        categories = MenuCategory.objects.filter(restaurant=restaurant, is_active=True).order_by("order", "id")
+        items = (
+            MenuItem.objects.filter(restaurant=restaurant, is_active=True)
+            .select_related("category")
+            .order_by("category_id", "-created_at")
+        )
+        cat_data = PublicMenuCategorySerializer(categories, many=True).data
+        item_data = PublicMenuItemSerializer(items, many=True, context={"request": request}).data
+
+        items_by_cat: dict[int, list] = {}
+        uncategorized: list = []
+        for it in item_data:
+            cat_id = it.get("category")
+            if cat_id:
+                items_by_cat.setdefault(int(cat_id), []).append(it)
+            else:
+                uncategorized.append(it)
+
+        categories_out = []
+        for c in cat_data:
+            cid = int(c["id"])
+            categories_out.append({**c, "items": items_by_cat.get(cid, [])})
+
+        return Response(
+            {
+                "restaurant_id": restaurant.id,
+                "categories": categories_out,
+                "uncategorized_items": uncategorized,
+            }
+        )
+
+    @action(detail=True, methods=["get", "post"], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
+    def reviews(self, request, pk=None):
+        restaurant = self.get_object()
+        if request.method == "GET":
+            reviews = restaurant.reviews.all()
+            serializer = ReviewSerializer(reviews, many=True)
+            return Response(serializer.data)
+        if Review.objects.filter(restaurant=restaurant, user=request.user).exists():
+            return api_error("Вы уже оставили отзыв для этого ресторана.", status.HTTP_400_BAD_REQUEST)
+        serializer = ReviewSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(restaurant=restaurant, user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
+    """
+    Application flow for restaurants.
+
+    - Authenticated restaurant owners create/update their own applications.
+    - Global admins can list, filter, approve, and reject applications.
+    """
+
+    queryset = RestaurantRequest.objects.select_related("owner").order_by("-created_at")
+    serializer_class = RestaurantRequestSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve", "update", "partial_update", "destroy", "approve", "reject"]:
+            return [IsGlobalAdmin()]
+        if self.action in ["create", "mine"]:
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["restaurant"] = getattr(self.request.user.profile, "restaurant", None)
+        return context
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status=status_param)
+        return qs
+
+    def perform_create(self, serializer):
+        """
+        Attach current user as owner and default email/credentials on create.
+        """
+        user = self.request.user
+        email = serializer.validated_data.get("email") or getattr(user, "email", "") or ""
+        serializer.save(
+            owner=user,
+            email=email,
+            admin_username=serializer.validated_data.get("admin_username") or user.username,
+        )
+
+    @action(detail=False, methods=["get"])
+    def mine(self, request):
+        """
+        Return the latest application for the current user (if any).
+        Used by restaurant owners to see their request status.
+        """
+        user = request.user
+        req = (
+            RestaurantRequest.objects.filter(owner=user)
+            .order_by("-created_at")
+            .first()
+        )
+        if not req:
+            return api_error("No application found.", status.HTTP_404_NOT_FOUND)
+        serializer = self.get_serializer(req)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsGlobalAdmin])
+    def approve(self, request, pk=None):
+        from .services import RestaurantService
+        
+        result, error = RestaurantService.approve_request(pk, admin_user=request.user)
+        if error:
+            return api_error(error, status.HTTP_400_BAD_REQUEST)
+            
+        return Response(
+            {
+                "status": "approved",
+                "message": "Restaurant approved.",
+                "restaurant_id": result["restaurant"].id,
+                "created_new_user": result["created_new_user"],
+                "credentials": result["credentials"],
+            }
+        )
+
+    @action(detail=True, methods=["post"], permission_classes=[IsGlobalAdmin])
+    def reject(self, request, pk=None):
+        req = self.get_object()
+        req.status = "rejected"
+        req.save()
+        return Response({"status": "rejected"})
+
+
+class TableViewSet(TenantModelViewSet):
+    queryset = Table.objects.all()
+    serializer_class = TableSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=["get"])
+    def status(self, request):
+        tables = self.get_queryset()
+
+        user = self.request.user
+        restaurant = getattr(user, 'owned_restaurant', None)
+        if not restaurant:
+            try:
+                if hasattr(user, 'profile') and user.profile:
+                    restaurant = user.profile.restaurant
+            except (Profile.DoesNotExist, AttributeError):
+                restaurant = None
+            
+        if not restaurant:
+             return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
+
+        date_str = request.query_params.get("date")
+        time_str = request.query_params.get("time")
+
+        from bookings.services import make_aware_if_needed
+        target_date = parse_date(date_str) if date_str else timezone.now().date()
+        target_time = parse_time(time_str) if time_str else timezone.now().time()
+
+        if not target_date or not target_time:
+            return api_error("Invalid date/time format.", status.HTTP_400_BAD_REQUEST)
+
+        target_dt = make_aware_if_needed(datetime.combine(target_date, target_time))
+
+        active_bookings = Booking.objects.filter(
+            restaurant=restaurant,
+            status__in=[Booking.APPROVED, Booking.PENDING],
+            start_datetime__lte=target_dt,
+            end_datetime__gt=target_dt
+        ).prefetch_related('tables')
+
+        table_status_map: dict[int, str] = {}
+        table_booking_map: dict[int, dict] = {}
+        for booking in active_bookings:
+            status_val = "occupied" if booking.is_checked_in else "reserved"
+            booking_data = {
+                "id": booking.id,
+                "guest_name": booking.user_name or (booking.user.get_full_name() if booking.user else "Гость"),
+                "guests": booking.guests,
+                "time": str(booking.time),
+                "duration_minutes": booking.duration_minutes
+            }
+            if booking.table_id:
+                table_status_map[booking.table_id] = status_val
+                table_booking_map[booking.table_id] = booking_data
+            for t in booking.tables.all():
+                table_status_map[t.id] = status_val
+                table_booking_map[t.id] = booking_data
+
+        response_data = []
+        for table in tables:
+            row = TableSerializer(table).data
+            row["status"] = table_status_map.get(table.id, "free")
+            if row["status"] != "free":
+                row["current_booking"] = table_booking_map.get(table.id)
+            response_data.append(row)
+        return Response(response_data)
+
+
+class StaffViewSet(viewsets.ModelViewSet):
+    serializer_class = StaffSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not hasattr(user, "profile") or not user.profile.restaurant:
+            return User.objects.none()
+        return User.objects.filter(
+            profile__restaurant=user.profile.restaurant,
+            profile__role__in=["manager", "host"],
+        )
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if not hasattr(user, "profile") or not user.profile.restaurant:
+            raise PermissionDenied("You don't have a restaurant to attach staff to.")
+        staff_user = serializer.save()
+        staff_user.profile.restaurant = user.profile.restaurant
+        staff_user.profile.save()
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        restaurant_id = self.kwargs.get('restaurant_pk')
+        if restaurant_id:
+            return Review.objects.filter(restaurant_id=restaurant_id).select_related('user')
+        return Review.objects.all().select_related('user', 'restaurant')
+
+    def perform_create(self, serializer):
+        restaurant_id = self.kwargs.get('restaurant_pk')
+        if not restaurant_id:
+            restaurant_id = self.request.data.get('restaurant')
+            
+        restaurant = Restaurant.objects.get(id=restaurant_id)
+        
+        booking_id = self.request.data.get('booking_id')
+        booking = None
+        if booking_id:
+            booking = Booking.objects.filter(id=booking_id, user=self.request.user).first()
+            
+        serializer.save(
+            user=self.request.user, 
+            restaurant=restaurant,
+            booking=booking
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = request.user
+        
+        is_restaurant_admin = False
+        if hasattr(user, 'profile'):
+            if user.profile.role in ('restaurant_admin', 'restaurant_owner', 'manager') and instance.restaurant.owner == user:
+                is_restaurant_admin = True
+            elif getattr(user.profile, 'restaurant', None) == instance.restaurant:
+                is_restaurant_admin = True
+                
+        if not is_restaurant_admin and not getattr(user.profile, 'role', '') == 'global_admin':
+            return Response({"detail": "Only restaurant staff can reply to reviews."}, status=status.HTTP_403_FORBIDDEN)
+            
+        return super().partial_update(request, *args, **kwargs)

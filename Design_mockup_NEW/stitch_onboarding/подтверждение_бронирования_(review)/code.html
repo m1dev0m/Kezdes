@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kezdes - Подтверждение бронирования</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<!-- Main Container (Phone Form Factor) -->
+<div class="relative mx-auto min-h-screen max-w-[430px] bg-white dark:bg-slate-950 flex flex-col shadow-2xl">
+<!-- Header -->
+<header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 ios-blur border-b border-slate-200 dark:border-slate-800 px-4 h-14 flex items-center justify-between">
+<button class="flex items-center text-primary">
+<span class="material-symbols-outlined text-[28px]">chevron_left</span>
+<span class="text-base font-medium -ml-1">Назад</span>
+</button>
+<h1 class="text-base font-semibold">Подтверждение</h1>
+<div class="w-12"></div> <!-- Spacer for centering -->
+</header>
+<!-- Content -->
+<main class="flex-1 overflow-y-auto pb-32">
+<!-- Summary Title -->
+<div class="px-5 pt-6 pb-4">
+<h2 class="text-2xl font-bold tracking-tight">Детали встречи</h2>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Пожалуйста, проверьте данные перед бронированием</p>
+</div>
+<!-- Event Summary Card -->
+<div class="px-4 mb-6">
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+<div class="relative h-32 w-full bg-slate-200" data-alt="Modern office meeting room with wooden table" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDdEu__fA90laW-4ZMSjab4mBPcJn2x4ecP-WtvGyy2aBeha1DFY17La9vB_HC0rqePF2nP6ITw-pr54cYCCxOGU1om0tj0lylPuFE6ZzX-v7_7MQUQ2OsWGJhXp4eSWT5qZeTK-H-S40EMTDf2Poq85CYfO2L3-TXfLLx9upMjig5sU_Vfua7Te9Vz4Mz6tJGOMuMnfbCvYKKOvi5Uu7_FUooUBjBWKnwW8hLetO1_WNjDjCBfVaNeJdFBVDisl_4AcPP_LoQWUdM'); background-size: cover; background-position: center;">
+<div class="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
+                            B2B PREMIUM
+                        </div>
+</div>
+<div class="p-4">
+<div class="flex items-center justify-between mb-2">
+<span class="bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full">Деловая встреча</span>
+<span class="text-slate-400 text-xs font-medium">ID: #88291</span>
+</div>
+<h3 class="text-lg font-bold mb-3 leading-snug">Ужин с партнерами: Kezdes SaaS Launch</h3>
+<div class="space-y-3">
+<div class="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-xl">calendar_today</span>
+<p class="text-sm font-medium">Пятница, 20 Октября</p>
+</div>
+<div class="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-xl">schedule</span>
+<p class="text-sm font-medium">14:00 - 16:00 (2 часа)</p>
+</div>
+<div class="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-xl">group</span>
+<p class="text-sm font-medium">5 гостей</p>
+</div>
+<div class="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-xl">location_on</span>
+<p class="text-sm font-medium truncate" data-location="Almaty">Ресторан "Skyline", пр. Аль-Фараби 77/7</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Add-ons Section -->
+<section class="px-5 mb-6">
+<h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">Дополнительные услуги</h3>
+<div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl divide-y divide-slate-200 dark:divide-slate-800">
+<!-- Row 1 -->
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">videocam</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Проектор и экран</p>
+<p class="text-xs text-slate-500">Стандартное оборудование</p>
+</div>
+</div>
+<span class="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase">Включено</span>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">meeting_room</span>
+</div>
+<div>
+<p class="text-sm font-semibold">VIP-зал</p>
+<p class="text-xs text-slate-500">Приватная зона</p>
+</div>
+</div>
+<span class="text-sm font-bold">+10,000 ₸</span>
+</div>
+</div>
+</section>
+<!-- Budget breakdown -->
+<section class="px-5 mb-8">
+<h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">Детализация оплаты</h3>
+<div class="space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">Аренда стола (5 чел.)</span>
+<span class="font-medium text-slate-700 dark:text-slate-300">40,000 ₸</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">Доп. услуги</span>
+<span class="font-medium text-slate-700 dark:text-slate-300">10,000 ₸</span>
+</div>
+<div class="pt-3 mt-1 border-t border-dashed border-slate-300 dark:border-slate-700 flex justify-between items-end">
+<span class="text-base font-bold">Итоговый бюджет</span>
+<span class="text-xl font-bold text-primary">50,000 ₸</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation / Action Area -->
+<footer class="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-white/90 dark:bg-slate-950/90 ios-blur border-t border-slate-200 dark:border-slate-800 p-5 pt-3 pb-8 z-40">
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-center gap-2 text-[11px] text-slate-400 uppercase tracking-tight">
+<span class="material-symbols-outlined text-[14px]">verified_user</span>
+<span>Безопасное бронирование через Kezdes Pay</span>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98]">
+<span>Подтвердить бронирование</span>
+<!-- Spinner placeholder -->
+<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full hidden"></div>
+</button>
+</div>
+</footer>
+<!-- iOS Home Indicator -->
+<div class="fixed bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-300 dark:bg-slate-700 rounded-full z-50"></div>
+<!-- Bottom Navigation Bar (as requested in component list) -->
+<div class="hidden">
+<!-- Hidden container to satisfy the "BottomNavBar" component requirement if strictly needed by context, 
+                 though for a "Confirm" screen, a prominent CTA footer is more typical for iOS. 
+                 The primary component logic is integrated in the footer above. -->
+</div>
+</div>
+</body></html>

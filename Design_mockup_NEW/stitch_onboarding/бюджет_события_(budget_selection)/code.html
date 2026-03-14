@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kezdes - Бюджет события</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .slider-thumb {
+            width: 28px;
+            height: 28px;
+            background: white;
+            border: 2px solid #137fec;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Header / Navigation -->
+<header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+<div class="flex items-center p-4">
+<button class="text-slate-900 dark:text-slate-100 p-1">
+<span class="material-symbols-outlined text-2xl">arrow_back_ios</span>
+</button>
+<h1 class="flex-1 text-center text-lg font-semibold pr-8">Создание события</h1>
+</div>
+<!-- Progress Stepper -->
+<div class="flex w-full items-center justify-center gap-3 py-3 bg-slate-50 dark:bg-slate-800/50">
+<div class="h-1.5 w-12 rounded-full bg-primary"></div>
+<div class="h-1.5 w-12 rounded-full bg-primary"></div>
+<div class="h-1.5 w-12 rounded-full bg-primary"></div>
+<div class="h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col px-5 pt-8 pb-24 max-w-md mx-auto w-full">
+<div class="mb-8">
+<h2 class="text-2xl font-bold leading-tight mb-2">Бюджет события</h2>
+<p class="text-slate-500 dark:text-slate-400 text-base leading-relaxed">
+                Выберите бюджет события для подбора лучших предложений.
+            </p>
+</div>
+<!-- Price Range Display -->
+<div class="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 mb-8">
+<div class="flex justify-between items-end mb-8">
+<div>
+<span class="text-xs font-medium text-slate-400 uppercase tracking-wider">От</span>
+<div class="text-2xl font-bold text-primary">50 000 ₽</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-medium text-slate-400 uppercase tracking-wider">До</span>
+<div class="text-2xl font-bold text-primary">150 000 ₽</div>
+</div>
+</div>
+<!-- Custom Visual Slider -->
+<div class="relative h-12 flex items-center mb-4">
+<div class="absolute w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full"></div>
+<div class="absolute left-[20%] right-[30%] h-1.5 bg-primary rounded-full"></div>
+<div class="slider-thumb left-[20%]"></div>
+<div class="slider-thumb right-[30%] translate-x-1/2"></div>
+</div>
+<div class="flex justify-between text-xs text-slate-400 font-medium">
+<span>0 ₽</span>
+<span>500 000+ ₽</span>
+</div>
+</div>
+<!-- Presets Section -->
+<div class="mb-8">
+<label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Предустановленные варианты</label>
+<div class="grid grid-cols-1 gap-3">
+<!-- Option 1: Эконом -->
+<button class="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+<span class="material-symbols-outlined">savings</span>
+</div>
+<div>
+<div class="font-bold text-slate-900 dark:text-slate-100">Эконом</div>
+<div class="text-xs text-slate-500 uppercase tracking-tight">до 50 000 ₽</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary">chevron_right</span>
+</button>
+<!-- Option 2: Стандарт (Active) -->
+<button class="flex items-center justify-between p-4 bg-primary/5 dark:bg-primary/10 rounded-xl border-2 border-primary transition-colors text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div>
+<div class="font-bold text-slate-900 dark:text-slate-100">Стандарт</div>
+<div class="text-xs text-primary font-medium uppercase tracking-tight">50 000 — 200 000 ₽</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary">check_circle</span>
+</button>
+<!-- Option 3: Премиум -->
+<button class="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+<span class="material-symbols-outlined">diamond</span>
+</div>
+<div>
+<div class="font-bold text-slate-900 dark:text-slate-100">Премиум</div>
+<div class="text-xs text-slate-500 uppercase tracking-tight">от 200 000 ₽</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Currency Toggle -->
+<div class="flex items-center justify-center gap-4 mb-4">
+<button class="px-4 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-bold text-primary">RUB (₽)</button>
+<button class="px-4 py-2 rounded-lg bg-transparent text-slate-400 text-sm font-medium">KZT (₸)</button>
+</div>
+</main>
+<!-- Footer Actions -->
+<footer class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-4 pb-8 z-20">
+<div class="max-w-md mx-auto flex gap-3">
+<button class="flex-1 py-4 px-6 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                Назад
+            </button>
+<button class="flex-[2] py-4 px-6 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all">
+                Далее
+            </button>
+</div>
+</footer>
+<!-- Bottom Navigation Component Replacement for context -->
+<div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 hidden md:flex items-center justify-around h-16 pointer-events-none opacity-0">
+<!-- Kept for structural reference only, logic handled by footer -->
+</div>
+</body></html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Восстановление пароля - Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .ios-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center">
+<!-- Main Container (Phone Form Factor) -->
+<div class="relative flex h-full min-h-screen w-full max-w-[430px] flex-col bg-white dark:bg-background-dark shadow-2xl overflow-x-hidden border-x border-slate-100 dark:border-slate-800">
+<!-- Top Navigation Bar -->
+<div class="flex items-center bg-white dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
+<button aria-label="Назад" class="text-slate-900 dark:text-slate-100 flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<div class="flex-1 text-center pr-10">
+<span class="text-slate-900 dark:text-slate-100 font-semibold text-base">Kezdes</span>
+</div>
+</div>
+<!-- Content Area -->
+<div class="flex flex-col px-6 pt-10 pb-8 flex-1">
+<!-- Icon/Logo Placeholder -->
+<div class="mb-8 flex justify-start">
+<div class="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-4xl">lock_reset</span>
+</div>
+</div>
+<!-- Title & Description -->
+<h1 class="text-slate-900 dark:text-slate-100 tracking-tight text-3xl font-bold leading-tight pb-3">
+                Восстановление пароля
+            </h1>
+<p class="text-slate-600 dark:text-slate-400 text-base font-normal leading-relaxed pb-8">
+                Мы отправим вам ссылку для восстановления пароля на указанный адрес электронной почты.
+            </p>
+<!-- Form -->
+<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-normal ml-1">
+                        Электронная почта
+                    </label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
+<input class="form-input flex w-full rounded-xl text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-14 placeholder:text-slate-400 pl-12 pr-4 text-base font-normal transition-all" placeholder="example@company.com" type="email" value=""/>
+</div>
+</div>
+<div class="pt-2">
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-primary text-white text-base font-bold leading-normal tracking-wide shadow-lg shadow-primary/20 active:scale-[0.98] transition-all">
+<span class="truncate">Отправить ссылку</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="p-6 mt-auto">
+<a class="flex items-center justify-center gap-2 text-primary hover:text-primary/80 font-semibold text-base py-4 transition-colors group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:-translate-x-1 transition-transform">arrow_back</span>
+<span>Вернуться к входу</span>
+</a>
+</div>
+<!-- Safe Area Spacer (iOS style) -->
+<div class="h-8 bg-white dark:bg-background-dark"></div>
+</div>
+</body></html>

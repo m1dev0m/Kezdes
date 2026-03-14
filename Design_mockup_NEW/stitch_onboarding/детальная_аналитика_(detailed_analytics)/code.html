@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Детальная аналитика — Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .chart-gradient {
+            background: linear-gradient(180deg, rgba(19, 127, 236, 0.1) 0%, rgba(19, 127, 236, 0) 100%);
+        }
+        .donut-segment {
+            stroke-dasharray: 75 25;
+            stroke-dashoffset: 25;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<!-- Main Container (Mobile Form Factor) -->
+<div class="relative flex min-h-screen w-full max-w-[430px] mx-auto flex-col bg-background-light dark:bg-background-dark overflow-x-hidden pb-24 shadow-2xl">
+<!-- Header -->
+<header class="sticky top-0 z-10 flex items-center bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-4 justify-between border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-center size-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</div>
+<h1 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 text-center">Детальная аналитика</h1>
+<div class="flex items-center justify-end size-10">
+<button class="flex items-center justify-center size-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-slate-100">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</header>
+<!-- Period Selector -->
+<div class="px-4 py-4">
+<div class="flex h-11 items-center justify-center rounded-xl bg-slate-200/50 dark:bg-slate-800 p-1">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-slate-500 dark:text-slate-400 text-sm font-semibold transition-all">
+<span>Сегодня</span>
+<input class="hidden" name="period" type="radio" value="today"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-slate-500 dark:text-slate-400 text-sm font-semibold transition-all">
+<span>Неделя</span>
+<input checked="" class="hidden" name="period" type="radio" value="week"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-slate-500 dark:text-slate-400 text-sm font-semibold transition-all">
+<span>Месяц</span>
+<input class="hidden" name="period" type="radio" value="month"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-slate-500 dark:text-slate-400 text-sm font-semibold transition-all">
+<span>Год</span>
+<input class="hidden" name="period" type="radio" value="year"/>
+</label>
+</div>
+</div>
+<!-- KPI Cards Grid -->
+<div class="grid grid-cols-1 gap-3 px-4 pb-6">
+<!-- Revenue Card -->
+<div class="flex flex-col gap-1 rounded-xl bg-white dark:bg-slate-900 p-5 shadow-sm border border-slate-100 dark:border-slate-800">
+<div class="flex items-center justify-between">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Выручка</p>
+<span class="material-symbols-outlined text-primary text-xl">payments</span>
+</div>
+<div class="flex items-end justify-between mt-1">
+<p class="text-slate-900 dark:text-slate-100 text-2xl font-extrabold leading-tight">1 240 500 ₸</p>
+<div class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+12.4%</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<!-- Bookings Card -->
+<div class="flex flex-col gap-1 rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Кол-во броней</p>
+<p class="text-slate-900 dark:text-slate-100 text-xl font-bold mt-1">156</p>
+<p class="text-emerald-600 dark:text-emerald-400 text-xs font-bold mt-1">+8.2%</p>
+</div>
+<!-- Average Check Card -->
+<div class="flex flex-col gap-1 rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Средний чек</p>
+<p class="text-slate-900 dark:text-slate-100 text-xl font-bold mt-1">7 950 ₸</p>
+<p class="text-rose-600 dark:text-rose-400 text-xs font-bold mt-1">-2.1%</p>
+</div>
+</div>
+</div>
+<!-- Revenue Dynamics (Line Chart) -->
+<div class="px-4 pb-6">
+<div class="rounded-xl bg-white dark:bg-slate-900 p-5 shadow-sm border border-slate-100 dark:border-slate-800">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-slate-900 dark:text-slate-100 text-base font-bold">Динамика выручки</h2>
+<span class="text-slate-400 text-xs font-medium">₸ за 7 дней</span>
+</div>
+<!-- Chart Placeholder Visual -->
+<div class="relative h-48 w-full">
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between opacity-50">
+<div class="border-t border-slate-100 dark:border-slate-800 w-full h-px"></div>
+<div class="border-t border-slate-100 dark:border-slate-800 w-full h-px"></div>
+<div class="border-t border-slate-100 dark:border-slate-800 w-full h-px"></div>
+<div class="border-t border-slate-100 dark:border-slate-800 w-full h-px"></div>
+<div class="border-t border-slate-200 dark:border-slate-700 w-full h-px"></div>
+</div>
+<!-- Line Visual (SVG) -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<defs>
+<lineargradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#137fec" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#137fec" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Area -->
+<path d="M0,80 L15,70 L30,85 L45,50 L60,60 L75,30 L90,40 L100,20 L100,100 L0,100 Z" fill="url(#chartFill)"></path>
+<!-- Line -->
+<path d="M0,80 L15,70 L30,85 L45,50 L60,60 L75,30 L90,40 L100,20" fill="none" stroke="#137fec" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+<!-- Data Point -->
+<circle cx="75" cy="30" fill="white" r="4" stroke="#137fec" stroke-width="2"></circle>
+</svg>
+<!-- Tooltip -->
+<div class="absolute left-[65%] top-[5%] -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded shadow-lg pointer-events-none">
+                        Пт: 215к ₸
+                    </div>
+</div>
+<div class="flex justify-between mt-4">
+<span class="text-slate-400 text-[10px] font-medium">Пн</span>
+<span class="text-slate-400 text-[10px] font-medium">Вт</span>
+<span class="text-slate-400 text-[10px] font-medium">Ср</span>
+<span class="text-slate-400 text-[10px] font-medium">Чт</span>
+<span class="text-slate-400 text-[10px] font-medium font-bold text-slate-900 dark:text-slate-100">Пт</span>
+<span class="text-slate-400 text-[10px] font-medium">Сб</span>
+<span class="text-slate-400 text-[10px] font-medium">Вс</span>
+</div>
+</div>
+</div>
+<!-- Grid for Tables and Food -->
+<div class="flex flex-col gap-6 px-4 pb-8">
+<!-- Table Occupancy (Donut) -->
+<div class="rounded-xl bg-white dark:bg-slate-900 p-5 shadow-sm border border-slate-100 dark:border-slate-800">
+<h2 class="text-slate-900 dark:text-slate-100 text-base font-bold mb-4">Загрузка столов</h2>
+<div class="flex items-center gap-8">
+<div class="relative size-28 shrink-0">
+<svg class="size-full" viewbox="0 0 36 36">
+<circle class="stroke-slate-100 dark:stroke-slate-800" cx="18" cy="18" fill="none" r="16" stroke-width="4"></circle>
+<circle class="stroke-primary donut-segment" cx="18" cy="18" fill="none" r="16" stroke-linecap="round" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-xl font-extrabold text-slate-900 dark:text-slate-100 leading-none">75%</span>
+</div>
+</div>
+<div class="flex flex-col gap-3 grow">
+<div class="flex items-center gap-2">
+<div class="size-3 rounded-full bg-primary"></div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Занято</span>
+<span class="text-sm font-bold text-slate-900 dark:text-slate-100">24 стола</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="size-3 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Свободно</span>
+<span class="text-sm font-bold text-slate-900 dark:text-slate-100">8 столов</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Popular Dishes -->
+<div class="rounded-xl bg-white dark:bg-slate-900 p-5 shadow-sm border border-slate-100 dark:border-slate-800">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-slate-900 dark:text-slate-100 text-base font-bold">Популярные блюда</h2>
+<a class="text-primary text-xs font-bold" href="#">Все</a>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Item 1 -->
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+<img class="size-full object-cover" data-alt="Salad bowl close up" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN5Y7Fe-kfnku9uAcDKo8lQZMyUJPCNHC5RoNs9ExRHEVOmy5TU2DiPbSsGflfkD6L3YEpB8JAO-9LcYRNqArCrGEVkkq01y4XU7sC5fCN7_vYRCmx1UiJlFRDigwDB9_0spYVAX7NkpHmqkjLHafI9ChnscyrZ_9R0vBvaM2CvQE12jm63rqp0_pj_DRexnyGsG9uIO8tT-71rnuyUiPQCBZVw_zz4pt043NmIM8YwahNBbf6ze1a5P2VyMXpkTdcO9HCLrjJdno"/>
+</div>
+<div class="flex flex-col grow gap-1">
+<div class="flex justify-between items-center">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">Салат Цезарь</span>
+<span class="text-xs font-bold text-slate-900 dark:text-slate-100">124 шт.</span>
+</div>
+<div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 85%"></div>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+<img class="size-full object-cover" data-alt="Pizza slice close up" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtMhkdQGfP-iHj3jZmXtOCIb7F8yQg8aBH2mgKVQaIlRvSrHOmo7r3DHiYiNAgS5khcVxNGaAeojjVfIB6rJ7HaqwslOH7dwHULBwS84SgTFRp-ECY-MDCpOjo4VMeH_YmeVEHs7YYp6PNLn4JDvg-9F9cP4CI5m2urI0aSQwTntvwzwjQTdIu2s_h2ozsavxqR_KtdexNOXJ5UJdYsmS5lXpxpPd3RxdkdwCQ1MwNvIr1eVqNRn6IYTOVbY6-fjGHUQS2gSQR3U8"/>
+</div>
+<div class="flex flex-col grow gap-1">
+<div class="flex justify-between items-center">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">Пицца Пепперони</span>
+<span class="text-xs font-bold text-slate-900 dark:text-slate-100">98 шт.</span>
+</div>
+<div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+<img class="size-full object-cover" data-alt="Steak with garnish" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXL-nZGTRF-EVpFxwxQyIUeIAwd5UvdyFeYTTQbYqumI3UrlWxGJJZG5EEeYxFRofqEFkw5-RUshTh0knECH1BdihXO7XYTRy1qYlw3aAYClOq4bxrii8LlJy7kgj8xVwtgoUprx1AIv7yyR2j5olraXfafMJoTTe_2-kX--kwUTbyI2wD_TMb5kCn1odqsWw6AXHtauEiyvv8Lrg84B1NAvo1c-YQfC1av-JC7pjomqFBlx7m79oWzhDnb4VOUT87oQAZfjEPngc"/>
+</div>
+<div class="flex flex-col grow gap-1">
+<div class="flex justify-between items-center">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">Стейк Рибай</span>
+<span class="text-xs font-bold text-slate-900 dark:text-slate-100">76 шт.</span>
+</div>
+<div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 45%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Bar (Example Component Modified) -->
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-background-dark/95 backdrop-blur-md px-4 pb-6 pt-3 z-50">
+<div class="flex justify-between items-center">
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">home</span>
+<p class="text-[10px] font-bold">Главная</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-[1]">monitoring</span>
+<p class="text-[10px] font-bold">Аналитика</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">event_seat</span>
+<p class="text-[10px] font-bold">Брони</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">restaurant_menu</span>
+<p class="text-[10px] font-bold">Меню</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-[10px] font-bold">Настройки</p>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

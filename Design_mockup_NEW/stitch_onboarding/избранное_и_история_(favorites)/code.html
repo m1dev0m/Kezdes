@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Избранное и История | Kezdes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Header Section -->
+<header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+<div class="flex items-center h-14 px-4 gap-4">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-400 cursor-pointer">arrow_back_ios</span>
+<h1 class="text-xl font-bold flex-1 text-center pr-8">Избранное и история</h1>
+</div>
+<!-- Tabs Component -->
+<div class="px-4 py-2">
+<div class="flex h-10 w-full items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 p-1">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-slate-500 dark:text-slate-400 text-sm font-semibold transition-all">
+<span>Избранное</span>
+<input checked="" class="hidden" name="tab-selection" type="radio" value="favorites"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-slate-500 dark:text-slate-400 text-sm font-semibold transition-all">
+<span>Прошлые встречи</span>
+<input class="hidden" name="tab-selection" type="radio" value="history"/>
+</label>
+</div>
+</div>
+<!-- Search Component -->
+<div class="px-4 py-3">
+<div class="relative flex w-full items-center">
+<span class="material-symbols-outlined absolute left-3 text-slate-400 text-xl">search</span>
+<input class="w-full h-10 pl-10 pr-4 rounded-lg border-none bg-slate-100 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/50 placeholder:text-slate-400" placeholder="Поиск по названию или адресу" type="text"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+<!-- Favorites Section (Visible by default) -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-lg font-bold">Мои места</h3>
+<span class="text-sm text-primary font-medium">Показать всё</span>
+</div>
+<!-- Favorite Card 1 -->
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<div class="relative h-48 w-full bg-slate-200">
+<img alt="Restaurant Interior" class="w-full h-full object-cover" data-alt="Modern upscale restaurant interior with warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDee7QUiJxtrlSLS9NgDnUKkd0wpnJG9wjlnLnf3U6vp7lrfkg5gpqpBi8elVZlSQIgbbsJXbmrsni7cSt08h2oB9blfrpCBctteB8sqmQUX_AKEQGwJHBTMIuBtIYfVyUo1XSbZTeyZ87G53Ser0N9x9aXqPgxeI6dvpH7klf-kY-3Tcvi6vh2hZkCgi_3kdTNiavXzWMafnrLiLt7ISvHmyRg-g7o-x_3H8LpSU_JbCh8jzKU8fhwiopCKOzlN--nBkZd-1PouCU"/>
+<button class="absolute top-3 right-3 bg-white/90 dark:bg-slate-800/90 p-1.5 rounded-full shadow-md">
+<span class="material-symbols-outlined text-red-500 active-fill">favorite</span>
+</button>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-lg">The Ritz-Carlton Terrace</h4>
+<div class="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
+<span class="material-symbols-outlined text-xs active-fill">star</span>
+                            4.9
+                        </div>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Бизнес-центр "Москва", ул. Тверская 3</p>
+<div class="flex items-center gap-4 text-xs font-medium text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">restaurant</span> Европейская</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">payments</span> ₽₽₽₽</span>
+</div>
+</div>
+</div>
+<!-- Favorite Card 2 -->
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<div class="relative h-48 w-full bg-slate-200">
+<img alt="Boutique Cafe" class="w-full h-full object-cover" data-alt="Minimalist business cafe with marble tables" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAF4ZIAZgfTjHJhZxhcTnxh2UBbnFpqN7GdejVF4p897KL4qxpdI_PMZVrzbXRbXHcb3Z7Ihd8rE5EHWW-gdX95OGaXKfvp-bEcR18Pt_O68SJK817W_ZbA8kUp8aldDMQQfbwoQbSQB6heKeoVlrwqxmp_baMlxpC9BGsT-ng3F_OlxtVbJjEsgB20XS8S7i4yXJWYJcgmUmVAnR0_Ygfmb6QScH6Ik8in2dXz7LRU4Ertad94I7N_PgSKXVGbk6QjTsgqqbm2q5g"/>
+<button class="absolute top-3 right-3 bg-white/90 dark:bg-slate-800/90 p-1.5 rounded-full shadow-md">
+<span class="material-symbols-outlined text-red-500 active-fill">favorite</span>
+</button>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-lg">Corner Coffee House</h4>
+<div class="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
+<span class="material-symbols-outlined text-xs active-fill">star</span>
+                            4.7
+                        </div>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Деловой квартал "Красная Роза"</p>
+<div class="flex items-center gap-4 text-xs font-medium text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">coffee</span> Завтраки</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">payments</span> ₽₽</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Past Meetings Section -->
+<section class="space-y-4">
+<h3 class="text-lg font-bold">Прошлые встречи</h3>
+<!-- History Card 1 -->
+<div class="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<p class="text-xs font-bold uppercase tracking-wider text-slate-400">14 Октября, 14:00</p>
+<h4 class="font-bold text-base leading-tight">Встреча с ПАО "Газпром"</h4>
+<p class="text-sm text-slate-500">Ресторан "Grand Cafe"</p>
+</div>
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-300 overflow-hidden">
+<img alt="Avatar" data-alt="Portrait of a businessman in a suit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjz3wJpShNDJwjz1pFqkUTtXVKIT9Gpc4Lvz7wXSpRXyOcKltANNxP47NMTUoPqUh-FtsSDxS3y8tXgmT_n7n0pMYRNkFIbJqb3Q090H7HrRM1jih5zyLHVyb0VyclAZgnsp7UoBNcx8LmKID3sKCGX7TDq50k-fNx5L73SCGw9bulHsv2NzKl48mYNHBqRrVppFJ4DnhCnVWoDe4ReeurW-H7JLVEtto-cuoxRdrMJTv0SflVAEDV13gnbFB1TI6pT0T6vO91vlo"/>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-300 overflow-hidden">
+<img alt="Avatar" data-alt="Portrait of a businesswoman smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwwLrfewuIk1__PNh87s321byvcYxidDFj93XwAHKzlBqSFJH7KFJZYtAn2GwQOlszDY26sGiqX_-D1B01TjEZnykOWl0mcMPIrRoQywusSgyHUSxDKeGacDzunA9rvTIiNgtLoNjcjAPGcBIKp18klJLqnSz-TDTwZ5GoKY1Ksy2NfTijGnh7wkJBTWMncKkAnW_vKbP3tR0qLweBOn_yQDc6JUCTBIh-b2QY5oJjHjRMMZ864P-KeUlGBE7VenzxJfzwyVZxUPM"/>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-white dark:border-slate-900 bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary italic">
+                            +2
+                        </div>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+<span class="material-symbols-outlined text-lg">event_repeat</span>
+                    Повторить бронь
+                </button>
+</div>
+<!-- History Card 2 -->
+<div class="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<p class="text-xs font-bold uppercase tracking-wider text-slate-400">2 Октября, 10:30</p>
+<h4 class="font-bold text-base leading-tight">Подписание контракта</h4>
+<p class="text-sm text-slate-500">Бизнес-лаундж "Skyline"</p>
+</div>
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-300 overflow-hidden">
+<img alt="Avatar" data-alt="Portrait of a professional man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyKWSZnFR4euiUNwNM4kwlZBIPd8-5QphVTMyQBv1wJPsEHUIBCsypHZQRuJPnNUjgtBuqIOwXv9Y85QtIdapqzy6RxSBvYzlkgrKygLUMfbqNXrHoAcr1PoYPxTSJmaCtjdZkJIEX4E1uES3eerBg1nwBoyA3uXYdUVf0CFLbv476FLHs0Bvnu5rRblY_vo0mV7RUShH113jqqyUa7bBRq5lAVVo6upNZSbcyozc7P7ZaTWzlp8NFgjTcGnsT7XqEVMFAznZb5Ww"/>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-300 overflow-hidden">
+<img alt="Avatar" data-alt="Portrait of a professional woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEEM-KowlGWC_hSE8CEOwFor9yc0a4Sy-i5AQCQjbGf0ch4JDJ0Fw-W8JoyOOC0_IYaLnTiXHonJiNR8eIS71LIrV88RvKEGYEKBuP7J0m2ovD04_Nq3x1nGNuaZs0pL0sn9cYBLVCqjTaw87GDJP2TvOEHNLtIGEppK8gL7pypiUcrwWCxqfqhkvbX5iQTSfk6oclWXrdn2evAbq32F5L0HN5ZdD2tfUKVBGNUXwnQCdXeVRV9QXNb3ha7kq7lyHsWeW96gJ0fH0"/>
+</div>
+</div>
+</div>
+<button class="w-full bg-primary/10 hover:bg-primary/20 text-primary font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+<span class="material-symbols-outlined text-lg">event_repeat</span>
+                    Повторить бронь
+                </button>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 pb-6 pt-2">
+<div class="flex justify-between items-center">
+<a class="flex flex-col items-center gap-1 text-slate-400 group" href="#">
+<span class="material-symbols-outlined text-2xl group-active:scale-95 transition-transform">search</span>
+<span class="text-[10px] font-medium leading-none">Поиск</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 group" href="#">
+<span class="material-symbols-outlined text-2xl group-active:scale-95 transition-transform">calendar_month</span>
+<span class="text-[10px] font-medium leading-none">Брони</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary group" href="#">
+<span class="material-symbols-outlined text-2xl active-fill group-active:scale-95 transition-transform">favorite</span>
+<span class="text-[10px] font-medium leading-none">Избранное</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 group" href="#">
+<span class="material-symbols-outlined text-2xl group-active:scale-95 transition-transform">person</span>
+<span class="text-[10px] font-medium leading-none">Профиль</span>
+</a>
+</div>
+</nav>
+</body></html>

@@ -1,0 +1,200 @@
+from django.db import models
+from django.conf import settings
+class Restaurant(models.Model):
+    SOURCE_CHOICES = [
+        ('2gis', '2GIS'),
+        ('manual', 'Manual'),
+    ]
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    address = models.CharField(max_length=500)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    image_url = models.URLField(max_length=1000, blank=True, null=True)
+    image = models.ImageField(upload_to='restaurants/', blank=True, null=True)
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='manual')
+    status = models.CharField(max_length=50, default='active')
+    city = models.CharField(max_length=255, blank=True, null=True)
+    source_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    is_claimed = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
+    owner = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='owned_restaurant'
+    )
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+    average_price = models.PositiveIntegerField(null=True, blank=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
+    reviews_count = models.PositiveIntegerField(default=0)
+    price_level = models.IntegerField(default=1) 
+    PLAN_CHOICES = [
+        ('starter', 'Starter'),
+        ('pro', 'Pro'),
+        ('business', 'Business'),
+    ]
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='starter')
+    views_count = models.PositiveIntegerField(default=0)
+    floor = models.CharField(max_length=50, blank=True, null=True, help_text="Этаж")
+    entrance = models.CharField(max_length=50, blank=True, null=True, help_text="Вход/подъезд")
+    extra_address_info = models.TextField(blank=True, null=True, help_text="Дополнительная информация (напр. код домофона)")
+    
+    # Deposit settings
+    deposit_min_guests = models.PositiveIntegerField(null=True, blank=True, help_text="Мин. кол-во гостей для предоплаты")
+    deposit_amount_per_guest = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Сумма предоплаты за гостя")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['latitude', 'longitude']),
+            models.Index(fields=['rating']),
+            models.Index(fields=['price_level']),
+            models.Index(fields=['is_verified', 'is_claimed']),
+        ]
+        ordering = ['-is_verified', '-rating']
+
+    def __str__(self):
+        return self.name
+
+    def has_feature(self, feature: str) -> bool:
+        """
+        Simple feature-flag matrix per тариф.
+        starter: базовый функционал без продвинутой аналитики/карты.
+        pro: включает карту столов и базовую аналитику.
+        business: всё, включая расширенную аналитику/автоматизации.
+        """
+        plan = self.plan or 'starter'
+        starter_features = {
+            'bookings_basic',
+            'chat_basic',
+        }
+        pro_features = starter_features | {
+            'table_map',
+            'analytics_basic',
+        }
+        business_features = pro_features | {
+            'analytics_advanced',
+            'automations',
+        }
+        if plan == 'starter':
+            return feature in starter_features
+        if plan == 'pro':
+            return feature in pro_features
+        return feature in business_features
+
+class OpeningHours(models.Model):
+    DAY_CHOICES = [
+        (0, 'Понедельник'),
+        (1, 'Вторник'),
+        (2, 'Среда'),
+        (3, 'Четверг'),
+        (4, 'Пятница'),
+        (5, 'Суббота'),
+        (6, 'Воскресенье'),
+    ]
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='operating_hours')
+    day_of_week = models.IntegerField(choices=DAY_CHOICES)
+    opening_time = models.TimeField()
+    closing_time = models.TimeField()
+    is_closed = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ['restaurant', 'day_of_week']
+        ordering = ['day_of_week']
+
+    def __str__(self):
+        return f"{self.restaurant.name} - {self.get_day_of_week_display()}"
+class RestaurantRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    name = models.CharField(max_length=255)
+    owner_name = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=255)
+    address = models.CharField(max_length=500, blank=True, null=True)
+    phone = models.CharField(max_length=50)
+    email = models.EmailField()
+    instagram = models.CharField(max_length=255, blank=True, null=True)
+    admin_username = models.CharField(max_length=150, blank=True, null=True)
+    admin_password = models.CharField(max_length=255, blank=True, null=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['owner', 'status']),
+        ]
+    def __str__(self):
+        return f"{self.name} - {self.status}"
+class Table(models.Model):
+    TABLE_TYPE_CHOICES = [
+        ('rectangle', 'Прямоугольный'),
+        ('circle', 'Круглый'),
+        ('square', 'Квадратный'),
+    ]
+    STATUS_CHOICES = [
+        ('free', 'Свободен'),
+        ('reserved', 'Забронирован'),
+        ('occupied', 'Занят'),
+        ('cleaning', 'Уборка'),
+    ]
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='tables')
+    number = models.CharField(max_length=50)
+    seats = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='free')
+    x = models.FloatField(default=0.0, help_text="X position in floor plan")
+    y = models.FloatField(default=0.0, help_text="Y position in floor plan")
+    width = models.FloatField(default=60.0, help_text="Width in pixels")
+    height = models.FloatField(default=60.0, help_text="Height in pixels")
+    rotation = models.FloatField(default=0.0, help_text="Rotation in degrees")
+    table_type = models.CharField(max_length=20, choices=TABLE_TYPE_CHOICES, default='rectangle')
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    class Meta:
+        unique_together = ['restaurant', 'number']
+        indexes = [
+            models.Index(fields=['restaurant', 'status']),
+            models.Index(fields=['restaurant', 'is_active']),
+        ]
+    def __str__(self):
+        return f"Table {self.number} ({self.seats} seats) - {self.restaurant.name}"
+
+class Availability(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='availabilities')
+    date = models.DateField()
+    available_seats = models.PositiveIntegerField()
+    is_fully_booked = models.BooleanField(default=False)
+    class Meta:
+        unique_together = ['restaurant', 'date']
+        verbose_name_plural = "Availabilities"
+    def __str__(self):
+        return f"{self.restaurant.name} - {self.date}"
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.db.models import Avg
+class Review(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        unique_together = ['restaurant', 'user']
+        ordering = ['-created_at']
+    def __str__(self):
+        return f"{self.user.username} - {self.restaurant.name} ({self.rating})"
+@receiver(post_save, sender=Review)
+@receiver(post_delete, sender=Review)
+def update_restaurant_rating(sender, instance, **kwargs):
+    restaurant = instance.restaurant
+    avg_rating = Review.objects.filter(restaurant=restaurant).aggregate(Avg('rating'))['rating__avg']
+    restaurant.rating = avg_rating or 0.0
+    restaurant.save()
