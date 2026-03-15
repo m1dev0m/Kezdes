@@ -22,10 +22,13 @@ interface Booking {
 
 const STATUS_STYLES: Record<string, { cls: string }> = {
     approved: { cls: 'bg-green-100 text-green-600' },
+    confirmed: { cls: 'bg-green-100 text-green-600' },
     pending: { cls: 'bg-amber-100 text-amber-600' },
+    payment_pending: { cls: 'bg-indigo-100 text-indigo-600' },
     arrived: { cls: 'bg-blue-100 text-blue-600' },
     seated: { cls: 'bg-blue-100 text-blue-700' },
     completed: { cls: 'bg-slate-100 text-slate-500' },
+    cancelled: { cls: 'bg-red-100 text-red-500' },
     cancelled_by_user: { cls: 'bg-red-100 text-red-500' },
     cancelled_by_restaurant: { cls: 'bg-red-100 text-red-500' },
     rejected: { cls: 'bg-red-100 text-red-500' },
@@ -74,8 +77,8 @@ export default function GuestDashboard() {
         return isValid(dt) ? format(dt, 'EEE, d MMM', { locale: ru }) : d;
     };
 
-    const activeBookings = bookings.filter(b => ['pending', 'approved', 'arrived', 'seated'].includes(b.status));
-    const pastBookings = bookings.filter(b => ['completed', 'no_show', 'cancelled_by_user', 'cancelled_by_restaurant', 'rejected'].includes(b.status));
+    const activeBookings = bookings.filter(b => ['pending', 'approved', 'confirmed', 'payment_pending', 'arrived', 'seated'].includes(b.status));
+    const pastBookings = bookings.filter(b => ['completed', 'no_show', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'rejected'].includes(b.status));
 
     return (
         <div className="space-y-10 pb-20">
@@ -163,7 +166,7 @@ export default function GuestDashboard() {
                                                 </div>
                                             </div>
 
-                                            {(booking.status === 'pending' || booking.status === 'approved') && (
+                                            {(['pending', 'approved', 'confirmed', 'payment_pending'].includes(booking.status)) && (
                                                 <div className="mt-4">
                                                     {confirmCancelId === booking.id ? (
                                                         <div className="flex gap-2">

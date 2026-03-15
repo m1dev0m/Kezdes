@@ -6,6 +6,8 @@ interface ConfirmModalProps {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmDisabled?: boolean;
+  confirmLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -16,6 +18,8 @@ export function ConfirmModal({
   description, 
   confirmLabel = 'Confirm', 
   cancelLabel = 'Cancel', 
+  confirmDisabled = false,
+  confirmLoading = false,
   onConfirm, 
   onCancel 
 }: ConfirmModalProps) {
@@ -49,9 +53,10 @@ export function ConfirmModal({
               </button>
               <button
                 onClick={onConfirm}
-                className="px-6 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 rounded-xl transition-all shadow-lg"
+                disabled={confirmDisabled || confirmLoading}
+                className="px-6 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {confirmLabel}
+                {confirmLoading ? '…' : confirmLabel}
               </button>
             </div>
           </motion.div>

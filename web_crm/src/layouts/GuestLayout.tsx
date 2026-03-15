@@ -12,6 +12,7 @@ export default function GuestLayout() {
     const navItems = [
         { path: '/discover', label: 'Discover' },
         { path: '/guest/dashboard', label: 'My Bookings' },
+        { path: '/guest/messages', label: 'Messages' },
         { path: '/guest/favorites', label: 'Favorites' },
         { path: '/guest/profile', label: 'Profile' },
     ];

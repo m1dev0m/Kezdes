@@ -10,6 +10,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from unittest.mock import patch
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -401,6 +402,65 @@ class BookingAPITests(TestCase):
         booking = Booking.objects.get(id=booking_id)
         self.assertEqual(booking.time, time(20, 0))
         self.assertTrue(booking.table_id)
+
+    def test_check_in_booking(self):
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        confirm_res = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
+
+        check_in_res = self.client.post(f"/api/v1/bookings/{booking_id}/check_in/")
+        self.assertEqual(check_in_res.status_code, status.HTTP_200_OK)
+
+        booking = Booking.objects.get(id=booking_id)
+        self.assertTrue(booking.is_checked_in)
+        self.assertIsNotNone(booking.check_in_time)
+
+    def test_cancel_by_restaurant(self):
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        confirm_res = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
+
+        cancel_res = self.client.post(f"/api/v1/bookings/{booking_id}/cancel_by_restaurant/")
+        self.assertEqual(cancel_res.status_code, status.HTTP_200_OK)
+
+        booking = Booking.objects.get(id=booking_id)
+        self.assertEqual(booking.status, Booking.CANCELLED_BY_RESTAURANT)
+
+    def test_complete_booking(self):
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        confirm_res = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
+
+        with patch("crm.services.CRMService.record_visit") as record_visit:
+            complete_res = self.client.post(f"/api/v1/bookings/{booking_id}/complete/")
+            self.assertEqual(complete_res.status_code, status.HTTP_200_OK)
+            self.assertTrue(record_visit.called)
+
+        booking = Booking.objects.get(id=booking_id)
+        self.assertEqual(booking.status, Booking.COMPLETED)
+
+    def test_no_show_booking(self):
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        confirm_res = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
+
+        no_show_res = self.client.post(f"/api/v1/bookings/{booking_id}/no_show/")
+        self.assertEqual(no_show_res.status_code, status.HTTP_200_OK)
+
+        booking = Booking.objects.get(id=booking_id)
+        self.assertEqual(booking.status, Booking.NO_SHOW)
 
     def test_list_filters_by_time_and_table(self):
         """List endpoint supports filtering by time range and table."""

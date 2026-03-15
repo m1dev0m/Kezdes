@@ -248,8 +248,8 @@ export default function Welcome() {
         </div>
       </section>
 
-      <section id="crm" className="py-40 px-6 overflow-hidden bg-slate-900 text-white relative">
-        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-primary/20 blur-[150px] rounded-full pointer-events-none"></div>
+      <section id="crm" className="py-40 px-6 overflow-hidden bg-indigo-600 text-white relative">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-white/10 blur-[150px] rounded-full pointer-events-none"></div>
         <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-white/5 blur-[100px] rounded-full pointer-events-none"></div>
 
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-24 items-center">
@@ -261,22 +261,22 @@ export default function Welcome() {
               className="bg-white rounded-[3rem] shadow-2xl p-8 relative z-10 text-slate-900 max-w-md mx-auto ring-1 ring-white/10"
             >
               <div className="flex items-center gap-5 mb-10">
-                <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-primary/30">AN</div>
+                <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-indigo-600/30 italic">AN</div>
                 <div>
-                  <h4 className="text-xl font-black tracking-tight">Alia Nursultan</h4>
+                  <h4 className="text-xl font-black tracking-tight italic">Alia Nursultan</h4>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Premium Member • Since 2025</p>
                 </div>
-                <div className="ml-auto bg-primary text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest self-start">VIP</div>
+                <div className="ml-auto bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest self-start">VIP</div>
               </div>
 
               <div className="grid grid-cols-2 gap-6 mb-10">
                 <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col">
                   <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-2">Total Visits</p>
-                  <p className="text-3xl font-black tracking-tighter">42</p>
+                  <p className="text-3xl font-black tracking-tighter tabular-nums">42</p>
                 </div>
                 <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
                   <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-2">Acquisition</p>
-                  <p className="text-lg font-black tracking-tight text-primary">Direct Referral</p>
+                  <p className="text-lg font-black tracking-tight text-indigo-600">Direct Referral</p>
                 </div>
               </div>
 
@@ -292,12 +292,12 @@ export default function Welcome() {
               <motion.div
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -right-12 bottom-20 bg-primary text-white rounded-2xl shadow-2xl p-5 w-60 border border-white/20"
+                className="absolute -right-12 bottom-20 bg-indigo-600 text-white rounded-2xl shadow-2xl p-5 w-60 border border-white/20"
               >
                 <div className="flex items-start gap-4">
                   <div className="w-2 h-2 rounded-full bg-white mt-2 animate-ping"></div>
                   <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/60">New Activity</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white/60 text-indigo-200">New Activity</p>
                     <p className="text-xs font-bold mt-1 leading-tight">Guest arrived and seated at Table 12.</p>
                   </div>
                 </div>
@@ -306,14 +306,14 @@ export default function Welcome() {
           </div>
 
           <div className="space-y-12">
-            <div className="inline-flex items-center px-4 py-1.5 bg-primary rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">
+            <div className="inline-flex items-center px-4 py-1.5 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-md">
               INTELLIGENT HOSPITALITY
             </div>
-            <h2 className="text-6xl md:text-7xl font-black tracking-tighter leading-[0.9] max-w-xl">
+            <h2 className="text-6xl md:text-7xl font-black tracking-tighter leading-[0.9] max-w-xl italic">
               Know your guests<br />
-              <span className="text-primary italic">by name.</span>
+              <span className="text-white/80">by name.</span>
             </h2>
-            <p className="text-lg text-white/60 font-medium leading-relaxed max-w-lg">
+            <p className="text-lg text-white/70 font-medium leading-relaxed max-w-lg">
               Forge deep connections with every patron. Kezdes CRM automatically tracks preferences, allergies, and momentous occasions.
             </p>
 
@@ -325,12 +325,12 @@ export default function Welcome() {
                 { icon: TrendingDown, title: "Churn Prevention", desc: "Identify declining visits and re-engage guests automatically." }
               ].map((item, i) => (
                 <div key={i} className="space-y-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-primary">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/10 border border-white/10 text-white">
                     <item.icon className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="font-black tracking-tight text-white mb-2">{item.title}</h4>
-                    <p className="text-sm text-white/40 font-medium leading-relaxed">{item.desc}</p>
+                    <h4 className="font-black tracking-tight text-white mb-2 italic">{item.title}</h4>
+                    <p className="text-sm text-white/50 font-medium leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}

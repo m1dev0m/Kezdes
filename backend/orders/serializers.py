@@ -91,6 +91,9 @@ class OrderItemReadSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemReadSerializer(many=True, read_only=True)
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    total = serializers.DecimalField(source='total_amount', max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Order
@@ -98,10 +101,13 @@ class OrderSerializer(serializers.ModelSerializer):
             "id",
             "reservation",
             "user",
+            "user_name",
+            "user_email",
             "restaurant",
             "status",
             "payment_status",
             "total_amount",
+            "total",
             "created_at",
             "items",
         ]
@@ -114,9 +120,16 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+    def get_user_name(self, obj):
+        if obj.user:
+            full = obj.user.get_full_name()
+            return full if full else obj.user.username
+        return None
+
 
 class CreateDraftOrderSerializer(serializers.Serializer):
     restaurant_id = serializers.IntegerField()
+    reservation_id = serializers.IntegerField(required=False, allow_null=True)
 
     def validate_restaurant_id(self, value: int) -> int:
         if not Restaurant.objects.filter(id=value).exists():
@@ -124,13 +137,23 @@ class CreateDraftOrderSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
+        from bookings.models import Booking
         request = self.context["request"]
         restaurant = Restaurant.objects.get(id=validated_data["restaurant_id"])
+        reservation_id = validated_data.get("reservation_id")
+        
+        reservation = None
+        if reservation_id:
+            try:
+                reservation = Booking.objects.get(id=reservation_id, user=request.user, restaurant=restaurant)
+            except Booking.DoesNotExist:
+                raise serializers.ValidationError({"reservation_id": "Reservation not found or belongs to another restaurant/user."})
+
         order, _created = Order.objects.get_or_create(
             user=request.user,
             restaurant=restaurant,
             status=Order.Status.DRAFT,
-            reservation__isnull=True,
+            reservation=reservation,
             defaults={},
         )
         return order

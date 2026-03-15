@@ -5,6 +5,10 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
+export function NotificationProvider({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+}
+
 const NOTIFICATIONS = [
     {
         id: '1',

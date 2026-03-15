@@ -3,10 +3,12 @@ from .models import Message
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.ReadOnlyField(source='sender.username')
+    sender_username = serializers.ReadOnlyField(source='sender.username')
     booking_status = serializers.SerializerMethodField(read_only=True)
     booking_date = serializers.SerializerMethodField(read_only=True)
     booking_time = serializers.SerializerMethodField(read_only=True)
     booking_guests = serializers.SerializerMethodField(read_only=True)
+    restaurant_name = serializers.ReadOnlyField(source='restaurant.name')
     class Meta:
         model = Message
         fields = [
@@ -17,13 +19,22 @@ class MessageSerializer(serializers.ModelSerializer):
             'booking_time',
             'booking_guests',
             'restaurant',
+            'restaurant_name',
             'sender',
             'sender_name',
+            'sender_username',
             'content',
             'timestamp',
             'is_read',
         ]
         read_only_fields = ['sender', 'timestamp']
+
+    def validate(self, attrs):
+        booking = attrs.get("booking")
+        restaurant = attrs.get("restaurant")
+        if not booking and not restaurant:
+            raise serializers.ValidationError({"detail": "Message must be linked to a booking or restaurant."})
+        return attrs
 
     def get_booking_status(self, obj: Message):
         if not obj.booking_id:

@@ -9,6 +9,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Logo } from '@/components/ui/Logo';
 interface Booking {
     id: number;
+    restaurant: number;
     restaurant_name: string;
     restaurant_photo_url?: string;
     date: string;
@@ -16,30 +17,115 @@ interface Booking {
     guests: number;
     status: string;
     special_requests?: string;
-    table?: number;
+    table_id?: number;
+    preorder?: {
+        id: number;
+        items: any[];
+        total_amount: string;
+        status: string;
+        payment_status: string;
+    } | null;
+}
+
+interface MenuItem {
+    id: number;
+    name: string;
+    price: string;
+    description: string;
+    image: string;
+}
+
+interface MenuCategory {
+    id: number;
+    name: string;
+    items: MenuItem[];
 }
 
 export default function GuestBookingDetails() {
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
     const [booking, setBooking] = useState<Booking | null>(null);
+    const [restaurantTables, setRestaurantTables] = useState<any[]>([]);
+    const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+    const [activeOrder, setActiveOrder] = useState<any>(null);
+    const [showMenu, setShowMenu] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [fetchingMenu, setFetchingMenu] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-    useEffect(() => {
-        const fetchBooking = async () => {
-            try {
-                const res = await api.get(`/bookings/${id}/`);
-                setBooking(res.data);
-            } catch (err) {
-                toast.error('Failed to load booking details');
-            } finally {
-                setLoading(false);
+    const fetchBooking = async () => {
+        try {
+            const res = await api.get(`/bookings/${id}/`);
+            const bData = res.data;
+            setBooking(bData);
+
+            if (bData.preorder) {
+                setActiveOrder(bData.preorder);
             }
-        };
+
+            // Fetch restaurant tables for map
+            api.get(`/restaurants/${bData.restaurant}/`).then(r => {
+                setRestaurantTables(r.data.tables || []);
+            });
+        } catch (err) {
+            toast.error('Failed to load booking details');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchBooking();
     }, [id]);
+
+    const handlePreOrderStart = async () => {
+        if (!booking) return;
+        setFetchingMenu(true);
+        try {
+            // 1. Fetch Menu
+            const menuRes = await api.get(`/orders/restaurants/${booking.restaurant}/public_menu/`);
+            setMenuCategories(menuRes.data);
+
+            // 2. Create/Get Draft Order
+            const orderRes = await api.post('/orders/', {
+                restaurant_id: booking.restaurant,
+                reservation_id: booking.id
+            });
+            setActiveOrder(orderRes.data);
+            setShowMenu(true);
+        } catch (err) {
+            toast.error('Failed to load menu');
+        } finally {
+            setFetchingMenu(false);
+        }
+    };
+
+    const addToOrder = async (itemId: number, qty: number) => {
+        if (!activeOrder) return;
+        try {
+            const res = await api.post(`/orders/${activeOrder.id}/set_item/`, {
+                menu_item_id: itemId,
+                quantity: qty
+            });
+            setActiveOrder(res.data);
+            toast.success('Cart updated');
+        } catch (err) {
+            toast.error('Failed to update order');
+        }
+    };
+
+    const confirmOrder = async () => {
+        if (!activeOrder) return;
+        try {
+            await api.post(`/orders/${activeOrder.id}/confirm/`, { payment_mode: 'pay_later' });
+            toast.success('Pre-order confirmed!');
+            setShowMenu(false);
+            fetchBooking();
+        } catch (err) {
+            toast.error('Failed to confirm order');
+        }
+    };
 
     const handleCancel = async () => {
         try {
@@ -55,7 +141,7 @@ export default function GuestBookingDetails() {
     if (loading) return <div className="flex justify-center items-center h-screen text-slate-500">Loading details...</div>;
     if (!booking) return <div className="flex justify-center items-center h-screen text-red-500">Booking not found.</div>;
 
-    const isActive = ['pending', 'approved', 'arrived', 'seated'].includes(booking.status);
+    const isActive = ['pending', 'confirmed', 'payment_pending', 'approved', 'arrived', 'seated'].includes(booking.status);
 
     return (
         <div className="relative flex h-auto min-h-screen w-full flex-col bg-[#f5f6f8] dark:bg-[#101522] font-sans text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -147,18 +233,150 @@ export default function GuestBookingDetails() {
 
                             <div className="rounded-xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-slate-900 dark:text-white text-lg font-bold">Floor Map</h3>
-                                    <div className="flex gap-4 text-xs font-medium">
-                                        <div className="flex items-center gap-1"><span className="size-3 rounded-full bg-primary shadow-sm shadow-primary/40"></span> Your Table</div>
+                                    <h3 className="text-slate-900 dark:text-white text-lg font-bold">Your Table Location</h3>
+                                    <div className="flex gap-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                                        <div className="flex items-center gap-2">
+                                            <div className="size-3 rounded-full bg-primary ring-2 ring-primary/20"></div>
+                                            Your Seat
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700">
-                                    <div className="text-slate-400 text-center p-4">
-                                        <span className="material-symbols-outlined text-4xl mb-2 opacity-50">map</span>
-                                        <p className="text-sm font-medium">Interactive Floor Map will be available soon.</p>
-                                        {booking.table && <p className="mt-2 text-primary font-bold">Assigned to Table #{booking.table}</p>}
-                                    </div>
+                                <div className="relative w-full aspect-[10/8] bg-slate-50 dark:bg-slate-800/50 rounded-2xl overflow-hidden border-2 border-slate-100 dark:border-slate-800 shadow-inner">
+                                    <svg viewBox="0 0 1000 800" className="w-full h-full drop-shadow-2xl">
+                                        {restaurantTables.map(table => {
+                                            const isMyTable = table.id === booking.table_id;
+                                            return (
+                                                <g key={table.id} transform={`translate(${table.x}, ${table.y})`}>
+                                                    {table.table_type === 'circle' ? (
+                                                        <circle
+                                                            r={table.width / 2} cx={table.width / 2} cy={table.height / 2}
+                                                            className={`stroke-2 transition-all ${isMyTable ? 'fill-primary stroke-primary ring-4 ring-primary/20 shadow-lg' : 'fill-white dark:fill-slate-700 stroke-slate-200 dark:stroke-slate-600 opacity-40'}`}
+                                                        />
+                                                    ) : (
+                                                        <rect
+                                                            width={table.width} height={table.height} rx={12}
+                                                            className={`stroke-2 transition-all ${isMyTable ? 'fill-primary stroke-primary ring-4 ring-primary/20 shadow-lg' : 'fill-white dark:fill-slate-700 stroke-slate-200 dark:stroke-slate-600 opacity-40'}`}
+                                                        />
+                                                    )}
+                                                    <text x={table.width / 2} y={table.height / 2} textAnchor="middle" dominantBaseline="middle" className={`text-[12px] font-black ${isMyTable ? 'fill-white' : 'fill-slate-400 opacity-40'}`}>T{table.number}</text>
+                                                </g>
+                                            );
+                                        })}
+                                        {!booking.table_id && (
+                                            <text x="500" y="400" textAnchor="middle" className="fill-slate-400 text-sm font-bold italic">Table assignment pending...</text>
+                                        )}
+                                    </svg>
                                 </div>
+                            </div>
+
+                            {/* Pre-order Section */}
+                            <div className="rounded-xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-12 rounded-2xl bg-amber-50 dark:bg-amber-950/20 text-amber-600 flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-2xl">restaurant_menu</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-slate-900 dark:text-white text-lg font-black uppercase tracking-tight">Pre-order Food</h3>
+                                            <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">Skip the wait, order ahead</p>
+                                        </div>
+                                    </div>
+                                    {!activeOrder || activeOrder.status === 'draft' ? (
+                                        <button
+                                            onClick={handlePreOrderStart}
+                                            disabled={fetchingMenu}
+                                            className="px-6 py-2.5 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
+                                        >
+                                            {fetchingMenu ? <span className="animate-spin material-symbols-outlined text-xs">refresh</span> : <span className="material-symbols-outlined text-xs">add</span>}
+                                            {activeOrder ? 'Continue Ordering' : 'Start Pre-order'}
+                                        </button>
+                                    ) : (
+                                        <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-xs">check_circle</span>
+                                            Order Confirmed
+                                        </div>
+                                    )}
+                                </div>
+
+                                {activeOrder && activeOrder.items?.length > 0 && (
+                                    <div className="space-y-4 mb-6">
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] p-8">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Your Pre-order Items</p>
+                                            <div className="space-y-4">
+                                                {activeOrder.items.map((item: any) => (
+                                                    <div key={item.id} className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="text-sm font-black text-slate-900 dark:text-white w-8 h-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm">{item.quantity}×</div>
+                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.menu_item_name}</span>
+                                                        </div>
+                                                        <span className="text-sm font-black text-slate-900 dark:text-white">₸{Number(item.price_snapshot * item.quantity).toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                                <div className="pt-6 border-t border-slate-200 dark:border-slate-700 mt-6 flex justify-between items-center">
+                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Amount</span>
+                                                    <span className="text-2xl font-black text-primary">₸{Number(activeOrder.total_amount).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {showMenu && (
+                                    <div className="space-y-12 mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        {menuCategories.map(cat => (
+                                            <div key={cat.id} className="space-y-6">
+                                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] border-l-4 border-primary pl-4">{cat.name}</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {cat.items.map(item => {
+                                                        const inCart = activeOrder?.items.find((i: any) => i.menu_item === item.id);
+                                                        return (
+                                                            <div key={item.id} className="group p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-3xl hover:shadow-2xl hover:border-primary/20 transition-all flex gap-5">
+                                                                <div className="size-20 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden shrink-0">
+                                                                    {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <h5 className="text-sm font-black text-slate-900 dark:text-white truncate">{item.name}</h5>
+                                                                        <span className="text-sm font-black text-primary">₸{Number(item.price).toLocaleString()}</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-500 line-clamp-2 mt-1 mb-4 h-8">{item.description}</p>
+                                                                    <div className="flex items-center gap-3">
+                                                                        {inCart ? (
+                                                                            <div className="flex items-center gap-3 bg-slate-900 text-white rounded-xl p-1.5">
+                                                                                <button onClick={() => addToOrder(item.id, inCart.quantity - 1)} className="size-6 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center font-bold text-lg leading-none">－</button>
+                                                                                <span className="text-xs font-black w-4 text-center">{inCart.quantity}</span>
+                                                                                <button onClick={() => addToOrder(item.id, inCart.quantity + 1)} className="size-6 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center font-bold text-lg leading-none">＋</button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <button
+                                                                                onClick={() => addToOrder(item.id, 1)}
+                                                                                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm"
+                                                                            >
+                                                                                Add to Order
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {activeOrder?.items.length > 0 && activeOrder.status === 'draft' && (
+                                            <div className="sticky bottom-8 left-0 right-0 p-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] shadow-2xl flex items-center justify-between z-30 ring-1 ring-black/5">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected items: {activeOrder.items.length}</p>
+                                                    <p className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">₸{Number(activeOrder.total_amount).toLocaleString()}</p>
+                                                </div>
+                                                <div className="flex gap-4">
+                                                    <button onClick={() => setShowMenu(false)} className="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50">Later</button>
+                                                    <button onClick={confirmOrder} className="px-10 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">Confirm Pre-order</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

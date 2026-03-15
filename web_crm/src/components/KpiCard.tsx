@@ -1,4 +1,5 @@
-import { ReactNode, memo } from 'react';
+import type { ReactNode } from 'react';
+import { memo } from 'react';
 
 type Props = {
     label: string;
@@ -10,18 +11,16 @@ type Props = {
 
 function KpiCardComponent({ label, value, icon: Icon, iconBgClassName = '', className = '' }: Props) {
     return (
-        <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-7 hover:shadow-lg transition-all ${className}`}>
-            <div className="flex items-start justify-between mb-5">
-                {Icon ? (
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconBgClassName}`}>
-                        <Icon size={20} />
+        <div className={`bg-white border border-slate-100 rounded-[28px] p-6 transition-all shadow-sm group hover:border-indigo-600 hover:shadow-xl hover:shadow-indigo-600/5 ${className}`}>
+            <div className="flex items-center gap-3 mb-5">
+                {Icon && (
+                    <div className={`p-2 rounded-xl border border-slate-50 ${iconBgClassName}`}>
+                        <Icon size={16} />
                     </div>
-                ) : (
-                    <div />
                 )}
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none italic">{label}</p>
             </div>
-            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{value}</p>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{label}</p>
+            <p className="text-3xl font-black text-slate-900 tabular-nums tracking-tighter leading-none italic">{value}</p>
         </div>
     );
 }

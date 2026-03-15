@@ -166,8 +166,6 @@ class BookingSerializer(serializers.ModelSerializer):
         start_dt = make_aware_if_needed(datetime.combine(booking_date, start_time))
         end_dt = start_dt + timedelta(minutes=duration)
 
-        Booking.expire_stale_bookings(ttl_minutes=30)
-
         if not BookingService.is_within_operating_hours(restaurant, booking_date, start_time, duration):
             raise serializers.ValidationError({"time": "Бронирование недоступно на выбранное время."})
 

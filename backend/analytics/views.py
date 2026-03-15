@@ -54,8 +54,7 @@ class DashboardAnalyticsView(APIView):
             status__in=['pending', 'approved'],
             start_datetime__lte=now,
             end_datetime__gt=now
-        )
-        # Unique tables occupied
+        ).prefetch_related('tables')
         occupied_table_ids = set()
         for b in occupied_tables_qs:
             if b.table_id:
@@ -74,11 +73,29 @@ class DashboardAnalyticsView(APIView):
         ).aggregate(total=Sum('guests'))['total'] or 0
         occupancy = min(int((overlapping_guests / capacity) * 100), 100)
 
-        completed_month = month_qs.filter(status='completed').count()
-        avg_price = restaurant.average_price or 5000  # Default estimate if not set
-        revenue = completed_month * avg_price
+        # Revenue: Use actual order totals if available, otherwise fallback to average estimate
+        completed_month_qs = month_qs.filter(status='completed')
+        completed_month_count = completed_month_qs.count()
+        
+        # Calculate revenue from linked orders
+        from orders.models import Order
+        order_revenue = Order.objects.filter(
+            reservation__in=completed_month_qs,
+            payment_status='PAID'
+        ).aggregate(total=Sum('total_amount'))['total'] or 0
+        
+        # For bookings without orders, use the average price estimate
+        bookings_with_orders_ids = Order.objects.filter(
+            reservation__in=completed_month_qs
+        ).values_list('reservation_id', flat=True)
+        
+        bookings_without_orders_count = completed_month_qs.exclude(id__in=bookings_with_orders_ids).count()
+        avg_price = restaurant.average_price or 5000
+        estimated_revenue = bookings_without_orders_count * avg_price
+        
+        revenue = float(order_revenue) + float(estimated_revenue)
 
-        approved_count = month_qs.filter(status='approved').count() + completed_month
+        approved_count = month_qs.filter(status='approved').count() + completed_month_count
         rejected_count = month_qs.filter(status='rejected').count()
         total_decided = approved_count + rejected_count
         confirmation_rate = round((approved_count / total_decided * 100) if total_decided > 0 else 0)

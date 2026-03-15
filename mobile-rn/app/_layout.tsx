@@ -6,7 +6,7 @@ import { View, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '../lib/auth-context';
-import { NotificationProvider } from '../lib/notifications';
+import { NotificationProvider } from './notifications';
 import { useEffect } from 'react';
 
 const queryClient = new QueryClient();
@@ -23,28 +23,33 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         const isRoot = (segments as any).length === 0 || (segments.length === 1 && (segments[0] as any) === 'index');
         const isOnboarding = segments[0] === 'onboarding';
 
+        const current = '/' + (segments as string[]).filter(Boolean).join('/');
+        const safeReplace = (to: string) => {
+            if (current !== to) router.replace(to);
+        };
+
         if (!user) {
             if (!inAuthGroup && !isRoot && !isOnboarding) {
-                router.replace('/onboarding');
+                safeReplace('/onboarding');
             }
         } else {
-            const isRestaurantOwner = user.role === 'restaurant_admin' || user.role === 'restaurant_owner';
+            const isRestaurantOwner = user.role === 'owner' || user.role === 'restaurant_admin' || user.role === 'restaurant_owner';
 
             if (segments[0] === 'admin' && !isRestaurantOwner) {
-                router.replace('/(tabs)/home');
+                safeReplace('/(tabs)/home');
                 return;
             }
 
             if (segments[0] === '(tabs)' && isRestaurantOwner) {
-                router.replace('/admin');
+                safeReplace('/admin');
                 return;
             }
 
             if (inAuthGroup || isRoot || isOnboarding) {
                 if (isRestaurantOwner) {
-                    router.replace('/admin');
+                    safeReplace('/admin');
                 } else {
-                    router.replace('/(tabs)/home');
+                    safeReplace('/(tabs)/home');
                 }
             }
         }

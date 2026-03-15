@@ -59,31 +59,35 @@ class BookingService:
         start_dt = make_aware_if_needed(datetime.combine(date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
-        # 1. Get all active tables for this restaurant
-        all_active_tables = Table.objects.filter(
-            restaurant=restaurant,
-            is_active=True
-        ).order_by('seats', 'id')
-
-        # 2. Identify occupied tables in this slot
+        # 1) Identify occupied tables in this slot (FK + legacy M2M)
         overlapping_bookings = Booking.objects.filter(
             restaurant=restaurant,
             status__in=Booking.ACTIVE_STATUSES,
             start_datetime__lt=end_dt,
-            end_datetime__gt=start_dt
-        ).prefetch_related('tables')
+            end_datetime__gt=start_dt,
+        )
 
         if exclude_booking_id:
             overlapping_bookings = overlapping_bookings.exclude(id=exclude_booking_id)
 
-        occupied_table_ids = set()
-        for b in overlapping_bookings:
-            if b.table_id:
-                occupied_table_ids.add(b.table_id)
-            for t in b.tables.all():
-                occupied_table_ids.add(t.id)
+        occupied_fk_ids = set(
+            overlapping_bookings.exclude(table_id=None).values_list("table_id", flat=True)
+        )
 
-        available_tables = [t for t in all_active_tables if t.id not in occupied_table_ids]
+        occupied_m2m_ids = set(
+            Booking.tables.through.objects.filter(
+                booking_id__in=overlapping_bookings.values_list("id", flat=True)
+            ).values_list("table_id", flat=True)
+        )
+
+        occupied_table_ids = occupied_fk_ids | occupied_m2m_ids
+
+        # 2) Get all active, available tables for this restaurant
+        available_tables = list(
+            Table.objects.filter(restaurant=restaurant, is_active=True)
+            .exclude(id__in=occupied_table_ids)
+            .order_by("seats", "id")
+        )
 
         if not available_tables:
             return []
@@ -135,8 +139,7 @@ class BookingService:
         if exclude_booking_id:
             qs = qs.exclude(id=exclude_booking_id)
 
-        all_overlapping = list(qs)
-        overlapping_guests = sum(b.guests for b in all_overlapping)
+        overlapping_guests = qs.aggregate(total=Sum("guests"))["total"] or 0
 
         # Include guests that are "NOTIFIED" from waitlist and have their slot reserved
         from .models import WaitlistEntry
@@ -282,6 +285,41 @@ class BookingService:
         booking.transition_to(Booking.REJECTED, actor=actor)
         NotificationService.notify_customer_booking_rejected(booking)
         return booking, None
+
+
+    @staticmethod
+    def expire_stale_bookings(ttl_minutes=30):
+        """Mark pending bookings older than TTL as expired."""
+        cutoff = timezone.now() - timedelta(minutes=ttl_minutes)
+        expired_count = Booking.objects.filter(
+            status=Booking.PENDING,
+            created_at__lt=cutoff
+        ).update(status=Booking.EXPIRED)
+        return expired_count
+
+    @staticmethod
+    def process_past_bookings():
+        """
+        Mark past approved bookings as 'COMPLETED' (if checked in) or 'NO_SHOW' (if not).
+        Should be called by a cron job or background task.
+        """
+        now = timezone.now()
+        # 1. Approved + Past end time + Checked in -> COMPLETED
+        completed = Booking.objects.filter(
+            status=Booking.APPROVED,
+            end_datetime__lt=now,
+            is_checked_in=True
+        ).update(status=Booking.COMPLETED)
+
+        # 2. Approved + Past end time + NOT Checked in -> NO_SHOW (with a grace period of 30 mins)
+        cutoff = now - timedelta(minutes=30)
+        no_shows = Booking.objects.filter(
+            status=Booking.APPROVED,
+            end_datetime__lt=cutoff,
+            is_checked_in=False
+        ).update(status=Booking.NO_SHOW)
+
+        return {"completed": completed, "no_shows": no_shows}
 
 
 class WaitlistService:

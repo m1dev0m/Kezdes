@@ -257,10 +257,10 @@ export default function BookPage() {
                 }}
             />
 
-            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden">
-                <div className="bg-slate-900 p-12 text-center text-white relative h-48 flex flex-col justify-center items-center">
-                    <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-                    <h1 className="text-3xl font-black tracking-tight mb-2">{t('booking.title')}</h1>
+            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-600/5 border border-slate-100 overflow-hidden">
+                <div className="bg-white p-12 text-center text-slate-900 relative h-48 flex flex-col justify-center items-center border-b border-slate-50">
+                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #4f46e5 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+                    <h1 className="text-3xl font-black tracking-tight mb-2 italic">{t('booking.title')}</h1>
                     <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">{t('booking.subtitle')}</p>
                 </div>
 
@@ -272,15 +272,15 @@ export default function BookPage() {
                 )}
 
                 {showWaitlist && user && (
-                    <div className="mx-12 mt-4 p-5 bg-amber-50 rounded-2xl border border-amber-100">
-                        <p className="text-sm font-bold text-amber-800 mb-3">
+                    <div className="mx-12 mt-4 p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
+                        <p className="text-sm font-bold text-indigo-800 mb-3">
                             {t('booking.waitlistOffer', { defaultValue: 'Мест на это время нет, но вы можете встать в лист ожидания — мы уведомим вас, если место освободится.' })}
                         </p>
                         <button
                             type="button"
                             onClick={handleJoinWaitlist}
                             disabled={joiningWaitlist}
-                            className="w-full py-3 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-colors disabled:opacity-50"
+                            className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
                         >
                             {joiningWaitlist
                                 ? t('booking.joining', { defaultValue: 'Добавляем...' })
@@ -293,8 +293,8 @@ export default function BookPage() {
                 <form onSubmit={handleSubmit} className="p-12 space-y-12">
                     <div className="space-y-8">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center font-black shadow-lg shadow-primary/20">1</div>
-                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs">{t('booking.occasion')}</h3>
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-600/20 italic">1</div>
+                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs italic">{t('booking.occasion')}</h3>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -303,7 +303,7 @@ export default function BookPage() {
                                     key={type.id}
                                     type="button"
                                     onClick={() => setFormData(p => ({ ...p, event_type: type.id }))}
-                                    className={`p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 ${formData.event_type === type.id ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-white hover:border-slate-200'}`}
+                                    className={`p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 ${formData.event_type === type.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-white hover:border-slate-200'}`}
                                 >
                                     <span className="text-2xl">{type.icon}</span>
                                     <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
@@ -314,8 +314,8 @@ export default function BookPage() {
 
                     <div className="space-y-8">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center font-black shadow-lg shadow-primary/20">2</div>
-                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs">{t('booking.dateAndGuests')}</h3>
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-600/20 italic">2</div>
+                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs italic">{t('booking.dateAndGuests')}</h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -330,9 +330,8 @@ export default function BookPage() {
                                         required
                                         value={formData.date}
                                         onChange={handleChange}
-                                        className={`w-full bg-slate-50 border-2 rounded-[1.25rem] py-4 pl-12 pr-4 focus:bg-white text-sm font-black transition-all outline-none ${
-                                            fieldErrors.date ? 'border-rose-400 focus:border-rose-500' : 'border-transparent focus:border-slate-900'
-                                        }`}
+                                        className={`w-full bg-slate-50 border-2 rounded-[1.25rem] py-4 pl-12 pr-4 focus:bg-white text-sm font-black transition-all outline-none ${fieldErrors.date ? 'border-rose-400 focus:border-rose-500' : 'border-transparent focus:border-indigo-600'
+                                            }`}
                                     />
                                 </div>
                                 {fieldErrors.date && (
@@ -348,9 +347,8 @@ export default function BookPage() {
                                         required
                                         value={formData.guests}
                                         onChange={handleChange}
-                                        className={`w-full bg-slate-50 border-2 rounded-[1.25rem] py-4 pl-12 pr-4 focus:bg-white text-sm font-black transition-all outline-none appearance-none ${
-                                            fieldErrors.guests ? 'border-rose-400 focus:border-rose-500' : 'border-transparent focus:border-slate-900'
-                                        }`}
+                                        className={`w-full bg-slate-50 border-2 rounded-[1.25rem] py-4 pl-12 pr-4 focus:bg-white text-sm font-black transition-all outline-none appearance-none ${fieldErrors.guests ? 'border-rose-400 focus:border-rose-500' : 'border-transparent focus:border-indigo-600'
+                                            }`}
                                     >
                                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
                                             <option key={n} value={n}>{n} {n === 1 ? t('booking.guest') : t('booking.guests')}</option>
@@ -364,7 +362,7 @@ export default function BookPage() {
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('booking.availableTimes')}</label>
-                                    {fetchingSlots && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                                    {fetchingSlots && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
                                 </div>
                                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
                                     {availableSlots.length > 0 ? (
@@ -373,7 +371,7 @@ export default function BookPage() {
                                                 key={slot}
                                                 type="button"
                                                 onClick={() => setFormData(p => ({ ...p, time: slot }))}
-                                                className={`py-3 rounded-xl text-xs font-black transition-all border-2 ${formData.time === slot ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
+                                                className={`py-3 rounded-xl text-xs font-black transition-all border-2 ${formData.time === slot ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
                                             >
                                                 {slot}
                                             </button>

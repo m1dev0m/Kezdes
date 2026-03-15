@@ -47,8 +47,12 @@ export default function Customers() {
     }, [search]);
 
     useEffect(() => {
+        setPage(1);
+    }, [segment, debouncedSearch]);
+
+    useEffect(() => {
         loadCustomers();
-    }, [page]);
+    }, [page, debouncedSearch]);
 
     const loadCustomers = async () => {
         setLoading(true);
@@ -56,6 +60,9 @@ export default function Customers() {
             const params = new URLSearchParams();
             params.set('page', String(page));
             params.set('page_size', String(pageSize));
+            if (debouncedSearch.trim()) {
+                params.set('search', debouncedSearch.trim());
+            }
             const res = await api.get(`/crm/customers/?${params.toString()}`);
             if (res.data.results) {
                 setCustomers(res.data.results);
@@ -87,13 +94,10 @@ export default function Customers() {
     };
 
     const filtered = customers.filter(c => {
-        const matchesSearch = c.full_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            c.phone?.includes(debouncedSearch) ||
-            c.email?.toLowerCase().includes(debouncedSearch.toLowerCase());
         const isVip = (c.total_bookings || 0) >= 5 || c.is_vip;
-        if (segment === 'vip') return matchesSearch && isVip;
-        if (segment === 'regular') return matchesSearch && !isVip;
-        return matchesSearch;
+        if (segment === 'vip') return isVip;
+        if (segment === 'regular') return !isVip;
+        return true;
     });
 
     const getSegmentLabel = (s: string) => {
@@ -106,80 +110,82 @@ export default function Customers() {
     };
 
     return (
-        <div className="space-y-8 pb-12">
+        <div className="space-y-4 pb-12">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{t('customers.title')}</h1>
-                    <p className="text-slate-500 font-medium mt-1">{t('customers.manageRelationships')}</p>
+                    <h1 className="text-[13px] font-black text-slate-900 uppercase tracking-[0.2em] italic">{t('customers.title')}</h1>
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5 opacity-60">{t('customers.manageRelationships')}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="secondary" className="flex items-center gap-2" onClick={handleExport}>
-                        <Download className="w-4 h-4" /> {t('customers.export')}
+                    <Button variant="secondary" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border-slate-100 bg-white flex items-center gap-2" onClick={handleExport}>
+                        <Download className="w-3 h-3 opacity-60" /> {t('customers.export')}
                     </Button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl w-fit shadow-inner">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
                 {(['all', 'vip', 'regular'] as const).map((s) => (
                     <button
                         key={s}
                         onClick={() => setSegment(s)}
-                        className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${segment === s ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap flex items-center gap-2 border ${segment === s
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+                            : 'bg-white text-slate-400 border-slate-100 hover:text-indigo-600 hover:bg-slate-50'}`}
                     >
-                        {s === 'vip' && <Star size={12} className="text-amber-500" />}
+                        {s === 'vip' && <Star size={10} className={segment === s ? 'text-amber-400 fill-amber-400' : 'text-amber-500'} />}
                         {getSegmentLabel(s)}
                     </button>
                 ))}
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-sm">
-                <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex flex-col md:flex-row justify-between gap-4 bg-slate-50/30 dark:bg-slate-800/20">
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-slate-50 dark:border-slate-900/50 flex flex-col md:flex-row justify-between gap-4">
+                    <div className="relative flex-1 max-w-md group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
                         <input
                             type="text"
                             placeholder={t('customers.searchBy')}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-700 transition-all outline-none text-sm"
+                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:border-indigo-600 transition-all outline-none text-[10px] font-black uppercase tracking-widest text-slate-900 placeholder:text-slate-300"
                         />
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-60">
                             {filtered.length} {t('customers.guestsCount')}
                         </div>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-50 dark:border-slate-800">
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('customers.guestInfo')}</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('customers.contact')}</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">{t('customers.visits')}</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('customers.lastVisit')}</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('customers.tags')}</th>
-                                <th className="px-8 py-5 text-right"></th>
+                            <tr className="bg-slate-50/30 border-b border-slate-50">
+                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{t('customers.guestInfo')}</th>
+                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{t('customers.contact')}</th>
+                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic text-center">{t('customers.visits')}</th>
+                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{t('customers.lastVisit')}</th>
+                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{t('customers.tags')}</th>
+                                <th className="px-5 py-3 text-right"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                        <tbody className="divide-y divide-slate-50">
                             {loading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={5} className="px-8 py-4">
-                                            <Skeleton className="h-12 w-full" />
+                                        <td colSpan={6} className="px-5 py-4">
+                                            <Skeleton className="h-10 w-full rounded-lg" />
                                         </td>
                                     </tr>
                                 ))
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-8 py-20 text-center">
-                                        <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                                            <Users size={32} className="text-slate-200" />
+                                    <td colSpan={6} className="px-5 py-20 text-center">
+                                        <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                            <Users size={20} className="text-slate-200" />
                                         </div>
-                                        <p className="font-black text-slate-900 dark:text-white tracking-tight">{t('customers.noGuestsFound')}</p>
-                                        <p className="text-sm text-slate-400 mt-1">{t('customers.guestsAutomaticallyAdded')}</p>
+                                        <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-1">{t('customers.noGuestsFound')}</h3>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter opacity-60">{t('customers.guestsAutomaticallyAdded')}</p>
                                     </td>
                                 </tr>
                             ) : (
@@ -188,66 +194,72 @@ export default function Customers() {
                                     return (
                                         <tr
                                             key={customer.id}
-                                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+                                            className="hover:bg-slate-50/50 transition-all group cursor-pointer"
                                             onClick={() => navigate(`/app/customers/${customer.id}`)}
                                         >
-                                            <td className="px-8 py-6">
+                                            <td className="px-5 py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${isVip ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
+                                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-black transition-colors ${isVip
+                                                        ? 'bg-amber-50 text-amber-600 border border-amber-100/50'
+                                                        : 'bg-slate-50 text-slate-900 border border-slate-100 group-hover:bg-indigo-600 group-hover:text-white'}`}>
                                                         {customer.full_name?.charAt(0)?.toUpperCase() || 'G'}
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <p className="font-bold text-slate-900 dark:text-white">{customer.full_name}</p>
+                                                            <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight italic">{customer.full_name}</p>
                                                             {isVip && (
-                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-500/20">
-                                                                    <Star size={10} /> VIP
-                                                                </span>
+                                                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-500/20 bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase tracking-widest">
+                                                                    <Star size={8} className="fill-current" /> VIP
+                                                                </div>
                                                             )}
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">#{customer.id}</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5 opacity-60">ID://{customer.id}</p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6">
+                                            <td className="px-5 py-4">
                                                 <div className="space-y-1">
-                                                    <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                                                        <Mail size={14} className="text-slate-300" /> {customer.email || '—'}
+                                                    <div className="flex items-center gap-2 text-[9px] font-black text-slate-500 uppercase tracking-tight tabular-nums">
+                                                        <Mail size={12} className="opacity-30" /> {customer.email || '—'}
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                                                        <Phone size={14} className="text-slate-300" /> {customer.phone || '—'}
+                                                    <div className="flex items-center gap-2 text-[9px] font-black text-slate-500 uppercase tracking-tight tabular-nums">
+                                                        <Phone size={12} className="opacity-30" /> {customer.phone || '—'}
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6 text-center">
-                                                <span className={`inline-flex items-center justify-center min-w-[2rem] h-6 rounded-lg font-bold text-xs ${isVip ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
+                                            <td className="px-5 py-4 text-center">
+                                                <div className={`inline-flex items-center justify-center min-w-[2.5rem] h-6 rounded-md font-black text-[10px] border tabular-nums ${isVip
+                                                    ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                                    : 'bg-slate-50 text-slate-900 border-slate-100'}`}>
                                                     {customer.total_bookings || 0}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                                    <Calendar size={14} className="text-slate-300" />
-                                                    {customer.last_visit ? new Date(customer.last_visit).toLocaleDateString() : t('customers.never')}
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6">
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest tabular-nums italic">
+                                                    <Calendar size={12} className="opacity-30" />
+                                                    {customer.last_visit ? new Date(customer.last_visit).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : t('customers.never')}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-4">
                                                 {customer.tags ? (
                                                     <div className="flex flex-wrap gap-1">
                                                         {customer.tags.split(',').map(tag => (
                                                             <span
                                                                 key={tag}
-                                                                className="px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 border border-slate-100 dark:border-slate-700"
+                                                                className="px-2 py-0.5 rounded-md bg-slate-50 text-[8px] font-black text-slate-500 border border-slate-100 uppercase tracking-widest"
                                                             >
                                                                 {tag.trim()}
                                                             </span>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">—</span>
+                                                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest opacity-40">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-8 py-6 text-right">
-                                                <ChevronRight size={20} className="text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white transition-all group-hover:translate-x-1 ml-auto" />
+                                            <td className="px-5 py-4 text-right">
+                                                <div className="flex items-center justify-end">
+                                                    <ChevronRight size={14} className="text-slate-200 group-hover:text-indigo-600 transition-all transform group-hover:translate-x-1" />
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -257,16 +269,16 @@ export default function Customers() {
                     </table>
                 </div>
 
-                <div className="p-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
-                    <span className="text-xs font-medium text-slate-500">
-                        {t('customers.page')} {page} {t('customers.of')} {totalPages}
+                <div className="p-4 border-t border-slate-50 dark:border-slate-900/50 flex items-center justify-between">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-60">
+                        {t('customers.page')} {page} / {totalPages}
                     </span>
                     <div className="flex gap-2">
-                        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                            <ChevronLeft className="w-4 h-4" />
+                        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-lg border-slate-100 bg-white">
+                            <ChevronLeft className="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                            <ChevronRight className="w-4 h-4" />
+                        <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-8 w-8 p-0 rounded-lg border-slate-100 bg-white">
+                            <ChevronRight className="w-3.5 h-3.5" />
                         </Button>
                     </div>
                 </div>

@@ -90,32 +90,37 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         date_param = self.request.query_params.get('date')
         date_from_param = self.request.query_params.get('date_from')
         date_to_param = self.request.query_params.get('date_to')
-        if date_param:
-            qs = qs.filter(date=date_param)
-        if date_from_param:
-            qs = qs.filter(date__gte=date_from_param)
-        if date_to_param:
-            qs = qs.filter(date__lte=date_to_param)
-
         time_from_param = self.request.query_params.get('time_from')
         time_to_param = self.request.query_params.get('time_to')
+        table_id_param = self.request.query_params.get('table_id')
         if time_from_param:
-            try:
-                qs = qs.filter(time__gte=datetime.strptime(time_from_param, '%H:%M').time())
-            except ValueError:
-                pass
+            time_from_param = time_from_param.strip()
+            if time_from_param:
+                try:
+                    qs = qs.filter(time__gte=datetime.strptime(time_from_param, '%H:%M').time())
+                except ValueError:
+                    pass
         if time_to_param:
+            time_to_param = time_to_param.strip()
+            if time_to_param:
+                try:
+                    qs = qs.filter(time__lte=datetime.strptime(time_to_param, '%H:%M').time())
+                except ValueError:
+                    pass
+        if table_id_param:
             try:
-                qs = qs.filter(time__lte=datetime.strptime(time_to_param, '%H:%M').time())
-            except ValueError:
+                table_id_int = int(table_id_param)
+                qs = qs.filter(Q(table_id=table_id_int) | Q(tables__id=table_id_int)).distinct()
+            except (TypeError, ValueError):
                 pass
 
-        table_id_param = self.request.query_params.get('table_id')
-        if table_id_param:
-            qs = qs.filter(
-                Q(table_id=table_id_param) |
-                Q(tables__id=table_id_param)
-            ).distinct()
+        qs = qs.annotate(
+            priority=Case(
+                When(status='pending', then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        ).order_by('priority', '-date', '-time')
         return qs
 
     def create(self, request, *args, **kwargs):

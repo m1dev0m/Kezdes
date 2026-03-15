@@ -42,6 +42,7 @@ export default function CustomerDetailPage() {
     const [bookings, setBookings] = useState<BookingRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [notes, setNotes] = useState('');
+    const [tags, setTags] = useState('');
     const [savingNotes, setSavingNotes] = useState(false);
 
     useEffect(() => {
@@ -57,6 +58,7 @@ export default function CustomerDetailPage() {
             ]);
             setCustomer(cRes.data);
             setNotes(cRes.data.notes || '');
+            setTags(cRes.data.tags || '');
             setBookings(Array.isArray(bRes.data) ? bRes.data : bRes.data.results || []);
         } catch {
             toast.error(t('customerDetail.failedToLoad'));
@@ -68,7 +70,16 @@ export default function CustomerDetailPage() {
     const saveNotes = async () => {
         setSavingNotes(true);
         try {
-            await api.patch(`/crm/customers/${id}/`, { notes });
+            const normalizedTags = tags
+                .split(',')
+                .map(t => t.trim())
+                .filter(Boolean)
+                .join(', ');
+
+            const res = await api.patch(`/crm/customers/${id}/`, { notes, tags: normalizedTags });
+            setCustomer(res.data);
+            setNotes(res.data.notes || '');
+            setTags(res.data.tags || '');
             toast.success(t('customerDetail.notesSaved'));
         } catch {
             toast.error(t('customerDetail.failedToSaveNotes'));
@@ -110,8 +121,7 @@ export default function CustomerDetailPage() {
     const isVip = (customer.total_bookings || 0) >= 5 || customer.is_vip;
     const formatDisplayMonth = (dateStr: string) => {
         const d = new Date(dateStr + 'T00:00:00');
-        const months = t('customerDetail.months') as any;
-        return months[d.getMonth()] || d.toLocaleDateString('en', { month: 'short' });
+        return d.toLocaleDateString('ru-RU', { month: 'short' });
     };
 
     return (
@@ -172,9 +182,9 @@ export default function CustomerDetailPage() {
                                 </span>
                             </div>
                         )}
-                        {customer.tags && (
+                        {(customer.tags || tags) && (
                             <div className="flex flex-wrap gap-2 pt-1">
-                                {customer.tags.split(',').map(tag => (
+                                {(customer.tags || tags).split(',').map(tag => (
                                     <span
                                         key={tag}
                                         className="px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 border border-slate-100 dark:border-slate-700"
@@ -205,6 +215,12 @@ export default function CustomerDetailPage() {
                                 <StickyNote size={12} /> {t('customerDetail.managerNotes')}
                             </label>
                         </div>
+                        <input
+                            value={tags}
+                            onChange={e => setTags(e.target.value)}
+                            placeholder={t('customerDetail.tagsPlaceholder')}
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-slate-200 dark:focus:border-slate-700 rounded-xl text-sm font-medium outline-none transition-all"
+                        />
                         <textarea
                             value={notes}
                             onChange={e => setNotes(e.target.value)}

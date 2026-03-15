@@ -287,7 +287,7 @@ export default function RestaurantPage() {
                             </div>
 
                             <div className="bg-slate-50/50 rounded-[3.5rem] p-12 border-2 border-slate-50 relative overflow-hidden aspect-[16/10] shadow-inner flex items-center justify-center group/floor">
-                                <svg viewBox="0 0 800 600" className="w-full h-full max-w-3xl drop-shadow-2xl">
+                                <svg viewBox="0 0 1000 800" className="w-full h-full max-w-3xl drop-shadow-2xl">
                                     <defs>
                                         <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                                             <feGaussianBlur in="SourceAlpha" stdDeviation="3" />

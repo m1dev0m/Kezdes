@@ -44,7 +44,7 @@ class Booking(models.Model):
         COMPLETED: [],
         NO_SHOW: [],
     }
-    ACTIVE_STATUSES = [PENDING, APPROVED]
+    ACTIVE_STATUSES = [PENDING, APPROVED, PAYMENT_PENDING]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='bookings')
     table = models.ForeignKey('restaurants.Table', on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')

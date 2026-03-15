@@ -2,6 +2,7 @@ import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Q
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -18,6 +19,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if user.is_anonymous:
             await self.close()
             return
+
+        if not await self.user_has_access(user, int(self.restaurant_id)):
+            await self.close()
+            return
+
+        self.user = user
 
         await self.channel_layer.group_add(
             self.room_group_name,
@@ -40,6 +47,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         booking_id = content.get('booking_id')
 
         user = self.scope['user']
+
+        if booking_id:
+            booking_id = await self.validate_booking(user, int(self.restaurant_id), booking_id)
+
         msg = await self.save_message(user, self.restaurant_id, message_content, booking_id)
 
         await self.channel_layer.group_send(
@@ -62,9 +73,41 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json(event['message'])
 
     @database_sync_to_async
+    def user_has_access(self, user, restaurant_id):
+        from restaurants.models import Restaurant
+        from bookings.models import Booking
+
+        try:
+            restaurant = Restaurant.objects.get(id=restaurant_id)
+        except Restaurant.DoesNotExist:
+            return False
+
+        if restaurant.owner_id == user.id:
+            return True
+
+        if hasattr(user, 'profile') and user.profile.restaurant_id == restaurant_id:
+            return True
+
+        return Booking.objects.filter(
+            user=user,
+            restaurant_id=restaurant_id,
+            status__in=['pending', 'approved', 'completed']
+        ).exists()
+
+    @database_sync_to_async
+    def validate_booking(self, user, restaurant_id, booking_id):
+        from bookings.models import Booking
+        exists = Booking.objects.filter(
+            id=booking_id,
+            restaurant_id=restaurant_id,
+        ).filter(
+            Q(user=user) | Q(restaurant__owner=user)
+        ).exists()
+        return booking_id if exists else None
+
+    @database_sync_to_async
     def save_message(self, user, restaurant_id, content, booking_id=None):
         from .models import Message
-        from restaurants.models import Restaurant
 
         msg = Message.objects.create(
             sender=user,

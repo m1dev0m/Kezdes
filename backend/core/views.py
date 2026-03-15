@@ -82,8 +82,8 @@ class SetupRestaurantView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        if not hasattr(request.user, "profile") or request.user.profile.role not in ("restaurant_admin", "restaurant_owner", "owner"):
-            return Response({"detail": "Only restaurant admins can submit setup."}, status=status.HTTP_403_FORBIDDEN)
+        if not hasattr(request.user, "profile") or request.user.profile.role not in ("owner",):
+            return Response({"detail": "Only restaurant owners can submit setup."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)

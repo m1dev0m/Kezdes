@@ -28,7 +28,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
             if (value && typeof value === 'object' && k in (value as Record<string, unknown>)) {
                 value = (value as Record<string, unknown>)[k];
             } else {
-                console.warn(`Translation key not found: ${key}`);
+                if (import.meta.env.DEV) {
+                    console.warn(`Translation key not found: ${key}`);
+                }
                 return key;
             }
         }
@@ -56,7 +58,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
             if (typeof value === 'object' && value !== null && 'other' in value) {
                 value = (value as any).other;
             } else {
-                console.warn(`Translation key is not a string: ${key}`);
+                if (import.meta.env.DEV) {
+                    console.warn(`Translation key is not a string: ${key}`);
+                }
                 return key;
             }
         }

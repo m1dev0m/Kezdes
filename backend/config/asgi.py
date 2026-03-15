@@ -9,12 +9,15 @@ django_asgi_app = get_asgi_application()
 
 from chat.routing import websocket_urlpatterns as chat_ws
 from bookings.routing import websocket_urlpatterns as booking_ws
+from core.ws_jwt_auth import QueryStringJWTAuthMiddleware
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
     "websocket": AllowedHostsOriginValidator(
-        AuthMiddlewareStack(
-            URLRouter(chat_ws + booking_ws)
+        QueryStringJWTAuthMiddleware(
+            AuthMiddlewareStack(
+                URLRouter(chat_ws + booking_ws)
+            )
         )
     ),
 })

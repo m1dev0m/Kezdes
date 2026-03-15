@@ -3,7 +3,7 @@ import random
 import string
 
 from django.contrib.auth.models import User
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Case, IntegerField, Value, When
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
@@ -94,8 +94,7 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
 
         if not request.user.is_authenticated or instance.owner != request.user:
-            instance.views_count += 1
-            instance.save(update_fields=["views_count"])
+            Restaurant.objects.filter(pk=instance.pk).update(views_count=models.F('views_count') + 1)
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
@@ -331,7 +330,7 @@ class TableViewSet(TenantModelViewSet):
 
         active_bookings = Booking.objects.filter(
             restaurant=restaurant,
-            status__in=[Booking.APPROVED, Booking.PENDING],
+            status__in=Booking.ACTIVE_STATUSES,
             start_datetime__lte=target_dt,
             end_datetime__gt=target_dt
         ).prefetch_related('tables')

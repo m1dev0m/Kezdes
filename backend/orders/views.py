@@ -20,7 +20,7 @@ from .serializers import (
 )
 
 
-from core.viewsets import TenantModelViewSet
+from core.viewsets import TenantModelViewSet, OptionalPaginationMixin
 
 class AdminMenuCategoryViewSet(TenantModelViewSet):
     queryset = MenuCategory.objects.all()
@@ -34,7 +34,7 @@ class AdminMenuItemViewSet(TenantModelViewSet):
 
 
 
-class OrderViewSet(viewsets.ModelViewSet):
+class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     """
     Customer order API.
     - user can only access their own orders
@@ -50,12 +50,41 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Order.objects.none()
         if not self.request.user.is_authenticated:
             return Order.objects.none()
+        
+        # Default behavior: user's own orders
         return (
             Order.objects.filter(user=self.request.user)
             .select_related("restaurant", "reservation")
             .prefetch_related("items__menu_item")
             .order_by("-created_at")
         )
+
+    @action(detail=False, methods=["get"])
+    def my_restaurant(self, request):
+        """
+        Orders for the restaurant managed/owned by the user.
+        """
+        user = request.user
+        restaurant = getattr(user, 'owned_restaurant', None)
+        if not restaurant and hasattr(user, 'profile'):
+            restaurant = user.profile.restaurant
+        
+        if not restaurant:
+            return Response({"detail": "No restaurant associated with this user."}, status=status.HTTP_404_NOT_FOUND)
+            
+        queryset = Order.objects.filter(restaurant=restaurant).select_related("user").prefetch_related("items__menu_item").order_by("-created_at")
+        
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+            
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         serializer = CreateDraftOrderSerializer(data=request.data, context={"request": request})

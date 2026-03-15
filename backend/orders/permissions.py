@@ -13,6 +13,6 @@ class IsRestaurantAdmin(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and hasattr(request.user, "profile")
-            and request.user.profile.role == "restaurant_admin"
+            and request.user.profile.role in ("restaurant_admin", "restaurant_owner", "owner")
         )
 

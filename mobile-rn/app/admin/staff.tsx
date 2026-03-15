@@ -5,6 +5,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
+import StaffCard from '../../components/StaffCard';
+
 const STAFF = [
     { id: '1', name: 'Айзада Б.', role: 'Менеджер', status: 'В сети' },
     { id: '2', name: 'Берик К.', role: 'Официант', status: 'Перерыв' },
@@ -14,35 +16,20 @@ const STAFF = [
 export default function AdminStaffScreen() {
     const router = useRouter();
 
-    const renderStaff = ({ item }: { item: typeof STAFF[0] }) => (
-        <View style={styles.staffCard}>
-            <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.name[0]}</Text>
-            </View>
-            <View style={styles.staffInfo}>
-                <Text style={styles.staffName}>{item.name}</Text>
-                <Text style={styles.staffRole}>{item.role}</Text>
-            </View>
-            <View style={styles.statusBox}>
-                <View style={[styles.statusDot, { backgroundColor: item.status === 'В сети' ? '#16a34a' : '#f59e0b' }]} />
-                <Text style={styles.statusText}>{item.status}</Text>
-            </View>
-            <TouchableOpacity style={styles.moreBtn}>
-                <Ionicons name="ellipsis-vertical" size={20} color={colors.muted} />
-            </TouchableOpacity>
-        </View>
-    );
+    const renderStaff = React.useCallback(({ item }: { item: typeof STAFF[0] }) => (
+        <StaffCard item={item} />
+    ), []);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={24} color={colors.text} />
+                    <Ionicons name="chevron-back" size={24} color="#000" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Персонал</Text>
-                <TouchableOpacity style={styles.addBtn}>
-                    <Ionicons name="person-add-outline" size={22} color={colors.primary} />
-                </TouchableOpacity>
+                <View style={styles.headerRight}>
+                    <Ionicons name="people-outline" size={22} color="#000" />
+                </View>
             </View>
 
             <FlatList
@@ -50,10 +37,16 @@ export default function AdminStaffScreen() {
                 renderItem={renderStaff}
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.list}
+                showsVerticalScrollIndicator={false}
+                ListHeaderComponent={
+                    <View style={styles.listHeader}>
+                        <Text style={styles.sectionLabel}>CОТРУДНИКИ В ДОСТУПЕ</Text>
+                    </View>
+                }
                 ListFooterComponent={
-                    <TouchableOpacity style={styles.inviteCard}>
-                        <Ionicons name="mail-outline" size={24} color={colors.primary} />
-                        <Text style={styles.inviteText}>Пригласить сотрудника</Text>
+                    <TouchableOpacity style={styles.inviteBtn} activeOpacity={0.8}>
+                        <Ionicons name="add" size={24} color="#fff" />
+                        <Text style={styles.inviteBtnText}>ПРИГЛАСИТЬ СОТРУДНИКА</Text>
                     </TouchableOpacity>
                 }
             />
@@ -62,22 +55,31 @@ export default function AdminStaffScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
-    backBtn: { width: 40, height: 40, justifyContent: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
-    addBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
-    list: { padding: 16 },
-    staffCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, padding: 16, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
-    avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-    avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
-    staffInfo: { flex: 1 },
-    staffName: { fontSize: 16, fontWeight: '700', color: colors.text },
-    staffRole: { fontSize: 13, color: colors.textSecondary },
-    statusBox: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 12 },
-    statusDot: { width: 8, height: 8, borderRadius: 4 },
-    statusText: { fontSize: 12, color: colors.textSecondary },
-    moreBtn: { padding: 4 },
-    inviteCard: { marginTop: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, borderRadius: 20, borderStyle: 'dashed', borderWidth: 2, borderColor: colors.border, backgroundColor: colors.surface },
-    inviteText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+    container: { flex: 1, backgroundColor: '#ffffff' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 20 },
+    backBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+    headerTitle: { fontSize: 24, fontWeight: '900', color: '#000', fontStyle: 'italic', marginLeft: 12, flex: 1 },
+    headerRight: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+
+    list: { paddingHorizontal: 24, paddingBottom: 40 },
+    listHeader: { marginTop: 12, marginBottom: 16 },
+    sectionLabel: { fontSize: 11, fontWeight: '900', color: '#64748b', letterSpacing: 1 },
+
+    inviteBtn: {
+        marginTop: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        backgroundColor: colors.primary,
+        paddingVertical: 18,
+        borderRadius: 20,
+    },
+    inviteBtnText: {
+        fontSize: 13,
+        fontWeight: '900',
+        color: '#fff',
+        fontStyle: 'italic',
+        letterSpacing: 0.5,
+    },
 });

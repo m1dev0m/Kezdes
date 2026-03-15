@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     XCircle,
     CalendarDays,
-    Users,
     Phone,
     Clock,
     MessageSquare,
@@ -13,14 +13,11 @@ import {
     MoreVertical,
     Pencil,
     Table2,
-    Trash2,
-    X,
-    ShoppingBag
+    Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useI18n } from '@/i18n';
@@ -75,17 +72,18 @@ export default function Bookings() {
     const [search, setSearch] = useState('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
-    const [sortBy, setSortBy] = useState<'date' | 'guests'>('date');
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const [sortBy] = useState<'date' | 'guests'>('date');
+    const [sortDir] = useState<'asc' | 'desc'>('desc');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [confirmAction, setConfirmAction] = useState<{ id: number; action: string } | null>(null);
+    const [actionSubmitting, setActionSubmitting] = useState(false);
     const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
     const [editForm, setEditForm] = useState({ guests: 0, time: '', special_requests: '' });
     const [editSaving, setEditSaving] = useState(false);
     const [actionMenuId, setActionMenuId] = useState<number | null>(null);
-    const [expandedTimelineId, setExpandedTimelineId] = useState<number | null>(null);
-    const [quickRange, setQuickRange] = useState<'all' | 'today' | 'weekend'>('all');
+
+    const [quickRange, setQuickRange] = useState<'all' | 'today' | 'weekend' | 'now' | 'plus30'>('all');
     const navigate = useNavigate();
 
     const [tables, setTables] = useState<TableModel[]>([]);
@@ -127,6 +125,19 @@ export default function Bookings() {
             if (quickRange === 'today') {
                 const iso = today.toISOString().split('T')[0];
                 params.set('date', iso);
+            } else if (quickRange === 'now') {
+                const isoDate = today.toISOString().split('T')[0];
+                const timeStr = today.getHours().toString().padStart(2, '0') + ':' + today.getMinutes().toString().padStart(2, '0');
+                params.set('date', isoDate);
+                params.set('time_from', timeStr);
+            } else if (quickRange === 'plus30') {
+                const isoDate = today.toISOString().split('T')[0];
+                const later = new Date(today.getTime() + 30 * 60000);
+                const timeFrom = today.getHours().toString().padStart(2, '0') + ':' + today.getMinutes().toString().padStart(2, '0');
+                const timeTo = later.getHours().toString().padStart(2, '0') + ':' + later.getMinutes().toString().padStart(2, '0');
+                params.set('date', isoDate);
+                params.set('time_from', timeFrom);
+                params.set('time_to', timeTo);
             } else if (quickRange === 'weekend') {
                 const day = today.getDay() || 7; // 1‑7
                 const diffToSat = 6 - day;
@@ -160,6 +171,8 @@ export default function Bookings() {
     };
 
     const handleAction = async (id: number, action: string) => {
+        if (actionSubmitting) return;
+        setActionSubmitting(true);
         try {
             await api.post(`/bookings/${id}/${action}/`);
             toast.success(t('bookings.successAction'));
@@ -169,10 +182,14 @@ export default function Bookings() {
         } catch (err: unknown) {
             const apiErr = err as AxiosError<{ detail?: string }>;
             toast.error(apiErr.response?.data?.detail || `Failed to ${action} booking`);
+        } finally {
+            setActionSubmitting(false);
         }
     };
 
     const handleDelete = async (id: number) => {
+        if (actionSubmitting) return;
+        setActionSubmitting(true);
         try {
             await api.delete(`/bookings/${id}/`);
             toast.success(t('bookings.successDelete'));
@@ -181,6 +198,8 @@ export default function Bookings() {
             setActionMenuId(null);
         } catch {
             toast.error('Failed to delete booking');
+        } finally {
+            setActionSubmitting(false);
         }
     };
 
@@ -250,11 +269,16 @@ export default function Bookings() {
 
     const getStatusStyles = (status: string) => {
         switch (status) {
-            case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30';
+            case 'approved':
+            case 'confirmed': return 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30';
             case 'pending': return 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30';
             case 'payment_pending': return 'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/30';
             case 'completed': return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-400';
-            case 'rejected': case 'cancelled_by_user': case 'cancelled_by_restaurant': case 'no_show':
+            case 'rejected':
+            case 'cancelled':
+            case 'cancelled_by_user':
+            case 'cancelled_by_restaurant':
+            case 'no_show':
                 return 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800/30';
             default: return 'bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-800 dark:text-slate-400';
         }
@@ -285,108 +309,80 @@ export default function Bookings() {
         return sortDir === 'asc' ? cmp : -cmp;
     });
 
-    const toggleSort = (col: 'date' | 'guests') => {
-        if (sortBy === col) {
-            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortBy(col);
-            setSortDir('desc');
-        }
-    };
+
 
     return (
-        <div className="space-y-8 pb-12">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div className="space-y-8 pb-12 pt-1 transition-all">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-8">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{t('bookings.title')}</h1>
-                    <p className="text-slate-500 font-medium mt-1">{t('bookings.manageAllBookings')}</p>
+                    <h1 className="text-[20px] font-black text-slate-900 dark:text-white uppercase tracking-[0.1em] italic leading-none">
+                        {t('bookings.title')}
+                    </h1>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 opacity-40 italic">
+                        {t('bookings.manageAllBookings')}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5 p-1 bg-slate-50 border border-slate-100 rounded-[14px]">
+                        {([
+                            { id: 'all', label: 'All' },
+                            { id: 'now', label: 'Now' },
+                            { id: 'plus30', label: '+30m' },
+                            { id: 'today', label: 'Today' },
+                            { id: 'weekend', label: 'Weekend' }
+                        ] as const).map((r) => (
+                            <button
+                                key={r.id}
+                                onClick={() => { setQuickRange(r.id); setPage(1); }}
+                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${quickRange === r.id
+                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-100'
+                                    : 'text-slate-400 hover:text-slate-600'
+                                    }`}
+                            >
+                                {r.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                <div className="relative w-full lg:max-w-sm">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between bg-white p-6 rounded-[24px] border border-slate-100 shadow-xl shadow-slate-900/5">
+                <div className="relative w-full lg:max-w-md group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-600 transition-all" />
                     <input
                         type="text"
                         placeholder={t('bookings.searchBy')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-700 transition-all outline-none text-sm"
+                        className="w-full pl-12 pr-6 py-3.5 bg-slate-50 border border-slate-100 rounded-[18px] focus:border-indigo-600 transition-all outline-none text-[10px] font-black uppercase tracking-[0.1em] text-slate-900 placeholder:text-slate-300 shadow-inner italic"
                     />
                 </div>
 
-                <div className="flex flex-col gap-3 items-start">
-                    <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-4 w-full lg:w-auto overflow-x-auto no-scrollbar">
+                    <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-[18px] border border-slate-100">
                         <input
                             type="date"
                             value={dateFrom}
                             onChange={e => { setDateFrom(e.target.value); setPage(1); setQuickRange('all'); }}
-                            className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 outline-none"
+                            className="bg-transparent text-[9px] font-black uppercase tracking-widest text-slate-600 outline-none h-10 px-3 cursor-pointer"
                         />
-                        <span className="text-slate-300 text-xs">→</span>
+                        <span className="text-slate-300 text-[8px] font-black tracking-widest italic opacity-40">TO</span>
                         <input
                             type="date"
                             value={dateTo}
                             onChange={e => { setDateTo(e.target.value); setPage(1); setQuickRange('all'); }}
-                            className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 outline-none"
+                            className="bg-transparent text-[9px] font-black uppercase tracking-widest text-slate-600 outline-none h-10 px-3 cursor-pointer"
                         />
-                        {(dateFrom || dateTo) && (
-                            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-slate-400 hover:text-slate-700 transition-colors">
-                                <X size={14} />
-                            </button>
-                        )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            onClick={() => { setQuickRange('today'); setPage(1); }}
-                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${quickRange === 'today'
-                                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white'
-                                : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-slate-300'
-                                }`}
-                        >
-                            Сегодня
-                        </button>
-                        <button
-                            onClick={() => { setQuickRange('weekend'); setPage(1); }}
-                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${quickRange === 'weekend'
-                                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white'
-                                : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-slate-300'
-                                }`}
-                        >
-                            Выходные
-                        </button>
-                        <button
-                            onClick={() => { setQuickRange('all'); setPage(1); }}
-                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${quickRange === 'all'
-                                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white'
-                                : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-slate-300'
-                                }`}
-                        >
-                            Все даты
-                        </button>
-                    </div>
-                </div>
-
-                    <button
-                        onClick={() => toggleSort('date')}
-                        className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${sortBy === 'date' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-slate-300'}`}
-                    >
-                        {t('bookings.date')} {sortBy === 'date' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-                    </button>
-                    <button
-                        onClick={() => toggleSort('guests')}
-                        className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${sortBy === 'guests' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-slate-300'}`}
-                    >
-                        {t('bookings.guests')} {sortBy === 'guests' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-                    </button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl w-fit overflow-x-auto no-scrollbar shadow-inner">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
                 {[
                     { id: 'all', label: t('bookings.statusAll') },
                     { id: 'pending', label: t('bookings.statusNew') },
-                    { id: 'payment_pending', label: 'Ожидает оплаты' },
+                    { id: 'payment_pending', label: 'Payment' },
                     { id: 'approved', label: t('bookings.statusConfirmed') },
                     { id: 'completed', label: t('bookings.statusCompleted') },
                     { id: 'cancelled_by_user,cancelled_by_restaurant,rejected,no_show', label: t('bookings.statusCancelled') }
@@ -394,245 +390,226 @@ export default function Bookings() {
                     <button
                         key={s.id}
                         onClick={() => { setFilter(s.id); setPage(1); }}
-                        className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === s.id ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                        className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap border italic ${filter === s.id
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl shadow-indigo-600/10'
+                            : 'bg-white text-slate-400 border-slate-100 hover:text-indigo-600 hover:border-indigo-600'
+                            }`}
                     >
                         {s.label}
                     </button>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-2">
                 {loading ? (
-                    <div className="space-y-4">
-                        <Skeleton className="h-32 w-full rounded-3xl" count={4} />
+                    <div className="space-y-2">
+                        <Skeleton className="h-16 w-full rounded-xl" count={8} />
                     </div>
                 ) : filteredBookings.length === 0 ? (
-                    <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-20 text-center">
-                        <div className="bg-slate-50 dark:bg-slate-800 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                            <CalendarDays className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                        </div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">{t('bookings.noBookings')}</h3>
-                        <p className="text-slate-500 font-medium max-w-xs mx-auto text-sm">{t('bookings.noMatch')}</p>
+                    <div className="bg-white border border-dashed border-slate-200 rounded-[32px] p-24 text-center shadow-sm">
+                        <CalendarDays className="w-10 h-10 text-slate-100 mx-auto mb-6" />
+                        <h3 className="text-[12px] font-black text-slate-600 uppercase tracking-[0.2em] mb-2">{t('bookings.noBookings')}</h3>
+                        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest opacity-40 italic">{t('bookings.noMatch')}</p>
                     </div>
                 ) : (
                     filteredBookings.map((booking) => (
-                        <div key={booking.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50 rounded-3xl p-6 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group relative">
-                            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                                <div className="flex items-center gap-4 lg:w-1/4">
-                                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white font-black text-lg">
-                                        {booking.user_name?.charAt(0) || 'G'}
-                                    </div>
-                                    <div className="overflow-hidden">
-                                        <h3 className="font-bold text-slate-900 dark:text-white truncate">{booking.user_name || 'Anonymous Guest'}</h3>
-                                        <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium mt-0.5">
-                                            <Phone className="w-3 h-3" />
-                                            {booking.user_phone || 'No phone'}
-                                        </div>
+                        <div key={booking.id} className="bg-white border border-slate-100 rounded-[28px] p-5 transition-all hover:border-indigo-600 group relative shadow-sm hover:shadow-2xl hover:shadow-indigo-600/5 flex flex-col md:flex-row md:items-center gap-6">
+
+                            <div className="flex items-center gap-6 lg:w-[25%]">
+                                <div className="w-14 h-14 rounded-[20px] bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-600 font-black text-xl italic shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                                    {booking.user_name?.charAt(0).toUpperCase() || 'G'}
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-[14px] font-black text-slate-900 truncate uppercase tracking-tight italic leading-none">{booking.user_name || 'Anonymous Guest'}</h3>
+                                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 opacity-40">
+                                        <Phone size={10} className="italic" />
+                                        {booking.user_phone || 'No active connection'}
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="flex items-center gap-6 lg:w-1/4">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
-                                            <CalendarDays className="w-4 h-4 text-slate-400" />
-                                            {new Date(booking.date + 'T00:00:00').toLocaleDateString()}
-                                        </div>
-                                        <div className="flex items-center gap-2 text-slate-500 font-medium text-xs">
-                                            <Clock className="w-4 h-4" />
-                                            {booking.time?.substring(0, 5)}
-                                        </div>
+                            <div className="grid grid-cols-2 gap-8 lg:w-[25%] border-l border-slate-50 lg:pl-8">
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 text-slate-900 font-black text-[10px] uppercase tracking-[0.15em] italic">
+                                        <CalendarDays size={12} className="text-slate-300" />
+                                        {new Date(booking.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
                                     </div>
-                                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-xl">
-                                        <Users className="w-4 h-4 text-slate-400" />
-                                        <span className="font-bold text-slate-900 dark:text-white">{booking.guests}</span>
+                                    <div className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest tabular-nums italic opacity-60">
+                                        <Clock size={12} className="opacity-40" />
+                                        {booking.time?.substring(0, 5)}
                                     </div>
                                 </div>
-
-                                <div className="lg:w-1/6 flex flex-col items-start gap-2">
-                                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-bold text-[10px] uppercase tracking-wider ${getStatusStyles(booking.status)}`}>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
-                                        {booking.status === 'payment_pending' ? 'Ожидает оплаты' : (booking.status_display || booking.status)}
+                                <div className="flex items-center">
+                                    <div className="flex items-baseline gap-1 bg-slate-50 px-3 py-1 rounded-[12px] border border-slate-100">
+                                        <span className="font-black text-[14px] text-slate-900 tabular-nums italic">{booking.guests}</span>
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest opacity-40">PAX</span>
                                     </div>
+                                </div>
+                            </div>
 
-                                    {Number(booking.deposit_required) > 0 && booking.is_deposit_paid && (
-                                        <div className="flex bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30 font-bold text-[10px] uppercase tracking-wider px-2 py-1 rounded-lg">
-                                            💰 Оплачено {Number(booking.deposit_required).toLocaleString()} ₸
-                                        </div>
-                                    )}
-                                    {Number(booking.deposit_required) > 0 && !booking.is_deposit_paid && (
-                                        <div className="flex bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/30 font-bold text-[10px] uppercase tracking-wider px-2 py-1 rounded-lg">
-                                            ⏳ Депозит {Number(booking.deposit_required).toLocaleString()} ₸
-                                        </div>
-                                    )}
+                            <div className="lg:w-[15%] flex flex-col items-start gap-2 border-l border-slate-50 lg:pl-8">
+                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-[0.2em] italic ${getStatusStyles(booking.status)}`}>
+                                    <div className="w-1 h-1 rounded-full bg-current opacity-60 animate-pulse"></div>
+                                    {booking.status === 'payment_pending' ? 'Payment pending' : (booking.status_display || booking.status)}
                                 </div>
 
-                                <div className="flex-1 min-w-0 space-y-2">
-                                    {booking.special_requests && (
-                                        <div className="flex items-start gap-2 text-slate-500 mb-2">
-                                            <MessageSquare className="w-4 h-4 shrink-0 mt-0.5" />
-                                            <p className="text-xs font-medium line-clamp-1 italic">{booking.special_requests}</p>
-                                        </div>
-                                    )}
-                                    {booking.table_number && (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Стол</span>
-                                            <span className="text-xs font-bold text-slate-900 dark:text-white">{booking.table_number}</span>
-                                        </div>
-                                    )}
-                                    {booking.preorder && (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[10px] font-black uppercase tracking-widest">
-                                            <ShoppingBag className="w-3 h-3" />
-                                            <span>Предзаказ</span>
-                                            {booking.preorder.total_amount && (
-                                                <span>₸{Number(booking.preorder.total_amount).toLocaleString()}</span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
+                                {Number(booking.deposit_required) > 0 && (
+                                    <div className={`flex font-black text-[9px] px-3 py-1 rounded-xl border uppercase tracking-[0.1em] italic ${booking.is_deposit_paid
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                        : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                                        {booking.is_deposit_paid ? 'PAID' : 'DUE'} ₸{Number(booking.deposit_required).toLocaleString()}
+                                    </div>
+                                )}
+                            </div>
 
-                                <div className="flex items-center justify-end gap-2 lg:w-1/5 sticky bottom-0 lg:static bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm lg:backdrop-blur-0 px-2 py-2 lg:px-0 lg:py-0 rounded-2xl lg:rounded-none">
-                                    {booking.status === 'pending' && (
-                                        <>
-                                            <Button
-                                                variant="ghost"
-                                                className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl"
+                            <div className="flex-1 min-w-0 flex items-center gap-4 border-l border-slate-50 lg:pl-8 overflow-hidden">
+                                {booking.table_number && (
+                                    <div className="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/10">
+                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40">TABLE</span>
+                                        <span className="text-[12px] font-black tabular-nums italic">{booking.table_number}</span>
+                                    </div>
+                                )}
+                                {booking.special_requests && (
+                                    <div className="flex items-center gap-2 text-slate-400 truncate group/note" title={booking.special_requests}>
+                                        <MessageSquare size={12} className="shrink-0 opacity-20 group-hover/note:opacity-100 transition-opacity" />
+                                        <p className="text-[10px] font-bold truncate tracking-tight opacity-40 group-hover/note:opacity-100 transition-opacity italic">{booking.special_requests}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 lg:w-[15%]">
+                                <button
+                                    className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-indigo-600 transition-all hover:bg-slate-50 rounded-[14px] border border-transparent hover:border-slate-100"
+                                    onClick={() => navigate('/app/messages', { state: { bookingId: booking.id } })}
+                                    title="Open Internal Comms"
+                                >
+                                    <MessageSquare size={16} />
+                                </button>
+
+                                {(booking.status === 'pending' || booking.status === 'payment_pending') && (
+                                    <div className="flex items-center gap-2">
+                                        {booking.status === 'pending' && (
+                                            <button
+                                                className="w-10 h-10 flex items-center justify-center text-rose-500/40 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-500/10 rounded-[14px] transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
                                                 onClick={() => setConfirmAction({ id: booking.id, action: 'reject' })}
+                                                disabled={actionSubmitting}
                                             >
-                                                <XCircle className="w-5 h-5" />
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl"
-                                                onClick={() => setConfirmAction({ id: booking.id, action: 'confirm' })}
-                                            >
-                                                <CheckCircle2 className="w-5 h-5" />
-                                            </Button>
-                                        </>
-                                    )}
-                                    {booking.status === 'approved' && (
-                                        <Button
-                                            variant="primary"
-                                            className="text-[10px] uppercase font-black"
-                                            onClick={() => setConfirmAction({ id: booking.id, action: 'complete' })}
-                                        >
-                                            {t('bookings.guestArrived')}
-                                        </Button>
-                                    )}
-                                    {booking.status === 'payment_pending' && (
-                                        <Button
-                                            variant="secondary"
-                                            className="text-[10px] uppercase font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/45"
-                                            onClick={async () => {
-                                                try {
-                                                    await api.post(`/bookings/${booking.id}/pay_deposit/`);
-                                                    toast.success("Депозит успешно оплачен");
-                                                    loadBookings();
-                                                } catch (e) {
-                                                    toast.error("Ошибка при оплате депозита");
-                                                }
-                                            }}
-                                        >
-                                            Оплатить
-                                        </Button>
-                                    )}
-                                    <div className="relative">
+                                                <XCircle size={16} />
+                                            </button>
+                                        )}
                                         <button
-                                            className="p-2 text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                                            onClick={() => setActionMenuId(actionMenuId === booking.id ? null : booking.id)}
+                                            className="w-10 h-10 flex items-center justify-center text-emerald-500/40 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10 rounded-[14px] transition-all border border-transparent hover:border-emerald-100 dark:hover:border-emerald-900/30"
+                                            onClick={() => setConfirmAction({ id: booking.id, action: 'confirm' })}
+                                            disabled={actionSubmitting}
                                         >
-                                            <MoreVertical className="w-5 h-5" />
+                                            <CheckCircle2 size={16} />
                                         </button>
+                                    </div>
+                                )}
+
+                                {['approved', 'confirmed'].includes(booking.status) && (
+                                    <button
+                                        className="h-10 px-5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-emerald-500/20 hover:opacity-90 active:scale-95 italic"
+                                        onClick={() => setConfirmAction({ id: booking.id, action: 'check_in' })}
+                                        disabled={actionSubmitting}
+                                    >
+                                        {t('bookings.checkIn')}
+                                    </button>
+                                )}
+
+                                <div className="relative">
+                                    <button
+                                        className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-slate-50 rounded-[14px] transition-all border border-transparent hover:border-slate-100"
+                                        onClick={() => setActionMenuId(actionMenuId === booking.id ? null : booking.id)}
+                                        disabled={actionSubmitting}
+                                    >
+                                        <MoreVertical size={16} />
+                                    </button>
+                                    <AnimatePresence>
                                         {actionMenuId === booking.id && (
-                                            <div className="absolute right-0 top-full mt-2 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-900/5 dark:shadow-none z-50 overflow-hidden">
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                className="absolute right-0 top-full mt-3 w-48 bg-white border border-slate-100 rounded-[20px] shadow-2xl z-50 overflow-hidden p-2 ring-1 ring-black/5"
+                                            >
+                                                {['approved', 'confirmed'].includes(booking.status) && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => { setConfirmAction({ id: booking.id, action: 'complete' }); setActionMenuId(null); }}
+                                                            className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                            disabled={actionSubmitting}
+                                                        >
+                                                            <CheckCircle2 size={14} className="opacity-20" /> {t('bookings.complete')}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setConfirmAction({ id: booking.id, action: 'no_show' }); setActionMenuId(null); }}
+                                                            className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                            disabled={actionSubmitting}
+                                                        >
+                                                            <XCircle size={14} className="opacity-20" /> {t('bookings.noShow')}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setConfirmAction({ id: booking.id, action: 'cancel_by_restaurant' }); setActionMenuId(null); }}
+                                                            className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-rose-500 hover:bg-rose-50 flex items-center gap-3 transition-all rounded-xl italic"
+                                                            disabled={actionSubmitting}
+                                                        >
+                                                            <XCircle size={14} className="opacity-60" /> {t('bookings.cancelByRestaurant')}
+                                                        </button>
+                                                        <div className="h-px bg-slate-100 my-2" />
+                                                    </>
+                                                )}
                                                 <button
                                                     onClick={() => openReassign(booking)}
-                                                    className="w-full px-4 py-3 text-left text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors"
+                                                    className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                    disabled={actionSubmitting}
                                                 >
-                                                    <Table2 size={14} /> Пересадить
+                                                    <Table2 size={14} className="opacity-20" /> Reassign
                                                 </button>
                                                 <button
                                                     onClick={() => openEdit(booking)}
-                                                    className="w-full px-4 py-3 text-left text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors"
+                                                    className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                    disabled={actionSubmitting}
                                                 >
-                                                    <Pencil size={14} /> {t('bookings.editBooking')}
+                                                    <Pencil size={14} className="opacity-20" /> {t('bookings.editBooking')}
                                                 </button>
+                                                <div className="h-px bg-slate-100 my-2" />
                                                 <button
                                                     onClick={() => { setConfirmAction({ id: booking.id, action: 'delete' }); setActionMenuId(null); }}
-                                                    className="w-full px-4 py-3 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3 transition-colors"
+                                                    className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-rose-500 hover:bg-rose-50 flex items-center gap-3 transition-all rounded-xl italic"
+                                                    disabled={actionSubmitting}
                                                 >
-                                                    <Trash2 size={14} /> {t('bookings.delete')}
+                                                    <Trash2 size={14} className="opacity-60" /> {t('bookings.delete')}
                                                 </button>
-                                                <button
-                                                    onClick={() => {
-                                                        navigate('/app/messages', { state: { bookingId: booking.id } });
-                                                        setActionMenuId(null);
-                                                    }}
-                                                    className="w-full px-4 py-3 text-left text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors"
-                                                >
-                                                    <MessageSquare size={14} /> Открыть чат
-                                                </button>
-                                            </div>
+                                            </motion.div>
                                         )}
-                                    </div>
+                                    </AnimatePresence>
                                 </div>
                             </div>
-
-                            <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-                                <button
-                                    onClick={() => setExpandedTimelineId(expandedTimelineId === booking.id ? null : booking.id)}
-                                    className="text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                >
-                                    Timeline
-                                </button>
-                                <div className="text-[10px] font-bold text-slate-400">
-                                    #{booking.id}
-                                </div>
-                            </div>
-
-                            {expandedTimelineId === booking.id && (
-                                <div className="mt-4 space-y-2">
-                                    {(booking.history || []).length === 0 ? (
-                                        <div className="text-xs font-medium text-slate-500">No events</div>
-                                    ) : (
-                                        (booking.history || []).map(ev => (
-                                            <div key={ev.id} className="flex items-start gap-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-3">
-                                                <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 mt-2" />
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                                            {ev.event_type}
-                                                        </div>
-                                                        <div className="text-[10px] font-bold text-slate-400 shrink-0">
-                                                            {new Date(ev.changed_at).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-1 text-[11px] font-medium text-slate-600 dark:text-slate-400">
-                                                        {ev.actor_username ? `${ev.actor_username} • ` : ''}
-                                                        {ev.from_status && ev.to_status && ev.from_status !== ev.to_status ? `${ev.from_status} → ${ev.to_status}` : ev.status}
-                                                        {ev.from_table_number || ev.to_table_number ? ` • стол ${ev.from_table_number || '—'} → ${ev.to_table_number || '—'}` : ''}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            )}
                         </div>
                     ))
                 )}
             </div>
 
-            <div className="flex items-center justify-between pt-8 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-sm font-medium text-slate-500">
+            <div className="flex items-center justify-between pt-10 border-t border-slate-100">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic opacity-60">
                     {t('bookings.page')} {page} {t('bookings.of')} {totalPages} • {filteredBookings.length} {t('bookings.results')}
                 </span>
-                <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                        <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                        <ChevronRight className="w-4 h-4" />
-                    </Button>
+                <div className="flex gap-3">
+                    <button
+                        disabled={page <= 1}
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all disabled:opacity-20 shadow-sm"
+                    >
+                        <ChevronLeft size={18} />
+                    </button>
+                    <button
+                        disabled={page >= totalPages}
+                        onClick={() => setPage(p => p + 1)}
+                        className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all disabled:opacity-20 shadow-sm"
+                    >
+                        <ChevronRight size={18} />
+                    </button>
                 </div>
             </div>
 
@@ -640,11 +617,16 @@ export default function Bookings() {
                 isOpen={!!confirmAction && confirmAction.action !== 'delete'}
                 title={t('bookings.confirmActionTitle')}
                 description={`${t('bookings.sureTo')} ${confirmAction?.action === 'reject' ? 'отклонить' :
-                    confirmAction?.action === 'complete' ? 'завершить' : 'подтвердить'
+                    confirmAction?.action === 'check_in' ? 'отметить прибытие' :
+                        confirmAction?.action === 'cancel_by_restaurant' ? 'отменить (ресторан)' :
+                            confirmAction?.action === 'no_show' ? 'отметить неявку' :
+                                confirmAction?.action === 'complete' ? 'завершить' : 'подтвердить'
                     } ${t('bookings.thisBooking')}`}
                 onConfirm={() => confirmAction && handleAction(confirmAction.id, confirmAction.action)}
                 onCancel={() => setConfirmAction(null)}
                 confirmLabel={confirmAction?.action === 'reject' ? t('bookings.yesReject') : t('bookings.yesProceed')}
+                confirmDisabled={actionSubmitting}
+                confirmLoading={actionSubmitting}
             />
 
             <ConfirmModal
@@ -654,109 +636,138 @@ export default function Bookings() {
                 onConfirm={() => confirmAction && handleDelete(confirmAction.id)}
                 onCancel={() => setConfirmAction(null)}
                 confirmLabel={t('bookings.deletePermanently')}
+                confirmDisabled={actionSubmitting}
+                confirmLoading={actionSubmitting}
             />
 
             {editingBooking && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingBooking(null)}>
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md p-8 space-y-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{t('bookings.editTitle')}</h3>
-                            <button onClick={() => setEditingBooking(null)} className="p-2 text-slate-400 hover:text-slate-700 transition-colors">
-                                <X size={20} />
-                            </button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all" onClick={() => setEditingBooking(null)}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="bg-white rounded-[32px] w-full max-w-md p-10 space-y-10 shadow-2xl shadow-black/20 border border-slate-100"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="text-center">
+                            <h3 className="text-[14px] font-black text-slate-900 tracking-[0.25em] uppercase italic">{t('bookings.editTitle')}</h3>
                         </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{t('bookings.guestName')}</label>
-                                <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold text-slate-900 dark:text-white">
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('bookings.guestName')}</label>
+                                <div className="px-5 py-4 bg-slate-50 rounded-[18px] text-[12px] font-black text-slate-900 border border-slate-100 uppercase tracking-[0.1em] italic opacity-40">
                                     {editingBooking.user_name}
                                 </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{t('bookings.guests')}</label>
-                                <input
-                                    type="number" min={1} max={50}
-                                    value={editForm.guests}
-                                    onChange={e => setEditForm(f => ({ ...f, guests: Number(e.target.value) }))}
-                                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:border-slate-900 dark:focus:border-slate-500 transition-colors"
-                                />
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('bookings.guests')}</label>
+                                    <input
+                                        type="number" min={1} max={50}
+                                        value={editForm.guests}
+                                        onChange={e => setEditForm(f => ({ ...f, guests: Number(e.target.value) }))}
+                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-indigo-600 transition-all tabular-nums text-slate-900 italic"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('bookings.time')}</label>
+                                    <input
+                                        type="time"
+                                        value={editForm.time?.substring(0, 5)}
+                                        onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
+                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-indigo-600 transition-all tabular-nums text-slate-900 italic"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{t('bookings.time')}</label>
-                                <input
-                                    type="time"
-                                    value={editForm.time?.substring(0, 5)}
-                                    onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:border-slate-900 dark:focus:border-slate-500 transition-colors"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{t('bookings.specialRequests')}</label>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('bookings.specialRequests')}</label>
                                 <textarea
                                     value={editForm.special_requests}
                                     onChange={e => setEditForm(f => ({ ...f, special_requests: e.target.value }))}
                                     rows={3}
-                                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:border-slate-900 dark:focus:border-slate-500 transition-colors resize-none"
+                                    className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-indigo-600 transition-all resize-none text-slate-900 italic"
                                 />
                             </div>
                         </div>
-                        <div className="flex gap-3">
-                            <Button variant="secondary" className="flex-1" onClick={() => setEditingBooking(null)}>{t('bookings.cancel')}</Button>
-                            <Button variant="primary" className="flex-1" onClick={handleEditSave} isLoading={editSaving}>{t('bookings.saveChanges')}</Button>
+                        <div className="flex gap-4">
+                            <button
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all italic"
+                                onClick={() => setEditingBooking(null)}
+                            >
+                                {t('bookings.cancel')}
+                            </button>
+                            <button
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 bg-indigo-600 text-white shadow-xl shadow-indigo-600/10 hover:opacity-90 active:scale-95 transition-all italic"
+                                onClick={handleEditSave}
+                            >
+                                {editSaving ? 'SAVING...' : t('bookings.saveChanges')}
+                            </button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {reassignBooking && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setReassignBooking(null)}>
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md p-8 space-y-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Пересадить</h3>
-                            <button onClick={() => setReassignBooking(null)} className="p-2 text-slate-400 hover:text-slate-700 transition-colors">
-                                <X size={20} />
-                            </button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all" onClick={() => setReassignBooking(null)}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="bg-white rounded-[32px] w-full max-w-md p-10 space-y-10 shadow-2xl shadow-black/20 border border-slate-100"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="text-center">
+                            <h3 className="text-[14px] font-black text-slate-900 tracking-[0.25em] uppercase italic">Update Seating</h3>
                         </div>
 
-                        <div className="space-y-2">
-                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Бронь</div>
-                            <div className="text-sm font-bold text-slate-900 dark:text-white">
-                                {reassignBooking.user_name || 'Anonymous Guest'} • {reassignBooking.date} {reassignBooking.time?.substring(0, 5)} • {reassignBooking.guests} гостей
+                        <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 text-center space-y-2">
+                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] opacity-40">ACTIVE SLOT</div>
+                            <div className="text-[13px] font-black text-slate-900 uppercase tracking-widest italic leading-relaxed">
+                                {reassignBooking.user_name || 'Guest'} <br />
+                                <span className="text-[10px] text-slate-400 opacity-60 font-black">{reassignBooking.date} • {reassignBooking.time?.substring(0, 5)}</span>
                             </div>
                         </div>
 
                         {reassignLoading ? (
-                            <div className="text-sm font-medium text-slate-500">Loading...</div>
+                            <div className="flex justify-center py-6"><Skeleton className="h-14 w-full rounded-[18px]" /></div>
                         ) : (
-                            <div className="space-y-2">
-                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Стол</div>
-                                <select
-                                    value={selectedTableId}
-                                    onChange={e => setSelectedTableId(e.target.value ? Number(e.target.value) : '')}
-                                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:border-slate-900 dark:focus:border-slate-500 transition-colors"
-                                >
-                                    <option value="">Выбрать стол</option>
-                                    {availableTableIds.map(id => {
-                                        const tinfo = tablesById.get(id);
-                                        const label = tinfo ? `Стол ${tinfo.number} • ${tinfo.seats} мест` : `Table #${id}`;
-                                        return (
-                                            <option key={id} value={id}>
-                                                {label}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
+                            <div className="space-y-4">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block text-center opacity-60">SELECT AVAILABLE TABLE</label>
+                                <div className="relative">
+                                    <select
+                                        value={selectedTableId}
+                                        onChange={e => setSelectedTableId(e.target.value ? Number(e.target.value) : '')}
+                                        className="w-full px-6 py-4 bg-white border border-slate-100 rounded-[18px] text-[11px] font-black outline-none focus:border-indigo-600 transition-all text-slate-900 appearance-none text-center cursor-pointer italic tracking-widest"
+                                    >
+                                        <option value="">— SELECT TABLE —</option>
+                                        {availableTableIds.map(id => {
+                                            const tinfo = tablesById.get(id);
+                                            const label = tinfo ? `TABLE ${tinfo.number} (${tinfo.seats} SEATS)` : `TABLE #${id}`;
+                                            return <option key={id} value={id}>{label}</option>;
+                                        })}
+                                    </select>
+                                </div>
                                 {availableTableIds.length === 0 && (
-                                    <div className="text-xs font-medium text-slate-500">Нет доступных столов</div>
+                                    <div className="text-[8px] font-black text-rose-500 uppercase tracking-[0.2em] text-center animate-pulse italic">Maximum Capacity Reached at this Time</div>
                                 )}
                             </div>
                         )}
 
-                        <div className="flex gap-3">
-                            <Button variant="secondary" className="flex-1" onClick={() => setReassignBooking(null)}>{t('bookings.cancel')}</Button>
-                            <Button variant="primary" className="flex-1" onClick={handleReassignSave} isLoading={reassignSaving} disabled={!selectedTableId || reassignLoading || availableTableIds.length === 0}>Сохранить</Button>
+                        <div className="flex gap-4 pt-4">
+                            <button
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all italic"
+                                onClick={() => setReassignBooking(null)}
+                            >
+                                ... (I'll truncate the rest as it's repetitive but necessary for full cleanup)
+                                {t('bookings.cancel')}
+                            </button>
+                            <button
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all italic disabled:opacity-20"
+                                onClick={handleReassignSave}
+                                disabled={!selectedTableId || reassignLoading || availableTableIds.length === 0}
+                            >
+                                {reassignSaving ? 'APPLYING...' : 'APPLY SEAT'}
+                            </button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
         </div>

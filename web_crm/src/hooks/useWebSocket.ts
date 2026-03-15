@@ -33,8 +33,9 @@ export function useWebSocket({
         const token = localStorage.getItem('accessToken');
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.hostname}:8000`;
-        const separator = url.includes('?') ? '&' : '?';
-        return `${host}/${url}${token ? `${separator}token=${token}` : ''}`;
+        const normalized = url.replace(/^\/+/, '');
+        const separator = normalized.includes('?') ? '&' : '?';
+        return `${host}/${normalized}${token ? `${separator}token=${token}` : ''}`;
     }, [url]);
 
     const connect = useCallback(() => {

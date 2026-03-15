@@ -33,6 +33,7 @@ const ConfirmationPage = lazy(() => import('@/pages/public/ConfirmationPage'));
 const Search = lazy(() => import('@/pages/public/Search'));
 const GuestDashboard = lazy(() => import('@/pages/guest/GuestDashboard'));
 const GuestBookingDetails = lazy(() => import('@/pages/guest/GuestBookingDetails'));
+const GuestMessages = lazy(() => import('@/pages/guest/GuestMessages'));
 const GuestProfile = lazy(() => import('@/pages/guest/GuestProfile'));
 const GuestFavorites = lazy(() => import('@/pages/guest/GuestFavorites'));
 const GuestSettings = lazy(() => import('@/pages/guest/GuestSettings'));
@@ -49,8 +50,8 @@ const SetupRestaurant = lazy(() => import('@/pages/public/SetupRestaurant'));
 
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
     </div>
   );
 }
@@ -120,6 +121,7 @@ function App() {
                 <Route element={<GuestLayout />}>
                   <Route path="dashboard" element={<GuestDashboard />} />
                   <Route path="bookings/:id" element={<GuestBookingDetails />} />
+                  <Route path="messages" element={<GuestMessages />} />
                   <Route path="profile" element={<GuestProfile />} />
                   <Route path="favorites" element={<GuestFavorites />} />
                   <Route path="settings" element={<GuestSettings />} />

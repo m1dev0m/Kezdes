@@ -135,44 +135,100 @@ export default function TableSelection({
                                 <span className="text-xs text-slate-400">У ресторана пока нет столов</span>
                             </div>
                         ) : (
-                            <div className="relative w-full aspect-[4/3] bg-slate-100 rounded-[2rem] border-2 border-slate-200 overflow-hidden shadow-inner">
-                                <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+                            <div className="relative w-full aspect-[10/8] bg-slate-100 rounded-[2.5rem] border-2 border-slate-200 overflow-hidden shadow-inner flex items-center justify-center p-4 group/canvas">
+                                <svg
+                                    viewBox="0 0 1000 800"
+                                    className="w-full h-full drop-shadow-xl"
+                                >
+                                    <defs>
+                                        <pattern id="grid-sub" width="40" height="40" patternUnits="userSpaceOnUse">
+                                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-200" />
+                                        </pattern>
+                                    </defs>
+                                    <rect width="100%" height="100%" fill="url(#grid-sub)" rx={40} />
 
-                                {layoutTables.map(table => {
-                                    const available = isAvailable(table.id);
-                                    const fits = isLargeEnough(table);
-                                    const selectable = available && fits;
-                                    return (
-                                        <button
-                                            key={table.id}
-                                            disabled={!selectable}
-                                            onClick={() => onSelect(table.id)}
-                                            title={`Стол ${table.number} · ${table.seats} мест${!available ? ' · Занят' : !fits ? ' · Мало мест' : ''}`}
-                                            style={{
-                                                left: `${table.x}%`,
-                                                top: `${table.y}%`,
-                                                width: `${table.width}%`,
-                                                height: `${table.height}%`
-                                            }}
-                                            className={`absolute transition-all duration-300 group flex flex-col items-center justify-center gap-0.5
-                                                ${table.table_type === 'circle' ? 'rounded-full' : 'rounded-2xl'}
-                                                ${selectable
-                                                    ? 'bg-white border-4 border-emerald-400 hover:bg-emerald-50 hover:scale-105 cursor-pointer shadow-lg shadow-emerald-500/20'
-                                                    : !available
-                                                        ? 'bg-rose-50 border-4 border-rose-200 cursor-not-allowed opacity-60'
-                                                        : 'bg-amber-50 border-4 border-amber-200 cursor-not-allowed opacity-60'}
-                                            `}
-                                        >
-                                            <span className="text-[10px] font-black text-slate-700">T{table.number}</span>
-                                            <span className="text-[8px] font-bold text-slate-400">{table.seats}p</span>
-                                            {selectable && (
-                                                <div className="opacity-0 group-hover:opacity-100 absolute -bottom-5 bg-emerald-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full transition-opacity whitespace-nowrap">
-                                                    Выбрать
-                                                </div>
-                                            )}
-                                        </button>
-                                    );
-                                })}
+                                    {layoutTables.map(table => {
+                                        const available = isAvailable(table.id);
+                                        const fits = isLargeEnough(table);
+                                        const selectable = available && fits;
+
+                                        return (
+                                            <g
+                                                key={table.id}
+                                                transform={`translate(${table.x}, ${table.y})`}
+                                                onClick={() => selectable && onSelect(table.id)}
+                                                className={`cursor-pointer transition-all duration-300 group/table ${!selectable ? 'opacity-40 grayscale-[0.5]' : 'hover:scale-105 origin-center'}`}
+                                            >
+                                                {table.table_type === 'circle' ? (
+                                                    <circle
+                                                        r={table.width / 2}
+                                                        cx={table.width / 2}
+                                                        cy={table.height / 2}
+                                                        className={`transition-all duration-300 stroke-[4] ${selectable
+                                                                ? 'fill-white stroke-emerald-400 group-hover/table:fill-emerald-50'
+                                                                : !available
+                                                                    ? 'fill-rose-50 stroke-rose-300'
+                                                                    : 'fill-amber-50 stroke-amber-300'
+                                                            }`}
+                                                    />
+                                                ) : (
+                                                    <rect
+                                                        width={table.width}
+                                                        height={table.height}
+                                                        rx={table.table_type === 'square' ? 12 : 20}
+                                                        className={`transition-all duration-300 stroke-[4] ${selectable
+                                                                ? 'fill-white stroke-emerald-400 group-hover/table:fill-emerald-50'
+                                                                : !available
+                                                                    ? 'fill-rose-50 stroke-rose-300'
+                                                                    : 'fill-amber-50 stroke-amber-300'
+                                                            }`}
+                                                    />
+                                                )}
+
+                                                <text
+                                                    x={table.width / 2}
+                                                    y={table.height / 2}
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    className="text-[14px] font-black fill-slate-900 pointer-events-none"
+                                                >
+                                                    T{table.number}
+                                                </text>
+
+                                                <text
+                                                    x={table.width / 2}
+                                                    y={table.height / 2 + 16}
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    className="text-[10px] font-bold fill-slate-400 pointer-events-none"
+                                                >
+                                                    {table.seats}p
+                                                </text>
+
+                                                {selectable && (
+                                                    <g className="opacity-0 group-hover/table:opacity-100 transition-opacity pointer-events-none">
+                                                        <rect
+                                                            x={table.width / 2 - 35}
+                                                            y={table.height + 10}
+                                                            width={70}
+                                                            height={24}
+                                                            rx={12}
+                                                            className="fill-emerald-600 shadow-lg"
+                                                        />
+                                                        <text
+                                                            x={table.width / 2}
+                                                            y={table.height + 27}
+                                                            textAnchor="middle"
+                                                            className="text-[10px] font-black fill-white uppercase tracking-widest"
+                                                        >
+                                                            Выбрать
+                                                        </text>
+                                                    </g>
+                                                )}
+                                            </g>
+                                        );
+                                    })}
+                                </svg>
                             </div>
                         )}
                         <div className="mt-6 flex items-center justify-center gap-6 text-[10px] font-black uppercase tracking-widest text-slate-400">

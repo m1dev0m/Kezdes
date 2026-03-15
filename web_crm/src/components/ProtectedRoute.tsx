@@ -18,7 +18,7 @@ export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) =>
     }
 
     const role = user.role;
-    const isRestaurantStaff = ['restaurant_admin', 'restaurant_owner', 'restaurant_staff', 'manager', 'hostess'].includes(role);
+    const isRestaurantStaff = ['owner', 'restaurant_admin', 'restaurant_owner', 'restaurant_staff', 'manager', 'hostess'].includes(role);
 
     if (isRestaurantStaff && !user.restaurant_verified) {
         if (location.pathname.startsWith('/register-restaurant') || location.pathname.startsWith('/setup-restaurant')) {

@@ -7,8 +7,8 @@ class BookingConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket consumer for real-time booking status updates.
     URL: ws/bookings/<restaurant_id>/
-    
-    Admin users join restaurant group. Regular users join personal group.
+
+    Admin/staff users join restaurant group. Regular users join personal group.
     """
 
     async def connect(self):
@@ -19,7 +19,7 @@ class BookingConsumer(AsyncJsonWebsocketConsumer):
             await self.close()
             return
 
-        is_admin = await self.is_restaurant_admin(user, self.restaurant_id)
+        is_admin = await self.is_restaurant_admin_or_staff(user, self.restaurant_id)
 
         self.groups_joined = []
 
@@ -44,10 +44,16 @@ class BookingConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json(event['data'])
 
     @database_sync_to_async
-    def is_restaurant_admin(self, user, restaurant_id):
+    def is_restaurant_admin_or_staff(self, user, restaurant_id):
         from restaurants.models import Restaurant
         try:
             restaurant = Restaurant.objects.get(id=restaurant_id)
-            return restaurant.owner == user
+            if restaurant.owner == user:
+                return True
         except Restaurant.DoesNotExist:
             return False
+
+        if hasattr(user, 'profile') and user.profile.restaurant_id == int(restaurant_id):
+            return user.profile.role in ('owner', 'manager', 'host')
+
+        return False

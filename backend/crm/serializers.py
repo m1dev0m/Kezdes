@@ -19,6 +19,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     internal_notes = CustomerNoteSerializer(many=True, read_only=True)
     full_name = serializers.CharField(source='name', read_only=True)
     total_bookings = serializers.IntegerField(source='visits_count', read_only=True)
+    is_vip = serializers.SerializerMethodField(read_only=True)
     notes = serializers.SerializerMethodField(read_only=True)
     tags = serializers.CharField(required=False, allow_blank=True)
 
@@ -28,8 +29,11 @@ class CustomerSerializer(serializers.ModelSerializer):
             'id', 'restaurant', 'name', 'full_name', 'phone', 'email',
             'visits_count', 'total_bookings', 'total_spent', 'avg_check', 'last_visit',
             'date_of_birth', 'tags',
-            'created_at', 'visit_history', 'internal_notes', 'notes'
+            'created_at', 'visit_history', 'internal_notes', 'notes', 'is_vip'
         ]
+
+    def get_is_vip(self, obj):
+        return (obj.visits_count or 0) >= 5
 
     def get_notes(self, obj):
         notes = obj.internal_notes.order_by('-updated_at').values_list('content', flat=True)
