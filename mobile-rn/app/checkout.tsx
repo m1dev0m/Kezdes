@@ -262,22 +262,22 @@ const styles = StyleSheet.create({
     emptyText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 },
 
     cartList: { gap: 10 },
-    cartItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: '#fff' },
-    cartImg: { width: 54, height: 54, borderRadius: 14, backgroundColor: colors.surface },
+    cartItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 32, borderWidth: 1, borderColor: colors.border, backgroundColor: '#fff' },
+    cartImg: { width: 54, height: 54, borderRadius: 40, backgroundColor: colors.surface },
     cartImgPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
     cartName: { fontSize: 13, fontWeight: '900', color: colors.text },
     cartMeta: { fontSize: 12, color: colors.muted, marginTop: 4, fontWeight: '600' },
-    removeBtn: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+    removeBtn: { width: 34, height: 34, borderRadius: 40, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
 
     payRow: { flexDirection: 'row', gap: 10 },
-    payBtn: { flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 14 },
+    payBtn: { flex: 1, borderRadius: 32, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 14 },
     payBtnActive: { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
     payText: { fontSize: 13, fontWeight: '900', color: colors.text },
     payTextActive: { color: colors.primary },
     paySub: { fontSize: 12, marginTop: 6, color: colors.textSecondary, fontWeight: '600' },
     paySubActive: { color: colors.primary },
 
-    warnBox: { marginTop: 14, flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#fecaca', backgroundColor: '#fef2f2' },
+    warnBox: { marginTop: 14, flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: 40, borderWidth: 1, borderColor: '#fecaca', backgroundColor: '#fef2f2' },
     warnText: { flex: 1, fontSize: 12, color: '#991b1b', fontWeight: '700', lineHeight: 16 },
 
     bottomBar: {
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     },
     totalLabel: { fontSize: 12, color: colors.muted, fontWeight: '700' },
     totalValue: { fontSize: 16, color: colors.text, fontWeight: '900', marginTop: 2 },
-    primaryBtn: { backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 16, alignItems: 'center', justifyContent: 'center', minWidth: 160 },
+    primaryBtn: { backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 32, alignItems: 'center', justifyContent: 'center', minWidth: 160 },
     primaryBtnDisabled: { opacity: 0.6 },
     primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
 });

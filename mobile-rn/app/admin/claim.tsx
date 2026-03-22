@@ -66,8 +66,8 @@ const styles = StyleSheet.create({
     form: { gap: 20 },
     inputGroup: { gap: 8 },
     label: { fontSize: 13, fontWeight: '700', color: colors.muted, marginLeft: 4 },
-    input: { backgroundColor: colors.surface, padding: 18, borderRadius: 16, fontSize: 15, borderWidth: 1, borderColor: colors.border },
-    submitBtn: { backgroundColor: colors.primary, paddingVertical: 18, borderRadius: 16, alignItems: 'center', marginTop: 12 },
+    input: { backgroundColor: colors.surface, padding: 18, borderRadius: 32, fontSize: 15, borderWidth: 1, borderColor: colors.border },
+    submitBtn: { backgroundColor: colors.primary, paddingVertical: 18, borderRadius: 32, alignItems: 'center', marginTop: 12 },
     submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
     disclaimer: { fontSize: 12, color: colors.muted, textAlign: 'center', lineHeight: 18 },
 });

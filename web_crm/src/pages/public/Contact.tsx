@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Phone, Building2, MapPin, User, Loader2 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { Logo } from '@/components/ui/Logo';
+import { PublicHeader } from '@/components/public/PublicHeader';
 
 export default function Contact() {
     const [form, setForm] = useState({
@@ -48,22 +47,7 @@ export default function Contact() {
 
     return (
         <div className="min-h-screen bg-white font-sans selection:bg-primary/20 overflow-x-hidden">
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100/50">
-                <div className="max-w-5xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-3 group">
-                        <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-                            K
-                        </div>
-                        <span className="text-xl font-black tracking-tighter"><Logo /></span>
-                    </Link>
-                    <Link
-                        to="/pricing"
-                        className="hidden sm:inline-flex items-center text-xs font-black uppercase tracking-[0.2em] text-slate-500 hover:text-primary transition-colors"
-                    >
-                        Тарифы
-                    </Link>
-                </div>
-            </nav>
+            <PublicHeader active="contact" />
 
             <main className="pt-32 pb-20 px-6">
                 <div className="max-w-5xl mx-auto grid gap-12 lg:grid-cols-[1.1fr,0.9fr] items-start">

@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Save, Camera, LogOut, Shield, Sparkles } from 'lucide-react';
+import { User, Mail, Phone, Save, Camera, LogOut } from 'lucide-react';
 import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
-import { motion } from 'framer-motion';
 
 export default function GuestProfile() {
     const { user, logout } = useAuth();
@@ -37,142 +36,170 @@ export default function GuestProfile() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-12 pb-20">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                        <Shield size={14} /> Account Security
-                    </div>
-                    <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">Profile Settings</h1>
+        <div className="max-w-5xl mx-auto pb-20">
+            <header className="mb-10 flex justify-between items-end">
+                <div>
+                    <h1 className="text-4xl font-black text-brand-green tracking-tight">Profile Settings</h1>
+                    <p className="text-slate-500 mt-2 font-medium">Manage your dining experience and personal preferences</p>
                 </div>
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-rose-200/50"
-                >
-                    <LogOut size={18} /> Sign Out
-                </button>
-            </div>
+                <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-3 bg-gold/10 px-4 py-2 rounded-full">
+                        <span className="text-gold font-bold text-sm tracking-wide">GOLD TIER MEMBER</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-5 py-2 rounded-xl border border-rose-200 text-rose-600 font-bold text-sm hover:bg-rose-50 transition-colors"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                    </button>
+                </div>
+            </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                <div className="lg:col-span-1 space-y-8">
-                    <div className="bg-white dark:bg-[#0D0D1F] border border-slate-100 dark:border-white/5 rounded-[3rem] p-10 text-center shadow-2xl shadow-slate-100/50 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-2xl rounded-full -mr-8 -mt-8"></div>
+            <div className="grid gap-8">
+                <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                        <div className="relative">
+                            <div className="w-32 h-32 rounded-full object-cover ring-4 ring-gold/20 bg-slate-100 flex items-center justify-center text-3xl font-black text-brand-green">
+                                {formData.username?.charAt(0).toUpperCase()}
+                            </div>
+                            <button
+                                type="button"
+                                className="absolute bottom-0 right-0 bg-brand-green text-white p-2 rounded-full shadow-lg border-4 border-white hover:bg-brand-green/90 transition-colors"
+                                aria-label="Change photo"
+                            >
+                                <Camera className="w-4 h-4" />
+                            </button>
+                        </div>
 
-                        <div className="relative z-10 space-y-6">
-                            <div className="relative mx-auto w-32 h-32">
-                                <div className="w-full h-full rounded-[2.5rem] bg-slate-50 dark:bg-white/5 border-4 border-white dark:border-[#0D0D1F] shadow-2xl overflow-hidden flex items-center justify-center">
-                                    <span className="text-4xl font-black text-primary">
-                                        {formData.username?.charAt(0).toUpperCase()}
-                                    </span>
-                                </div>
-                                <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary text-white rounded-xl shadow-xl flex items-center justify-center hover:scale-110 transition-transform">
-                                    <Camera size={18} />
+                        <div className="flex-1 text-center md:text-left">
+                            <h2 className="text-2xl font-bold text-brand-green">{formData.username || 'Guest'}</h2>
+                            <p className="text-slate-500">Member since 2026 • {formData.email || '—'}</p>
+                            <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
+                                <button type="button" className="px-6 py-2 bg-brand-green text-white rounded-xl font-bold text-sm hover:opacity-90 transition-opacity">
+                                    Change Photo
+                                </button>
+                                <button type="button" className="px-6 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
+                                    Remove
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </section>
 
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{formData.username}</h3>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Premium Member</p>
-                            </div>
-
-                            <div className="pt-6 border-t border-slate-50 dark:border-white/5 grid grid-cols-2 gap-4">
-                                <div className="text-center">
-                                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Visits</p>
-                                    <p className="font-black text-slate-900 dark:text-white">12</p>
+                <form onSubmit={handleSave} className="space-y-8">
+                    <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-2 mb-6">
+                            <h2 className="text-xl font-bold text-brand-green uppercase tracking-wider text-sm">Personal Information</h2>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-600">Full Name</label>
+                                <div className="relative">
+                                    <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        className="w-full pl-10 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
+                                        type="text"
+                                        value={formData.username}
+                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                    />
                                 </div>
-                                <div className="text-center border-l border-slate-50 dark:border-white/5">
-                                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Rank</p>
-                                    <p className="font-black text-slate-900 dark:text-white">#12</p>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-600">Email Address</label>
+                                <div className="relative">
+                                    <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        className="w-full pl-10 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-600">Phone Number</label>
+                                <div className="relative">
+                                    <Phone className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        className="w-full pl-10 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
+                                        type="tel"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        placeholder="+7 (777) 000-00-00"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-600">Location</label>
+                                <input
+                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
+                                    type="text"
+                                    defaultValue="Manhattan, New York"
+                                />
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-2 mb-6">
+                            <h2 className="text-xl font-bold text-brand-green uppercase tracking-wider text-sm">Dining Preferences</h2>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <p className="font-bold text-slate-700 text-sm">Dietary Restrictions</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <span className="bg-brand-green/10 text-brand-green px-3 py-1 rounded-full text-xs font-bold border border-brand-green/20">Vegetarian</span>
+                                    <span className="bg-brand-green/10 text-brand-green px-3 py-1 rounded-full text-xs font-bold border border-brand-green/20">Nut Allergy</span>
+                                    <button type="button" className="bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-xs font-bold border border-dashed border-slate-300 hover:border-gold transition-colors">
+                                        + Add New
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <p className="font-bold text-slate-700 text-sm">Preferred Cuisines</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <span className="bg-gold/10 text-gold px-3 py-1 rounded-full text-xs font-bold border border-gold/20">Italian</span>
+                                    <span className="bg-gold/10 text-gold px-3 py-1 rounded-full text-xs font-bold border border-gold/20">Japanese Fusion</span>
+                                    <span className="bg-gold/10 text-gold px-3 py-1 rounded-full text-xs font-bold border border-gold/20">French</span>
+                                    <button type="button" className="bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-xs font-bold border border-dashed border-slate-300 hover:border-gold transition-colors">
+                                        + Add New
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div className="bg-primary/5 border border-primary/10 rounded-[2.5rem] p-8 space-y-6">
-                        <div className="flex items-center gap-3 text-primary">
-                            <Sparkles size={20} className="fill-primary" />
-                            <h4 className="text-xs font-black uppercase tracking-widest">Rewards Program</h4>
+                    <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-2 mb-6">
+                            <h2 className="text-xl font-bold text-brand-green uppercase tracking-wider text-sm">Security & Privacy</h2>
                         </div>
-                        <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-relaxed uppercase tracking-widest">
-                            You are 3 visits away from becoming an <span className="text-primary">Elite Partner</span>.
-                        </p>
-                        <div className="w-full h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: '70%' }}
-                                className="h-full bg-primary"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="lg:col-span-2">
-                    <div className="bg-white dark:bg-[#0D0D1F] border border-slate-100 dark:border-white/5 rounded-[3rem] p-10 md:p-14 shadow-2xl shadow-slate-100/50">
-                        <form onSubmit={handleSave} className="space-y-12">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Identity</label>
-                                    <div className="relative group">
-                                        <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-                                        <input
-                                            type="text"
-                                            value={formData.username}
-                                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                            className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-white/5 border border-transparent focus:bg-white dark:focus:bg-[#0D0D1F] focus:border-primary rounded-[1.5rem] text-sm font-black transition-all outline-none shadow-sm placeholder:text-slate-300"
-                                        />
-                                    </div>
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-4 bg-slate-50 rounded-xl">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white rounded-lg shadow-sm">
+                                    <span className="text-slate-400 text-sm font-black">•••</span>
                                 </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Primary Email</label>
-                                    <div className="relative group">
-                                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-                                        <input
-                                            type="email"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-white/5 border border-transparent focus:bg-white dark:focus:bg-[#0D0D1F] focus:border-primary rounded-[1.5rem] text-sm font-black transition-all outline-none shadow-sm"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Number</label>
-                                    <div className="relative group">
-                                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-                                        <input
-                                            type="tel"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                            placeholder="+7 (777) 000-00-00"
-                                            className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-white/5 border border-transparent focus:bg-white dark:focus:bg-[#0D0D1F] focus:border-primary rounded-[1.5rem] text-sm font-black transition-all outline-none shadow-sm"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Language Preference</label>
-                                    <select className="w-full px-6 py-5 bg-slate-50 dark:bg-white/5 border border-transparent focus:bg-white dark:focus:bg-[#0D0D1F] focus:border-primary rounded-[1.5rem] text-sm font-black transition-all outline-none shadow-sm appearance-none">
-                                        <option>English (US)</option>
-                                        <option>Russian</option>
-                                        <option>Kazakh</option>
-                                    </select>
+                                <div>
+                                    <p className="font-bold text-slate-700">Password</p>
+                                    <p className="text-xs text-slate-500 font-medium">Last updated 3 months ago</p>
                                 </div>
                             </div>
+                            <button type="button" className="w-full md:w-auto px-6 py-2 border-2 border-brand-green text-brand-green rounded-xl font-bold text-sm hover:bg-brand-green hover:text-white transition-all">
+                                Change Password
+                            </button>
+                        </div>
+                    </section>
 
-                            <div className="pt-10 border-t border-slate-50 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
-                                <div className="flex items-center gap-2 text-slate-400">
-                                    <Shield size={16} />
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Your data is encrypted and secure</span>
-                                </div>
-                                <Button
-                                    type="submit"
-                                    isLoading={loading}
-                                    className="w-full sm:w-auto bg-[#140B2D] hover:bg-primary text-white font-black px-12 py-5 rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all"
-                                >
-                                    <Save size={18} className="mr-2" /> Save Profile
-                                </Button>
-                            </div>
-                        </form>
+                    <div className="flex justify-end gap-4 pb-12">
+                        <button type="button" className="px-8 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors">
+                            Discard Changes
+                        </button>
+                        <Button type="submit" isLoading={loading} className="px-8 py-3 bg-brand-green text-white rounded-xl font-black shadow-lg shadow-brand-green/20 hover:brightness-110 transition-all">
+                            <Save className="w-4 h-4 mr-2" /> Save Changes
+                        </Button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );

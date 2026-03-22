@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     receiptCard: {
         width: '100%',
         backgroundColor: colors.surface,
-        borderRadius: 24,
+        borderRadius: 40,
         padding: 24,
         borderWidth: 1,
         borderColor: colors.border,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         backgroundColor: 'rgba(0,0,0,0.03)',
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 32,
         marginTop: 24,
         gap: 12,
     },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     payBtn: {
         backgroundColor: colors.primary,
         paddingVertical: 18,
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     applePayBtn: {
         backgroundColor: '#000000',
         paddingVertical: 16,
-        borderRadius: 16,
+        borderRadius: 32,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
     card: {
         flex: 1,
         backgroundColor: '#f8fafc',
-        borderRadius: 24,
+        borderRadius: 40,
         padding: 20,
         borderWidth: 1,
         borderColor: '#f1f5f9',

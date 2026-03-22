@@ -4,13 +4,45 @@
 
 @layer base {
   :root {
-    --primary: 79 70 229;
-    --primary-foreground: 255 255 255;
+    --accent-rgb: 26 60 52;
+    --accent-weak-rgb: 26 60 52;
+  }
+
+  .theme-crm {
+    --accent-rgb: 79 70 229;
+    --accent-weak-rgb: 79 70 229;
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased selection:bg-indigo-600/10 selection:text-indigo-600;
+    @apply text-slate-900 antialiased;
+    background-color: #FDFBF7;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    background-color: rgb(var(--accent-weak-rgb) / 0.12);
+    color: rgb(var(--accent-rgb));
+  }
+
+  /* Ensure Material Symbols render as icons, not raw text. */
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 1em;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
   }
 
   * {
@@ -19,7 +51,10 @@
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-indigo-600/20 ring-offset-2;
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgb(var(--accent-rgb) / 0.18),
+      0 0 0 4px rgb(255 255 255 / 1);
   }
 }
 
@@ -37,14 +72,56 @@
     scrollbar-width: none;
   }
 
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  /* Global scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-transparent;
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400 dark:bg-slate-600;
+  }
+
+  /* Landing Page Overhaul Custom Styles */
+  .nav-link {
+    position: relative;
+    transition: color 0.3s ease;
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -4px;
+    left: 0;
+    background-color: #C5A059;
+    transition: width 0.3s ease;
+  }
+
+  .nav-link:hover::after {
+    width: 100%;
+  }
+
+  .hero-gradient {
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+  }
+
+  .restaurant-card {
+    transition: transform 0.3s ease;
+  }
+
+  .restaurant-card:hover {
+    transform: translateY(-8px);
   }
 }

@@ -30,7 +30,16 @@ export function useWebSocket({
     onMessageRef.current = onMessage;
 
     const getWsUrl = useCallback(() => {
-        const token = localStorage.getItem('accessToken');
+        let token: string | null = null;
+        try {
+            token = localStorage.getItem('accessToken');
+        } catch {
+            try {
+                token = sessionStorage.getItem('accessToken');
+            } catch {
+                token = null;
+            }
+        }
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.hostname}:8000`;
         const normalized = url.replace(/^\/+/, '');

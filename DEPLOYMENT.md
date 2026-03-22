@@ -19,11 +19,17 @@ cd kezdes
 cp backend/.env.example backend/.env
 # Edit backend/.env with production values
 
+# Build Web CRM (static)
+cd web_crm
+npm install
+npm run build
+cd ..
+
 # Deploy
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # Verify
-curl https://api.kezdes.kz/api/v1/health/live/
+curl http://localhost/api/v1/health/live/
 ```
 
 ---

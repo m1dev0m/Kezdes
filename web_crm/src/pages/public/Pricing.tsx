@@ -4,34 +4,13 @@ import { Zap } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { PRICING_PLANS } from './pricing/pricingPlans';
 import { PricingCard } from './pricing/PricingCard';
+import { PublicHeader } from '@/components/public/PublicHeader';
 
 export default function Pricing() {
 
     return (
         <div className="min-h-screen bg-white font-sans selection:bg-primary/20 overflow-x-hidden">
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-100/50 transition-all duration-300">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-3 group">
-                        <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-                            K
-                        </div>
-                        <span className="text-xl font-black tracking-tighter"><Logo /></span>
-                    </Link>
-
-                    <div className="hidden md:flex items-center gap-10">
-                        <Link to="/#features" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-all">Возможности</Link>
-                        <Link to="/pricing" className="text-xs font-black uppercase tracking-widest text-primary transition-all">Цены</Link>
-                        <Link to="/#crm" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-all">Корпорациям</Link>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <Link to="/login" className="hidden sm:block text-xs font-black uppercase tracking-widest text-slate-900 hover:text-primary transition-all px-6 py-3 border border-slate-100 rounded-xl hover:bg-slate-50">Войти</Link>
-                        <Link to="/contact" className="bg-brand-dark text-white text-xs font-black uppercase tracking-widest px-8 py-4 rounded-xl shadow-xl shadow-brand-dark/20 hover:scale-105 active:scale-[0.98] transition-all">
-                            Связаться с нами
-                        </Link>
-                    </div>
-                </div>
-            </nav>
+            <PublicHeader active="pricing" />
 
              <section className="pt-48 pb-16 px-6 text-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:32px_32px] opacity-30"></div>
@@ -41,7 +20,7 @@ export default function Pricing() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-10 shadow-sm border border-primary/5"
+                        className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary/5 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-10 shadow-sm border border-primary/5"
                     >
                         <Zap size={14} className="fill-primary" /> 14 ДНЕЙ БЕСПЛАТНО
                     </motion.div>
@@ -57,7 +36,7 @@ export default function Pricing() {
                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 shadow-sm">
                              14 дней бесплатно
                          </span>
-                         <span className="inline-flex items-center rounded-full border border-primary/15 bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary shadow-sm">
+                         <span className="inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary shadow-sm">
                              Экономия до 35%
                          </span>
                          <span className="inline-flex items-center rounded-full border border-emerald-500/15 bg-emerald-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 shadow-sm">
@@ -145,7 +124,11 @@ export default function Pricing() {
                 </div>
 
                 <div className="max-w-7xl mx-auto border-t border-slate-100 pt-10 flex flex-col sm:flex-row items-center justify-between gap-6 opacity-60">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">© 2026 KEZDES SAAS. ВСЕ ПРАВА ЗАЩИЩЕНЫ.</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <span>© 2026</span>
+                        <span className="inline-flex items-center"><Logo className="h-4" /></span>
+                        <span>SAAS. ВСЕ ПРАВА ЗАЩИЩЕНЫ.</span>
+                    </p>
                     <div className="flex gap-10 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                         <a href="#" className="hover:text-primary transition-all">Приватность</a>
                         <a href="#" className="hover:text-primary transition-all">Условия</a>

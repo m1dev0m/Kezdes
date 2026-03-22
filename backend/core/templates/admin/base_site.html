@@ -1,0 +1,13 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block branding %}
+<h1 id="site-name">
+  <a href="{% url 'admin:index' %}">
+    <img src="{% static 'core/img/kezdes-crm-logo.png' %}" alt="Kezdes CRM" style="height:32px;vertical-align:middle;margin-right:10px;">
+    Kezdes CRM
+  </a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

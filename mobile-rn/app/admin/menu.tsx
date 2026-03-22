@@ -165,7 +165,7 @@ export default function AdminMenuScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#ffffff' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 20 },
-    backBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+    backBtn: { width: 44, height: 44, borderRadius: 40, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
     headerTitle: { fontSize: 24, fontWeight: '900', color: '#000', fontStyle: 'italic', marginLeft: 12, flex: 1 },
     headerRight: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     label: { fontSize: 10, fontWeight: '900', color: '#94a3b8', letterSpacing: 0.5, marginBottom: 8 },
     input: {
         backgroundColor: '#f8fafc',
-        borderRadius: 12,
+        borderRadius: 40,
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 14,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     saveBtn: {
         marginTop: 12,
         backgroundColor: colors.primary,
-        borderRadius: 16,
+        borderRadius: 32,
         paddingVertical: 16,
         alignItems: 'center',
     },

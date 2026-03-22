@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.1,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 32,
     },
     statusBadgeText: {
         color: '#ffffff',
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     placeIconBox: {
         width: 40,
         height: 40,
-        borderRadius: 8,
+        borderRadius: 32,
         backgroundColor: '#8b5cf6',
         justifyContent: 'center',
         alignItems: 'center',
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: 'rgba(67, 97, 238, 0.05)',
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         marginTop: 32,
         marginBottom: 8,
     },
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     },
     receiptContainer: {
         backgroundColor: '#f8fafc',
-        borderRadius: 12,
+        borderRadius: 40,
         padding: 16,
         borderWidth: 1,
         borderColor: '#f1f5f9',

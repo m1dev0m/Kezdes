@@ -191,7 +191,7 @@ export default function GlobalAdmin() {
                                     >
                                         <div className="flex flex-col lg:flex-row lg:items-center gap-6">
                                             <div className="flex items-center gap-5 flex-1">
-                                                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-black text-xl shrink-0">
+                                                <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center text-primary font-black text-xl shrink-0">
                                                     {req.name?.charAt(0) || 'R'}
                                                 </div>
                                                 <div className="space-y-1 min-w-0">
@@ -250,7 +250,7 @@ export default function GlobalAdmin() {
                         ) : stats ? (
                             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                                 {[
-                                    { label: t('globalAdmin.totalRestaurants'), value: stats.total_restaurants, icon: Store, color: 'text-primary bg-primary/10' },
+                                    { label: t('globalAdmin.totalRestaurants'), value: stats.total_restaurants, icon: Store, color: 'text-primary bg-primary/5' },
                                     { label: t('globalAdmin.activeRestaurants', { defaultValue: 'Активные рестораны' }), value: stats.active_restaurants, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
                                     { label: t('globalAdmin.activeUsers'), value: stats.total_users, icon: Users, color: 'text-purple-600 bg-purple-50' },
                                     { label: t('globalAdmin.totalBookings'), value: stats.total_bookings, icon: CalendarDays, color: 'text-blue-600 bg-blue-50' },

@@ -80,7 +80,7 @@ export default function TabLayout() {
                                         right: -4,
                                         minWidth: 16,
                                         height: 16,
-                                        borderRadius: 8,
+                                        borderRadius: 32,
                                         backgroundColor: '#ef4444',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -111,7 +111,7 @@ export default function TabLayout() {
                         <View style={{
                             width: 48,
                             height: 48,
-                            borderRadius: 24,
+                            borderRadius: 40,
                             backgroundColor: '#0047FF',
                             justifyContent: 'center',
                             alignItems: 'center',

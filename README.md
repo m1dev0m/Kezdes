@@ -48,10 +48,14 @@ This brings up:
 ```
 cd backend
 python -m venv .venv
-.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
+# Windows (PowerShell):
+# .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py runserver 0.0.0.0:8000
+# ASGI (WS enabled):
+./run_dev.sh
 ```
 
 Run tests:

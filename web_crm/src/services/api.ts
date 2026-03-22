@@ -4,6 +4,44 @@ interface RetryableRequestConfig extends InternalAxiosRequestConfig {
     _retry?: boolean;
 }
 
+const safeStorage = {
+    getItem(key: string): string | null {
+        try {
+            return localStorage.getItem(key);
+        } catch {
+            try {
+                return sessionStorage.getItem(key);
+            } catch {
+                return null;
+            }
+        }
+    },
+    setItem(key: string, value: string) {
+        try {
+            localStorage.setItem(key, value);
+            return;
+        } catch {
+            try {
+                sessionStorage.setItem(key, value);
+            } catch {
+                return;
+            }
+        }
+    },
+    removeItem(key: string) {
+        try {
+            localStorage.removeItem(key);
+        } catch {
+            // ignore
+        }
+        try {
+            sessionStorage.removeItem(key);
+        } catch {
+            // ignore
+        }
+    },
+};
+
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
     headers: {
@@ -14,7 +52,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('accessToken');
+        const token = safeStorage.getItem('accessToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -44,24 +82,30 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
             try {
-                const refreshToken = localStorage.getItem('refreshToken');
+                const refreshToken = safeStorage.getItem('refreshToken');
                 if (!refreshToken) throw new Error('No refresh token');
 
                 const res = await axios.post(`${api.defaults.baseURL}/auth/login/refresh/`, { refresh: refreshToken });
 
-                localStorage.setItem('accessToken', res.data.access);
+                safeStorage.setItem('accessToken', res.data.access);
                 if (res.data.refresh) {
-                    localStorage.setItem('refreshToken', res.data.refresh);
+                    safeStorage.setItem('refreshToken', res.data.refresh);
                 }
 
                 originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
                 return api(originalRequest);
             } catch (err) {
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
+                safeStorage.removeItem('accessToken');
+                safeStorage.removeItem('refreshToken');
 
-                const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
-                if (!isAuthPage) {
+                const path = window.location.pathname || '';
+                const isPublicAuthLikePage =
+                    path === '/login' ||
+                    path === '/register' ||
+                    path.startsWith('/register-restaurant') ||
+                    path.startsWith('/setup-restaurant');
+
+                if (!isPublicAuthLikePage) {
                     window.location.href = '/login';
                 }
                 return Promise.reject(err);

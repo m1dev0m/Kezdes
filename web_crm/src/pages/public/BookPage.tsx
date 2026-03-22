@@ -1,34 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CalendarDays, Users, User, Phone, Mail, FileText, Loader2, ArrowLeft, CheckCircle2, UtensilsCrossed, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { CalendarDays, Users, User, Phone, Mail, FileText, Loader2, ArrowLeft, Plus, Minus, Utensils, Gift, Briefcase, Heart, GlassWater, Sparkles } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import TableSelection from '@/components/TableSelection';
+import { Logo } from '@/components/ui/Logo';
 
-interface MenuItem {
-    id: number;
-    name: string;
-    description: string;
-    price: string;
-    image_url: string;
-    is_available: boolean;
-    category?: number;
-}
-
-interface MenuCategory {
-    id: number;
-    name: string;
-    items: MenuItem[];
-}
-
-interface PreOrderItem {
-    menu_item_id: number;
-    name: string;
-    price: number;
-    quantity: number;
-}
+interface MenuItem { id: number; name: string; description: string; price: string; image_url: string; is_available: boolean; category?: number; }
+interface MenuCategory { id: number; name: string; items: MenuItem[]; }
+interface PreOrderItem { menu_item_id: number; name: string; price: number; quantity: number; }
 
 export default function BookPage() {
     const { id } = useParams();
@@ -53,11 +35,7 @@ export default function BookPage() {
     const [isTableSelectorOpen, setIsTableSelectorOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    const [showWaitlist, setShowWaitlist] = useState(false);
-    const [joiningWaitlist, setJoiningWaitlist] = useState(false);
 
-    // Food pre-ordering
     const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
     const [preOrder, setPreOrder] = useState<PreOrderItem[]>([]);
     const [showMenu, setShowMenu] = useState(false);
@@ -65,12 +43,10 @@ export default function BookPage() {
     const loadMenu = useCallback(async () => {
         try {
             const res = await api.get(`/restaurants/${id}/menu/`);
-            const payload = res.data as { categories?: MenuCategory[]; results?: MenuCategory[] } | MenuCategory[];
-            const categories: MenuCategory[] = Array.isArray(payload) ? payload : payload.categories || payload.results || [];
+            const payload = res.data;
+            const categories = Array.isArray(payload) ? payload : (payload.categories || payload.results || []);
             setMenuCategories(categories);
-        } catch {
-            // Menu not available — that's fine
-        }
+        } catch { }
     }, [id]);
 
     useEffect(() => { loadMenu(); }, [loadMenu]);
@@ -78,9 +54,7 @@ export default function BookPage() {
     const addToPreOrder = (item: MenuItem) => {
         setPreOrder(prev => {
             const existing = prev.find(p => p.menu_item_id === item.id);
-            if (existing) {
-                return prev.map(p => p.menu_item_id === item.id ? { ...p, quantity: p.quantity + 1 } : p);
-            }
+            if (existing) return prev.map(p => p.menu_item_id === item.id ? { ...p, quantity: p.quantity + 1 } : p);
             return [...prev, { menu_item_id: item.id, name: item.name, price: Number(item.price), quantity: 1 }];
         });
     };
@@ -88,9 +62,7 @@ export default function BookPage() {
     const removeFromPreOrder = (itemId: number) => {
         setPreOrder(prev => {
             const existing = prev.find(p => p.menu_item_id === itemId);
-            if (existing && existing.quantity > 1) {
-                return prev.map(p => p.menu_item_id === itemId ? { ...p, quantity: p.quantity - 1 } : p);
-            }
+            if (existing && existing.quantity > 1) return prev.map(p => p.menu_item_id === itemId ? { ...p, quantity: p.quantity - 1 } : p);
             return prev.filter(p => p.menu_item_id !== itemId);
         });
     };
@@ -98,12 +70,12 @@ export default function BookPage() {
     const preOrderTotal = preOrder.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const eventTypes = [
-        { id: 'dinner', label: t('booking.occasion_dinner', { defaultValue: 'Ужин' }), icon: '🍽️' },
-        { id: 'birthday', label: t('booking.occasion_birthday', { defaultValue: 'День рождения' }), icon: '🎂' },
-        { id: 'business', label: t('booking.occasion_business', { defaultValue: 'Бизнес встреча' }), icon: '💼' },
-        { id: 'date', label: t('booking.occasion_date', { defaultValue: 'Свидание' }), icon: '❤️' },
-        { id: 'banquet', label: t('booking.occasion_banquet', { defaultValue: 'Банкет' }), icon: '🥂' },
-        { id: 'other', label: t('booking.occasion_other', { defaultValue: 'Другое' }), icon: '✨' },
+        { id: 'dinner', label: t('booking.occasion_dinner', { defaultValue: 'Ужин' }), icon: <Utensils className="w-4 h-4" /> },
+        { id: 'birthday', label: t('booking.occasion_birthday', { defaultValue: 'День рождения' }), icon: <Gift className="w-4 h-4" /> },
+        { id: 'business', label: t('booking.occasion_business', { defaultValue: 'Бизнес встреча' }), icon: <Briefcase className="w-4 h-4" /> },
+        { id: 'date', label: t('booking.occasion_date', { defaultValue: 'Свидание' }), icon: <Heart className="w-4 h-4" /> },
+        { id: 'banquet', label: t('booking.occasion_banquet', { defaultValue: 'Банкет' }), icon: <GlassWater className="w-4 h-4" /> },
+        { id: 'other', label: t('booking.occasion_other', { defaultValue: 'Другое' }), icon: <Sparkles className="w-4 h-4" /> },
     ];
 
     const minDate = new Date().toISOString().split('T')[0];
@@ -112,7 +84,6 @@ export default function BookPage() {
         e.preventDefault();
         setLoading(true);
         setError('');
-        setFieldErrors({});
 
         const finalPhone = user?.phone || formData.user_phone;
         const phoneRegex = /^\+?[0-9\s\-()]{10,}$/;
@@ -123,13 +94,10 @@ export default function BookPage() {
         }
 
         try {
-            const userEmail = user ? (user.email || '') : formData.user_email;
-
-            // Build special_requests with pre-order
             let finalRequests = formData.special_requests;
             if (preOrder.length > 0) {
                 const preOrderText = preOrder.map(p => `${p.name} x${p.quantity} (₸${(p.price * p.quantity).toLocaleString()})`).join(', ');
-                finalRequests = `${finalRequests}\n\n🍽️ Предзаказ еды: ${preOrderText}. Итого: ₸${preOrderTotal.toLocaleString()}`;
+                finalRequests = `${finalRequests}\n\nПредзаказ еды: ${preOrderText}. Итого: ₸${preOrderTotal.toLocaleString()}`;
             }
 
             const payload = {
@@ -139,110 +107,43 @@ export default function BookPage() {
                 guests: parseInt(formData.guests, 10),
                 user_name: user ? (user.first_name || user.username || '') : formData.user_name,
                 user_phone: user ? (user.phone || '') : formData.user_phone,
-                ...(userEmail ? { user_email: userEmail } : {}),
-                special_requests: finalRequests.trim(),
+                user_email: user ? (user.email || '') : formData.user_email,
+                special_requests: finalRequests,
                 event_type: formData.event_type,
-                event_title: formData.event_title,
-                budget: formData.budget ? parseInt(formData.budget, 10) : null,
-                table_id: formData.table_id,
-                pre_order_items: preOrder.length > 0 ? preOrder : undefined,
+                table: formData.table_id || null
             };
-            await api.post('/bookings/', {
-                ...payload,
-            });
 
-            navigate(`/restaurant/${id}/success`);
+            await api.post('/reservations/', payload);
+            toast.success(t('booking.success'));
+            navigate(-1);
         } catch (err: any) {
-            const data = err?.response?.data;
-            const detail = data?.error?.message
-                || data?.detail
-                || (typeof data === 'string' ? data : null)
-                || t('booking.errorCreating');
-            setError(detail);
-            if (data && typeof data === 'object') {
-                const fe: Record<string, string> = {};
-                ['date', 'time', 'guests', 'table_id'].forEach((key) => {
-                    const v = (data as any)[key];
-                    if (Array.isArray(v) && v.length > 0) {
-                        fe[key] = String(v[0]);
-                    } else if (typeof v === 'string') {
-                        fe[key] = v;
-                    }
-                });
-                setFieldErrors(fe);
-            }
-            // If error is about capacity/tables, offer the waitlist
-            if (
-                detail.toLowerCase().includes('стол') ||
-                detail.toLowerCase().includes('table') ||
-                detail.toLowerCase().includes('нет мест') ||
-                detail.toLowerCase().includes('capacity') ||
-                err?.response?.status === 409
-            ) {
-                setShowWaitlist(true);
-            }
+            setError(err.response?.data?.detail || t('errors.validationError'));
         } finally {
             setLoading(false);
         }
     };
 
-    const handleJoinWaitlist = async () => {
-        setJoiningWaitlist(true);
-        try {
-            await api.post('/bookings/join_waitlist/', {
-                restaurant: parseInt(id || '0', 10),
-                date: formData.date,
-                time: formData.time,
-                guests: parseInt(formData.guests, 10),
-            });
-            toast.success(t('booking.joinedWaitlist', { defaultValue: 'Вы добавлены в лист ожидания! Мы уведомим вас, когда место освободится.' }));
-            setShowWaitlist(false);
-            setError('');
-        } catch (err: any) {
-            const detail = err?.response?.data?.detail || t('booking.waitlistError', { defaultValue: 'Не удалось встать в очередь.' });
-            toast.error(detail);
-        } finally {
-            setJoiningWaitlist(false);
-        }
-    };
-
-    const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-    const [fetchingSlots, setFetchingSlots] = useState(false);
-
-    const fetchSlots = async (date: string, guests: string) => {
-        if (!id || !date || !guests) return;
-        setFetchingSlots(true);
-        try {
-            const res = await api.get(`/bookings/available_slots/?restaurant_id=${id}&date=${date}&guests=${guests}`);
-            setAvailableSlots(res.data.slots || []);
-            if (res.data.slots?.length > 0 && !res.data.slots.includes(formData.time)) {
-                setFormData(p => ({ ...p, time: res.data.slots[0] }));
-            }
-        } catch {
-            toast.error(t('booking.failedToLoadSlots'));
-        } finally {
-            setFetchingSlots(false);
-        }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        const nextData = { ...formData, [name]: value };
-        setFormData(nextData);
-
-        if (name === 'date' || name === 'guests') {
-            fetchSlots(nextData.date, nextData.guests);
-        }
-    };
-
     return (
-        <div className="max-w-3xl mx-auto py-8 px-4">
-            <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-8 transition-colors text-sm font-black uppercase tracking-widest group">
-                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                {t('booking.backToRestaurant')}
-            </button>
+        <div className="min-h-screen bg-[#f8f6f6] font-sans text-slate-900">
+            {/* Header */}
+            <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-[#f8f6f6]/80 backdrop-blur-md">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex h-16 items-center justify-between">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-[#1B4332] transition-colors"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            {t('common.back', { defaultValue: 'Назад' })}
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <Logo variant="text" className="text-[#1B4332]" />
+                        </div>
+                        <div className="w-20" />
+                    </div>
+                </div>
+            </header>
 
-            {/* Table Selection Modal */}
             <TableSelection
                 restaurantId={id || ''}
                 date={formData.date}
@@ -253,335 +154,335 @@ export default function BookPage() {
                 onSelect={(tableId) => {
                     setFormData(p => ({ ...p, table_id: tableId }));
                     setIsTableSelectorOpen(false);
-                    toast.success(`Table #${tableId} selected`);
+                    toast.success(`Стол #${tableId} выбран`);
                 }}
             />
 
-            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-600/5 border border-slate-100 overflow-hidden">
-                <div className="bg-white p-12 text-center text-slate-900 relative h-48 flex flex-col justify-center items-center border-b border-slate-50">
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #4f46e5 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-                    <h1 className="text-3xl font-black tracking-tight mb-2 italic">{t('booking.title')}</h1>
-                    <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">{t('booking.subtitle')}</p>
-                </div>
-
+            <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
                 {error && (
-                    <div className="mx-12 mt-8 p-4 bg-rose-50 text-rose-700 rounded-2xl text-xs font-black uppercase tracking-widest border border-rose-100 flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                        {error}
+                    <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-red-700">
+                        <p className="text-sm font-medium">{error}</p>
                     </div>
                 )}
 
-                {showWaitlist && user && (
-                    <div className="mx-12 mt-4 p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
-                        <p className="text-sm font-bold text-indigo-800 mb-3">
-                            {t('booking.waitlistOffer', { defaultValue: 'Мест на это время нет, но вы можете встать в лист ожидания — мы уведомим вас, если место освободится.' })}
-                        </p>
-                        <button
-                            type="button"
-                            onClick={handleJoinWaitlist}
-                            disabled={joiningWaitlist}
-                            className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                        >
-                            {joiningWaitlist
-                                ? t('booking.joining', { defaultValue: 'Добавляем...' })
-                                : t('booking.joinWaitlist', { defaultValue: '🔔 Встать в лист ожидания' })
-                            }
-                        </button>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="p-12 space-y-12">
-                    <div className="space-y-8">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-600/20 italic">1</div>
-                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs italic">{t('booking.occasion')}</h3>
+                <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
+                    {/* Left: Steps */}
+                    <div className="flex-1 space-y-8">
+                        {/* Breadcrumb + Title */}
+                        <div className="space-y-2">
+                            <nav className="flex items-center gap-2 text-sm font-medium text-slate-500 mb-4">
+                                <span className="text-[#1B4332]">Reservation</span>
+                                <span className="text-xs">›</span>
+                                <span>Guest Details</span>
+                                <span className="text-xs">›</span>
+                                <span>Confirmation</span>
+                            </nav>
+                            <h2 className="text-4xl font-black text-slate-900 tracking-tight">Book your table</h2>
+                            <p className="text-slate-600">Join us for an unforgettable dining experience.</p>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            {eventTypes.map(type => (
-                                <button
-                                    key={type.id}
-                                    type="button"
-                                    onClick={() => setFormData(p => ({ ...p, event_type: type.id }))}
-                                    className={`p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 ${formData.event_type === type.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-white hover:border-slate-200'}`}
-                                >
-                                    <span className="text-2xl">{type.icon}</span>
-                                    <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="space-y-8">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-600/20 italic">2</div>
-                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs italic">{t('booking.dateAndGuests')}</h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-3">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('booking.selectDate')}</label>
-                                <div className="relative">
-                                    <CalendarDays className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                    <input
-                                        type="date"
-                                        name="date"
-                                        min={minDate}
-                                        required
-                                        value={formData.date}
-                                        onChange={handleChange}
-                                        className={`w-full bg-slate-50 border-2 rounded-[1.25rem] py-4 pl-12 pr-4 focus:bg-white text-sm font-black transition-all outline-none ${fieldErrors.date ? 'border-rose-400 focus:border-rose-500' : 'border-transparent focus:border-indigo-600'
-                                            }`}
-                                    />
-                                </div>
-                                {fieldErrors.date && (
-                                    <p className="text-[11px] text-rose-500 font-medium mt-1">{fieldErrors.date}</p>
-                                )}
+                        {/* Step 1: Occasion */}
+                        <section className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#1B4332] text-white text-sm font-bold">1</span>
+                                <h3 className="text-xl font-bold">Select Occasion</h3>
                             </div>
-                            <div className="space-y-3">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('booking.partySize')}</label>
-                                <div className="relative">
-                                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                    <select
-                                        name="guests"
-                                        required
-                                        value={formData.guests}
-                                        onChange={handleChange}
-                                        className={`w-full bg-slate-50 border-2 rounded-[1.25rem] py-4 pl-12 pr-4 focus:bg-white text-sm font-black transition-all outline-none appearance-none ${fieldErrors.guests ? 'border-rose-400 focus:border-rose-500' : 'border-transparent focus:border-indigo-600'
-                                            }`}
+                            <div className="flex flex-wrap gap-2">
+                                {eventTypes.map(type => (
+                                    <button
+                                        key={type.id}
+                                        type="button"
+                                        onClick={() => setFormData(p => ({ ...p, event_type: type.id }))}
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
+                                            formData.event_type === type.id
+                                                ? 'border-[#1B4332] bg-[#1B4332]/5 text-[#1B4332]'
+                                                : 'border-slate-200 text-slate-600 hover:border-[#1B4332]/50 hover:text-[#1B4332]'
+                                        }`}
                                     >
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                                            <option key={n} value={n}>{n} {n === 1 ? t('booking.guest') : t('booking.guests')}</option>
-                                        ))}
-                                    </select>
+                                        {type.icon}
+                                        {type.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+
+                        {/* Step 2: Date, Time & Guests */}
+                        <section className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#1B4332] text-white text-sm font-bold">2</span>
+                                <h3 className="text-xl font-bold">Date, Time &amp; Party Size</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-bold text-slate-700">{t('booking.selectDate')}</label>
+                                    <div className="relative">
+                                        <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="date"
+                                            required
+                                            min={minDate}
+                                            value={formData.date}
+                                            onChange={e => setFormData(p => ({ ...p, date: e.target.value, time: '', table_id: null }))}
+                                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332]"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-bold text-slate-700">{t('booking.guests')}</label>
+                                    <div className="relative">
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="number"
+                                            min="1" max="20" required
+                                            value={formData.guests}
+                                            onChange={e => setFormData(p => ({ ...p, guests: e.target.value }))}
+                                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332]"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {formData.date && (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('booking.availableTimes')}</label>
-                                    {fetchingSlots && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
-                                </div>
-                                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                                    {availableSlots.length > 0 ? (
-                                        availableSlots.map(slot => (
+                            {formData.date && (
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-bold text-slate-700">{t('booking.selectTime')}</label>
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                                        {['12:00', '13:00', '14:00', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map(slot => (
                                             <button
                                                 key={slot}
                                                 type="button"
-                                                onClick={() => setFormData(p => ({ ...p, time: slot }))}
-                                                className={`py-3 rounded-xl text-xs font-black transition-all border-2 ${formData.time === slot ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
+                                                onClick={() => setFormData(p => ({ ...p, time: slot, table_id: null }))}
+                                                className={`py-2 px-3 text-sm font-semibold rounded-lg border transition-colors ${
+                                                    formData.time === slot
+                                                        ? 'border-[#1B4332] bg-[#1B4332]/10 text-[#1B4332]'
+                                                        : 'border-slate-200 hover:border-[#1B4332] hover:text-[#1B4332]'
+                                                }`}
                                             >
                                                 {slot}
                                             </button>
-                                        ))
-                                    ) : (
-                                        !fetchingSlots && (
-                                            <div className="col-span-full py-8 text-center bg-slate-50 rounded-[1.25rem] border-2 border-dashed border-slate-200">
-                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('booking.noSlots')}</div>
-                                            </div>
-                                        )
-                                    )}
-                                </div>
-                                {formData.time && (
-                                    <div className="pt-4 space-y-2 mt-6">
-                                        <div className="flex items-center justify-between bg-primary/5 rounded-2xl p-6 border border-primary/10">
-                                            <div>
-                                                <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Specific Table (Optional)</p>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                                    {formData.table_id ? `Table #${formData.table_id} Selected` : 'Any available table will be assigned'}
-                                                </p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsTableSelectorOpen(true)}
-                                                className="bg-white text-primary text-[10px] font-black uppercase tracking-widest py-3 px-6 rounded-xl shadow-md cursor-pointer hover:bg-slate-50 transition-all border-2 border-primary/20"
-                                            >
-                                                {formData.table_id ? 'Change Table' : 'Choose Table'}
-                                            </button>
-                                        </div>
-                                        {fieldErrors.table_id && (
-                                            <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.table_id}</p>
-                                        )}
+                                        ))}
                                     </div>
-                                )}
+                                    <p className="text-xs text-slate-500 italic">Expected duration: 2 hours</p>
+                                </div>
+                            )}
+
+                            {formData.date && formData.time && (
+                                <div className="mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsTableSelectorOpen(true)}
+                                        className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-[#1B4332] text-sm font-semibold text-slate-500 hover:text-[#1B4332] transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        {formData.table_id ? `Стол #${formData.table_id} выбран ✓` : 'Выбрать конкретный стол (опционально)'}
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+
+                        {/* Step 3: Contact Details */}
+                        <section className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#1B4332] text-white text-sm font-bold">3</span>
+                                <h3 className="text-xl font-bold">Guest Details</h3>
                             </div>
-                        )}
-                    </div>
 
-                    <div className="space-y-6 pt-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">2</div>
-                            <h3 className="font-bold text-slate-900 uppercase tracking-wider text-xs">{t('booking.yourDetails')}</h3>
-                        </div>
-
-                        <div className="space-y-6">
                             {user ? (
-                                <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col gap-1.5 mb-2">
-                                    <p className="text-sm font-bold text-slate-900 tracking-tight">{t('booking.bookingAs', { defaultValue: 'Бронирование от имени' })}: {user.first_name || user.username}</p>
-                                    <p className="text-xs font-medium text-slate-500 flex items-center gap-2">
-                                        <Mail className="w-3.5 h-3.5" /> {user.email}
-                                        {user.phone && <><span className="text-slate-300">•</span> <Phone className="w-3.5 h-3.5" /> {user.phone}</>}
-                                    </p>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                                    <p className="font-bold text-slate-800">{user.first_name || user.username}</p>
+                                    <p className="text-sm text-slate-500 mt-1">{user.phone}</p>
+                                    <p className="text-xs text-slate-400 mt-3 uppercase tracking-wider font-semibold">Бронирование от имени аккаунта</p>
                                 </div>
                             ) : (
-                                <>
+                                <div className="grid md:grid-cols-2 gap-5">
                                     <div className="space-y-2">
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">{t('booking.fullName')}</label>
+                                        <label className="block text-sm font-bold text-slate-700">{t('booking.fullName')}</label>
                                         <div className="relative">
-                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                            <input type="text" name="user_name" required value={formData.user_name} onChange={handleChange} placeholder="e.g. John Doe" className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-3.5 pl-12 pr-4 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 text-sm font-bold transition-all outline-none" />
+                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                required
+                                                value={formData.user_name}
+                                                onChange={e => setFormData(p => ({ ...p, user_name: e.target.value }))}
+                                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332]"
+                                            />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">{t('booking.phone')}</label>
-                                            <div className="relative">
-                                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                                <input type="tel" name="user_phone" required value={formData.user_phone} onChange={handleChange} placeholder="+7 (___) ___-__-__" className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-3.5 pl-12 pr-4 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 text-sm font-bold transition-all outline-none" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 text-slate-400">{t('booking.email')}</label>
-                                            <div className="relative">
-                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none" />
-                                                <input type="email" name="user_email" value={formData.user_email} onChange={handleChange} placeholder="john@example.com" className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-3.5 pl-12 pr-4 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 text-sm font-bold transition-all outline-none" />
-                                            </div>
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-slate-700">{t('booking.phoneNumber')}</label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <input
+                                                type="tel"
+                                                required
+                                                placeholder="+7 (___) ___-__-__"
+                                                value={formData.user_phone}
+                                                onChange={e => setFormData(p => ({ ...p, user_phone: e.target.value }))}
+                                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332]"
+                                            />
                                         </div>
                                     </div>
-                                </>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <label className="block text-sm font-bold text-slate-700">{t('booking.email')} (опционально)</label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <input
+                                                type="email"
+                                                value={formData.user_email}
+                                                onChange={e => setFormData(p => ({ ...p, user_email: e.target.value }))}
+                                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332]"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 text-slate-400">{t('booking.eventTitle')}</label>
-                                    <div className="relative">
-                                        <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                        <input type="text" name="event_title" value={formData.event_title} onChange={handleChange} placeholder="e.g. Birthday Party" className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-3.5 pl-12 pr-4 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 text-sm font-bold transition-all outline-none" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 text-slate-400">{t('booking.plannedBudget')}</label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-black">₸</div>
-                                        <input type="number" name="budget" value={formData.budget} onChange={handleChange} placeholder="e.g. 50000" className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-3.5 pl-12 pr-4 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 text-sm font-bold transition-all outline-none" />
-                                    </div>
+                            <div className="mt-5 space-y-2">
+                                <label className="block text-sm font-bold text-slate-700">{t('booking.specialRequests')}</label>
+                                <div className="relative">
+                                    <FileText className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                                    <textarea
+                                        rows={3}
+                                        value={formData.special_requests}
+                                        onChange={e => setFormData(p => ({ ...p, special_requests: e.target.value }))}
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332] resize-none"
+                                        placeholder="Аллергии, пожелания к столику..."
+                                    />
                                 </div>
                             </div>
+                        </section>
+
+                        {/* Step 4: Pre-order (optional) */}
+                        {menuCategories.length > 0 && (
+                            <section className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-200 text-slate-600 text-sm font-bold">4</span>
+                                        <h3 className="text-xl font-bold">Pre-order <span className="text-sm font-normal text-slate-400">(optional)</span></h3>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMenu(!showMenu)}
+                                        className="text-sm font-semibold text-[#1B4332] hover:underline"
+                                    >
+                                        {showMenu ? 'Hide menu' : 'Browse menu'}
+                                    </button>
+                                </div>
+
+                                <div className={`transition-all duration-500 overflow-hidden ${showMenu ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    <div className="space-y-8">
+                                        {menuCategories.map(cat => (
+                                            <div key={cat.id}>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">{cat.name}</p>
+                                                <div className="grid md:grid-cols-2 gap-3">
+                                                    {cat.items.filter(i => i.is_available).map(item => {
+                                                        const inCart = preOrder.find(p => p.menu_item_id === item.id);
+                                                        return (
+                                                            <div key={item.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                                                                <div className="min-w-0">
+                                                                    <p className="font-semibold text-slate-800 truncate">{item.name}</p>
+                                                                    <p className="text-xs text-slate-500 mt-0.5">₸{Number(item.price).toLocaleString()}</p>
+                                                                </div>
+                                                                <div className="shrink-0">
+                                                                    {inCart ? (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <button type="button" onClick={() => removeFromPreOrder(item.id)} className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 flex items-center justify-center transition-colors">
+                                                                                <Minus size={13} />
+                                                                            </button>
+                                                                            <span className="text-sm font-bold w-5 text-center">{inCart.quantity}</span>
+                                                                            <button type="button" onClick={() => addToPreOrder(item)} className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 flex items-center justify-center transition-colors">
+                                                                                <Plus size={13} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <button type="button" onClick={() => addToPreOrder(item)} className="px-3 py-1.5 rounded-lg border border-[#1B4332] text-[#1B4332] text-xs font-bold hover:bg-[#1B4332] hover:text-white transition-colors">
+                                                                            Add
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        <div className="flex justify-end pt-4">
+                            <button
+                                type="submit"
+                                disabled={loading || !formData.date || !formData.time}
+                                className="bg-[#1B4332] text-white px-10 py-4 rounded-xl font-bold text-lg shadow-lg shadow-[#1B4332]/20 hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:scale-100 flex items-center gap-3"
+                            >
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Reservation'}
+                            </button>
                         </div>
                     </div>
 
-                    <div className="space-y-2 pt-4">
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                            <FileText className="w-3.5 h-3.5" /> {t('booking.specialRequests')}
-                        </label>
-                        <textarea name="special_requests" value={formData.special_requests} onChange={handleChange} placeholder={t('booking.specialRequestsPlaceholder')} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-5 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 text-sm font-bold transition-all outline-none h-32 resize-none"></textarea>
-                    </div>
-
-                    {/* Food Pre-ordering */}
-                    {menuCategories.length > 0 && (
-                        <div className="space-y-6 pt-8">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-black shadow-inner">
-                                        <UtensilsCrossed size={18} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs">Предзаказ еды</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold">Закажите блюда заранее к вашему визиту</p>
-                                    </div>
+                    {/* Right: Summary Sidebar */}
+                    <aside className="w-full lg:w-96 space-y-6 lg:sticky lg:top-[80px] h-fit">
+                        <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200">
+                            <div className="h-48 w-full bg-slate-200 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800')" }} />
+                            <div className="p-6 space-y-4">
+                                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Kezdes Restaurant</h3>
+                                <div className="space-y-3 text-sm text-slate-600">
+                                    {formData.date && (
+                                        <div className="flex items-center gap-2">
+                                            <CalendarDays className="w-4 h-4 text-[#1B4332]" />
+                                            <span>{formData.date}{formData.time ? ` at ${formData.time}` : ''}</span>
+                                        </div>
+                                    )}
+                                    {formData.guests && (
+                                        <div className="flex items-center gap-2">
+                                            <Users className="w-4 h-4 text-[#1B4332]" />
+                                            <span>{formData.guests} {parseInt(formData.guests) === 1 ? 'Guest' : 'Guests'}</span>
+                                        </div>
+                                    )}
+                                    {formData.table_id && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-4 h-4 text-[#1B4332] text-xs font-black">T</span>
+                                            <span>Table #{formData.table_id}</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowMenu(!showMenu)}
-                                    className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-amber-100 transition-all border border-amber-200"
-                                >
-                                    {showMenu ? 'Скрыть меню' : 'Открыть меню'}
-                                </button>
-                            </div>
 
-                            {showMenu && (
-                                <div className="space-y-6 bg-slate-50 rounded-[2rem] p-6 border-2 border-slate-100">
-                                    {menuCategories.map(cat => (
-                                        <div key={cat.id} className="space-y-3">
-                                            <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">{cat.name}</h4>
-                                            <div className="grid gap-2">
-                                                {cat.items.filter(i => i.is_available).map(item => {
-                                                    const inCart = preOrder.find(p => p.menu_item_id === item.id);
-                                                    return (
-                                                        <div key={item.id} className="flex items-center justify-between bg-white rounded-2xl p-4 border border-slate-100 hover:shadow-md transition-all">
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="font-bold text-slate-900 text-sm truncate">{item.name}</p>
-                                                                {item.description && <p className="text-xs text-slate-400 truncate mt-0.5">{item.description}</p>}
-                                                            </div>
-                                                            <div className="flex items-center gap-3 shrink-0 ml-4">
-                                                                <span className="text-primary font-black text-sm">₸{Number(item.price).toLocaleString()}</span>
-                                                                {inCart ? (
-                                                                    <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-2 py-1">
-                                                                        <button type="button" onClick={() => removeFromPreOrder(item.id)} className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors">
-                                                                            <Minus size={12} />
-                                                                        </button>
-                                                                        <span className="text-xs font-black text-slate-900 w-5 text-center">{inCart.quantity}</span>
-                                                                        <button type="button" onClick={() => addToPreOrder(item)} className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                                                                            <Plus size={12} />
-                                                                        </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <button type="button" onClick={() => addToPreOrder(item)} className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
-                                                                        <Plus size={14} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                {preOrder.length > 0 && (
+                                    <>
+                                        <hr className="border-slate-100" />
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pre-order</p>
+                                            <div className="space-y-1">
+                                                {preOrder.map(item => (
+                                                    <div key={item.menu_item_id} className="flex justify-between text-sm">
+                                                        <span className="text-slate-700 truncate">{item.name} ×{item.quantity}</span>
+                                                        <span className="text-slate-500 shrink-0 ml-2">₸{(item.price * item.quantity).toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                                <div className="flex justify-between text-sm font-bold pt-1 border-t border-slate-100 mt-2">
+                                                    <span>Total</span>
+                                                    <span>₸{preOrderTotal.toLocaleString()}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {preOrder.length > 0 && (
-                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-3">
-                                    <div className="flex items-center gap-2 text-amber-800">
-                                        <ShoppingBag size={16} />
-                                        <span className="text-xs font-black uppercase tracking-widest">Ваш предзаказ</span>
-                                    </div>
-                                    {preOrder.map(item => (
-                                        <div key={item.menu_item_id} className="flex items-center justify-between text-sm">
-                                            <span className="font-bold text-slate-700">{item.name} ×{item.quantity}</span>
-                                            <span className="font-black text-amber-700">₸{(item.price * item.quantity).toLocaleString()}</span>
-                                        </div>
-                                    ))}
-                                    <div className="border-t border-amber-200 pt-3 flex items-center justify-between">
-                                        <span className="text-xs font-black text-amber-800 uppercase tracking-widest">Итого предзаказ</span>
-                                        <span className="text-lg font-black text-amber-800">₸{preOrderTotal.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            )}
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    <div className="pt-6">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-primary hover:bg-primary/90 text-white font-black py-5 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 disabled:opacity-70 disabled:hover:scale-100 uppercase tracking-widest text-sm"
-                        >
-                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
-                                <>
-                                    {t('booking.confirmReservation')}
-                                    <CheckCircle2 className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
-                        <p className="text-center text-[10px] font-bold text-slate-400 mt-6 uppercase tracking-widest">
-                            {t('booking.secureReservation')}
-                        </p>
-                    </div>
+                        <div className="bg-[#1B4332]/5 border border-[#1B4332]/20 rounded-xl p-6">
+                            <h4 className="font-bold text-[#1B4332] mb-2 flex items-center gap-2 text-sm">
+                                Booking Policy
+                            </h4>
+                            <p className="text-sm text-slate-700">
+                                We hold tables for 15 minutes. For parties larger than 8, please call us directly to arrange a custom menu.
+                            </p>
+                        </div>
+                    </aside>
                 </form>
-            </div>
+            </main>
         </div>
     );
 }

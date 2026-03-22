@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#ffffff',
-        borderRadius: 12,
+        borderRadius: 40,
         marginHorizontal: 16,
         paddingHorizontal: 16,
     },
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         paddingHorizontal: 20,
         paddingVertical: 10,
-        borderRadius: 24,
+        borderRadius: 40,
         marginRight: 12,
         borderWidth: 1,
         borderColor: colors.border,
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     gridItem: {
         width: '48%',
         backgroundColor: '#ffffff',
-        borderRadius: 12,
+        borderRadius: 40,
         paddingVertical: 14,
         alignItems: 'center',
         marginBottom: 12,
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     submitBtn: {
         backgroundColor: colors.primary,
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         alignItems: 'center',
     },
     submitBtnText: {

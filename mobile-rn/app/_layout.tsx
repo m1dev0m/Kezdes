@@ -30,30 +30,32 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
         if (!user) {
             if (!inAuthGroup && !isRoot && !isOnboarding) {
-                safeReplace('/onboarding');
+                // Not authenticated, trying to go to restricted area
+                // NOTE: Using a timeout or checking to ensure we haven't already just navigated here
+                requestAnimationFrame(() => safeReplace('/onboarding'));
             }
         } else {
             const isRestaurantOwner = user.role === 'owner' || user.role === 'restaurant_admin' || user.role === 'restaurant_owner';
 
             if (segments[0] === 'admin' && !isRestaurantOwner) {
-                safeReplace('/(tabs)/home');
+                requestAnimationFrame(() => safeReplace('/(tabs)/home'));
                 return;
             }
 
             if (segments[0] === '(tabs)' && isRestaurantOwner) {
-                safeReplace('/admin');
+                requestAnimationFrame(() => safeReplace('/admin'));
                 return;
             }
 
             if (inAuthGroup || isRoot || isOnboarding) {
                 if (isRestaurantOwner) {
-                    safeReplace('/admin');
+                    requestAnimationFrame(() => safeReplace('/admin'));
                 } else {
-                    safeReplace('/(tabs)/home');
+                    requestAnimationFrame(() => safeReplace('/(tabs)/home'));
                 }
             }
         }
-    }, [user, isLoading, segments]);
+    }, [user, isLoading, segments, router]);
 
 
 

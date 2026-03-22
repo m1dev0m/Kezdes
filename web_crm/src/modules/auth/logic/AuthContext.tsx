@@ -34,14 +34,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const safeStorage = {
+        getItem(key: string): string | null {
+            try {
+                return localStorage.getItem(key);
+            } catch {
+                try {
+                    return sessionStorage.getItem(key);
+                } catch {
+                    return null;
+                }
+            }
+        },
+        setItem(key: string, value: string) {
+            try {
+                localStorage.setItem(key, value);
+                return;
+            } catch {
+                try {
+                    sessionStorage.setItem(key, value);
+                } catch {
+                    return;
+                }
+            }
+        },
+        removeItem(key: string) {
+            try {
+                localStorage.removeItem(key);
+            } catch {
+                // ignore
+            }
+            try {
+                sessionStorage.removeItem(key);
+            } catch {
+                // ignore
+            }
+        },
+    };
+
     const logout = useCallback(() => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        safeStorage.removeItem('accessToken');
+        safeStorage.removeItem('refreshToken');
         setUser(null);
     }, []);
 
     const checkAuth = useCallback(async () => {
-        if (localStorage.getItem('accessToken')) {
+        if (safeStorage.getItem('accessToken')) {
             try {
                 const res = await api.get('/auth/me/');
                 setUser(res.data);
@@ -57,8 +95,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [checkAuth]);
 
     const login = async (access: string, refresh: string) => {
-        localStorage.setItem('accessToken', access);
-        localStorage.setItem('refreshToken', refresh);
+        safeStorage.setItem('accessToken', access);
+        safeStorage.setItem('refreshToken', refresh);
         await checkAuth();
     };
 

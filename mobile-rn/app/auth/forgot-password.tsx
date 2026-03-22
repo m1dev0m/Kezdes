@@ -1,16 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    SafeAreaView,
-    Alert
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -165,7 +155,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.border || '#E5E7EB',
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#FFFFFF',
     },
     inputIcon: {
@@ -181,7 +171,7 @@ const styles = StyleSheet.create({
     primaryButton: {
         backgroundColor: colors.primary || '#0047FF',
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         alignItems: 'center',
         shadowColor: colors.primary || '#0047FF',
         shadowOffset: { width: 0, height: 4 },

@@ -170,6 +170,13 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         """Create booking inside atomic transaction with slot lock + table auto-allocation."""
         from .services import BookingService
         restaurant = serializer.validated_data['restaurant']
+
+        # Gate: reject bookings for unverified restaurants
+        if not restaurant.is_verified:
+            raise drf_serializers.ValidationError(
+                {"detail": "Ресторан ещё не прошёл верификацию. Бронирование невозможно."}
+            )
+
         date = serializer.validated_data['date']
         time_val = serializer.validated_data['time']
 
@@ -191,7 +198,20 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                         duration = 150
 
                 # NEW: Extract the optional preferred table ID from the original unvalidated request data
-                preferred_table_id = self.request.data.get('table_id')
+                preferred_table_id = None
+                preferred_table_id_raw = self.request.data.get('table_id')
+                if preferred_table_id_raw not in (None, ''):
+                    try:
+                        preferred_table_id = int(preferred_table_id_raw)
+                    except (TypeError, ValueError):
+                        raise drf_serializers.ValidationError({"table_id": "Некорректный table_id."})
+
+                    if not Table.objects.filter(
+                        id=preferred_table_id,
+                        restaurant=restaurant,
+                        is_active=True,
+                    ).exists():
+                        raise drf_serializers.ValidationError({"table_id": "Стол не найден для этого ресторана."})
 
                 user = self.request.user if self.request.user.is_authenticated else None
 
@@ -231,22 +251,21 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 )
                 booking.tables.set(allocated_tables)
 
+                # CRM: ensure customer exists, but do NOT record a visit until booking is completed.
                 try:
                     from crm.services import CRMService
                     customer_phone = booking.user_phone
                     if not customer_phone and user and hasattr(user, 'profile'):
                         customer_phone = user.profile.phone
                     if customer_phone:
-                        CRMService.record_visit(
+                        CRMService.ensure_customer(
                             restaurant=restaurant,
                             phone=customer_phone,
                             name=booking.user_name or (user.get_full_name() if user else None),
                             email=user.email if user else None,
-                            booking=booking,
-                            spent_amount=0
                         )
                 except Exception as e:
-                    logger.warning(f"Failed to record CRM visit for booking {booking.id}: {e}")
+                    logger.warning(f"Failed to ensure CRM customer for booking {booking.id}: {e}")
 
                 NotificationService.notify_restaurant_new_booking(booking)
         except IntegrityError:
@@ -311,6 +330,17 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         restaurant = serializer.validated_data['restaurant']
         date = serializer.validated_data['date']
         time_val = serializer.validated_data['time']
+
+        # Permission check BEFORE acquiring the lock
+        profile = getattr(request.user, 'profile', None)
+        role = getattr(profile, 'role', None) if profile else None
+        restaurant_from_profile = getattr(profile, 'restaurant', None) if profile else None
+
+        is_owner_like = role in ('owner', 'restaurant_admin', 'restaurant_owner')
+        is_restaurant_staff = role in ('manager', 'host', 'hostess', 'worker') and restaurant_from_profile == restaurant
+
+        if not (is_owner_like and restaurant.owner == request.user) and not is_restaurant_staff and role != 'global_admin':
+            return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
         
         if not BookingService.acquire_booking_lock(restaurant.id, date, time_val):
             return api_error(
@@ -320,13 +350,24 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             
         try:
             with transaction.atomic():
-                if restaurant.owner != request.user:
-                    return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
-                
                 guests = serializer.validated_data.get('guests', 1)
                 duration = serializer.validated_data.get('duration_minutes', 90)
-                preferred_table_id = request.data.get('table_id')
-                
+
+                preferred_table_id = None
+                preferred_table_id_raw = request.data.get('table_id')
+                if preferred_table_id_raw not in (None, ''):
+                    try:
+                        preferred_table_id = int(preferred_table_id_raw)
+                    except (TypeError, ValueError):
+                        return api_error("Некорректный table_id.", status.HTTP_400_BAD_REQUEST)
+
+                    if not Table.objects.filter(
+                        id=preferred_table_id,
+                        restaurant=restaurant,
+                        is_active=True,
+                    ).exists():
+                        return api_error("Стол не найден для этого ресторана.", status.HTTP_400_BAD_REQUEST)
+                 
                 allocated_tables = BookingService.find_best_tables(
                     restaurant=restaurant,
                     date=date,
@@ -342,21 +383,20 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 booking_status = serializer.validated_data.get('status', Booking.APPROVED)
                 booking = serializer.save(status=booking_status, table=allocated_tables[0])
                 booking.tables.set(allocated_tables)
-                
+
+                # CRM: ensure customer exists, but do NOT record a visit until booking is completed.
                 try:
                     from crm.services import CRMService
                     customer_phone = booking.user_phone
                     if customer_phone:
-                        CRMService.record_visit(
+                        CRMService.ensure_customer(
                             restaurant=restaurant,
                             phone=customer_phone,
                             name=booking.user_name or "Walk-in Guest",
                             email=None,
-                            booking=booking,
-                            spent_amount=booking.budget or 0
                         )
                 except Exception as e:
-                    logger.warning(f"Failed to record CRM visit for booking {booking.id}: {e}")
+                    logger.warning(f"Failed to ensure CRM customer for booking {booking.id}: {e}")
         finally:
             BookingService.release_booking_lock(restaurant.id, date, time_val)
                 
@@ -384,10 +424,67 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 output_field=IntegerField(),
             )
         ).order_by('_pending_first', '-date', '-time')
-        status_param = self.request.query_params.get('status')
+
+        # Filters (keep in sync with main list endpoint expectations)
+        status_param = request.query_params.get('status')
         if status_param:
             statuses = self._normalize_statuses(status_param.split(','))
             qs = qs.filter(status__in=statuses)
+
+        date_param = request.query_params.get('date')
+        if date_param:
+            try:
+                qs = qs.filter(date=date_param)
+            except Exception:
+                pass
+
+        date_from_param = request.query_params.get('date_from')
+        if date_from_param:
+            try:
+                qs = qs.filter(date__gte=date_from_param)
+            except Exception:
+                pass
+
+        date_to_param = request.query_params.get('date_to')
+        if date_to_param:
+            try:
+                qs = qs.filter(date__lte=date_to_param)
+            except Exception:
+                pass
+
+        time_from_param = request.query_params.get('time_from')
+        if time_from_param:
+            time_from_param = time_from_param.strip()
+            if time_from_param:
+                try:
+                    qs = qs.filter(time__gte=datetime.strptime(time_from_param, '%H:%M').time())
+                except ValueError:
+                    pass
+
+        time_to_param = request.query_params.get('time_to')
+        if time_to_param:
+            time_to_param = time_to_param.strip()
+            if time_to_param:
+                try:
+                    qs = qs.filter(time__lte=datetime.strptime(time_to_param, '%H:%M').time())
+                except ValueError:
+                    pass
+
+        table_id_param = request.query_params.get('table_id')
+        if table_id_param:
+            try:
+                table_id_int = int(table_id_param)
+                qs = qs.filter(Q(table_id=table_id_int) | Q(tables__id=table_id_int)).distinct()
+            except (TypeError, ValueError):
+                pass
+
+        limit_param = request.query_params.get('limit')
+        if limit_param:
+            try:
+                limit_int = max(1, min(int(limit_param), 100))
+                qs = qs[:limit_int]
+            except (TypeError, ValueError):
+                pass
             
         if 'page' in request.query_params or 'page_size' in request.query_params:
             page = self.paginate_queryset(qs)
@@ -538,7 +635,8 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 booking.time = new_time
                 booking.duration_minutes = new_duration
                 booking.table = tables[0]
-                booking.save(update_fields=['date', 'time', 'duration_minutes', 'table', 'updated_at'])
+                # Call full save() so start_datetime/end_datetime are recalculated
+                booking.save()
                 booking.tables.set(tables)
 
                 ReservationHistory.objects.create(
@@ -593,8 +691,19 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
+    def seat(self, request, pk=None):
+        """APPROVED → SEATED (guest has arrived and been seated)."""
+        booking = self.get_object()
+        if not self._is_restaurant_staff(request, booking):
+            return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+        try:
+            booking.transition_to(Booking.SEATED, actor=request.user)
+        except ValidationError as e:
+            return api_error(str(e), status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(booking).data)
+    @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def complete(self, request, pk=None):
-        """APPROVED → COMPLETED (event finished successfully). Records visit in CRM."""
+        """APPROVED/SEATED → COMPLETED (event finished successfully). Records visit in CRM."""
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -607,17 +716,16 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 if not customer_phone and booking.user:
                     if hasattr(booking.user, 'profile'):
                         customer_phone = booking.user.profile.phone
-                
-                if not customer_phone:
-                    customer_phone = "unknown"
 
-                CRMService.record_visit(
-                    restaurant=booking.restaurant,
-                    phone=customer_phone,
-                    name=booking.user_name or (booking.user.username if booking.user else "Guest"),
-                    email=booking.user.email if booking.user else None,
-                    booking=booking
-                )
+                if customer_phone:
+                    CRMService.record_visit(
+                        restaurant=booking.restaurant,
+                        phone=customer_phone,
+                        name=booking.user_name or (booking.user.username if booking.user else "Guest"),
+                        email=booking.user.email if booking.user else None,
+                        booking=booking,
+                        spent_amount=booking.budget or 0,
+                    )
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
@@ -666,6 +774,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 booking.date,
                 booking.time,
                 booking.duration_minutes,
+                exclude_booking_id=booking.id,
             )
             if new_table.id not in available_table_ids:
                 return api_error(
@@ -902,10 +1011,9 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                     time=entry.time,
                     guests=entry.guests,
                     status=Booking.PENDING,
-                    table=tables[0] if len(tables) == 1 else None,
+                    table=tables[0],
                 )
-                if len(tables) > 1:
-                    booking.tables.set(tables)
+                booking.tables.set(tables)
 
                 entry.status = WaitlistEntry.PROMOTED
                 entry.promoted_booking = booking

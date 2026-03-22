@@ -30,14 +30,22 @@ class DashboardAnalyticsView(APIView):
             return api_error("No associated restaurant.", 403)
 
         today = timezone.now().date()
+        tomorrow = today + timedelta(days=1)
         start_of_month = today.replace(day=1)
 
         month_qs = Booking.objects.filter(restaurant=restaurant, date__gte=start_of_month)
         today_qs = Booking.objects.filter(restaurant=restaurant, date=today)
+        tomorrow_qs = Booking.objects.filter(restaurant=restaurant, date=tomorrow)
 
         bookings_today = today_qs.filter(
             status__in=['pending', 'approved', 'completed']
         ).count()
+
+        bookings_tomorrow = tomorrow_qs.filter(
+            status__in=['pending', 'approved', 'completed']
+        ).count()
+
+        pending_bookings_today = today_qs.filter(status__in=['pending']).count()
 
         bookings_month = month_qs.filter(
             status__in=['pending', 'approved', 'completed']
@@ -198,9 +206,12 @@ class DashboardAnalyticsView(APIView):
 
         data = {
             "bookings_today": bookings_today,
+            "bookings_tomorrow": bookings_tomorrow,
+            "pending_bookings_today": pending_bookings_today,
             "upcoming_bookings": upcoming_bookings,
             "occupied_tables": occupied_tables,
             "available_tables": available_tables,
+            "active_tables": active_tables,
             "bookings_month": bookings_month,
             "occupancy_percent": occupancy,
             "revenue": revenue,
@@ -209,7 +220,7 @@ class DashboardAnalyticsView(APIView):
             "avg_guests": avg_guests,
             "weekly_chart": weekly_chart,
             "daily_load": daily_load,
-            "new_requests": 0,
+            "new_requests": pending_bookings_today,
             "no_show_month": no_show_month,
             "no_show_rate": no_show_rate,
             "channels": channels,

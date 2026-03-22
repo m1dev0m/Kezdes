@@ -1,12 +1,34 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import {
+  Loader2,
+  Eye,
+  EyeOff,
+  User,
+  Store,
+  IdCard,
+  AtSign,
+  Mail,
+  Phone,
+  Lock,
+  KeyRound,
+  ArrowRight,
+  BadgeCheck,
+  Table,
+  Repeat,
+  LineChart,
+  Headphones,
+  Search,
+  BookmarkCheck,
+  Heart,
+  Star,
+} from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { useI18n } from '@/i18n/index.tsx';
 import { AxiosError } from 'axios';
-import { Logo } from '@/components/ui/Logo';
+import { PublicHeader } from '@/components/public/PublicHeader';
 export default function Register() {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,6 +36,11 @@ export default function Register() {
   const [mode, setMode] = useState<'customer' | 'restaurant'>(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<
+    'username' | 'first_name' | 'email' | 'password' | 'password2' | 'phone' | 'restaurant_name' | 'detail',
+    string
+  >>>({});
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -40,12 +67,35 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setFieldErrors({});
+    setSuccessMessage('');
+
+    const nextErrors: typeof fieldErrors = {};
+    const email = (formData.email || '').trim();
+    const username = (formData.username || '').trim();
+    const phone = (formData.phone || '').trim();
+
+    if (!username) nextErrors.username = t('errors.required');
+    if (!email) nextErrors.email = t('errors.required');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = t('errors.invalidEmail');
+    if (!phone) nextErrors.phone = t('errors.required');
+    if (mode === 'restaurant' && !(formData.restaurant_name || '').trim()) nextErrors.restaurant_name = t('errors.required');
+    if (!formData.password) nextErrors.password = t('errors.required');
+    if (!formData.password2) nextErrors.password2 = t('errors.required');
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+
     if (formData.password !== formData.password2) {
+      setFieldErrors(p => ({ ...p, password2: 'Пароли не совпадают' }));
       toast.error('Пароли не совпадают');
       return;
     }
 
     if (formData.password.length < 8) {
+      setFieldErrors(p => ({ ...p, password: 'Пароль должен содержать минимум 8 символов' }));
       toast.error('Пароль должен содержать минимум 8 символов');
       return;
     }
@@ -53,40 +103,42 @@ export default function Register() {
     setLoading(true);
     try {
       if (mode === 'customer') {
-        await api.post('/auth/register/', {
-          username: formData.username,
+        await api.post('/register/', {
+          username,
           first_name: formData.first_name,
-          email: formData.email,
+          email,
           password: formData.password,
           password2: formData.password2,
-          phone: formData.phone,
+          phone,
           role: 'customer',
         });
+        setSuccessMessage(t('auth.registerSuccess') || 'Registration successful');
         const loginRes = await api.post('/auth/login/', {
-          username: formData.username,
+          username,
           password: formData.password,
         });
         await login(loginRes.data.access, loginRes.data.refresh);
         toast.success(t('auth.welcomeBack'));
-        navigate('/guest/dashboard');
+        setTimeout(() => navigate('/guest/dashboard'), 350);
       } else {
-        await api.post('/auth/register/', {
-          username: formData.username,
-          email: formData.email,
+        await api.post('/register/', {
+          username,
+          email,
           password: formData.password,
           password2: formData.password2,
           role: 'owner',
           restaurant_name: formData.restaurant_name,
-          phone: formData.phone,
+          phone,
         });
 
         const loginRes = await api.post('/auth/login/', {
-          username: formData.username,
+          username,
           password: formData.password,
         });
         await login(loginRes.data.access, loginRes.data.refresh);
+        setSuccessMessage('Заявка отправлена! Мы свяжемся с вами после проверки.');
         toast.success('Заявка отправлена! Мы свяжемся с вами после проверки.');
-        navigate('/register-restaurant/pending');
+        setTimeout(() => navigate('/register-restaurant/pending'), 350);
       }
     } catch (err: unknown) {
       const data = (err as AxiosError<Record<string, string[] | string> & { error?: { message?: string } }>).response?.data;
@@ -99,236 +151,272 @@ export default function Register() {
         (Array.isArray((data as Record<string, string[] | string>)?.password2) ? (data as Record<string, string[] | string>).password2[0] as string : '') ||
         (Array.isArray(data?.name) ? data.name[0] : '') ||
         t('errors.serverError');
+
+      const next: typeof fieldErrors = {};
+      if (data && typeof data === 'object') {
+        const getFirst = (v: unknown) => (Array.isArray(v) ? String(v[0] ?? '') : typeof v === 'string' ? v : '');
+        const d = data as Record<string, unknown>;
+        if (getFirst(d.username)) next.username = getFirst(d.username);
+        if (getFirst(d.email)) next.email = getFirst(d.email);
+        if (getFirst(d.password)) next.password = getFirst(d.password);
+        if (getFirst(d.password2)) next.password2 = getFirst(d.password2);
+        if (getFirst(d.phone)) next.phone = getFirst(d.phone);
+        if (getFirst(d.restaurant_name)) next.restaurant_name = getFirst(d.restaurant_name);
+        if (!Object.keys(next).length && typeof d.detail === 'string') next.detail = d.detail;
+      }
+      if (Object.keys(next).length) setFieldErrors(next);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const inputCls = "w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-lg focus:border-slate-900 dark:focus:border-white transition-all outline-none text-slate-900 dark:text-white placeholder:text-slate-400 text-xs font-medium";
-  const labelCls = "text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 block ml-0.5";
+  const inputCls = "w-full pl-10 pr-4 py-3 bg-white dark:bg-brand-green/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-slate-900 dark:focus:border-white transition-all outline-none text-slate-900 dark:text-white placeholder:text-slate-400 text-sm font-medium shadow-sm";
+  const labelCls = "text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-2 block ml-0.5";
 
   return (
-    <div className="flex min-h-screen w-full bg-white">
+    <div className="min-h-screen bg-white font-sans overflow-x-hidden">
+      <PublicHeader />
+      <div className="flex min-h-screen w-full bg-white pt-24">
 
-      <div className="flex w-full flex-col lg:w-1/2 p-8 md:p-12 lg:p-20 xl:p-24 justify-center border-r border-slate-100 dark:border-slate-900">
-        <div className="max-w-sm w-full mx-auto">
-          <Link to="/" className="mb-12 flex items-center gap-2 group w-fit">
-            <div className="bg-indigo-600 p-2 rounded-lg transition-transform group-hover:scale-105 group-hover:rotate-3 shadow-md">
-              <Logo className="text-white w-6 h-6" />
+        <div className="flex w-full flex-col lg:w-1/2 p-8 md:p-12 lg:p-20 xl:p-24 justify-center border-r border-slate-100 dark:border-brand-green bg-background-light">
+          <div className="max-w-sm w-full mx-auto">
+
+            <div className="mb-8">
+              <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tighter">{t('auth.register')}</h1>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] leading-relaxed">
+                {mode === 'customer'
+                  ? t('auth.registerSubtitleGuest')
+                  : t('auth.registerSubtitleVenue')}
+              </p>
             </div>
-            <span className="text-xl font-black tracking-tighter uppercase px-1 text-indigo-600">KEZDES</span>
-          </Link>
 
-          <div className="mb-8">
-            <h1 className="text-2xl font-black text-slate-900 mb-2 tracking-tight uppercase tracking-widest">{t('auth.register')}</h1>
-            <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
-              {mode === 'customer'
-                ? t('auth.registerSubtitleGuest')
-                : t('auth.registerSubtitleVenue')}
-            </p>
-          </div>
-
-          <div className="flex p-1 bg-slate-50 border border-slate-100 rounded-xl mb-10">
-            <button
-              type="button"
-              onClick={() => switchMode('customer')}
-              className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${mode === 'customer' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              <span className="material-symbols-outlined text-base">person</span>
-              {t('auth.guest')}
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('restaurant')}
-              className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${mode === 'restaurant' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              <span className="material-symbols-outlined text-base">storefront</span>
-              {t('auth.venue')}
-            </button>
-          </div>
-
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            {mode === 'customer' && (
-              <div>
-                <label className={labelCls}>{t('customers.name')}</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg transition-colors group-focus-within:text-indigo-600">badge</span>
-                  <input className={inputCls} placeholder={t('auth.guestNamePlaceholder')} type="text" value={formData.first_name} onChange={set('first_name')} />
-                </div>
+            {successMessage && (
+              <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-xs font-bold uppercase tracking-widest">
+                {successMessage}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>{t('auth.username')}</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg transition-colors group-focus-within:text-indigo-600">alternate_email</span>
-                  <input className={inputCls} placeholder="username" type="text" value={formData.username} onChange={set('username')} required />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelCls}>{t('auth.email')}</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg transition-colors group-focus-within:text-indigo-600">mail</span>
-                  <input className={inputCls} placeholder="you@email.com" type="email" value={formData.email} onChange={set('email')} required />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className={labelCls}>{mode === 'customer' ? t('customers.phone') : 'VENUE PHONE'}</label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg transition-colors group-focus-within:text-indigo-600">call</span>
-                <input className={inputCls} placeholder="+7 (777) 000-0000" type="tel" value={formData.phone} onChange={set('phone')} required />
-              </div>
-            </div>
-
-            {mode === 'restaurant' && (
-              <div>
-                <label className={labelCls}>VENUE NAME</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg transition-colors group-focus-within:text-indigo-600">storefront</span>
-                  <input className={inputCls} placeholder="Venue/Restaurant Name" type="text" value={formData.restaurant_name} onChange={set('restaurant_name')} required />
-                </div>
+            {fieldErrors.detail && (
+              <div className="mb-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 text-xs font-bold uppercase tracking-widest">
+                {fieldErrors.detail}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>{t('auth.password')}</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg transition-colors group-focus-within:text-indigo-600">lock</span>
-                  <input
-                    className={inputCls}
-                    placeholder="••••••••"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={set('password')}
-                    required
-                    minLength={8}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={labelCls}>CONFIRM</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg transition-colors group-focus-within:text-indigo-600">lock_reset</span>
-                  <input
-                    className={inputCls}
-                    placeholder="••••••••"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password2}
-                    onChange={set('password2')}
-                    required
-                  />
-                </div>
-              </div>
+            <div className="flex p-1 bg-white border border-slate-200 rounded-xl mb-10 shadow-sm">
+              <button
+                type="button"
+                onClick={() => switchMode('customer')}
+                className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 ${mode === 'customer' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              >
+                <User size={16} />
+                {t('auth.guest')}
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('restaurant')}
+                className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 ${mode === 'restaurant' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              >
+                <Store size={16} />
+                {t('auth.venue')}
+              </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black py-3.5 px-6 rounded-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-600/20"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin" size={18} />
-              ) : (
-                <>
-                  <span>{mode === 'customer' ? t('auth.signUp') : t('restaurant.submitApplication')}</span>
-                  <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                </>
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              {mode === 'customer' && (
+                <div>
+                  <label className={labelCls}>{t('customers.name')}</label>
+                  <div className="relative group">
+                    <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-primary" size={18} />
+                    <input className={inputCls} placeholder={t('auth.guestNamePlaceholder')} type="text" value={formData.first_name} onChange={set('first_name')} />
+                  </div>
+                  {fieldErrors.first_name && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-rose-600">{fieldErrors.first_name}</p>}
+                </div>
               )}
-            </button>
-          </form>
 
-          <div className="mt-12 pt-8 border-t border-slate-50 flex flex-col items-center gap-6">
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest text-center">
-              {t('auth.hasAccount')}{' '}
-              <Link to="/login" className="text-indigo-600 font-black hover:underline underline-offset-4 ml-1.5">{t('auth.signIn')}</Link>
-            </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>{t('auth.username')}</label>
+                  <div className="relative group">
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-primary" size={18} />
+                    <input className={inputCls} placeholder="username" type="text" value={formData.username} onChange={set('username')} required />
+                  </div>
+                  {fieldErrors.username && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-rose-600">{fieldErrors.username}</p>}
+                </div>
+
+                <div>
+                  <label className={labelCls}>{t('auth.email')}</label>
+                  <div className="relative group">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-primary" size={18} />
+                    <input className={inputCls} placeholder="you@email.com" type="email" value={formData.email} onChange={set('email')} required />
+                  </div>
+                  {fieldErrors.email && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-rose-600">{fieldErrors.email}</p>}
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>{mode === 'customer' ? t('customers.phone') : 'VENUE PHONE'}</label>
+                <div className="relative group">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-primary" size={18} />
+                  <input className={inputCls} placeholder="+7 (777) 000-0000" type="tel" value={formData.phone} onChange={set('phone')} required />
+                </div>
+                {fieldErrors.phone && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-rose-600">{fieldErrors.phone}</p>}
+              </div>
+
+              {mode === 'restaurant' && (
+                <div>
+                  <label className={labelCls}>VENUE NAME</label>
+                  <div className="relative group">
+                    <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-primary" size={18} />
+                    <input className={inputCls} placeholder="Venue/Restaurant Name" type="text" value={formData.restaurant_name} onChange={set('restaurant_name')} required />
+                  </div>
+                  {fieldErrors.restaurant_name && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-rose-600">{fieldErrors.restaurant_name}</p>}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>{t('auth.password')}</label>
+                  <div className="relative group">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-primary" size={18} />
+                    <input
+                      className={inputCls}
+                      placeholder="••••••••"
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={set('password')}
+                      required
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-primary transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>CONFIRM</label>
+                  <div className="relative group">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-primary" size={18} />
+                    <input
+                      className={inputCls}
+                      placeholder="••••••••"
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password2}
+                      onChange={set('password2')}
+                      required
+                    />
+                  </div>
+                  {fieldErrors.password2 && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-rose-600">{fieldErrors.password2}</p>}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-primary hover:bg-blue-700 disabled:opacity-50 text-white font-black py-4 px-6 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary/20"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    <span>{mode === 'customer' ? t('auth.signUp') : t('restaurant.submitApplication')}</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-6">
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] text-center">
+                {t('auth.hasAccount')}{' '}
+                <Link to="/login" className="text-primary font-black hover:underline underline-offset-4 ml-1.5">{t('auth.signIn')}</Link>
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="hidden lg:flex w-1/2 bg-slate-50 relative overflow-hidden items-center justify-center p-24">
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-slate-200/50 rounded-full -mr-96 -mt-96 blur-3xl opacity-50" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-slate-200/50 rounded-full -ml-72 -mb-72 blur-3xl opacity-50" />
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #6366f1 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div className="hidden lg:flex w-1/2 bg-brand-green text-white relative overflow-hidden items-center justify-center p-24">
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full -mr-96 -mt-96 blur-[120px]" />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-primary/20 rounded-full -ml-72 -mb-72 blur-[100px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.03] pointer-events-none" />
 
-        <div className="relative z-10 text-slate-900 dark:text-white max-w-lg w-full">
-          <div className="mb-12 inline-flex items-center gap-3 bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm">
-            <span className="material-symbols-outlined text-base text-emerald-500">verified</span>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t('auth.trustedBy')}</span>
-          </div>
+          <div className="relative z-10 text-white max-w-lg w-full">
+            <div className="mb-12 inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full shadow-sm">
+              <BadgeCheck className="text-emerald-500" size={16} />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/80">{t('auth.trustedBy')}</span>
+            </div>
 
-          <h2 className="text-5xl font-black leading-[1.05] mb-8 tracking-tighter uppercase italic">
-            {mode === 'customer' ? (
-              <>{t('auth.discoverTitle')}</>
-            ) : (
-              <>{t('auth.manageTitle')}</>
-            )}
-          </h2>
+            <h2 className="text-6xl font-black leading-[1.05] mb-8 tracking-tighter italic">
+              {mode === 'customer' ? (
+                <>{t('auth.discoverTitle')}</>
+              ) : (
+                <>{t('auth.manageTitle')}</>
+              )}
+            </h2>
 
-          <p className="text-slate-500 dark:text-slate-400 text-base font-medium leading-relaxed mb-12 uppercase tracking-wide opacity-80">
-            {mode === 'customer'
-              ? t('auth.discoverSubtitle')
-              : t('auth.manageSubtitle')}
-          </p>
+            <p className="text-white/70 text-lg font-medium leading-relaxed mb-16">
+              {mode === 'customer'
+                ? t('auth.discoverSubtitle')
+                : t('auth.manageSubtitle')}
+            </p>
 
-          <div className="grid grid-cols-2 gap-y-10 gap-x-12">
-            {(mode === 'restaurant' ? [
-              { icon: 'table_restaurant', label: t('auth.feature_tables'), desc: 'Precision floor mapping' },
-              { icon: 'event_repeat', label: t('auth.feature_auto'), desc: 'Automated workflow engine' },
-              { icon: 'insights', label: 'Advanced Insights', desc: 'Data-driven decision making' },
-              { icon: 'support_agent', label: t('auth.feature_support'), desc: 'Concierge level assistance' },
-            ] : [
-              { icon: 'search', label: t('auth.feature_find'), desc: 'Discover elite local spots' },
-              { icon: 'bookmark_added', label: t('auth.feature_booking'), desc: 'Seamless reservation flow' },
-              { icon: 'loyalty', label: t('auth.feature_loyalty'), desc: 'Exclusive member rewards' },
-              { icon: 'star', label: t('auth.feature_curated'), desc: 'Personalized recommendations' },
-            ]).map(({ icon, label, desc }) => (
-              <div key={label} className="group cursor-default">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-900 shadow-sm transition-all group-hover:bg-indigo-600 group-hover:text-white">
-                    <span className="material-symbols-outlined text-xl">{icon}</span>
-                  </div>
-                  <span className="font-black text-[10px] uppercase tracking-widest text-slate-900">{label}</span>
-                </div>
-                {desc && <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tight ml-11 opacity-60 group-hover:opacity-100 transition-opacity">{desc}</p>}
-              </div>
-            ))}
-          </div>
-
-          {/* Preview UI decoration */}
-          <div className="mt-20 relative">
-            <div className="absolute -inset-4 bg-gradient-to-tr from-slate-200/50 to-transparent blur-2xl -z-10" />
-            <div className="bg-white border border-slate-200 rounded-xl p-1 shadow-2xl overflow-hidden group">
-              <div className="bg-slate-50 p-5 rounded-lg border border-slate-100">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-slate-200" />
-                    <div className="w-2 h-2 rounded-full bg-slate-200" />
-                    <div className="w-2 h-2 rounded-full bg-slate-200" />
-                  </div>
-                  <div className="w-24 h-1.5 bg-slate-200 rounded-full" />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-24 bg-white border border-slate-100 rounded-lg p-3 flex flex-col justify-end gap-2 group-hover:translate-y-[-2px] transition-transform">
-                      <div className="w-8 h-1 bg-indigo-600 opacity-20 rounded" />
-                      <div className="w-12 h-1 bg-slate-400 opacity-20 rounded" />
+            <div className="grid grid-cols-2 gap-y-10 gap-x-12">
+              {(mode === 'restaurant' ? [
+                { icon: 'table_restaurant', label: t('auth.feature_tables') || 'Управление залом', desc: 'Точное отображение посадки' },
+                { icon: 'event_repeat', label: t('auth.feature_auto') || 'Автоматизация', desc: 'Бронирование без участия' },
+                { icon: 'insights', label: 'Аналитика', desc: 'Инсайты на основе данных' },
+                { icon: 'support_agent', label: t('auth.feature_support') || 'Поддержка', desc: 'Консьерж-сервис 24/7' },
+              ] : [
+                { icon: 'search', label: t('auth.feature_find') || 'Поиск заведений', desc: 'Открывайте лучшие места' },
+                { icon: 'bookmark_added', label: t('auth.feature_booking') || 'Бронирование', desc: 'Быстро и удобно' },
+                { icon: 'loyalty', label: t('auth.feature_loyalty') || 'Лояльность', desc: 'Эксклюзивные бонусы' },
+                { icon: 'star', label: t('auth.feature_curated') || 'Рекомендации', desc: 'Только для вас' },
+              ]).map(({ icon, label, desc }) => (
+                <div key={label} className="group cursor-default">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shadow-sm transition-all group-hover:bg-primary group-hover:border-primary">
+                      {icon === 'table_restaurant' ? <Table size={18} /> : null}
+                      {icon === 'event_repeat' ? <Repeat size={18} /> : null}
+                      {icon === 'insights' ? <LineChart size={18} /> : null}
+                      {icon === 'support_agent' ? <Headphones size={18} /> : null}
+                      {icon === 'search' ? <Search size={18} /> : null}
+                      {icon === 'bookmark_added' ? <BookmarkCheck size={18} /> : null}
+                      {icon === 'loyalty' ? <Heart size={18} /> : null}
+                      {icon === 'star' ? <Star size={18} /> : null}
                     </div>
-                  ))}
+                    <span className="font-black text-xs uppercase tracking-[0.2em] text-white">{label}</span>
+                  </div>
+                  {desc && <p className="text-[11px] font-medium text-white/50 uppercase tracking-widest ml-14 opacity-80 group-hover:opacity-100 transition-opacity">{desc}</p>}
+                </div>
+              ))}
+            </div>
+
+            {/* Preview UI decoration */}
+            <div className="mt-24 relative">
+              <div className="absolute -inset-4 bg-gradient-to-tr from-primary/30 to-transparent blur-3xl -z-10" />
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-2 shadow-2xl overflow-hidden group">
+                <div className="bg-white/10 p-6 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between mb-10">
+                    <div className="flex gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                    </div>
+                    <div className="w-32 h-2 bg-white/20 rounded-full" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-28 bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col justify-end gap-3 group-hover:translate-y-[-4px] transition-transform duration-500">
+                        <div className="w-10 h-1.5 bg-primary opacity-60 rounded-full" />
+                        <div className="w-16 h-1.5 bg-white/30 rounded-full" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

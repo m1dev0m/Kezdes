@@ -16,3 +16,5 @@ channels
 daphne
 channels-redis
 requests
+gunicorn
+whitenoise

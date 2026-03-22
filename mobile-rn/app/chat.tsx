@@ -23,7 +23,7 @@ export default function ChatScreen() {
     const fetchMessages = async () => {
         if (!user?.access || !bookingId) return;
         try {
-            const url = `${API_BASE_URL}/chat/?booking=${bookingId}`;
+            const url = `${API_BASE_URL}/chat/messages/?booking=${bookingId}`;
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${user.access}` }
             });
@@ -58,7 +58,7 @@ export default function ChatScreen() {
         setMessage('');
 
         try {
-            const res = await fetch(`${API_BASE_URL}/chat/`, {
+            const res = await fetch(`${API_BASE_URL}/chat/messages/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     msgWrapper: { width: '100%', flexDirection: 'row' },
     msgLeft: { justifyContent: 'flex-start' },
     msgRight: { justifyContent: 'flex-end' },
-    msgBubble: { maxWidth: '80%', padding: 12, borderRadius: 16 },
+    msgBubble: { maxWidth: '80%', padding: 12, borderRadius: 32 },
     bubbleUser: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
     bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
     msgText: { fontSize: 15, lineHeight: 20 },
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     timeUser: { color: 'rgba(255,255,255,0.7)' },
     timeOther: { color: colors.muted },
     inputArea: { flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.border, gap: 12 },
-    attachBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
-    input: { flex: 1, backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, maxHeight: 100, fontSize: 15 },
-    sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+    attachBtn: { width: 40, height: 40, borderRadius: 32, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
+    input: { flex: 1, backgroundColor: colors.surface, borderRadius: 32, paddingHorizontal: 16, paddingVertical: 8, maxHeight: 100, fontSize: 15 },
+    sendBtn: { width: 40, height: 40, borderRadius: 32, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
 });

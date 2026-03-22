@@ -22,6 +22,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useI18n } from '@/i18n/index.tsx';
 import { AxiosError } from 'axios';
 import type { PanInfo } from 'framer-motion';
+import { useAuth } from '@/modules/auth/logic/AuthContext';
 
 interface TableModel {
     id: number;
@@ -46,6 +47,8 @@ interface TableModel {
 
 interface ApiErrorResponse {
     detail?: string;
+    number?: string | string[];
+    seats?: string | string[];
 }
 
 const statusColors = {
@@ -81,6 +84,9 @@ const statusColors = {
 
 export default function Tables() {
     const { t } = useI18n();
+    const { user } = useAuth();
+    const isHost = user?.role === 'host' || user?.role === 'hostess';
+
     const [tables, setTables] = useState<TableModel[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'visual'>(() => {
@@ -150,7 +156,9 @@ export default function Tables() {
             loadTables();
         } catch (err: unknown) {
             const apiErr = err as AxiosError<ApiErrorResponse>;
-            toast.error(apiErr.response?.data?.detail || t('tables.errorSaving'));
+            const errorData = apiErr.response?.data;
+            const errorMsg = (errorData?.number || errorData?.detail || t('tables.errorSaving')) as string | string[];
+            toast.error(Array.isArray(errorMsg) ? errorMsg[0] : errorMsg);
         } finally {
             setSaving(false);
         }
@@ -213,27 +221,29 @@ export default function Tables() {
             <div className="flex-1 flex flex-col space-y-4 min-w-0">
                 <div className="flex flex-col sm:flex-row justify-between items-end gap-6">
                     <div>
-                        <h1 className="text-[13px] font-black text-slate-900 uppercase tracking-[0.2em] italic">{t('tables.title')}</h1>
-                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5 opacity-60">{t('tables.restaurantSeatingLayout')}</p>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{t('tables.title')}</h1>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mt-1.5 opacity-80">{t('tables.restaurantSeatingLayout')}</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                        <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm border border-transparent' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                <List size={12} /> {t('tables.listView')}
+                                <List size={14} /> {t('tables.listView')}
                             </button>
                             <button
                                 onClick={() => setViewMode('visual')}
-                                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'visual' ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-2 ${viewMode === 'visual' ? 'bg-white text-primary shadow-sm border border-transparent' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                <Layout size={12} /> {t('tables.planView')}
+                                <Layout size={14} /> {t('tables.planView')}
                             </button>
                         </div>
-                        <Button onClick={() => { setModalMode('add'); setFormData({ number: '', seats: 4, is_active: true, table_type: 'rectangle', x: 200, y: 200, width: 80, height: 80, rotation: 0 }); setShowModal(true); }} className="h-10 px-6 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] shadow-lg shadow-indigo-600/20 bg-indigo-600 text-white border-none outline-none">
-                            <Plus size={14} className="mr-2" /> {t('tables.addTable')}
-                        </Button>
+                        {!isHost && (
+                            <Button onClick={() => { setModalMode('add'); setFormData({ number: '', seats: 4, is_active: true, table_type: 'rectangle', x: 200, y: 200, width: 80, height: 80, rotation: 0 }); setShowModal(true); }} className="h-12 px-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] shadow-lg shadow-primary/20 bg-primary text-primary-foreground border-none outline-none">
+                                <Plus size={16} className="mr-2" /> {t('tables.addTable')}
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -242,7 +252,7 @@ export default function Tables() {
                         {(['free', 'reserved', 'occupied', 'cleaning'] as const).map(s => (
                             <div key={s} className="flex items-center gap-2 px-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${statusColors[s].dot}`} />
-                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t(`tables.${s}`)}</span>
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{t(`tables.${s}`)}</span>
                             </div>
                         ))}
                     </div>
@@ -260,8 +270,8 @@ export default function Tables() {
                                 layout
                                 onClick={() => setSelectedTableId(table.id)}
                                 className={`aspect-square bg-white border ${selectedTableId === table.id
-                                    ? 'border-indigo-600 shadow-xl shadow-indigo-600/10'
-                                    : 'border-slate-100'} rounded-[24px] p-6 flex flex-col justify-between group hover:border-indigo-600 transition-all cursor-pointer relative overflow-hidden`}
+                                    ? 'border-primary shadow-xl shadow-primary/10'
+                                    : 'border-slate-100'} rounded-[2rem] p-6 flex flex-col justify-between group hover:border-primary transition-all cursor-pointer relative overflow-hidden`}
                             >
                                 <div className="flex justify-between items-start relative z-10">
                                     <div className={`w-2 h-2 rounded-full ${statusColors[table.status]?.dot} shadow-sm`}></div>
@@ -273,16 +283,18 @@ export default function Tables() {
                                         <Users size={12} className="opacity-40" /> <span className="text-[10px] font-black uppercase tracking-widest">{table.seats}</span>
                                     </div>
                                 </div>
-                                <div className="flex justify-center relative z-10">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setDeleteId(table.id); }}
-                                        className="p-2 opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
+                                {!isHost && (
+                                    <div className="flex justify-center relative z-10">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setDeleteId(table.id); }}
+                                            className="p-2 opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                )}
                                 {selectedTableId === table.id && (
-                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-indigo-600" />
+                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-primary" />
                                 )}
                             </motion.div>
                         ))}
@@ -306,11 +318,11 @@ export default function Tables() {
                                 {tables.map(table => (
                                     <motion.g
                                         key={table.id}
-                                        drag
+                                        drag={!isHost}
                                         dragElastic={0}
                                         dragMomentum={false}
-                                        onDragStart={handleDragStart}
-                                        onDragEnd={(_, info) => handleDragEnd(table.id, info)}
+                                        onDragStart={!isHost ? handleDragStart : undefined}
+                                        onDragEnd={!isHost ? (_, info) => handleDragEnd(table.id, info) : undefined}
                                         initial={false}
                                         animate={{
                                             x: table.x,
@@ -318,20 +330,20 @@ export default function Tables() {
                                             rotate: table.rotation,
                                             scale: selectedTableId === table.id ? 1.05 : 1
                                         }}
-                                        className="cursor-move group/table origin-center"
+                                        className={`${!isHost ? 'cursor-move' : 'cursor-pointer'} group/table origin-center`}
                                         onClick={(e) => { e.stopPropagation(); if (!isDragging) setSelectedTableId(table.id); }}
                                     >
                                         <rect width={table.width} height={table.height} rx={table.table_type === 'circle' ? 999 : 12} className="fill-slate-900/5 blur-sm" />
                                         {table.table_type === 'circle' ? (
                                             <circle
                                                 r={table.width / 2} cx={table.width / 2} cy={table.width / 2}
-                                                className={`transition-all duration-300 stroke-[1.5] ${selectedTableId === table.id ? 'stroke-indigo-600' : statusColors[table.status].stroke} ${statusColors[table.status].fill}`}
+                                                className={`transition-all duration-300 stroke-[1.5] ${selectedTableId === table.id ? 'stroke-primary' : statusColors[table.status].stroke} ${statusColors[table.status].fill}`}
                                             />
                                         ) : (
                                             <rect
                                                 width={table.width} height={table.height}
                                                 rx={table.table_type === 'square' ? 8 : 12}
-                                                className={`transition-all duration-300 stroke-[1.5] ${selectedTableId === table.id ? 'stroke-indigo-600' : statusColors[table.status].stroke} ${statusColors[table.status].fill}`}
+                                                className={`transition-all duration-300 stroke-[1.5] ${selectedTableId === table.id ? 'stroke-primary' : statusColors[table.status].stroke} ${statusColors[table.status].fill}`}
                                             />
                                         )}
                                         <text
@@ -342,7 +354,7 @@ export default function Tables() {
                                             {table.number}
                                         </text>
                                         {selectedTableId === table.id && (
-                                            <rect width={table.width + 12} height={table.height + 12} x={-6} y={-6} rx={table.table_type === 'circle' ? 999 : 14} fill="none" stroke="currentColor" className="text-indigo-600" strokeWidth="1" strokeDasharray="4 4" />
+                                            <rect width={table.width + 12} height={table.height + 12} x={-6} y={-6} rx={table.table_type === 'circle' ? 999 : 14} fill="none" stroke="currentColor" className="text-primary" strokeWidth="1" strokeDasharray="4 4" />
                                         )}
                                     </motion.g>
                                 ))}
@@ -358,57 +370,59 @@ export default function Tables() {
                         initial={{ x: 400, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: 400, opacity: 0 }}
-                        className="w-[340px] bg-white border-l border-slate-100 shadow-2xl flex flex-col gap-8 p-8 overflow-y-auto no-scrollbar"
+                        className="w-[380px] bg-white border-l border-slate-100 shadow-2xl flex flex-col gap-8 p-10 overflow-y-auto no-scrollbar"
                     >
                         <div className="flex justify-between items-start relative">
-                            <div className={`px-6 py-8 rounded-[24px] text-center border ${statusColors[selectedTable?.status || 'free'].stroke} ${statusColors[selectedTable?.status || 'free'].bg} w-full shadow-inner`}>
-                                <h2 className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter italic">{selectedTable?.number}</h2>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-2 opacity-60 italic">{t(`tables.${selectedTable?.status}`)}</p>
+                            <div className={`px-6 py-10 rounded-[2rem] text-center border ${statusColors[selectedTable?.status || 'free'].stroke} ${statusColors[selectedTable?.status || 'free'].bg} w-full shadow-inner`}>
+                                <h2 className="text-7xl font-black text-slate-900 dark:text-white tracking-tighter">{selectedTable?.number}</h2>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-4 opacity-80">{t(`tables.${selectedTable?.status}`)}</p>
                             </div>
-                            <button onClick={() => setSelectedTableId(null)} className="absolute -top-2 -right-2 p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all"><X size={18} /></button>
+                            <button onClick={() => setSelectedTableId(null)} className="absolute -top-2 -right-2 p-3 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-2xl transition-all"><X size={20} /></button>
                         </div>
 
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{t('tables.seatsCount')}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">{t('tables.seatsCount')}</p>
                                     <p className="text-2xl font-black text-slate-900 tracking-tighter tabular-nums">{selectedTable?.seats} <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest ml-1">PAX</span></p>
                                 </div>
                                 <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-2">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('tables.rotation')}</p>
-                                    <button onClick={() => selectedTableId && handleRotate(selectedTableId)} className="h-10 w-10 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-slate-900 hover:border-indigo-600 transition-all shadow-sm active:scale-95"><RotateCw size={14} /></button>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{t('tables.rotation')}</p>
+                                    <button disabled={isHost} onClick={() => selectedTableId && handleRotate(selectedTableId)} className="h-10 w-10 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-slate-900 hover:border-primary transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><RotateCw size={14} /></button>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <button
-                                    onClick={() => selectedTable && openEditModal(selectedTable)}
-                                    className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-600 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-all"><Edit2 size={14} /></div>
-                                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900">{t('tables.editTable')}</span>
-                                    </div>
-                                    <ChevronRight size={14} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
-                                </button>
-                                <button className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-600 transition-all group opacity-50">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-all"><Combine size={14} /></div>
-                                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900">{t('tables.mergeTables')}</span>
-                                    </div>
-                                    <ChevronRight size={14} className="text-slate-300" />
-                                </button>
-                                <button onClick={() => selectedTableId && setDeleteId(selectedTableId)} className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-rose-500 hover:bg-rose-50 transition-all group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-rose-500 transition-all"><Trash2 size={14} /></div>
-                                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 group-hover:text-rose-600">{t('tables.deletePermanently')}</span>
-                                    </div>
-                                    <ChevronRight size={14} className="text-slate-300" />
-                                </button>
-                            </div>
+                            {!isHost && (
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => selectedTable && openEditModal(selectedTable)}
+                                        className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-[1.5rem] hover:border-primary transition-all group"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary transition-all"><Edit2 size={16} /></div>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">{t('tables.editTable')}</span>
+                                        </div>
+                                        <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                    <button className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-[1.5rem] hover:border-primary transition-all group opacity-50">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary transition-all"><Combine size={16} /></div>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">{t('tables.mergeTables')}</span>
+                                        </div>
+                                        <ChevronRight size={16} className="text-slate-300" />
+                                    </button>
+                                    <button onClick={() => selectedTableId && setDeleteId(selectedTableId)} className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-[1.5rem] hover:border-rose-500 hover:bg-rose-50 transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-rose-500 transition-all"><Trash2 size={16} /></div>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 group-hover:text-rose-600">{t('tables.deletePermanently')}</span>
+                                        </div>
+                                        <ChevronRight size={16} className="text-slate-300" />
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="space-y-4 pt-4">
-                                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.25em] flex items-center gap-3 italic">
+                                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-3 italic">
                                     {t('tables.nextReservation')}
                                     <div className="h-[1px] flex-1 bg-slate-50"></div>
                                 </h4>
@@ -421,26 +435,26 @@ export default function Tables() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="p-6 bg-indigo-600 rounded-3xl text-white space-y-6 shadow-2xl shadow-indigo-600/20">
+                                    <div className="p-6 bg-primary rounded-3xl text-white space-y-6 shadow-2xl shadow-primary/20">
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center italic font-black text-sm">{selectedTable.current_booking.guest_name.charAt(0)}</div>
                                                 <div>
                                                     <p className="text-xs font-black uppercase tracking-tight italic">{selectedTable.current_booking.guest_name}</p>
-                                                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mt-0.5">{selectedTable.current_booking.guests} {t('calendar.guestsCount')}</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-0.5">{selectedTable.current_booking.guests} {t('calendar.guestsCount')}</p>
                                                 </div>
                                             </div>
                                             <div className="px-3 py-1 bg-white/20 rounded-lg text-[10px] font-black tabular-nums tracking-widest">
                                                 {selectedTable.current_booking.time.substring(0, 5)}
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-widest opacity-60 border-t border-white/20 pt-4">
+                                        <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.3em] opacity-60 border-t border-white/20 pt-4">
                                             <div className="flex items-center gap-2"><Clock size={12} /> {selectedTable.current_booking.duration_minutes} MINS</div>
                                         </div>
                                         <Button
                                             variant="secondary"
                                             size="sm"
-                                            className="w-full bg-white text-indigo-600 hover:opacity-90 text-[9px] h-10 font-black uppercase tracking-[0.15em] rounded-xl border-none"
+                                            className="w-full bg-white text-primary hover:opacity-90 text-[10px] h-12 font-black uppercase tracking-[0.3em] rounded-2xl border-none"
                                             onClick={() => {
                                                 window.location.href = `/app/bookings?booking=${selectedTable.current_booking?.id}`;
                                             }}
@@ -460,51 +474,63 @@ export default function Tables() {
                 {showModal && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)} className="absolute inset-0 bg-slate-800/40 backdrop-blur-sm" />
-                        <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="relative bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden border border-slate-100">
-                            <form onSubmit={handleSave} className="p-10 space-y-8">
+                        <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100">
+                            <form onSubmit={handleSave} className="p-12 space-y-8">
                                 <div className="flex justify-between items-center">
                                     <div>
-                                        <h2 className="text-[13px] font-black text-slate-900 uppercase tracking-[0.2em] italic">{modalMode === 'add' ? t('tables.newTable') : t('tables.editTable')}</h2>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1 opacity-60">{t('tables.configureSeating')}</p>
+                                        <h2 className="text-2xl font-black text-slate-900 tracking-tighter">{modalMode === 'add' ? t('tables.newTable') : t('tables.editTable')}</h2>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1.5 opacity-80">{t('tables.configureSeating')}</p>
                                     </div>
-                                    <button type="button" onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-indigo-600 bg-slate-50 rounded-xl transition-all"><X size={16} /></button>
+                                    <button type="button" onClick={() => setShowModal(false)} className="p-3 text-slate-400 hover:text-primary bg-slate-50 rounded-2xl transition-all"><X size={16} /></button>
                                 </div>
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block ml-1">{t('tables.tableNumber')}</label>
-                                            <input required type="text" value={formData.number} onChange={(e) => setFormData({ ...formData, number: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[11px] font-black uppercase tracking-widest outline-none focus:border-indigo-600 transition-all" />
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.tableNumber')}</label>
+                                            <input required type="text" value={formData.number} onChange={(e) => setFormData({ ...formData, number: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.3em] outline-none focus:border-primary transition-all" />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block ml-1">{t('tables.seatsCount')}</label>
-                                            <input required type="number" value={formData.seats} onChange={(e) => setFormData({ ...formData, seats: parseInt(e.target.value) || 0 })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[11px] font-black uppercase tracking-widest outline-none focus:border-indigo-600 transition-all tabular-nums" />
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.seatsCount')}</label>
+                                            <input required type="number" value={formData.seats} onChange={(e) => setFormData({ ...formData, seats: parseInt(e.target.value) || 0 })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.3em] outline-none focus:border-primary transition-all tabular-nums" />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block ml-1">{t('tables.shapeType')}</label>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.shapeType')}</label>
                                         <div className="grid grid-cols-3 gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
                                             {(['rectangle', 'square', 'circle'] as const).map((type) => (
-                                                <button key={type} type="button" onClick={() => setFormData({ ...formData, table_type: type })} className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${formData.table_type === type ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>{type}</button>
+                                                <button key={type} type="button" onClick={() => setFormData({ ...formData, table_type: type })} className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all ${formData.table_type === type ? 'bg-white text-primary shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>{type}</button>
                                             ))}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block ml-1">DIMENSIONS (PX)</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">DIMENSIONS (PX)</label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <input type="number" placeholder="W" value={formData.width} onChange={e => setFormData({ ...formData, width: Number(e.target.value) })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black outline-none tabular-nums" />
                                                 <input type="number" placeholder="H" value={formData.height} onChange={e => setFormData({ ...formData, height: Number(e.target.value) })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black outline-none tabular-nums" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block ml-1">{t('tables.rotation')}°</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.rotation')}°</label>
                                             <input type="number" value={formData.rotation} onChange={(e) => setFormData({ ...formData, rotation: parseInt(e.target.value) || 0 })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black outline-none tabular-nums" />
                                         </div>
                                     </div>
+                                    <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <input
+                                            type="checkbox"
+                                            id="is_active"
+                                            checked={formData.is_active}
+                                            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                            className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+                                        />
+                                        <label htmlFor="is_active" className="text-[10px] font-black text-slate-900 uppercase tracking-widest cursor-pointer select-none">
+                                            {t('tables.activeForBookings')}
+                                        </label>
+                                    </div>
                                 </div>
                                 <div className="flex gap-4 pt-4">
-                                    <Button variant="secondary" className="flex-1 text-[9px] h-11 font-black uppercase tracking-widest rounded-xl border-slate-100" onClick={() => setShowModal(false)}>{t('tables.cancel')}</Button>
-                                    <Button type="submit" isLoading={saving} className="flex-1 bg-indigo-600 text-white text-[9px] h-11 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-600/20 border-none"> {t('tables.saveTable')}</Button>
+                                    <Button variant="secondary" className="flex-1 text-[10px] h-12 font-black uppercase tracking-[0.3em] rounded-2xl border-slate-100" onClick={() => setShowModal(false)}>{t('tables.cancel')}</Button>
+                                    <Button type="submit" isLoading={saving} className="flex-1 bg-primary text-primary-foreground text-[10px] h-12 font-black uppercase tracking-[0.3em] rounded-2xl shadow-lg shadow-primary/20 border-none"> {t('tables.saveTable')}</Button>
                                 </div>
                             </form>
                         </motion.div>

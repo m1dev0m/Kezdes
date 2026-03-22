@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     logoContainer: {
         backgroundColor: colors.primary + '1A', // 10% opacity primary
         padding: 8,
-        borderRadius: 8,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     heroImageBorder: {
-        borderRadius: 24,
+        borderRadius: 40,
         borderWidth: 1,
         borderColor: colors.border,
         overflow: 'hidden',
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,

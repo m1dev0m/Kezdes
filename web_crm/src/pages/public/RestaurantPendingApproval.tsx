@@ -22,17 +22,32 @@ export default function RestaurantPendingApproval() {
     const navigate = useNavigate();
     const [checking, setChecking] = useState(false);
     const [lastCheck, setLastCheck] = useState<Date | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const safeGetToken = (key: string) => {
+        try {
+            return localStorage.getItem(key);
+        } catch {
+            try {
+                return sessionStorage.getItem(key);
+            } catch {
+                return null;
+            }
+        }
+    };
 
     const checkRequestStatus = async () => {
+        if (checking) return;
         setChecking(true);
+        setError(null);
         try {
             const res = await api.get('/restaurants/requests/mine/');
             const request = res.data;
 
             if (request.status === 'approved') {
                 // Request approved - refresh user data and redirect
-                const token = localStorage.getItem('accessToken');
-                const refreshToken = localStorage.getItem('refreshToken');
+                const token = safeGetToken('accessToken');
+                const refreshToken = safeGetToken('refreshToken');
                 if (token && refreshToken) {
                     await login(token, refreshToken);
                 }
@@ -41,14 +56,30 @@ export default function RestaurantPendingApproval() {
             }
 
             setLastCheck(new Date());
-        } catch (error) {
-            console.error('Error checking request status:', error);
+        } catch (err: any) {
+            const status = err?.response?.status;
+            if (status === 401) {
+                setError(t('pendingApproval.authRequired'));
+                return;
+            }
+            if (status === 404) {
+                navigate('/register?mode=restaurant');
+                return;
+            }
+            setError(t('pendingApproval.checkFailed'));
         } finally {
             setChecking(false);
         }
     };
 
     useEffect(() => {
+        const token = safeGetToken('accessToken');
+        const refreshToken = safeGetToken('refreshToken');
+        if (!token || !refreshToken) {
+            navigate('/register?mode=restaurant');
+            return;
+        }
+
         // Initial check
         checkRequestStatus();
 
@@ -111,6 +142,28 @@ export default function RestaurantPendingApproval() {
                         </p>
                     </div>
 
+                    {error && (
+                        <div className="mb-8 rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-rose-700 dark:border-rose-900/40 dark:bg-rose-900/10 dark:text-rose-300 relative z-10">
+                            <p className="text-sm font-bold">{error}</p>
+                            <div className="mt-3 flex flex-wrap gap-3">
+                                <Button
+                                    onClick={checkRequestStatus}
+                                    disabled={checking}
+                                    className="rounded-2xl px-5 h-10"
+                                >
+                                    {checking ? t('pendingApproval.checking') : t('pendingApproval.checkNow')}
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => navigate('/login')}
+                                    className="rounded-2xl px-5 h-10"
+                                >
+                                    {t('pendingApproval.goToLogin')}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] p-8 lg:p-10 mb-12 border border-slate-100 dark:border-slate-800 relative z-10">
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-8 flex items-center gap-3">
                             <ListTodo size={14} className="text-primary" />
@@ -162,11 +215,11 @@ export default function RestaurantPendingApproval() {
                 <div className="mt-16 flex flex-wrap justify-center gap-12 opacity-50">
                     <div className="flex flex-col items-center gap-2">
                         <MapPin className="text-slate-300 dark:text-slate-700" size={32} />
-                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('pendingApproval.gpsVerified')}</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{t('pendingApproval.gpsVerified')}</span>
                     </div>
                     <div className="flex flex-col items-center gap-2">
                         <Search className="text-slate-300 dark:text-slate-700" size={32} />
-                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('pendingApproval.profileFound')}</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{t('pendingApproval.profileFound')}</span>
                     </div>
                 </div>
             </main>

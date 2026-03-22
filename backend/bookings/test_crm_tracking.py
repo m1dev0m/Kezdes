@@ -76,7 +76,10 @@ class TestCustomerCreation:
         
         customer_obj = Customer.objects.first()
         assert customer_obj.phone == '+77771234567'
-        assert customer_obj.visits_count == 1
+        assert customer_obj.visits_count == 0
+
+        visit_count = Visit.objects.filter(customer__restaurant=restaurant).count()
+        assert visit_count == 0, "Visit record must not be created until booking is completed"
 
     def test_customer_created_on_manual_booking(self, api_client, setup_restaurant):
         """Test that customer is created for manual walk-in bookings"""
@@ -104,9 +107,10 @@ class TestCustomerCreation:
         customer_obj = Customer.objects.first()
         assert customer_obj.phone == '+77779876543'
         assert customer_obj.name == 'John Walk-in'
+        assert Visit.objects.filter(customer__restaurant=restaurant).count() == 0
 
     def test_visit_record_created(self, api_client, setup_restaurant):
-        """Test that Visit record is created when booking is made"""
+        """Test that Visit record is created when booking is completed"""
         admin, restaurant = setup_restaurant
         
         customer = User.objects.create_user(
@@ -131,9 +135,20 @@ class TestCustomerCreation:
         })
         
         assert response.status_code == 201
-        
+
+        booking_id = response.data.get('id')
+        assert booking_id is not None
+
+        # Confirm + complete as restaurant staff
+        api_client.force_authenticate(user=admin)
+        confirm_res = api_client.post(f'/api/v1/bookings/{booking_id}/confirm/')
+        assert confirm_res.status_code in (200, 201)
+
+        complete_res = api_client.post(f'/api/v1/bookings/{booking_id}/complete/')
+        assert complete_res.status_code == 200
+
         visit_count = Visit.objects.filter(customer__restaurant=restaurant).count()
-        assert visit_count == 1, "Visit record should be created"
+        assert visit_count == 1, "Visit record should be created on completion"
 
     def test_booking_completion_updates_customer(self, api_client, setup_restaurant):
         """Test that completing a booking updates customer stats"""
@@ -162,11 +177,18 @@ class TestCustomerCreation:
         })
         
         assert response.status_code == 201
-        
-        # Customer should be created on booking
+
+        booking_id = response.data.get('id')
+        assert booking_id is not None
+
         customer_obj = Customer.objects.get(phone='+77775554433')
-        assert customer_obj.visits_count >= 1
-        assert customer_obj.visits_count >= 1
-        
-        # Test passes - customer is tracked
-        assert True
+        assert customer_obj.visits_count == 0
+
+        api_client.force_authenticate(user=admin)
+        api_client.post(f'/api/v1/bookings/{booking_id}/confirm/')
+        complete_res = api_client.post(f'/api/v1/bookings/{booking_id}/complete/')
+        assert complete_res.status_code == 200
+
+        customer_obj.refresh_from_db()
+        assert customer_obj.visits_count == 1
+        assert Visit.objects.filter(customer=customer_obj).count() == 1

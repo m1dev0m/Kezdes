@@ -327,6 +327,7 @@ class WaitlistService:
     def promote_next(restaurant, date, time_val):
         """
         Find the oldest 'waiting' entry for this slot and notify the user.
+        Re-checks capacity before promoting to avoid notifying for a still-full slot.
         Returns the WaitlistEntry that was notified, or None.
         """
         from .models import WaitlistEntry
@@ -340,6 +341,13 @@ class WaitlistService:
         ).order_by('created_at').first()
 
         if not entry:
+            return None
+
+        # Re-check capacity before promoting
+        is_available, _ = BookingService.check_capacity(
+            restaurant, date, time_val, entry.guests
+        )
+        if not is_available:
             return None
 
         entry.status = WaitlistEntry.NOTIFIED

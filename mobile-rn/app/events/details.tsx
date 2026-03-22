@@ -90,11 +90,11 @@ const styles = StyleSheet.create({
     form: { gap: 20 },
     inputGroup: { gap: 8 },
     label: { fontSize: 14, fontWeight: '700', color: colors.text },
-    input: { height: 56, backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 16, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border },
+    input: { height: 56, backgroundColor: colors.surface, borderRadius: 32, paddingHorizontal: 16, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border },
     textArea: { height: 120, paddingTop: 16, textAlignVertical: 'top' },
     footer: { padding: 24, borderTopWidth: 1, borderTopColor: colors.border },
     progressContainer: { height: 6, backgroundColor: colors.surface, borderRadius: 3, marginBottom: 16, overflow: 'hidden' },
     progressBar: { height: '100%', backgroundColor: colors.primary },
-    createBtn: { height: 56, backgroundColor: colors.primary, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    createBtn: { height: 56, backgroundColor: colors.primary, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
     createBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     typeCard: {
         width: (width - 40 - 16) / 2, // (screen width - outer padding - gap) / 2
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         borderWidth: 2,
         borderColor: 'transparent',
         padding: 24,
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
     typeIconBox: {
         width: 48,
         height: 48,
-        borderRadius: 24,
+        borderRadius: 40,
         backgroundColor: colors.border,
         alignItems: 'center',
         justifyContent: 'center',
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(19, 127, 236, 0.1)',
         padding: 20,
-        borderRadius: 16,
+        borderRadius: 32,
         marginTop: 40,
     },
     infoAlertText: {
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     },
     cardBox: {
         backgroundColor: 'rgba(246, 247, 248, 0.7)', // slate-50 equiv
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 16,
         borderWidth: 1,
         borderColor: colors.border,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     },
     calNavBtn: {
         padding: 4,
-        borderRadius: 8,
+        borderRadius: 32,
     },
     calMonthLabel: {
         fontSize: 16,
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
         aspectRatio: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 8,
+        borderRadius: 32,
     },
     dayCellActive: {
         backgroundColor: colors.primary,
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         backgroundColor: 'rgba(246, 247, 248, 0.7)',
         padding: 24,
-        borderRadius: 16,
+        borderRadius: 32,
         borderWidth: 1,
         borderColor: colors.border,
         marginBottom: 12,
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
     counterBtn: {
         width: 48,
         height: 48,
-        borderRadius: 24,
+        borderRadius: 40,
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: colors.border,
@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
 
     budgetVisualBox: {
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 24,
         borderWidth: 1,
         borderColor: colors.border,
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 24,
         height: 24,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#ffffff',
         borderWidth: 2,
         borderColor: colors.primary,
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: 16,
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         borderWidth: 2,
         borderColor: colors.border,
     },
@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
     tierIconBox: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 32,
         backgroundColor: colors.border,
         justifyContent: 'center',
         alignItems: 'center',
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderWidth: 2,
         borderColor: colors.border,
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 16,
     },
     addonToggleCardActive: {
@@ -939,7 +939,7 @@ const styles = StyleSheet.create({
     addonToggleIconBox: {
         width: 48,
         height: 48,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     checkboxOuter: {
         width: 24,
         height: 24,
-        borderRadius: 12,
+        borderRadius: 40,
         borderWidth: 2,
         borderColor: colors.border,
         alignItems: 'center',
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: '#f8fafc',
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 16,
         borderWidth: 1,
         borderColor: '#e2e8f0',
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 71, 255, 0.1)',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 8,
+        borderRadius: 32,
     },
     editDateText: {
         fontSize: 14,
@@ -1011,7 +1011,7 @@ const styles = StyleSheet.create({
     timeGridBtn: {
         width: (width - 40 - 24) / 3,
         backgroundColor: '#f8fafc',
-        borderRadius: 12,
+        borderRadius: 40,
         paddingVertical: 14,
         alignItems: 'center',
         borderWidth: 1,
@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
     },
     wizardInput: {
         backgroundColor: '#f8fafc',
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 16,
         fontSize: 16,
         fontWeight: '500',
@@ -1112,7 +1112,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#f8fafc',
         borderWidth: 1,
         borderColor: '#e2e8f0',
-        borderRadius: 12,
+        borderRadius: 40,
         padding: 16,
         fontSize: 15,
         color: colors.text,
@@ -1122,7 +1122,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         backgroundColor: 'rgba(67, 97, 238, 0.05)',
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         marginTop: 16,
     },
     infoNoteText: {
@@ -1147,7 +1147,7 @@ const styles = StyleSheet.create({
     },
     calendarModalContent: {
         backgroundColor: '#fff',
-        borderRadius: 24,
+        borderRadius: 40,
         width: '100%',
         padding: 24,
     },
@@ -1172,7 +1172,7 @@ const styles = StyleSheet.create({
         aspectRatio: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#f8fafc',
     },
     calendarDayBtnActive: {

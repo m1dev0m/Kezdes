@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     typeCard: {
         width: (Dimensions.get('window').width - 64) / 2,
         backgroundColor: '#fff',
-        borderRadius: 20,
+        borderRadius: 32,
         padding: 24,
         alignItems: 'center',
         borderWidth: 1,

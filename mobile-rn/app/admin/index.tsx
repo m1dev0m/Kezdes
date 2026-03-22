@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f4f5f9' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    rIconBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(67, 0, 255, 0.1)', alignItems: 'center', justifyContent: 'center' },
+    rIconBox: { width: 40, height: 40, borderRadius: 32, backgroundColor: 'rgba(67, 0, 255, 0.1)', alignItems: 'center', justifyContent: 'center' },
     rName: { fontSize: 16, fontWeight: '700', color: colors.text },
     statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' },
     rStatus: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5 },
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     greetingSub: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: 24 },
 
     kpiRow: { flexDirection: 'row', gap: 8, marginBottom: 32 },
-    kpiCard: { flex: 1, padding: 16, borderRadius: 16, borderCurve: 'continuous', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    kpiCard: { flex: 1, padding: 16, borderRadius: 32, borderCurve: 'continuous', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
     kpiCardWhite: { backgroundColor: '#ffffff' },
     kpiCardPurple: { backgroundColor: '#4300FF' },
     kpiLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 8 },
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
     sectionLink: { fontSize: 14, fontWeight: '600', color: '#4300FF' },
 
-    requestCard: { backgroundColor: '#ffffff', borderRadius: 20, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4 },
+    requestCard: { backgroundColor: '#ffffff', borderRadius: 32, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4 },
     reqTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
     reqUserBox: { flexDirection: 'row', gap: 12, alignItems: 'center' },
     reqAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
@@ -233,12 +233,12 @@ const styles = StyleSheet.create({
     reqTime: { fontSize: 18, fontWeight: '800', color: '#4300FF', textAlign: 'right' },
     reqDateText: { fontSize: 11, color: colors.textSecondary, textAlign: 'right', marginTop: 2 },
 
-    reqComment: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, backgroundColor: '#f8fafc', padding: 12, borderRadius: 12, marginBottom: 20 },
+    reqComment: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, backgroundColor: '#f8fafc', padding: 12, borderRadius: 40, marginBottom: 20 },
 
     reqActions: { flexDirection: 'row', gap: 12 },
-    btnPrimary: { flex: 1, backgroundColor: '#4300FF', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+    btnPrimary: { flex: 1, backgroundColor: '#4300FF', paddingVertical: 14, borderRadius: 40, alignItems: 'center' },
     btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-    btnSecondary: { flex: 1, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+    btnSecondary: { flex: 1, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', paddingVertical: 14, borderRadius: 40, alignItems: 'center' },
     btnSecondaryText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
 
     emptyText: { textAlign: 'center', marginTop: 40, color: colors.muted, fontSize: 14 }

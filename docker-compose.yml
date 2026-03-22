@@ -42,7 +42,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
+    command: sh -c "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
       - ./backend:/app
     ports:
@@ -61,7 +61,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A config worker -l INFO
+    command: sh -c "python manage.py migrate --noinput && celery -A config worker -l INFO"
     volumes:
       - ./backend:/app
     environment:
@@ -79,7 +79,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A config beat -l INFO
+    command: sh -c "python manage.py migrate --noinput && celery -A config beat -l INFO"
     volumes:
       - ./backend:/app
     environment:

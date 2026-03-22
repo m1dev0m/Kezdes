@@ -240,7 +240,7 @@ export default function ResultsScreen() {
                             <Ionicons name="remove" size={24} color="#0f172a" />
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={[styles.mapControlBtn, { marginTop: 12, borderRadius: 24 }]}>
+                    <TouchableOpacity style={[styles.mapControlBtn, { marginTop: 12, borderRadius: 40 }]}>
                         <MaterialIcons name="my-location" size={20} color="#0f172a" />
                     </TouchableOpacity>
                 </View>
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#f1f5f9',
         height: 48,
-        borderRadius: 14,
+        borderRadius: 40,
         paddingHorizontal: 16,
         marginBottom: 12,
     },
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
         borderColor: '#e2e8f0',
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 12,
+        borderRadius: 40,
         gap: 4,
     },
     filterChipActive: {
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#0047FF',
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 12,
+        borderRadius: 40,
         gap: 4,
         shadowColor: '#0047FF',
         shadowOffset: { width: 0, height: 2 },
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     segmentedControl: {
         flexDirection: 'row',
         backgroundColor: '#f1f5f9',
-        borderRadius: 14,
+        borderRadius: 40,
         padding: 4,
         height: 44,
     },
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 10,
+        borderRadius: 32,
     },
     segmentBtnActive: {
         backgroundColor: '#ffffff',
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     },
     listCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        borderRadius: 40,
         marginBottom: 16,
         overflow: 'hidden',
         borderWidth: 1,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 32,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     },
     mapBottomCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderRadius: 32,
         borderWidth: 1,
         borderColor: '#F0F0F0',
         shadowColor: '#000',
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
         right: 8,
         width: 32,
         height: 32,
-        borderRadius: 16,
+        borderRadius: 32,
         backgroundColor: 'rgba(0,0,0,0.3)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
         width: '100%',
         backgroundColor: '#0047FF',
         paddingVertical: 12,
-        borderRadius: 12,
+        borderRadius: 40,
         alignItems: 'center',
         shadowColor: '#0047FF',
         shadowOffset: { width: 0, height: 4 },
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     },
     zoomControls: {
         backgroundColor: '#ffffff',
-        borderRadius: 24,
+        borderRadius: 40,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#ffffff',
-        borderRadius: 24,
+        borderRadius: 40,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,

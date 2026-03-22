@@ -1,18 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Alert,
-    Image,
-    SafeAreaView,
-    ActivityIndicator
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
 
 import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -265,7 +253,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: colors.white,
     },
     inputIcon: {
@@ -299,7 +287,7 @@ const styles = StyleSheet.create({
     loginButton: {
         backgroundColor: colors.primary,
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         alignItems: 'center',
         marginTop: 4,
         shadowColor: colors.primary,
@@ -344,7 +332,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 12,
-        borderRadius: 12,
+        borderRadius: 40,
         borderWidth: 1,
         borderColor: colors.border,
         backgroundColor: colors.white,

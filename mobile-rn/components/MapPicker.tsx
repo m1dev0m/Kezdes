@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     container: {
         width: '100%',
         height: 300,
-        borderRadius: 16,
+        borderRadius: 32,
         overflow: 'hidden',
         backgroundColor: '#f1f5f9',
     },

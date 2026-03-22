@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#fff',
-        borderRadius: 20,
+        borderRadius: 32,
         padding: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     statusBadge: {
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 32,
     },
     statusText: {
         fontSize: 12,

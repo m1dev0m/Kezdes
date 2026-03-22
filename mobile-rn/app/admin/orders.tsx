@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#fff',
-        borderRadius: 20,
+        borderRadius: 32,
         padding: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     },
     itemsList: {
         backgroundColor: '#f8fafc',
-        borderRadius: 12,
+        borderRadius: 40,
         padding: 12,
         marginBottom: 12,
         gap: 8,

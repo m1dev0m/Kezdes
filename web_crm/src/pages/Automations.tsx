@@ -81,7 +81,7 @@ export default function Automations() {
                             className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] p-8 hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group relative overflow-hidden"
                         >
                             <div className="flex items-start justify-between mb-8">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${auto.type === 'email' ? 'bg-indigo-50 text-indigo-500 dark:bg-indigo-500/10' : 'bg-amber-50 text-amber-500 dark:bg-amber-500/10'}`}>
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${auto.type === 'email' ? 'bg-primary/5 text-primary dark:bg-primary/5' : 'bg-amber-50 text-amber-500 dark:bg-amber-500/10'}`}>
                                     {auto.type === 'email' ? <Mail size={28} /> : <MessageSquare size={28} />}
                                 </div>
                                 <div className="flex items-center gap-4">

@@ -9,6 +9,9 @@ env = environ.Env(
 )
 
 def _load_env_file():
+    # Skip loading .env during pytest — tests set their own env vars
+    if 'pytest' in sys.modules or 'pytest' in sys.argv[0] if sys.argv else False:
+        return
     env_file_path = os.path.join(BASE_DIR, '.env')
     _debug = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
     if os.path.exists(env_file_path):
@@ -31,6 +34,10 @@ if not DEBUG and len(JWT_SIGNING_KEY) < 32:
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 TWOGIS_API_KEY = env('TWOGIS_API_KEY', default='')
+
+ADMIN_URL = env('ADMIN_URL', default='secure-super-admin-9481')
+ALLOW_ADMIN_IPS = env.list('ALLOW_ADMIN_IPS', default=[])
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -59,6 +66,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'core.middleware.AdminIPAllowlistMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -152,6 +161,7 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -164,7 +174,6 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -177,9 +186,14 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': env('THROTTLE_ANON_RATE', default='100/min'),
         'user': env('THROTTLE_USER_RATE', default='1000/min'),
-        'auth': '1000/min',
+        'auth': env('THROTTLE_AUTH_RATE', default='20/min'),
     },
 }
+
+if DEBUG or IS_TESTING:
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].append(
+        'rest_framework.authentication.SessionAuthentication'
+    )
 
 if IS_TESTING:
     REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []

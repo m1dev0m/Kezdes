@@ -160,7 +160,7 @@ export default function GuestBookingDetails() {
                         <Link to="/guest/dashboard" className="text-slate-600 dark:text-slate-300 text-sm font-semibold hover:text-primary transition-colors">My Bookings</Link>
                         <Link to="/guest/profile" className="text-slate-600 dark:text-slate-300 text-sm font-semibold hover:text-primary transition-colors">Profile</Link>
                     </nav>
-                    <div className="size-10 rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden cursor-pointer">
+                    <div className="size-10 rounded-full border-2 border-primary/20 bg-primary/5 flex items-center justify-center text-primary font-bold overflow-hidden cursor-pointer">
                         {user?.username?.charAt(0).toUpperCase()}
                     </div>
                 </div>
@@ -223,7 +223,7 @@ export default function GuestBookingDetails() {
                                         Special Requests & Dietary Needs
                                     </h3>
                                     <div className="space-y-4">
-                                        <div className="bg-primary/5 dark:bg-primary/10 p-4 rounded-lg border-l-4 border-primary">
+                                        <div className="bg-primary/5 dark:bg-primary/5 p-4 rounded-lg border-l-4 border-primary">
                                             <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">Special Request:</p>
                                             <p className="text-slate-600 dark:text-slate-400 italic">"{booking.special_requests}"</p>
                                         </div>
@@ -431,7 +431,11 @@ export default function GuestBookingDetails() {
             </main>
 
             <footer className="mt-auto py-10 px-10 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center">
-                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">© 2024 Kezdes Reservation System. All rights reserved.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium flex items-center justify-center gap-2">
+                    <span>© 2024</span>
+                    <span className="inline-flex items-center"><Logo className="h-4" /></span>
+                    <span>Reservation System. All rights reserved.</span>
+                </p>
             </footer>
 
             {showReviewModal && (

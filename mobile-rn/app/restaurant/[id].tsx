@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     iconBtn: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 32,
         backgroundColor: 'rgba(255,255,255,0.9)', // Simulating bg-white/80 backdrop-blur
         alignItems: 'center',
         justifyContent: 'center',
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     },
     infoCard: {
         backgroundColor: '#ffffff',
-        borderRadius: 12,
+        borderRadius: 40,
         padding: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#DCFCE7', // green-100
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 32,
     },
     statusText: {
         color: '#16A34A', // green-600
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(19,127,236,0.05)',
         borderWidth: 1,
         borderColor: 'rgba(19,127,236,0.1)',
-        borderRadius: 8,
+        borderRadius: 32,
         padding: 12,
     },
     statLabel: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     menuItemImageWrap: {
         width: '100%',
         aspectRatio: 4 / 5,
-        borderRadius: 12,
+        borderRadius: 40,
         overflow: 'hidden',
         backgroundColor: colors.border,
     },
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     mapContainer: {
         width: '100%',
         height: 160,
-        borderRadius: 12,
+        borderRadius: 40,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: colors.border,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     pinMarker: {
         width: 48,
         height: 48,
-        borderRadius: 24,
+        borderRadius: 40,
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     },
     secondaryActionBtn: {
         width: 124,
-        borderRadius: 12,
+        borderRadius: 40,
         borderWidth: 1,
         borderColor: colors.border,
         backgroundColor: colors.surface,
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
         gap: 8,
         backgroundColor: colors.primary,
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,

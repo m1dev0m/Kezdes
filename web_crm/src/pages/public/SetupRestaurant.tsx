@@ -151,7 +151,7 @@ export default function SetupRestaurant() {
                       setForm(p => ({ ...p, city: city.value }));
                       setShowCityDropdown(false);
                     }}
-                    className={`w-full px-4 py-3 text-left text-sm font-bold hover:bg-primary/10 transition-colors ${form.city === city.value ? 'text-primary bg-primary/5' : 'text-slate-700 dark:text-slate-300'
+                    className={`w-full px-4 py-3 text-left text-sm font-bold hover:bg-primary/5 transition-colors ${form.city === city.value ? 'text-primary bg-primary/5' : 'text-slate-700 dark:text-slate-300'
                       }`}
                   >
                     {city.label}

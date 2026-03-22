@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
-import { Logo } from '@/components/ui/Logo';
 import { Monitor, FileText, Store, Activity, LogOut } from 'lucide-react';
+import { Logo } from '@/components/ui/Logo';
 
 const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: Monitor },
@@ -21,19 +21,19 @@ export default function GlobalAdminLayout() {
                 <div className="text-center">
                     <h1 className="text-2xl font-bold text-slate-900">Access Denied</h1>
                     <p className="mt-2 text-slate-500">You must be a Global Admin to view this page.</p>
-                    <button onClick={() => navigate('/login')} className="mt-4 text-indigo-600 hover:text-indigo-700 font-bold uppercase tracking-widest text-[10px]">Return to Login</button>
+                    <button onClick={() => navigate('/login')} className="mt-4 text-primary hover:text-indigo-700 font-bold uppercase tracking-widest text-[10px]">Return to Login</button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
+            <div className="min-h-screen bg-slate-50 flex">
             <div className="w-64 bg-white flex flex-col border-r border-slate-100 shadow-sm relative z-10">
                 <div className="h-16 flex items-center px-6 border-b border-slate-50">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xl font-bold tracking-tight italic"><Logo /> HQ</span>
-                    </div>
+                    <Link to="/admin/dashboard" className="flex items-center gap-3">
+                        <Logo variant="admin" className="h-8" />
+                    </Link>
                 </div>
 
                 <div className="flex-1 py-6 px-3 space-y-1">
@@ -43,12 +43,12 @@ export default function GlobalAdminLayout() {
                             <Link
                                 key={item.name}
                                 to={item.href}
-                                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isActive
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
+                                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all ${isActive
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-primary'
                                     }`}
                             >
-                                <item.icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600'}`} />
+                                <item.icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-primary'}`} />
                                 {item.name}
                             </Link>
                         );
@@ -58,7 +58,7 @@ export default function GlobalAdminLayout() {
                 <div className="p-4 border-t border-slate-50">
                     <button
                         onClick={logout}
-                        className="flex items-center gap-3 px-3 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-500 hover:bg-rose-50 hover:text-rose-600 w-full transition-all"
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:bg-rose-50 hover:text-rose-600 w-full transition-all"
                     >
                         <LogOut className="w-4 h-4" />
                         Log out

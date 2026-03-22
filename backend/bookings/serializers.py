@@ -62,6 +62,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'budget', 'pay_at_restaurant',
             'order_id', 'preorder', 'table_number', 'table_ids',
             'reservation_date', 'reservation_time', 'customer_id', 'table_id',
+            'is_checked_in', 'check_in_time',
             'history',
         ]
         read_only_fields = ['user', 'status']
@@ -71,8 +72,14 @@ class BookingSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         if data.get('status') == Booking.APPROVED:
             data['status'] = 'confirmed'
+        elif data.get('status') == Booking.SEATED:
+            data['status'] = 'seated'
         elif data.get('status') in (Booking.CANCELLED_BY_USER, Booking.CANCELLED_BY_RESTAURANT):
             data['status'] = 'cancelled'
+
+        # Legacy alias: confirmed + checked-in = seated (backwards compat)
+        if data.get('status') == 'confirmed' and getattr(instance, 'is_checked_in', False):
+            data['status'] = 'seated'
             
         if instance.user:
             data['user_name'] = instance.user.get_full_name() or instance.user.username or data.get('user_name')
@@ -141,6 +148,11 @@ class BookingSerializer(serializers.ModelSerializer):
         if 'duration_hours' in attrs:
             del attrs['duration_hours']
 
+        if duration < 15 or duration > 480:
+            raise serializers.ValidationError(
+                {"duration_minutes": "Длительность должна быть от 15 до 480 минут (8 часов)."}
+            )
+
         if guests < 1 or guests > 20:
             raise serializers.ValidationError(
                 {"guests": "Количество гостей должно быть от 1 до 20."}
@@ -177,14 +189,11 @@ class BookingSerializer(serializers.ModelSerializer):
             end_datetime__gt=start_dt
         )
         for existing in user_same_restaurant:
-            if existing.status == Booking.APPROVED:
-                raise serializers.ValidationError(
-                    {"time": "У вас уже есть подтвержденная бронь на это время. "
-                             "Отмените её перед созданием новой."}
-                )
-            else:
-                existing.status = Booking.CANCELLED_BY_USER
-                existing.save()
+            raise serializers.ValidationError(
+                {"time": f"У вас уже есть активная бронь на пересекающееся время "
+                         f"в этом ресторане (статус: {existing.get_status_display()}). "
+                         f"Отмените её перед созданием новой."}
+            )
 
         user_all_bookings = Booking.objects.filter(
             user=user,
@@ -306,7 +315,12 @@ class AdminBookingSerializer(serializers.ModelSerializer):
         attrs['duration_minutes'] = duration
         if 'duration_hours' in attrs:
             del attrs['duration_hours']
-            
+
+        if duration < 15 or duration > 480:
+            raise serializers.ValidationError(
+                {"duration_minutes": "Длительность должна быть от 15 до 480 минут (8 часов)."}
+            )
+
         from .services import BookingService, make_aware_if_needed
         if not BookingService.is_within_operating_hours(restaurant, booking_date, start_time, duration):
             raise serializers.ValidationError({"time": "Бронирование недоступно на выбранное время."})

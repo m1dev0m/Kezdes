@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1A3C34",
+                        "primary-accent": "#2D5A4C",
+                        "background-light": "#FDFCF8",
+                        "background-dark": "#0F1A17",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Kezdes | Guest Dashboard</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+<div class="flex min-h-screen">
+<!-- Side Navigation -->
+<aside class="w-64 bg-primary dark:bg-black text-white flex flex-col fixed h-full z-10">
+<div class="p-6 flex items-center gap-3">
+<div class="size-8 text-white">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-xl font-bold tracking-tight">Kezdes</h2>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 text-white" href="#">
+<span class="material-symbols-outlined fill-1">dashboard</span>
+<span class="font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-medium text-slate-300">My Bookings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-medium text-slate-300">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-medium text-slate-300">Favorites</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-medium text-slate-300">Profile</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-slate-300">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-white/10">
+<div class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/5 rounded-xl transition-colors text-slate-400 hover:text-white">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-medium">Logout</span>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 ml-64 p-12">
+<!-- Top Header -->
+<header class="flex items-center justify-between mb-16">
+<div>
+<h1 class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Welcome back, Alex</h1>
+<p class="text-slate-500 dark:text-slate-400">Ready for your next culinary experience?</p>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<span class="material-symbols-outlined text-slate-500 hover:text-primary cursor-pointer">notifications</span>
+<div class="absolute -top-1 -right-1 size-2 bg-primary rounded-full"></div>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-slate-200 dark:border-slate-800">
+<div class="text-right">
+<p class="text-sm font-bold leading-none">Alex Thompson</p>
+<p class="text-xs text-primary font-medium">Gold Tier Member</p>
+</div>
+<div class="size-10 rounded-full bg-cover bg-center ring-2 ring-primary/20" data-alt="User profile portrait of Alex" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBN69-IakZoa_hnY66KzkAWR50DR1SGO-7pNhPsdBg4mm_in51rUyssuCcxebxY4Si_pFeXqlfHVOwVhWlhts1g83Y0Pr-F4SjtHxTmAkUH5hAj-M-bLYCjAYRRjXf8MqV4T-08NzEIrfg0uECjHKY8Ar8Em_F87Kid71MRWoPvwLoyG5S7G350Dnu8uAHRZHJg5f8r-TmRWcJ80IIWfOBf_OdNK6eNWmalGswF4f0NNGYfFhgn0bXDbQAPUATTCodrXYzpLAYorswy");'></div>
+</div>
+</div>
+</header>
+<div class="grid grid-cols-12 gap-12">
+<!-- Left Column -->
+<div class="col-span-12 lg:col-span-8 space-y-16">
+<!-- Upcoming Reservation -->
+<section>
+<h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">event_upcoming</span>
+                            Upcoming Reservation
+                        </h2>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row">
+<div class="w-full md:w-1/3 h-48 md:h-auto bg-cover bg-center" data-alt="Elegant fine dining restaurant interior with white tablecloths" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCXEFd_HRcNfZ6bIA1arzZQhC1HFCcYSsG45utkE8jxKQsNThLM8vcgdYIxBLeblANGOaaQ7wdLh6WbSMro0qaLnlUbArutIgUWTUIZUqTBLt4ZYMZjS_HpvG8YzFZPMjAYcBLfCG8l06w8ooXeVJiq9DAvIDNlDQ46yHJLq7pIMifOcBDbBqmjywDxeXrKe1WILlP1XprxOGKH7hxQNJOgEvdvFD4ybtWhzj8HjK8zDJzYj0mm68tNoHWL1w16OVwbX7hfiE1YXW1z");'></div>
+<div class="flex-1 p-8 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold tracking-widest text-primary uppercase">Confirmed • Tonight</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase tracking-wider">PREMIUM SEATING</span>
+</div>
+<h3 class="text-2xl font-bold mb-1">L'Artiste Gastronomique</h3>
+<p class="text-slate-500 dark:text-slate-400 flex items-center gap-1 text-sm mb-6">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                                        122 Mayfair St, London
+                                    </p>
+<div class="grid grid-cols-2 gap-4 py-6 border-y border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400">calendar_today</span>
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Date</p>
+<p class="text-sm font-medium">Friday, Oct 27</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400">schedule</span>
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Time</p>
+<p class="text-sm font-medium">7:30 PM</p>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between mt-8">
+<div class="flex -space-x-2">
+<div class="size-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">AT</div>
+<div class="size-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">JT</div>
+</div>
+<button class="bg-primary hover:bg-primary-accent text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all">View Details</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Favorite Restaurants -->
+<section>
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-xl font-bold">Favorite Restaurants</h2>
+<a class="text-primary text-sm font-bold hover:underline" href="#">View All</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Favorite Card 1 -->
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex gap-5 hover:border-primary/30 transition-all cursor-pointer group">
+<div class="size-24 rounded-lg bg-cover bg-center shrink-0" data-alt="Sushi platter presentation" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDXNY7maiSNfH-_K9OBbQCEVW7C7ThMfIihOATRvPtjEWGauwqiSkv_lzHxQOi6Rdur14zZwXIf0L6WfvF-4_e46-_8Tz_oYcMNmMUW2haGr7CnvOeNMYdRBkpo2l1awUy3wKkv9hMuLCvtckuQQKzYXNSApLxlLibYMaqUTNvjFm-TBJeBdFlJcDgGQzy3QtaeoLMiZCNQfe-SN7o2Cof22SRF1xFnVtEsjLZDdhmDQQnIQmyf_Imj2g55oKzIfbcixQ2I7q6a1C3q");'></div>
+<div class="flex-1 py-1">
+<h4 class="font-bold group-hover:text-primary transition-colors">Oumi Sushi</h4>
+<p class="text-xs text-slate-500 mb-3">Japanese • Chelsea</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-yellow-500 text-sm fill-1">star</span>
+<span class="text-xs font-bold">4.9</span>
+<span class="text-[10px] text-slate-400">(1.2k reviews)</span>
+</div>
+</div>
+</div>
+<!-- Favorite Card 2 -->
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex gap-5 hover:border-primary/30 transition-all cursor-pointer group">
+<div class="size-24 rounded-lg bg-cover bg-center shrink-0" data-alt="Luxury italian pasta dish" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBMSz8MzK15Kip34H9hqdRM4HlKfI2wRtCjCwUMm3lvrtmZReHt1zJ2nzKxbYVzKll-Xbc7kbxH6hNSdkVaAtz1YaGY_qavuM8jaeTl-4T9dtlKIEI17KGY2Y4OWZM_UoYaC2kz9XP9h1NOSGza6Mer--2UVx2Zb7EMw0OcPe2xQPbnzvd4Pt32dSTrbveDjjFl285jHA_wa066sLfq2KVL8FJyYeSdUJlT32oAhIY8TpcjSD_MlisExrRTvw9FhU_X1LMcitCtQ5qV");'></div>
+<div class="flex-1 py-1">
+<h4 class="font-bold group-hover:text-primary transition-colors">Terra E Mare</h4>
+<p class="text-xs text-slate-500 mb-3">Italian • Soho</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-yellow-500 text-sm fill-1">star</span>
+<span class="text-xs font-bold">4.8</span>
+<span class="text-[10px] text-slate-400">(850 reviews)</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column -->
+<div class="col-span-12 lg:col-span-4 space-y-16">
+<!-- Quick Stats -->
+<section>
+<h2 class="text-xl font-bold mb-6">Dining Summary</h2>
+<div class="grid grid-cols-1 gap-6">
+<div class="bg-primary/5 dark:bg-primary/10 p-6 rounded-xl border border-primary/10">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-xl bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<div>
+<p class="text-2xl font-black">24</p>
+<p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Bookings</p>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary dark:text-primary-accent">
+<span class="material-symbols-outlined fill-1">stars</span>
+</div>
+<div>
+<p class="text-2xl font-black">4,850</p>
+<p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Loyalty Points</p>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary dark:text-primary-accent">
+<span class="material-symbols-outlined fill-1">favorite</span>
+</div>
+<div>
+<p class="text-2xl font-black">French</p>
+<p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Top Cuisine</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Activity -->
+<section>
+<h2 class="text-xl font-bold mb-6">Recent Activity</h2>
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Activity Item 1 -->
+<div class="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<p class="text-sm font-bold">Visited 'The Glasshouse'</p>
+<p class="text-xs text-slate-400 mb-2">Oct 15, 2023</p>
+<div class="flex items-center gap-1">
+<div class="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-accent text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight">EARNED +150 PTS</div>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<p class="text-sm font-bold">New Review: Oumi Sushi</p>
+<p class="text-xs text-slate-400 mb-2">Oct 12, 2023</p>
+<div class="flex gap-0.5">
+<span class="material-symbols-outlined text-[12px] text-primary fill-1">star</span>
+<span class="material-symbols-outlined text-[12px] text-primary fill-1">star</span>
+<span class="material-symbols-outlined text-[12px] text-primary fill-1">star</span>
+<span class="material-symbols-outlined text-[12px] text-primary fill-1">star</span>
+<span class="material-symbols-outlined text-[12px] text-primary fill-1">star</span>
+</div>
+</div>
+<!-- Activity Item 3 -->
+<div class="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<p class="text-sm font-bold">Points Redeemed: £20 Credit</p>
+<p class="text-xs text-slate-400 mb-2">Oct 05, 2023</p>
+<p class="text-[10px] text-primary font-bold uppercase tracking-tight">-2000 PTS</p>
+</div>
+</div>
+<button class="w-full py-4 text-sm font-bold text-slate-500 hover:text-primary dark:hover:text-white border-t border-slate-100 dark:border-slate-800 transition-colors">View History</button>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</body></html>

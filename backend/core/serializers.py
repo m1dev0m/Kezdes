@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from .models import Profile, PushToken
 from contractors.models import Contractor
@@ -47,9 +49,12 @@ class UserMeSerializer(serializers.ModelSerializer):
         ]
 
 class RegisterSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(required=True, allow_blank=False)
+    email = serializers.EmailField(required=True, allow_blank=False)
+    password = serializers.CharField(write_only=True, required=True, allow_blank=False)
     role = serializers.CharField(write_only=True, required=False, default='customer')
-    first_name = serializers.CharField(write_only=True, required=False)
-    phone = serializers.CharField(write_only=True, required=False)
+    first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
     name = serializers.CharField(write_only=True, required=False)
     restaurant_name = serializers.CharField(write_only=True, required=False)
     address = serializers.CharField(write_only=True, required=False)
@@ -65,15 +70,38 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate_email(self, value):
-        if value and User.objects.filter(email=value).exists():
+        value = (value or '').strip().lower()
+        if not value:
+            raise serializers.ValidationError("Email is required.")
+        if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("A user with that email already exists.")
+        return value
+
+    def validate_username(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError("Username is required.")
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
         return value
 
     def validate(self, attrs):
         password = attrs.get('password')
         password2 = attrs.get('password2')
+        if not password:
+            raise serializers.ValidationError({"password": "Password is required."})
+        if len(password) < 8:
+            raise serializers.ValidationError({"password": "Password must be at least 8 characters long."})
+
+        # If password2 is provided by clients, enforce match
         if password2 is not None and password != password2:
             raise serializers.ValidationError({"password2": "Passwords do not match."})
+
+        try:
+            validate_password(password)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
+
         role = attrs.get('role', 'customer')
         role_aliases = {
             'admin': 'global_admin',

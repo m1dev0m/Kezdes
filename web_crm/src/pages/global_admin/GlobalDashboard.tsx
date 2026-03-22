@@ -28,7 +28,7 @@ export default function GlobalDashboard() {
 
     const cards = [
         { name: t('globalAdmin.totalRestaurants'), value: stats?.total_restaurants || 0, icon: Store, color: 'text-blue-600', bg: 'bg-blue-100' },
-        { name: t('globalAdmin.activeUsers'), value: stats?.total_users || 0, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+        { name: t('globalAdmin.activeUsers'), value: stats?.total_users || 0, icon: Users, color: 'text-primary', bg: 'bg-indigo-100' },
         { name: t('globalAdmin.totalBookings'), value: stats?.total_bookings || 0, icon: CalendarDays, color: 'text-emerald-600', bg: 'bg-emerald-100' },
         { name: t('globalAdmin.pendingRequests'), value: stats?.pending_requests || 0, icon: FileText, color: 'text-amber-600', bg: 'bg-amber-100' },
     ];

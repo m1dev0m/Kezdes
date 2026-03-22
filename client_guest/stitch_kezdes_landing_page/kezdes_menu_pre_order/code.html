@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kezdes - Premium Dining Pre-order</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2d4a3e", // Deep Green
+                        "accent": "#ec5b13",  // Primary from prompt used as accent
+                        "cream": "#fdfbf7",
+                        "sage": "#7a8d84",
+                        "background-light": "#fdfbf7",
+                        "background-dark": "#1a2421",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors duration-300">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Top Navigation -->
+<header class="sticky top-0 z-50 w-full border-b border-primary/10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-20 py-4">
+<div class="mx-auto flex max-w-7xl items-center justify-between">
+<div class="flex items-center gap-12">
+<div class="flex items-center gap-3 text-primary dark:text-accent">
+<span class="material-symbols-outlined text-3xl">restaurant_menu</span>
+<h2 class="text-xl font-bold tracking-tight uppercase">Kezdes</h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-sm font-semibold text-primary hover:text-accent dark:text-slate-300 dark:hover:text-accent transition-colors" href="#">Menu</a>
+<a class="text-sm font-semibold text-primary hover:text-accent dark:text-slate-300 dark:hover:text-accent transition-colors" href="#">Reservations</a>
+<a class="text-sm font-semibold text-primary hover:text-accent dark:text-slate-300 dark:hover:text-accent transition-colors" href="#">Gift Cards</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 text-xl">search</span>
+<input class="h-10 w-64 rounded-full border-none bg-primary/5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 dark:bg-white/5 dark:text-white" placeholder="Search menu..." type="text"/>
+</div>
+<div class="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+</div>
+</div>
+</header>
+<main class="mx-auto flex w-full max-w-7xl flex-1 gap-8 px-6 py-8 md:px-20">
+<!-- Left Content: Restaurant & Menu -->
+<div class="flex flex-1 flex-col gap-8">
+<!-- Restaurant Header Card -->
+<div class="relative overflow-hidden rounded-2xl bg-primary text-white p-8 shadow-xl">
+<div class="absolute inset-0 opacity-20 bg-cover bg-center" data-alt="High-end restaurant interior with ambient lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAV5LuvHqt2sZfDZIY5aJx-l93W_cCzZvsA4id3cI3nzVl306pDQ0RLstrZvwcgj867weKaWGzBJwHyGBUXWlMXR7BKIM7mUcuwUoR-ATqZn1clVh94v9TN8bpvF3D46rK2OACbN0TYTPphoLwBX-fLksYl4xEmnY0b0KPi1vMyM12oWY0BzdriBe70QhFYfS7_ZLtWVJHsJpa0K_KrzVC8hOZa8PJfNaEVqlKGMXNL-pRJg6Q2fkQQuQXK1ekJE6UGrUwC1Oe8CZuH')"></div>
+<div class="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-2">
+<span class="bg-accent px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Michelin Guide</span>
+<div class="flex items-center text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="text-sm font-bold ml-1">4.9 (1,240 Reviews)</span>
+</div>
+</div>
+<h1 class="text-4xl font-bold tracking-tight">Kezdes Fine Dining</h1>
+<p class="text-cream/80 max-w-md">Experience the pinnacle of Modern European cuisine. Locally sourced ingredients meets avant-garde culinary techniques.</p>
+</div>
+<button class="flex items-center gap-2 rounded-xl bg-accent px-6 py-3 font-bold text-white transition-transform hover:scale-105 active:scale-95 shadow-lg">
+<span class="material-symbols-outlined">event_available</span>
+<span>Book a Table</span>
+</button>
+</div>
+</div>
+<!-- Category Tabs -->
+<div class="sticky top-[88px] z-40 bg-background-light dark:bg-background-dark py-2">
+<div class="flex gap-4 border-b border-primary/10">
+<a class="border-b-2 border-primary px-4 py-3 text-sm font-bold text-primary dark:text-accent dark:border-accent" href="#appetizers">Appetizers</a>
+<a class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#mains">Mains</a>
+<a class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#desserts">Desserts</a>
+<a class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#wine">Wine List</a>
+</div>
+</div>
+<!-- Menu Sections -->
+<div class="flex flex-col gap-12">
+<!-- Appetizers -->
+<section class="flex flex-col gap-6" id="appetizers">
+<h3 class="text-2xl font-bold text-primary dark:text-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined">restaurant</span> Appetizers
+                        </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Item Card -->
+<div class="group flex gap-4 rounded-2xl bg-white dark:bg-white/5 p-4 shadow-sm border border-primary/5 transition-all hover:shadow-md">
+<div class="h-28 w-28 shrink-0 overflow-hidden rounded-xl">
+<img class="h-full w-full object-cover transition-transform group-hover:scale-110" data-alt="Truffle Carpaccio with microgreens" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAz-_UK0WMu7ricjvd-B1KTIkEe9qN7Ll-gYLbh62sUbntc4LxFOTV62G1eWWr4petXqdWy3TdWuZZyb_v2MJ_yLekPTk5zG9mPcGWV0RjADQGb3440K76lPGZ7MjfYk7-fI4yIqa2zSoTJRGP5L4Aeam5ZP19bHMNTLbee31y1-IQLFKtVHyMfBKUKA_kIZCfjwGaX1J0K7sTBVkT9x45GAc3Rl4Ge4RBL9qgmEYscj4qA3JtUBCQE2eVCSpSfcS9lQ0tP_yEpQJmA"/>
+</div>
+<div class="flex flex-1 flex-col justify-between">
+<div>
+<div class="flex items-start justify-between">
+<h4 class="font-bold text-slate-900 dark:text-white">Truffle Carpaccio</h4>
+<span class="font-bold text-primary dark:text-accent">$24</span>
+</div>
+<p class="text-xs text-slate-500 line-clamp-2 mt-1">Thinly sliced wagyu beef, black truffle oil, capers, and aged parmesan.</p>
+</div>
+<button class="mt-2 flex items-center justify-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm">add</span> Add to Pre-order
+                                    </button>
+</div>
+</div>
+<!-- Item Card -->
+<div class="group flex gap-4 rounded-2xl bg-white dark:bg-white/5 p-4 shadow-sm border border-primary/5 transition-all hover:shadow-md">
+<div class="h-28 w-28 shrink-0 overflow-hidden rounded-xl">
+<img class="h-full w-full object-cover transition-transform group-hover:scale-110" data-alt="Seared Scallops with pea purée" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADLgvKqFKGN3jDLu12QLvBPPZ9rdMDVnlfaGnFC-_SGwe6v95f_tBizr38D2LME2Mc2JIB_ceVRVhUrQleVRDmxdmMk0pQnSWWCKVYKm2V_lq1AFn4Q3lHVTD7Bqy52BlXgDbLm0S3VPLqWSosa09qkJSlZCOtFeOvGYY0_2L6PzVjyHRa1axFlalSamArUGiYzzC1jdta69oougGsGBqAubwRypgeSKTF_5agiXYBhGPczVVXCj6gcPZI99LuW_684levNyoUEUTG"/>
+</div>
+<div class="flex flex-1 flex-col justify-between">
+<div>
+<div class="flex items-start justify-between">
+<h4 class="font-bold text-slate-900 dark:text-white">Seared Scallops</h4>
+<span class="font-bold text-primary dark:text-accent">$28</span>
+</div>
+<p class="text-xs text-slate-500 line-clamp-2 mt-1">Hokkaido scallops, mint pea purée, and pancetta crisps.</p>
+</div>
+<button class="mt-2 flex items-center justify-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm">add</span> Add to Pre-order
+                                    </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Mains -->
+<section class="flex flex-col gap-6" id="mains">
+<h3 class="text-2xl font-bold text-primary dark:text-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined">flatware</span> Main Courses
+                        </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Item Card -->
+<div class="group flex gap-4 rounded-2xl bg-white dark:bg-white/5 p-4 shadow-sm border border-primary/5 transition-all hover:shadow-md">
+<div class="h-28 w-28 shrink-0 overflow-hidden rounded-xl">
+<img class="h-full w-full object-cover transition-transform group-hover:scale-110" data-alt="Lamb Rack with roasted vegetables" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPsSSyV0qYvt1YVauoigaJO3J3hK_MvFvH1yBv7GJirzkNT3pqYd_Do2e7Ya1emZrwrBw1qNHoMgrCc8MMZlAr1nzVeqItyqJkxaEFPFosFoQq5QbHgh-EHsuGEg1fxrq8u63OGj0uVRlEJXuaHoC3hKFhMpVoeW23Kr_8p3gSzstxCR2IikHR76qxYgqxzgks5L9h5OxQQ5vqGynyj8pisJiZol_32-ETEmUMKFTEmM-EagvNyrlGL3DN_-_Z9_CFywalLJCTaZ0u"/>
+</div>
+<div class="flex flex-1 flex-col justify-between">
+<div>
+<div class="flex items-start justify-between">
+<h4 class="font-bold text-slate-900 dark:text-white">Herb-Crusted Lamb Rack</h4>
+<span class="font-bold text-primary dark:text-accent">$52</span>
+</div>
+<p class="text-xs text-slate-500 line-clamp-2 mt-1">Pasture-raised lamb, pistachio crust, rosemary reduction, and root vegetables.</p>
+</div>
+<button class="mt-2 flex items-center justify-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm">add</span> Add to Pre-order
+                                    </button>
+</div>
+</div>
+<!-- Item Card -->
+<div class="group flex gap-4 rounded-2xl bg-white dark:bg-white/5 p-4 shadow-sm border border-primary/5 transition-all hover:shadow-md">
+<div class="h-28 w-28 shrink-0 overflow-hidden rounded-xl">
+<img class="h-full w-full object-cover transition-transform group-hover:scale-110" data-alt="Pan-seared Salmon with asparagus" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARtmuUmr7-tvgWdALaCRyYCUcveLVk3q-GyHWvPkiZnaehSdgqezRrZ4cTR9UH8ZfJHQ6BgQOpsZiAr_PDQUMsYWvgCwfyO0KYaQ8NYIu6wBSELSHGEAjdbuMFpHxhdB9YuvSQmRJqEH5a-zvD7L3KTSgo9uZV5_JceX4lbRAfvjtb95dFmC_5jc7D_n17540-kqs9B1ELtxQSWTyTCxXPn3G7Yatgx7Imc-W3sJ5AMSG8CCTKf5bQyvVBmh2TQr9RliozIilA66ZW"/>
+</div>
+<div class="flex flex-1 flex-col justify-between">
+<div>
+<div class="flex items-start justify-between">
+<h4 class="font-bold text-slate-900 dark:text-white">Wild Atlantic Salmon</h4>
+<span class="font-bold text-primary dark:text-accent">$45</span>
+</div>
+<p class="text-xs text-slate-500 line-clamp-2 mt-1">Skin-on salmon, lemon-dill butter sauce, asparagus, and wild rice.</p>
+</div>
+<button class="mt-2 flex items-center justify-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm">add</span> Add to Pre-order
+                                    </button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Right Sidebar: Your Feast -->
+<aside class="hidden lg:flex w-80 flex-col gap-6">
+<div class="sticky top-[104px] flex flex-col gap-6">
+<div class="rounded-2xl border border-primary/10 bg-white dark:bg-white/5 p-6 shadow-sm">
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between border-b border-primary/10 pb-4">
+<div class="flex flex-col">
+<h3 class="text-lg font-bold text-primary dark:text-slate-100">Your Feast</h3>
+<p class="text-xs text-slate-500">Summary for your arrival</p>
+</div>
+<div class="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+<span class="material-symbols-outlined">shopping_basket</span>
+</div>
+</div>
+<!-- List Items -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="flex h-6 w-6 items-center justify-center rounded bg-primary/5 text-xs font-bold text-primary dark:bg-white/10 dark:text-white">1x</div>
+<p class="text-sm font-medium text-slate-700 dark:text-slate-300">Truffle Carpaccio</p>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-sm font-bold">$24.00</span>
+<button class="material-symbols-outlined text-sm text-slate-400 hover:text-red-500 transition-colors">close</button>
+</div>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="flex h-6 w-6 items-center justify-center rounded bg-primary/5 text-xs font-bold text-primary dark:bg-white/10 dark:text-white">1x</div>
+<p class="text-sm font-medium text-slate-700 dark:text-slate-300">Lamb Rack</p>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-sm font-bold">$52.00</span>
+<button class="material-symbols-outlined text-sm text-slate-400 hover:text-red-500 transition-colors">close</button>
+</div>
+</div>
+</div>
+<div class="mt-4 flex flex-col gap-3 border-t border-primary/10 pt-4">
+<div class="flex justify-between text-sm text-slate-500">
+<span>Subtotal</span>
+<span>$76.00</span>
+</div>
+<div class="flex justify-between text-sm text-slate-500">
+<span>Service Charge (5%)</span>
+<span>$3.80</span>
+</div>
+<div class="flex justify-between text-lg font-bold text-primary dark:text-accent">
+<span>Total</span>
+<span>$79.80</span>
+</div>
+</div>
+<button class="w-full rounded-xl bg-primary py-4 text-center font-bold text-white transition-all hover:shadow-lg hover:brightness-110 active:scale-[0.98] dark:bg-accent">
+                                Confirm Pre-order
+                            </button>
+<p class="text-center text-[10px] text-slate-400 italic">
+                                Pre-orders are final 2 hours before your booking time.
+                            </p>
+</div>
+</div>
+<!-- Helpful Note -->
+<div class="rounded-2xl bg-cream border border-accent/20 p-4 dark:bg-white/5">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-accent">info</span>
+<div class="flex flex-col gap-1">
+<p class="text-xs font-bold text-slate-700 dark:text-slate-200">Wine Pairing Suggestion</p>
+<p class="text-[10px] text-slate-500">Our sommelier recommends a 2018 Bordeaux for the lamb rack. Would you like to view our cellar?</p>
+<a class="text-[10px] font-bold text-accent uppercase tracking-wider mt-1 hover:underline" href="#">View Wine List</a>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Mobile Pre-order Summary (Bottom Bar) -->
+<div class="fixed bottom-6 left-1/2 -translate-x-1/2 lg:hidden w-[90%] z-50">
+<button class="flex w-full items-center justify-between rounded-full bg-primary p-4 shadow-2xl dark:bg-accent">
+<div class="flex items-center gap-3 px-2">
+<span class="material-symbols-outlined text-white">shopping_basket</span>
+<div class="flex flex-col items-start text-white">
+<span class="text-xs font-bold uppercase tracking-widest opacity-80 leading-none">Your Feast</span>
+<span class="text-sm font-medium">2 items selected</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-lg font-bold text-white">$79.80</span>
+<span class="material-symbols-outlined text-white rounded-full bg-white/20 p-1">arrow_forward</span>
+</div>
+</button>
+</div>
+</div>
+</body></html>

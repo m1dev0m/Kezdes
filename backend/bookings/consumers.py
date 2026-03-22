@@ -6,18 +6,35 @@ from django.contrib.auth.models import AnonymousUser
 class BookingConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket consumer for real-time booking status updates.
-    URL: ws/bookings/<restaurant_id>/
+    URL: ws/bookings/<id>/
+
+    Backwards compatible behavior:
+    - If <id> matches a Booking the user has access to, it is treated as booking_id
+      and the restaurant_id is derived from that booking.
+    - Otherwise <id> is treated as restaurant_id.
 
     Admin/staff users join restaurant group. Regular users join personal group.
     """
 
     async def connect(self):
-        self.restaurant_id = self.scope['url_route']['kwargs']['restaurant_id']
+        kwargs = (self.scope.get('url_route') or {}).get('kwargs') or {}
+        raw_id = kwargs.get('id') or kwargs.get('restaurant_id') or kwargs.get('booking_id')
+        self.restaurant_id = None
+
+        try:
+            raw_id_int = int(raw_id)
+        except (TypeError, ValueError):
+            await self.close()
+            return
+
         user = self.scope.get('user', AnonymousUser())
 
         if user.is_anonymous:
             await self.close()
             return
+
+        booking_restaurant_id = await self.get_restaurant_id_from_booking_if_accessible(user, raw_id_int)
+        self.restaurant_id = str(booking_restaurant_id if booking_restaurant_id is not None else raw_id_int)
 
         is_admin = await self.is_restaurant_admin_or_staff(user, self.restaurant_id)
 

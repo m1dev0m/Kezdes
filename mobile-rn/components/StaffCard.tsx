@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     card: {
         flexDirection: 'row',
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 40,
         backgroundColor: '#fff',
         marginBottom: 12,
         borderWidth: 1,
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     actions: {
         width: 40,
         height: 40,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#f8fafc',
         alignItems: 'center',
         justifyContent: 'center',

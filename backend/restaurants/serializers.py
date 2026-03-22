@@ -1,16 +1,57 @@
 from rest_framework import serializers
 from .models import Restaurant, Availability, Review, RestaurantRequest, Table
+
+
 class RestaurantRequestSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        source='admin_password',
+        write_only=True,
+        required=False,
+        allow_blank=True,
+    )
+
     class Meta:
         model = RestaurantRequest
         fields = ['id', 'name', 'owner_name', 'city', 'address', 'phone', 'email', 
-                  'instagram', 'admin_username', 'status', 'created_at']
+                  'instagram', 'admin_username', 'admin_password', 'password', 'status', 'created_at']
         read_only_fields = ['status', 'created_at']
+        extra_kwargs = {
+            'admin_password': {'write_only': True, 'required': False, 'allow_blank': True},
+            'admin_username': {'required': False, 'allow_blank': True},
+            'owner_name': {'required': False, 'allow_blank': True},
+            'address': {'required': False, 'allow_blank': True},
+            'instagram': {'required': False, 'allow_blank': True},
+        }
 class TableSerializer(serializers.ModelSerializer):
     table_number = serializers.CharField(source='number', required=False)
     capacity = serializers.IntegerField(source='seats', required=False)
     pos_x = serializers.FloatField(source='x', required=False)
     pos_y = serializers.FloatField(source='y', required=False)
+    active = serializers.BooleanField(source='is_active', required=False)
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        # Check source='number' if 'number' is present in attrs
+        number = attrs.get('number')
+        
+        if not number and self.instance:
+            number = self.instance.number
+            
+        if number and request and hasattr(request, 'user'):
+            user = request.user
+            restaurant = getattr(user, 'owned_restaurant', None)
+            if not restaurant and hasattr(user, 'profile'):
+                restaurant = user.profile.restaurant
+                
+            if restaurant:
+                qs = Table.objects.filter(restaurant=restaurant, number=number)
+                if self.instance:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    from rest_framework.exceptions import ValidationError
+                    raise ValidationError({"number": "Стол с таким номером уже существует в этом ресторане."})
+                    
+        return attrs
 
     class Meta:
         model = Table
@@ -31,6 +72,7 @@ class TableSerializer(serializers.ModelSerializer):
             'table_type',
             'status',
             'is_active',
+            'active',
             'created_at',
         ]
         read_only_fields = ['restaurant']

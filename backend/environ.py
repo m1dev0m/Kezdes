@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
+from urllib.parse import unquote
 
 
 class Env:
@@ -116,11 +117,16 @@ class Env:
             return {"ENGINE": engine, "NAME": rest}
 
         user = password = host = port = db_name = None
-        creds, _, host_part = rest.partition("@")
-        if ":" in creds:
-            user, password = creds.split(":", 1)
+
+        # Accept URLs both with and without credentials
+        creds, has_creds_sep, host_part = rest.partition("@")
+        if has_creds_sep:
+            if ":" in creds:
+                user, password = creds.split(":", 1)
+            else:
+                user = creds
         else:
-            user = creds
+            host_part = rest
 
         if "/" in host_part:
             host_port, db_name = host_part.split("/", 1)
@@ -131,6 +137,18 @@ class Env:
             host, port = host_port.split(":", 1)
         else:
             host = host_port
+
+        # URL-decode components (notably unix socket paths like %2Fvar%2Frun%2Fpostgresql)
+        if user is not None:
+            user = unquote(user)
+        if password is not None:
+            password = unquote(password)
+        if host is not None:
+            host = unquote(host)
+        if port is not None:
+            port = unquote(port)
+        if db_name is not None:
+            db_name = unquote(db_name)
 
         config: Dict[str, Any] = {
             "ENGINE": engine,

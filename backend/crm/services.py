@@ -24,6 +24,39 @@ def normalize_phone(phone):
 
 class CRMService:
     @staticmethod
+    def ensure_customer(restaurant, phone, name=None, email=None):
+        """Upsert a customer profile without recording a visit.
+
+        Use this at booking creation time so CRM can see upcoming guests, while
+        visits_count reflects actual completed visits.
+        """
+        normalized_phone = normalize_phone(phone)
+        if not normalized_phone:
+            return None
+
+        with transaction.atomic():
+            customer, _created = Customer.objects.get_or_create(
+                restaurant=restaurant,
+                phone=normalized_phone,
+                defaults={
+                    'name': name or 'Guest',
+                    'email': email,
+                },
+            )
+
+            updated_fields = []
+            if name and (customer.name == 'Guest' or not customer.name):
+                customer.name = name
+                updated_fields.append('name')
+            if email and not customer.email:
+                customer.email = email
+                updated_fields.append('email')
+            if updated_fields:
+                customer.save(update_fields=updated_fields)
+
+            return customer
+
+    @staticmethod
     def record_visit(restaurant, phone, name=None, email=None, booking=None, spent_amount=0):
         """
         Records a visit for a customer. If customer doesn't exist, create one.

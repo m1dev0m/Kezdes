@@ -38,6 +38,8 @@ interface Booking {
     duration_minutes?: number;
     is_deposit_paid?: boolean;
     deposit_required?: string | number;
+    is_checked_in?: boolean;
+    check_in_time?: string | null;
     preorder?: {
         id: number;
         total_amount?: number | string;
@@ -271,8 +273,9 @@ export default function Bookings() {
         switch (status) {
             case 'approved':
             case 'confirmed': return 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30';
+            case 'seated': return 'bg-primary/5 text-indigo-700 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/30';
             case 'pending': return 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30';
-            case 'payment_pending': return 'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/30';
+            case 'payment_pending': return 'bg-primary/5 text-indigo-700 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/30';
             case 'completed': return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-400';
             case 'rejected':
             case 'cancelled':
@@ -335,8 +338,8 @@ export default function Bookings() {
                             <button
                                 key={r.id}
                                 onClick={() => { setQuickRange(r.id); setPage(1); }}
-                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${quickRange === r.id
-                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-100'
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all ${quickRange === r.id
+                                    ? 'bg-white text-primary shadow-sm border border-slate-100'
                                     : 'text-slate-400 hover:text-slate-600'
                                     }`}
                             >
@@ -347,15 +350,15 @@ export default function Bookings() {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between bg-white p-6 rounded-[24px] border border-slate-100 shadow-xl shadow-slate-900/5">
+            <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-900/5">
                 <div className="relative w-full lg:max-w-md group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-600 transition-all" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-primary transition-all" />
                     <input
                         type="text"
                         placeholder={t('bookings.searchBy')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-12 pr-6 py-3.5 bg-slate-50 border border-slate-100 rounded-[18px] focus:border-indigo-600 transition-all outline-none text-[10px] font-black uppercase tracking-[0.1em] text-slate-900 placeholder:text-slate-300 shadow-inner italic"
+                        className="w-full pl-12 pr-6 py-3.5 bg-slate-50 border border-slate-100 rounded-[18px] focus:border-primary transition-all outline-none text-[10px] font-black uppercase tracking-[0.1em] text-slate-900 placeholder:text-slate-300 shadow-inner italic"
                     />
                 </div>
 
@@ -365,14 +368,14 @@ export default function Bookings() {
                             type="date"
                             value={dateFrom}
                             onChange={e => { setDateFrom(e.target.value); setPage(1); setQuickRange('all'); }}
-                            className="bg-transparent text-[9px] font-black uppercase tracking-widest text-slate-600 outline-none h-10 px-3 cursor-pointer"
+                            className="bg-transparent text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 outline-none h-10 px-3 cursor-pointer"
                         />
                         <span className="text-slate-300 text-[8px] font-black tracking-widest italic opacity-40">TO</span>
                         <input
                             type="date"
                             value={dateTo}
                             onChange={e => { setDateTo(e.target.value); setPage(1); setQuickRange('all'); }}
-                            className="bg-transparent text-[9px] font-black uppercase tracking-widest text-slate-600 outline-none h-10 px-3 cursor-pointer"
+                            className="bg-transparent text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 outline-none h-10 px-3 cursor-pointer"
                         />
                     </div>
                 </div>
@@ -391,8 +394,8 @@ export default function Bookings() {
                         key={s.id}
                         onClick={() => { setFilter(s.id); setPage(1); }}
                         className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap border italic ${filter === s.id
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl shadow-indigo-600/10'
-                            : 'bg-white text-slate-400 border-slate-100 hover:text-indigo-600 hover:border-indigo-600'
+                            ? 'bg-primary text-white border-primary shadow-xl shadow-primary/10'
+                            : 'bg-white text-slate-400 border-slate-100 hover:text-primary hover:border-primary'
                             }`}
                     >
                         {s.label}
@@ -406,17 +409,17 @@ export default function Bookings() {
                         <Skeleton className="h-16 w-full rounded-xl" count={8} />
                     </div>
                 ) : filteredBookings.length === 0 ? (
-                    <div className="bg-white border border-dashed border-slate-200 rounded-[32px] p-24 text-center shadow-sm">
+                    <div className="bg-white border border-dashed border-slate-200 rounded-[2.5rem] p-24 text-center shadow-sm">
                         <CalendarDays className="w-10 h-10 text-slate-100 mx-auto mb-6" />
                         <h3 className="text-[12px] font-black text-slate-600 uppercase tracking-[0.2em] mb-2">{t('bookings.noBookings')}</h3>
                         <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest opacity-40 italic">{t('bookings.noMatch')}</p>
                     </div>
                 ) : (
                     filteredBookings.map((booking) => (
-                        <div key={booking.id} className="bg-white border border-slate-100 rounded-[28px] p-5 transition-all hover:border-indigo-600 group relative shadow-sm hover:shadow-2xl hover:shadow-indigo-600/5 flex flex-col md:flex-row md:items-center gap-6">
+                        <div key={booking.id} className="bg-white border border-slate-100 rounded-[28px] p-5 transition-all hover:border-primary group relative shadow-sm hover:shadow-2xl hover:shadow-primary/5 flex flex-col md:flex-row md:items-center gap-6">
 
                             <div className="flex items-center gap-6 lg:w-[25%]">
-                                <div className="w-14 h-14 rounded-[20px] bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-600 font-black text-xl italic shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                                <div className="w-14 h-14 rounded-[20px] bg-slate-50 border border-slate-100 flex items-center justify-center text-primary font-black text-xl italic shadow-sm group-hover:bg-primary group-hover:text-white transition-all duration-300">
                                     {booking.user_name?.charAt(0).toUpperCase() || 'G'}
                                 </div>
                                 <div className="min-w-0">
@@ -456,7 +459,7 @@ export default function Bookings() {
                                 {Number(booking.deposit_required) > 0 && (
                                     <div className={`flex font-black text-[9px] px-3 py-1 rounded-xl border uppercase tracking-[0.1em] italic ${booking.is_deposit_paid
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                        : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                                        : 'bg-primary/5 text-indigo-700 border-indigo-100'}`}>
                                         {booking.is_deposit_paid ? 'PAID' : 'DUE'} ₸{Number(booking.deposit_required).toLocaleString()}
                                     </div>
                                 )}
@@ -464,7 +467,7 @@ export default function Bookings() {
 
                             <div className="flex-1 min-w-0 flex items-center gap-4 border-l border-slate-50 lg:pl-8 overflow-hidden">
                                 {booking.table_number && (
-                                    <div className="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/10">
+                                    <div className="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/10">
                                         <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40">TABLE</span>
                                         <span className="text-[12px] font-black tabular-nums italic">{booking.table_number}</span>
                                     </div>
@@ -479,7 +482,7 @@ export default function Bookings() {
 
                             <div className="flex items-center justify-end gap-3 lg:w-[15%]">
                                 <button
-                                    className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-indigo-600 transition-all hover:bg-slate-50 rounded-[14px] border border-transparent hover:border-slate-100"
+                                    className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-primary transition-all hover:bg-slate-50 rounded-[14px] border border-transparent hover:border-slate-100"
                                     onClick={() => navigate('/app/messages', { state: { bookingId: booking.id } })}
                                     title="Open Internal Comms"
                                 >
@@ -507,7 +510,7 @@ export default function Bookings() {
                                     </div>
                                 )}
 
-                                {['approved', 'confirmed'].includes(booking.status) && (
+                                {['approved', 'confirmed'].includes(booking.status) && !booking.is_checked_in && (
                                     <button
                                         className="h-10 px-5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-emerald-500/20 hover:opacity-90 active:scale-95 italic"
                                         onClick={() => setConfirmAction({ id: booking.id, action: 'check_in' })}
@@ -517,9 +520,19 @@ export default function Bookings() {
                                     </button>
                                 )}
 
+                                {['approved', 'confirmed'].includes(booking.status) && booking.is_checked_in && (
+                                    <button
+                                        className="h-10 px-5 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 italic"
+                                        onClick={() => setConfirmAction({ id: booking.id, action: 'seat' })}
+                                        disabled={actionSubmitting}
+                                    >
+                                        {t('bookings.seatGuest')}
+                                    </button>
+                                )}
+
                                 <div className="relative">
                                     <button
-                                        className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-slate-50 rounded-[14px] transition-all border border-transparent hover:border-slate-100"
+                                        className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-primary hover:bg-slate-50 rounded-[14px] transition-all border border-transparent hover:border-slate-100"
                                         onClick={() => setActionMenuId(actionMenuId === booking.id ? null : booking.id)}
                                         disabled={actionSubmitting}
                                     >
@@ -537,14 +550,14 @@ export default function Bookings() {
                                                     <>
                                                         <button
                                                             onClick={() => { setConfirmAction({ id: booking.id, action: 'complete' }); setActionMenuId(null); }}
-                                                            className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                            className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-primary flex items-center gap-3 transition-all rounded-xl italic"
                                                             disabled={actionSubmitting}
                                                         >
                                                             <CheckCircle2 size={14} className="opacity-20" /> {t('bookings.complete')}
                                                         </button>
                                                         <button
                                                             onClick={() => { setConfirmAction({ id: booking.id, action: 'no_show' }); setActionMenuId(null); }}
-                                                            className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                            className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-primary flex items-center gap-3 transition-all rounded-xl italic"
                                                             disabled={actionSubmitting}
                                                         >
                                                             <XCircle size={14} className="opacity-20" /> {t('bookings.noShow')}
@@ -561,14 +574,14 @@ export default function Bookings() {
                                                 )}
                                                 <button
                                                     onClick={() => openReassign(booking)}
-                                                    className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                    className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-primary flex items-center gap-3 transition-all rounded-xl italic"
                                                     disabled={actionSubmitting}
                                                 >
                                                     <Table2 size={14} className="opacity-20" /> Reassign
                                                 </button>
                                                 <button
                                                     onClick={() => openEdit(booking)}
-                                                    className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-all rounded-xl italic"
+                                                    className="w-full px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:bg-slate-50 hover:text-primary flex items-center gap-3 transition-all rounded-xl italic"
                                                     disabled={actionSubmitting}
                                                 >
                                                     <Pencil size={14} className="opacity-20" /> {t('bookings.editBooking')}
@@ -599,14 +612,14 @@ export default function Bookings() {
                     <button
                         disabled={page <= 1}
                         onClick={() => setPage(p => Math.max(1, p - 1))}
-                        className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all disabled:opacity-20 shadow-sm"
+                        className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-white border border-slate-100 text-slate-400 hover:text-primary transition-all disabled:opacity-20 shadow-sm"
                     >
                         <ChevronLeft size={18} />
                     </button>
                     <button
                         disabled={page >= totalPages}
                         onClick={() => setPage(p => p + 1)}
-                        className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all disabled:opacity-20 shadow-sm"
+                        className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-white border border-slate-100 text-slate-400 hover:text-primary transition-all disabled:opacity-20 shadow-sm"
                     >
                         <ChevronRight size={18} />
                     </button>
@@ -618,6 +631,7 @@ export default function Bookings() {
                 title={t('bookings.confirmActionTitle')}
                 description={`${t('bookings.sureTo')} ${confirmAction?.action === 'reject' ? 'отклонить' :
                     confirmAction?.action === 'check_in' ? 'отметить прибытие' :
+                        confirmAction?.action === 'seat' ? 'посадить гостя' :
                         confirmAction?.action === 'cancel_by_restaurant' ? 'отменить (ресторан)' :
                             confirmAction?.action === 'no_show' ? 'отметить неявку' :
                                 confirmAction?.action === 'complete' ? 'завершить' : 'подтвердить'
@@ -645,7 +659,7 @@ export default function Bookings() {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-[32px] w-full max-w-md p-10 space-y-10 shadow-2xl shadow-black/20 border border-slate-100"
+                        className="bg-white rounded-[2.5rem] w-full max-w-md p-10 space-y-10 shadow-2xl shadow-black/20 border border-slate-100"
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="text-center">
@@ -665,7 +679,7 @@ export default function Bookings() {
                                         type="number" min={1} max={50}
                                         value={editForm.guests}
                                         onChange={e => setEditForm(f => ({ ...f, guests: Number(e.target.value) }))}
-                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-indigo-600 transition-all tabular-nums text-slate-900 italic"
+                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-primary transition-all tabular-nums text-slate-900 italic"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -674,7 +688,7 @@ export default function Bookings() {
                                         type="time"
                                         value={editForm.time?.substring(0, 5)}
                                         onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
-                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-indigo-600 transition-all tabular-nums text-slate-900 italic"
+                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-primary transition-all tabular-nums text-slate-900 italic"
                                     />
                                 </div>
                             </div>
@@ -684,19 +698,19 @@ export default function Bookings() {
                                     value={editForm.special_requests}
                                     onChange={e => setEditForm(f => ({ ...f, special_requests: e.target.value }))}
                                     rows={3}
-                                    className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-indigo-600 transition-all resize-none text-slate-900 italic"
+                                    className="w-full px-5 py-4 bg-white border border-slate-100 rounded-[18px] text-[12px] font-black outline-none focus:border-primary transition-all resize-none text-slate-900 italic"
                                 />
                             </div>
                         </div>
                         <div className="flex gap-4">
                             <button
-                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all italic"
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 border border-slate-100 text-slate-400 hover:text-primary transition-all italic"
                                 onClick={() => setEditingBooking(null)}
                             >
                                 {t('bookings.cancel')}
                             </button>
                             <button
-                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 bg-indigo-600 text-white shadow-xl shadow-indigo-600/10 hover:opacity-90 active:scale-95 transition-all italic"
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 bg-primary text-white shadow-xl shadow-primary/10 hover:opacity-90 active:scale-95 transition-all italic"
                                 onClick={handleEditSave}
                             >
                                 {editSaving ? 'SAVING...' : t('bookings.saveChanges')}
@@ -711,14 +725,14 @@ export default function Bookings() {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-[32px] w-full max-w-md p-10 space-y-10 shadow-2xl shadow-black/20 border border-slate-100"
+                        className="bg-white rounded-[2.5rem] w-full max-w-md p-10 space-y-10 shadow-2xl shadow-black/20 border border-slate-100"
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="text-center">
                             <h3 className="text-[14px] font-black text-slate-900 tracking-[0.25em] uppercase italic">Update Seating</h3>
                         </div>
 
-                        <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 text-center space-y-2">
+                        <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 text-center space-y-2">
                             <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] opacity-40">ACTIVE SLOT</div>
                             <div className="text-[13px] font-black text-slate-900 uppercase tracking-widest italic leading-relaxed">
                                 {reassignBooking.user_name || 'Guest'} <br />
@@ -735,7 +749,7 @@ export default function Bookings() {
                                     <select
                                         value={selectedTableId}
                                         onChange={e => setSelectedTableId(e.target.value ? Number(e.target.value) : '')}
-                                        className="w-full px-6 py-4 bg-white border border-slate-100 rounded-[18px] text-[11px] font-black outline-none focus:border-indigo-600 transition-all text-slate-900 appearance-none text-center cursor-pointer italic tracking-widest"
+                                        className="w-full px-6 py-4 bg-white border border-slate-100 rounded-[18px] text-[11px] font-black outline-none focus:border-primary transition-all text-slate-900 appearance-none text-center cursor-pointer italic tracking-widest"
                                     >
                                         <option value="">— SELECT TABLE —</option>
                                         {availableTableIds.map(id => {
@@ -753,14 +767,14 @@ export default function Bookings() {
 
                         <div className="flex gap-4 pt-4">
                             <button
-                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 border border-slate-100 text-slate-400 hover:text-indigo-600 transition-all italic"
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 border border-slate-100 text-slate-400 hover:text-primary transition-all italic"
                                 onClick={() => setReassignBooking(null)}
                             >
                                 ... (I'll truncate the rest as it's repetitive but necessary for full cleanup)
                                 {t('bookings.cancel')}
                             </button>
                             <button
-                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all italic disabled:opacity-20"
+                                className="flex-1 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] py-4 bg-primary text-white shadow-xl shadow-primary/20 hover:bg-indigo-700 active:scale-95 transition-all italic disabled:opacity-20"
                                 onClick={handleReassignSave}
                                 disabled={!selectedTableId || reassignLoading || availableTableIds.length === 0}
                             >

@@ -11,9 +11,15 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from bookings.models import Booking
-from core.permissions import IsGlobalAdmin, IsRestaurantAdmin, IsRestaurantOrGlobalAdmin
+from core.permissions import (
+    CanManageTables,
+    IsGlobalAdmin,
+    IsRestaurantOrGlobalAdmin,
+    IsRestaurantStaff,
+)
 from core.models import Profile
 from orders.models import MenuCategory, MenuItem
 from orders.serializers import PublicMenuCategorySerializer, PublicMenuItemSerializer
@@ -219,26 +225,106 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     queryset = RestaurantRequest.objects.select_related("owner").order_by("-created_at")
     serializer_class = RestaurantRequestSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _is_global_admin(self, user):
+        profile = getattr(user, 'profile', None)
+        return bool(profile and profile.role == 'global_admin')
 
     def get_permissions(self):
-        if self.action in ["list", "retrieve", "update", "partial_update", "destroy", "approve", "reject"]:
+        if self.action in ["list", "approve", "reject"]:
             return [IsGlobalAdmin()]
-        if self.action in ["create", "mine"]:
+        if self.action == "create":
+            return [permissions.AllowAny()]
+        if self.action in ["mine"]:
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
 
+    def create(self, request, *args, **kwargs):
+        # Public onboarding: allow submitting an application and minting tokens for the created owner.
+        if request.user and request.user.is_authenticated:
+            return super().create(request, *args, **kwargs)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from django.contrib.auth.models import User
+
+        email = serializer.validated_data.get('email')
+        password = serializer.validated_data.get('admin_password')
+        if not email or not password:
+            return api_error("Email and password are required.", status.HTTP_400_BAD_REQUEST)
+
+        base_username = serializer.validated_data.get('admin_username') or email.split('@')[0]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        if User.objects.filter(email=email).exists():
+            return api_error("User with this email already exists. Please log in.", status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, email=email, password=password)
+        if hasattr(user, 'profile'):
+            user.profile.role = 'owner'
+            user.profile.save(update_fields=['role'])
+
+        instance = serializer.save(owner=user, admin_username=username)
+
+        refresh = RefreshToken.for_user(user)
+        out = self.get_serializer(instance).data
+        out['access'] = str(refresh.access_token)
+        out['refresh'] = str(refresh)
+        return Response(out, status=status.HTTP_201_CREATED)
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["restaurant"] = getattr(self.request.user.profile, "restaurant", None)
+        user = self.request.user
+        if user and user.is_authenticated and hasattr(user, 'profile'):
+            context["restaurant"] = getattr(user.profile, "restaurant", None)
+        else:
+            context["restaurant"] = None
         return context
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        # Owners can only access their own requests for detail/update/delete.
+        if self.action in ["retrieve", "update", "partial_update", "destroy"] and not self._is_global_admin(self.request.user):
+            qs = qs.filter(owner=self.request.user)
+
         status_param = self.request.query_params.get("status")
         if status_param:
             qs = qs.filter(status=status_param)
         return qs
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._is_global_admin(request.user):
+            if instance.owner_id != request.user.id:
+                return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+            if instance.status != "pending":
+                return api_error("Only pending applications can be edited.", status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._is_global_admin(request.user):
+            if instance.owner_id != request.user.id:
+                return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+            if instance.status != "pending":
+                return api_error("Only pending applications can be edited.", status.HTTP_400_BAD_REQUEST)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._is_global_admin(request.user):
+            if instance.owner_id != request.user.id:
+                return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+            if instance.status != "pending":
+                return api_error("Only pending applications can be deleted.", status.HTTP_400_BAD_REQUEST)
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         """
@@ -295,10 +381,31 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return Response({"status": "rejected"})
 
 
-class TableViewSet(TenantModelViewSet):
-    queryset = Table.objects.all()
+class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
+    queryset = Table.objects.select_related('restaurant').all()
     serializer_class = TableSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['number', 'seats', 'created_at']
+    ordering = ['number'] # Default ordering by number ascending
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        active = self.request.query_params.get('active')
+        if active is not None:
+            active_bool = active.lower() in ('true', '1', 'yes')
+            qs = qs.filter(is_active=active_bool)
+        return qs
+
+    def get_permissions(self):
+        # View-only actions: host/manager/owner can see tables
+        if self.action in ["list", "retrieve", "status"]:
+            return [IsRestaurantStaff()]
+
+        # Create/update/delete: manager/owner/admin
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [CanManageTables()]
+
+        return [permissions.IsAuthenticated()]
 
     @action(detail=False, methods=["get"])
     def status(self, request):
@@ -361,6 +468,21 @@ class TableViewSet(TenantModelViewSet):
                 row["current_booking"] = table_booking_map.get(table.id)
             response_data.append(row)
         return Response(response_data)
+
+    @action(detail=True, methods=["patch"], permission_classes=[IsRestaurantStaff])
+    def update_status(self, request, pk=None):
+        """Allow host+ to change table status (free/occupied/reserved)."""
+        table = self.get_object()
+        new_status = request.data.get("status")
+        valid_statuses = [s[0] for s in Table.STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            return Response(
+                {"detail": f"Invalid status. Must be one of: {valid_statuses}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        table.status = new_status
+        table.save(update_fields=["status"])
+        return Response(TableSerializer(table).data)
 
 
 class StaffViewSet(viewsets.ModelViewSet):

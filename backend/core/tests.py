@@ -119,6 +119,24 @@ class RegistrationAPITest(APITestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_registration_invalid_email(self):
+        response = self.client.post('/api/v1/auth/register/', {
+            'username': 'bademail',
+            'email': 'not-an-email',
+            'password': 'newpass123',
+            'password2': 'newpass123',
+            'role': 'customer'
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_registration_empty_fields(self):
+        response = self.client.post('/api/v1/auth/register/', {
+            'username': '',
+            'email': '',
+            'password': '',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_registration_duplicate_email(self):
         User.objects.create_user(
             username='existing',

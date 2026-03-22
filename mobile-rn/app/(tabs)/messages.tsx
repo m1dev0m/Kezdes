@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     chatTime: { fontSize: 12, color: colors.muted },
     chatFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     lastMessage: { fontSize: 14, color: colors.textSecondary, flex: 1, marginRight: 8 },
-    unreadBadge: { backgroundColor: colors.primary, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    unreadBadge: { backgroundColor: colors.primary, width: 20, height: 20, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
     unreadText: { color: '#fff', fontSize: 10, fontWeight: '700' },
     empty: { marginTop: 100, alignItems: 'center' },
     emptyText: { marginTop: 16, color: colors.muted, fontSize: 16 },

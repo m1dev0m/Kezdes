@@ -1,18 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Alert,
-    Image,
-    SafeAreaView,
-    ActivityIndicator
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
 
 import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -413,21 +401,21 @@ const styles = StyleSheet.create({
     roleSegmentGroup: {
         flexDirection: 'row',
         backgroundColor: colors.border,
-        borderRadius: 12,
+        borderRadius: 40,
         padding: 4,
         height: 48,
     },
     roleSegmentTriple: {
         flexDirection: 'row',
         backgroundColor: colors.border,
-        borderRadius: 12,
+        borderRadius: 40,
         padding: 4,
         height: 48,
     },
     roleSegmentActive: {
         flex: 1,
         backgroundColor: colors.white,
-        borderRadius: 8,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
@@ -468,7 +456,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: colors.white,
     },
     inputIcon: {
@@ -515,7 +503,7 @@ const styles = StyleSheet.create({
     categoryBtn: {
         paddingHorizontal: 16,
         paddingVertical: 10,
-        borderRadius: 20,
+        borderRadius: 32,
         backgroundColor: colors.border,
     },
     categoryBtnActive: {
@@ -542,7 +530,7 @@ const styles = StyleSheet.create({
     registerButton: {
         backgroundColor: colors.primary,
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         alignItems: 'center',
         marginTop: 8,
         shadowColor: colors.primary,

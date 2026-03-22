@@ -151,10 +151,10 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 20 },
     headerTitle: { fontSize: 32, fontWeight: '900', color: colors.text, fontStyle: 'italic', letterSpacing: -1 },
     headerSubtitle: { fontSize: 13, color: '#64748b', fontWeight: '600', marginTop: -4 },
-    searchBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+    searchBtn: { width: 48, height: 48, borderRadius: 32, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
 
     filtersRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 24, marginBottom: 24 },
-    filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#f1f5f9' },
+    filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 40, borderWidth: 1, borderColor: '#f1f5f9' },
     filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     filterText: { color: '#64748b', fontSize: 13, fontWeight: '700' },
     filterTextActive: { color: '#fff' },

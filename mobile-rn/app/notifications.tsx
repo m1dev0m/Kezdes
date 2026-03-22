@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     },
     notificationCard: {
         backgroundColor: 'rgba(241, 245, 249, 0.95)', // slate-100 very slight transparency
-        borderRadius: 24,
+        borderRadius: 40,
         padding: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     appIconContainer: {
         width: 24,
         height: 24,
-        borderRadius: 8,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     statusIconBox: {
         width: 32,
         height: 32,
-        borderRadius: 16,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 2,

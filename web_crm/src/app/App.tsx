@@ -51,7 +51,7 @@ const SetupRestaurant = lazy(() => import('@/pages/public/SetupRestaurant'));
 function PageLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>
   );
 }
@@ -95,24 +95,26 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<IndexRedirect />} />
+              <Route element={<PublicLayout />}>
+                <Route path="pricing" element={<Pricing />} />
+                <Route path="contact" element={<Contact />} />
+
+                <Route path="restaurants" element={<Search />} />
+                <Route path="discover" element={<Search />} />
+                <Route path="discover/map" element={<Search />} />
+
+                <Route path="restaurant/:id" element={<RestaurantPage />} />
+                <Route path="restaurant/:id/success" element={<ConfirmationPage />} />
+              </Route>
+
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/register-restaurant" element={<Navigate to="/register?mode=restaurant" replace />} />
               <Route path="/setup-restaurant" element={<SetupRestaurant />} />
               <Route path="/setup_restaurant" element={<Navigate to="/setup-restaurant" replace />} />
               <Route path="/register-restaurant/pending" element={<RestaurantPendingApproval />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/contact" element={<Contact />} />
 
-              <Route path="/restaurants" element={<Search />} />
-              <Route path="/discover" element={<Search />} />
-              <Route path="/discover/map" element={<Search />} />
-
-              <Route path="/restaurant" element={<PublicLayout />}>
-                <Route path=":id" element={<RestaurantPage />} />
-                <Route path=":id/book" element={<BookPage />} />
-                <Route path=":id/success" element={<ConfirmationPage />} />
-              </Route>
+              <Route path="/restaurant/:id/book" element={<BookPage />} />
 
               <Route path="/profile" element={<Navigate to="/guest/profile" replace />} />
               <Route path="/my-reservations" element={<Navigate to="/guest/dashboard" replace />} />

@@ -107,11 +107,21 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, user, restaurant_id, content, booking_id=None):
-        from .models import Message
+        from .models import Conversation, Message
+        from bookings.models import Booking
+
+        guest_id = user.id
+        if booking_id:
+            b = Booking.objects.filter(id=booking_id, restaurant_id=restaurant_id).only('id', 'user_id').first()
+            if b and b.user_id:
+                guest_id = b.user_id
+
+        conv, _ = Conversation.objects.get_or_create(restaurant_id=restaurant_id, guest_id=guest_id)
 
         msg = Message.objects.create(
             sender=user,
             restaurant_id=restaurant_id,
+            conversation=conv,
             content=content,
             booking_id=booking_id,
         )

@@ -83,9 +83,13 @@ class RestaurantService:
             req.save(update_fields=['status'])
 
             # 1. Find or create user
-            user = User.objects.filter(email=req.email).first()
-            if not user and req.admin_username:
-                user = User.objects.filter(username=req.admin_username).first()
+            # For MVP we must never accidentally approve an application for a different account.
+            # If the request was created by an authenticated user, prefer that owner.
+            user = req.owner
+            if not user:
+                user = User.objects.filter(email=req.email).first()
+                if not user and req.admin_username:
+                    user = User.objects.filter(username=req.admin_username).first()
 
             created_new_user = False
             password = None

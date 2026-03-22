@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1e3a2f", /* Deep Green for Kezdes Brand */
+                        "accent": "#ec5b13", /* Primary from theme config used as accent */
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- Side Navigation -->
+<aside class="w-64 flex-shrink-0 bg-primary dark:bg-slate-900 flex flex-col justify-between py-6 px-4">
+<div class="flex flex-col gap-8">
+<div class="flex items-center gap-3 px-2">
+<div class="bg-primary/20 rounded-xl p-2 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-3xl">restaurant</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-lg font-bold leading-tight tracking-tight uppercase">Kezdes</h1>
+<p class="text-white/60 text-xs font-medium tracking-widest uppercase">Premium Dining</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-white/70 hover:bg-white/10 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-white/70 hover:bg-white/10 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-sm font-medium">Bookings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-white/10 text-white rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="text-sm font-medium">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-white/70 hover:bg-white/10 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="text-sm font-medium">Favorites</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-white/70 hover:bg-white/10 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+<div class="px-2">
+<button class="w-full flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-accent/20">
+<span class="material-symbols-outlined text-sm">add</span>
+                New Chat
+            </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-8">
+<div class="flex items-center gap-2">
+<h2 class="text-xl font-bold text-primary dark:text-white">Messages</h2>
+<span class="bg-accent/10 text-accent text-xs font-bold px-2 py-0.5 rounded-full">3 New</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20" placeholder="Search conversations..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="relative p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full border-2 border-white dark:border-slate-900"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary/10 overflow-hidden border border-slate-200 dark:border-slate-700">
+<img class="w-full h-full object-cover" data-alt="User profile avatar portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOV_L-vvWP2NPC-RtVeBYhxDtEALNQf30cFayuzGwDbqeldmk0ymVrqJCohqUqJ1w7H15fBaiYFEAsd0aI5pXde_zMC93c3iFjoOPrIKmGEwCQ2bTmSWXV6IRQbCk4itAysu8CEwTqei5t6aLNU3Icr6vFJ7InE1Ce0-b8JGr19LPWy5KPPcQMpRAuKuib0vSMPnQMPsZbZ-72n9Sx2mQlAUjg357_wu7MZ4GeTbifn2917ELjEg-Fe5tQFaAIeSInpBsO5V5YIAjo"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Two-Pane Layout -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Sidebar: Conversation List -->
+<section class="w-80 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white dark:bg-slate-900">
+<div class="flex border-b border-slate-100 dark:border-slate-800">
+<button class="flex-1 py-4 text-sm font-bold border-b-2 border-primary text-primary dark:text-white dark:border-white">Recent</button>
+<button class="flex-1 py-4 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">Archived</button>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- Chat Item: Active -->
+<div class="p-4 bg-primary/5 dark:bg-slate-800/50 border-l-4 border-primary flex gap-4 cursor-pointer">
+<div class="relative shrink-0">
+<div class="w-12 h-12 rounded-xl bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Elegant restaurant interior with warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNIwNUSNA7zT-qo_G24r9wzkVcLpFy83kldYr5xKQ62AraUFoWG8sFe5T0xFcQgsrdN0vuOEu4xUfoRBPlI6r7x8U5JeoQDrDomX4mxgGkjA8m8HHKl-TOM1rlKuwJ5F7ToqfhzD9gbMdx7kYjwQa--Qq1bBMN5pu-shswEXMGpWsjKvzHA_vhuWsJEvKkq-c_G9lJibOVom2LDNCj4lLEeFV8rhH_k2X9svSnIfNw9uLwnfgOxKx-XDCceib5Ly8wkp-AEqPjpaTK"/>
+</div>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full"></div>
+</div>
+<div class="flex flex-col overflow-hidden">
+<div class="flex justify-between items-center mb-0.5">
+<h3 class="text-sm font-bold truncate pr-2">The Golden Spoon</h3>
+<span class="text-[10px] text-slate-400 uppercase font-bold shrink-0">10:45 AM</span>
+</div>
+<p class="text-xs text-slate-600 dark:text-slate-400 truncate">Your table for two is confirmed for 8 PM tonight.</p>
+</div>
+</div>
+<!-- Chat Item -->
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex gap-4 cursor-pointer border-b border-slate-50 dark:border-slate-800">
+<div class="relative shrink-0">
+<div class="w-12 h-12 rounded-xl bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Upscale modern restaurant dining area" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFqNBNUNrz-l6aAlPr8mE0qOl2JaIiFsndqwdeQKuNd4hvMz1pbSFdK0pLN9O4TmzGTWfVAPhQhy1Lc9JXGNKcodj1uP64FBcxuwWBS6DdWFiHlq5yzWWwJK6LVejN8H4Mh8dRXR-oJD_exu_XLro8Y8pPkMGjftEecKWNpEhU9hCn6Ztc6H_A0d0VTkNZKjvsiXbuRDRlM50u9Vfafva2a2Bn8YimALQYsyTXoQW8d2BsXSpU85G2wNCILvKKpt9meaYxDDY39Tuc"/>
+</div>
+</div>
+<div class="flex flex-col overflow-hidden">
+<div class="flex justify-between items-center mb-0.5">
+<h3 class="text-sm font-bold truncate pr-2">L'Artiste Gastronomique</h3>
+<span class="text-[10px] text-slate-400 uppercase font-bold shrink-0">Yesterday</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-bold truncate">We have updated our seasonal tasting menu...</p>
+</div>
+</div>
+<!-- Chat Item -->
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex gap-4 cursor-pointer border-b border-slate-50 dark:border-slate-800">
+<div class="relative shrink-0">
+<div class="w-12 h-12 rounded-xl bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Chic boutique cafe facade" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJHFCWE2uUqqlkcmwBZvSU0_ylH07wUgLo6dzz1pxJKnzc6pxCiPZkXkrAbWcqmhTS3qF8b5hFiCrZaUhSQEWr3kTb_lmzcQO54Ub_HTheLUFILqsUEar9yaJG9GTd6xSc2hZo34JwSBz3bROw0SzP-JuUyArUFAXO9ccwoc_SCRwLq04e4NNMCltgsgQQoIoKsEY23bZLzK-KfcBv8GLYSPa7Zr50BjeI9qgIi5hlRcyEtlrEmBdf_jc_SCaTkF3Wf3SUng5QVNa8"/>
+</div>
+</div>
+<div class="flex flex-col overflow-hidden">
+<div class="flex justify-between items-center mb-0.5">
+<h3 class="text-sm font-bold truncate pr-2">Maison Blue</h3>
+<span class="text-[10px] text-slate-400 uppercase font-bold shrink-0">2 Days ago</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">Thank you for dining with us! How was your experience?</p>
+</div>
+</div>
+<!-- Chat Item -->
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex gap-4 cursor-pointer border-b border-slate-50 dark:border-slate-800">
+<div class="relative shrink-0">
+<div class="w-12 h-12 rounded-xl bg-slate-200 overflow-hidden flex items-center justify-center bg-primary text-white font-bold text-lg">
+                                OS
+                            </div>
+</div>
+<div class="flex flex-col overflow-hidden">
+<div class="flex justify-between items-center mb-0.5">
+<h3 class="text-sm font-bold truncate pr-2">Osteria Stella</h3>
+<span class="text-[10px] text-slate-400 uppercase font-bold shrink-0">Oct 12</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">We currently have no availability for that date.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Main: Chat Window -->
+<section class="flex-1 flex flex-col bg-background-light dark:bg-background-dark">
+<!-- Chat Window Header -->
+<div class="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shrink-0">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="The Golden Spoon restaurant branding" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBxj_1u4a6ZpKMVi-Yxe3imEgAdZd92jjB59u-iuM1PSbIxejsnF7IRVl5NbDoMuXa44jOtcpSkqbuiUQ-n-3ydBoNSjZtnUgNmhWFIL83xWIlE73nWUWXv8tnJtJgzlwqsAZFrGZoWRSqG_oaQH0ml_XeKfSgGKTiM3rRZVyV2CKaCqXsYfcOrXSCMnT0CqzRs8LaMRgqtVRkb1TRKASufEPEH1itRkznE48P5jG6Na3APaVCzqM6bvoxG3vSRMZ1UC8TiCg4UkmE"/>
+</div>
+<div>
+<h3 class="text-sm font-bold leading-none">The Golden Spoon</h3>
+<p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+<span class="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
+                                Typical response: 15 mins
+                            </p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">info</span>
+</button>
+<button class="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md">
+<span class="material-symbols-outlined text-sm">event</span>
+                            Book Table
+                        </button>
+</div>
+</div>
+<!-- Messages Feed -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<div class="flex justify-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-200/50 dark:bg-slate-800 px-3 py-1 rounded-full">Today</span>
+</div>
+<!-- Restaurant Message -->
+<div class="flex gap-3 max-w-[80%]">
+<div class="w-8 h-8 rounded-lg bg-slate-200 shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Restaurant logo small" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbKx6Z0MHqie7zU1f4A6wNp1OI7R8H6HFavScsbYKuscGSpuJe_fITiOkBsZXgmNu8AXZd0SrPozhnWTJw7F2PBU0w93Op-mxW3PZo_67uLQBKBCbhNWSNgOUOCwVvjirA4_mPbZitHv7-FylyigqE70SzjqRoZnACOZgdc4Xp73GACyuEW2w1w1MyvxBgTVW7O9MpXkXTwN0lfTXngGOyOeMhPag2PCGWG6d7RprHaxZF1EBR4T3zmlzTZQ1ead7zukzvBjAiJSUG"/>
+</div>
+<div class="space-y-1">
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl rounded-tl-none shadow-sm border border-slate-200 dark:border-slate-700">
+<p class="text-sm leading-relaxed">Hello Julian! We're thrilled to confirm your reservation for tonight at 8:00 PM. Is there any particular dietary requirement or a specific table you'd prefer?</p>
+</div>
+<span class="text-[10px] text-slate-400 ml-1">10:42 AM</span>
+</div>
+</div>
+<!-- Guest Message -->
+<div class="flex flex-row-reverse gap-3 max-w-[80%] ml-auto">
+<div class="w-8 h-8 rounded-lg bg-primary/20 shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Guest profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNDYn_kmyswROA2f95YkgciQsZHX4AdcQpLWWC5A40kQwOFYajwyUIRwWmuirHCNbZjvHTGXFprce1oFjSf1_YiFn4BOjdKJ-ySsdkJadCHdt_Q6ov6O4sdbIpFWNdrEESyfUk08IMjE3pl18LhnSnupkZivXCKl-KvwOjCdCcWNqhJkIDctDJcK24Gk_YCxttRWiaNnEFKURXXQn0ANQUTTZuKwyt-cJxXPV6pbnQtIDv_ar2RjqHCVX8NenSZvb9SAnSPdnotR1Q"/>
+</div>
+<div class="space-y-1 text-right">
+<div class="bg-primary text-white p-4 rounded-xl rounded-tr-none shadow-md">
+<p class="text-sm leading-relaxed">Hi! That's great. We are celebrating an anniversary, so a quiet booth near the window would be wonderful. Also, one guest is gluten-free.</p>
+</div>
+<span class="text-[10px] text-slate-400 mr-1">10:44 AM</span>
+</div>
+</div>
+<!-- Restaurant Message -->
+<div class="flex gap-3 max-w-[80%]">
+<div class="w-8 h-8 rounded-lg bg-slate-200 shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Restaurant logo small" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB57QWC92xqLnCDdLZezblcjiOcvV0w6lxwEhH0hOGWbSN0IbRDbNzOGhRvz6fwd_PPaci39_4PdTk5OsOSpCKkskr8mjZruS0-PoQmTZ30PlZxe8tqfua5TCWX3o1M0Fg3y7XPu1cY6nTa6ElgptMzVWYSbNIWr0mkLZNM1zEDJ8_cQRumkVXKOU-xuH_NrcXNjTKAKdUoqQlCI7dnJKqlI4EWYre9mFiVHhL6apAFiBVmrsips3V5ZfOLx-ucBiUQPgR7ReF43BIC"/>
+</div>
+<div class="space-y-1">
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl rounded-tl-none shadow-sm border border-slate-200 dark:border-slate-700">
+<p class="text-sm leading-relaxed">Happy anniversary! We've made a note of both. Your table for two is confirmed for 8 PM tonight. We'll have our gluten-free menu ready for you upon arrival. See you then!</p>
+</div>
+<div class="flex items-center gap-1 text-[10px] text-slate-400 ml-1">
+<span>10:45 AM</span>
+<span class="material-symbols-outlined text-[12px] text-blue-500">done_all</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-end gap-3 max-w-5xl mx-auto">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors mb-1">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<div class="flex-1 relative">
+<textarea class="w-full py-3 px-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 resize-none max-h-32" placeholder="Type your message..." rows="1"></textarea>
+<button class="absolute right-3 bottom-2.5 p-1 text-primary hover:text-accent transition-colors">
+<span class="material-symbols-outlined">sentiment_satisfied</span>
+</button>
+</div>
+<button class="mb-1 p-3 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg flex items-center justify-center">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+<p class="text-center text-[10px] text-slate-400 mt-2 uppercase tracking-tighter">Enter to send, Shift+Enter for new line</p>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

@@ -76,6 +76,10 @@ media/
 static/
 staticfiles/
 
+# Allow Django app-level static files to be tracked (e.g. backend/core/static/...)
+!backend/**/static/
+!backend/**/static/**
+
 
 .env
 .env.local
@@ -97,12 +101,13 @@ expo-env.d.ts
 *.pem
 
 
-Design_mockup_NEW./
-web_design_mockup./
+Design_mockup_NEW/
+web_design_mockup/
 remove_comments.sh
 trash.sh
 pkill.sh
 start.sh
+!start.sh
 delete_restaurants.sh
 
 # Environment variables

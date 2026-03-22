@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from django.core.cache import cache
 from django.db import connections
 from django.db import OperationalError
+from django.db import IntegrityError
 from .models import PushToken
 from .serializers import (
     RegisterSerializer,
@@ -54,6 +55,11 @@ class RegisterView(generics.CreateAPIView):
             return Response(
                 {"detail": "Сервер сейчас недоступен. Попробуйте позже."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except IntegrityError:
+            return Response(
+                {"detail": "Account with these credentials already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     def post(self, request, *args, **kwargs):

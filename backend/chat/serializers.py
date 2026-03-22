@@ -20,6 +20,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'booking_guests',
             'restaurant',
             'restaurant_name',
+            'conversation',
             'sender',
             'sender_name',
             'sender_username',
@@ -32,7 +33,8 @@ class MessageSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         booking = attrs.get("booking")
         restaurant = attrs.get("restaurant")
-        if not booking and not restaurant:
+        conversation = attrs.get("conversation")
+        if not booking and not restaurant and not conversation:
             raise serializers.ValidationError({"detail": "Message must be linked to a booking or restaurant."})
         return attrs
 

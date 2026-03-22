@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     receipt: {
         width: '100%',
         backgroundColor: '#F9FAFB',
-        borderRadius: 20,
+        borderRadius: 32,
         padding: 24,
         marginBottom: 48,
         borderWidth: 1,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     primaryButton: {
         backgroundColor: colors.primary || '#0047FF',
         paddingVertical: 18,
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
         width: '100%',
     },

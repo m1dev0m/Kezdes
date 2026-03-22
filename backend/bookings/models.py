@@ -16,6 +16,7 @@ class Booking(models.Model):
     PENDING = 'pending'
     PAYMENT_PENDING = 'payment_pending'
     APPROVED = 'approved'
+    SEATED = 'seated'
     REJECTED = 'rejected'
     CANCELLED_BY_USER = 'cancelled_by_user'
     CANCELLED_BY_RESTAURANT = 'cancelled_by_restaurant'
@@ -26,6 +27,7 @@ class Booking(models.Model):
         (PENDING, 'Ожидает подтверждения'),
         (PAYMENT_PENDING, 'Ожидает предоплаты'),
         (APPROVED, 'Подтверждено'),
+        (SEATED, 'Гость за столом'),
         (REJECTED, 'Отклонено'),
         (CANCELLED_BY_USER, 'Отменено пользователем'),
         (CANCELLED_BY_RESTAURANT, 'Отменено рестораном'),
@@ -36,7 +38,8 @@ class Booking(models.Model):
     TRANSITIONS = {
         PENDING: [APPROVED, PAYMENT_PENDING, REJECTED, EXPIRED, CANCELLED_BY_USER],
         PAYMENT_PENDING: [APPROVED, EXPIRED, CANCELLED_BY_USER],
-        APPROVED: [CANCELLED_BY_USER, CANCELLED_BY_RESTAURANT, COMPLETED, NO_SHOW],
+        APPROVED: [SEATED, CANCELLED_BY_USER, CANCELLED_BY_RESTAURANT, COMPLETED, NO_SHOW],
+        SEATED: [COMPLETED, NO_SHOW],
         REJECTED: [],
         CANCELLED_BY_USER: [],
         CANCELLED_BY_RESTAURANT: [],
@@ -44,7 +47,7 @@ class Booking(models.Model):
         COMPLETED: [],
         NO_SHOW: [],
     }
-    ACTIVE_STATUSES = [PENDING, APPROVED, PAYMENT_PENDING]
+    ACTIVE_STATUSES = [PENDING, APPROVED, PAYMENT_PENDING, SEATED]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='bookings')
     table = models.ForeignKey('restaurants.Table', on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')

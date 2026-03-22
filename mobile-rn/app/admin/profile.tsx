@@ -156,20 +156,20 @@ const styles = StyleSheet.create({
     rowCentered: { flexDirection: 'row', alignItems: 'center' },
     rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
 
-    inputWithIcon: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#f1f5f9', borderRadius: 12 },
+    inputWithIcon: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#f1f5f9', borderRadius: 40 },
     inputIconRight: { paddingRight: 16 },
     inputIconned: { flex: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.text, fontWeight: '600' },
 
     addBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     addBtnText: { color: '#4300FF', fontSize: 12, fontWeight: '700' },
 
-    dateCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
-    dateIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+    dateCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 32, borderWidth: 1, borderColor: '#f1f5f9', padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
+    dateIconBox: { width: 40, height: 40, borderRadius: 40, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
     dateTitle: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 4 },
     dateSub: { fontSize: 12, color: colors.muted },
     trashBtn: { padding: 8 },
 
-    logoutBoundary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, marginTop: 24, borderRadius: 12, borderWidth: 1, borderColor: '#fee2e2', backgroundColor: '#fff' },
+    logoutBoundary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, marginTop: 24, borderRadius: 40, borderWidth: 1, borderColor: '#fee2e2', backgroundColor: '#fff' },
     logoutText: { color: '#ef4444', fontSize: 14, fontWeight: '700' },
 
     versionText: { textAlign: 'center', color: '#cbd5e1', fontSize: 10, marginTop: 24 },

@@ -148,7 +148,7 @@ export default function Reviews() {
                                 {replyingTo === review.id && (
                                     <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
                                         <div className="flex items-start gap-4">
-                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mt-1">
+                                            <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center mt-1">
                                                 <MessageSquareReply size={14} className="text-primary" />
                                             </div>
                                             <div className="flex-1 space-y-3">

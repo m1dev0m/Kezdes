@@ -22,26 +22,44 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useI18n } from '@/i18n/index.tsx';
 import { KpiCard } from '@/components/KpiCard';
 import { useDashboardStats } from '@/modules/analytics/logic/useDashboardStats';
+import type { DashboardStats } from '@/modules/analytics/types';
 import { motion } from 'framer-motion';
+import { Logo } from '@/components/ui/Logo';
 
 export default function Dashboard() {
     const { t } = useI18n();
     const navigate = useNavigate();
     const { stats, loading, refreshing, refresh } = useDashboardStats();
+    const typedStats: DashboardStats | null = stats;
     const [recentBookings, setRecentBookings] = useState<any[]>([]);
+    const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+
+    const loadRecent = async () => {
+        try {
+            const bRes = await api.get('/bookings/my_restaurant/?limit=5');
+            const data = bRes.data;
+            setRecentBookings(Array.isArray(data) ? data.slice(0, 5) : data.results?.slice(0, 5) || []);
+        } catch (err) {
+            console.error("Failed to load recent bookings", err);
+        }
+    };
+    
 
     useEffect(() => {
-        const loadRecent = async () => {
-            try {
-                const bRes = await api.get('/bookings/my_restaurant/?limit=5');
-                const data = bRes.data;
-                setRecentBookings(Array.isArray(data) ? data.slice(0, 5) : data.results?.slice(0, 5) || []);
-            } catch (err) {
-                console.error("Failed to load recent bookings", err);
-            }
-        };
         loadRecent();
     }, []);
+
+    const performBookingAction = async (bookingId: number, action: 'confirm' | 'reject') => {
+        setActionLoadingId(bookingId);
+        try {
+            await api.post(`/bookings/${bookingId}/${action}/`);
+            await Promise.all([loadRecent(), Promise.resolve(refresh())]);
+        } catch (err) {
+            console.error(`Failed to ${action} booking`, err);
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -60,43 +78,57 @@ export default function Dashboard() {
     const cards = [
         {
             label: t('dashboard.bookingsToday'),
-            value: stats?.bookings_today ?? 0,
+            value: typedStats?.bookings_today ?? 0,
             icon: CalendarDays,
-            color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10',
+            color: 'text-primary bg-primary/5 dark:bg-primary/5',
+        },
+        {
+            label: t('dashboard.bookingsTomorrow') || 'Bookings Tomorrow',
+            value: typedStats?.bookings_tomorrow ?? 0,
+            icon: CalendarDays,
+            color: 'text-fuchsia-600 bg-fuchsia-50 dark:bg-fuchsia-500/10',
+        },
+        {
+            label: t('dashboard.newRequests') || 'New Requests',
+            value: typedStats?.pending_bookings_today ?? typedStats?.new_requests ?? 0,
+            icon: Clock,
+            color: 'text-amber-600 bg-amber-50 dark:bg-amber-500/10',
         },
         {
             label: t('dashboard.upcomingBookings'),
-            value: stats?.upcoming_bookings ?? 0,
+            value: typedStats?.upcoming_bookings ?? 0,
             icon: Clock,
             color: 'text-sky-600 bg-sky-50 dark:bg-sky-500/10',
         },
         {
             label: t('dashboard.occupiedTables'),
-            value: stats?.occupied_tables ?? 0,
+            value: typedStats?.occupied_tables ?? 0,
             icon: Armchair,
             color: 'text-rose-500 bg-rose-50 dark:bg-rose-500/10',
         },
         {
             label: t('dashboard.availableTables'),
-            value: stats?.available_tables ?? 0,
+            value: typedStats?.available_tables ?? 0,
             icon: CheckCircle,
             color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10',
         },
         {
             label: t('dashboard.confirmationRate'),
-            value: `${stats?.confirmation_rate ?? 0}%`,
+            value: `${typedStats?.confirmation_rate ?? 0}%`,
             icon: Percent,
             color: 'text-amber-600 bg-amber-50 dark:bg-amber-500/10',
         },
         {
             label: t('dashboard.repeatCustomers'),
-            value: `${stats?.repeat_customer_rate ?? 0}%`,
+            value: `${typedStats?.repeat_customer_rate ?? 0}%`,
             icon: UserCheck,
             color: 'text-violet-500 bg-violet-50 dark:bg-violet-500/10',
         },
     ];
 
-    const chartData = stats?.weekly_chart?.length ? stats.weekly_chart : [];
+    const chartData = typedStats?.weekly_chart?.length ? typedStats.weekly_chart : [];
+    const activeTables = typedStats?.active_tables ?? ((typedStats?.occupied_tables ?? 0) + (typedStats?.available_tables ?? 0));
+    const occ = typedStats?.occupancy_percent ?? 0;
 
     return (
         <div className="space-y-10 pb-12 transition-all">
@@ -105,15 +137,18 @@ export default function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-8"
             >
-                <div>
-                    <h1 className="text-[28px] font-black text-slate-900 tracking-tighter uppercase italic leading-none">{t('dashboard.title')}</h1>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mt-3 opacity-40 italic">Venue Performance Overview</p>
+                <div className="flex items-start gap-5">
+                    <Logo variant="admin" className="h-8 mt-1" />
+                    <div>
+                        <h1 className="text-[28px] font-black text-slate-900 tracking-tighter uppercase italic leading-none">{t('dashboard.title')}</h1>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mt-3 opacity-40 italic">Venue Performance Overview</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-4">
                     <button
                         onClick={refresh}
                         disabled={refreshing}
-                        className="flex items-center gap-3 px-6 py-3.5 bg-white border border-slate-100 rounded-[18px] text-[10px] font-black uppercase tracking-widest hover:border-indigo-600 transition-all shadow-sm active:scale-95 italic"
+                        className="flex items-center gap-3 px-6 py-3.5 bg-white border border-slate-100 rounded-[18px] text-[10px] font-black uppercase tracking-widest hover:border-primary transition-all shadow-sm active:scale-95 italic"
                     >
                         <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
                         {refreshing ? t('dashboard.syncing') : t('dashboard.refresh')}
@@ -141,7 +176,7 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
                 <div className="lg:col-span-8 space-y-8">
-                    <div className="bg-white border border-slate-100 rounded-[32px] p-8 shadow-sm overflow-hidden relative">
+                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm overflow-hidden relative">
                         <div className="flex items-center justify-between mb-10">
                             <div>
                                 <h3 className="text-[12px] font-black text-slate-900 tracking-[0.2em] uppercase italic leading-none">{t('dashboard.bookingTrends')}</h3>
@@ -183,7 +218,7 @@ export default function Dashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white border border-slate-100 rounded-[32px] p-8 flex items-center justify-between shadow-sm group hover:border-indigo-600 transition-all">
+                        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 flex items-center justify-between shadow-sm group hover:border-primary transition-all">
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.25em] mb-3 italic opacity-60">Monthly Revenue</p>
                                 <h4 className="text-4xl font-black text-slate-900 tracking-tighter leading-none italic">₸{(stats?.revenue || 0).toLocaleString()}</h4>
@@ -191,30 +226,57 @@ export default function Dashboard() {
                                     <TrendingUp size={12} /> +24% vs Prev
                                 </div>
                             </div>
-                            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-[20px] flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-[20px] flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white transition-all duration-300">
                                 <Receipt size={24} />
                             </div>
                         </div>
-                        <div className="bg-white border border-slate-100 rounded-[32px] p-8 flex items-center justify-between shadow-sm group hover:border-indigo-600 transition-all">
+                        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 flex items-center justify-between shadow-sm group hover:border-primary transition-all">
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.25em] mb-3 italic opacity-60">Monthly Target</p>
                                 <h4 className="text-4xl font-black text-slate-900 tracking-tighter leading-none italic">84%</h4>
                                 <div className="mt-6 w-48 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
-                                    <div className="h-full bg-indigo-600 rounded-full transition-all duration-2000 ease-out" style={{ width: '84%' }}></div>
+                                    <div className="h-full bg-primary rounded-full transition-all duration-2000 ease-out" style={{ width: '84%' }}></div>
                                 </div>
                             </div>
-                            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-[20px] flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-[20px] flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white transition-all duration-300">
                                 <Target size={24} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-[12px] font-black text-slate-900 tracking-[0.2em] uppercase italic leading-none">{t('dashboard.occupancy') || 'Occupancy'}</h3>
+                            <Link to="/app/tables" className="text-[9px] font-black text-slate-400 hover:text-primary uppercase tracking-[0.2em] transition-all flex items-center gap-2 group italic">
+                                {t('dashboard.viewAll')}
+                                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                        </div>
+                        <div className="flex items-end justify-between gap-6">
+                            <div>
+                                <div className="text-5xl font-black text-slate-900 tracking-tighter italic leading-none">{occ}%</div>
+                                <div className="mt-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic opacity-70">
+                                    {(stats?.occupied_tables ?? 0)} / {activeTables} tables occupied
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <div className="h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
+                                    <div className="h-full bg-primary rounded-full" style={{ width: `${Math.max(0, Math.min(100, occ))}%` }} />
+                                </div>
+                                <div className="mt-3 flex justify-between text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">
+                                    <span>{t('dashboard.availableTables')}: {stats?.available_tables ?? 0}</span>
+                                    <span>{t('dashboard.occupiedTables')}: {stats?.occupied_tables ?? 0}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="lg:col-span-4 space-y-8">
-                    <div className="bg-white border border-slate-100 rounded-[32px] p-8 shadow-sm flex flex-col h-full hover:border-indigo-600 transition-all">
+                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm flex flex-col h-full hover:border-primary transition-all">
                         <div className="flex items-center justify-between mb-10">
                             <h3 className="text-[12px] font-black text-slate-900 tracking-[0.2em] uppercase italic leading-none">{t('dashboard.recentGuests')}</h3>
-                            <Link to="/app/bookings" className="text-[9px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-[0.2em] transition-all flex items-center gap-2 group italic">
+                            <Link to="/app/bookings" className="text-[9px] font-black text-slate-400 hover:text-primary uppercase tracking-[0.2em] transition-all flex items-center gap-2 group italic">
                                 {t('dashboard.viewAll')}
                                 <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
                             </Link>
@@ -232,24 +294,53 @@ export default function Dashboard() {
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: 0.3 + j * 0.05 }}
-                                        className="flex items-center justify-between group cursor-pointer"
-                                        onClick={() => navigate('/app/bookings')}
+                                        className="flex items-center justify-between group"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-[16px] bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-600 font-black text-lg italic shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                                            <div className="w-12 h-12 rounded-[16px] bg-slate-50 border border-slate-100 flex items-center justify-center text-primary font-black text-lg italic shadow-sm group-hover:bg-primary group-hover:text-white transition-all duration-300">
                                                 {b.user_name?.charAt(0)?.toUpperCase() || 'G'}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-[13px] font-black text-slate-900 tracking-tight truncate max-w-[120px] uppercase italic">{b.user_name || 'Guest'}</p>
                                                     {b.guests >= 4 && (
-                                                        <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest leading-none scale-75 origin-left">VIP</span>
+                                                        <span className="bg-primary text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest leading-none scale-75 origin-left">VIP</span>
                                                     )}
                                                 </div>
                                                 <p className="text-[10px] font-black text-slate-400 tabular-nums uppercase tracking-[0.1em] mt-1.5 opacity-60 italic leading-none">{b.time?.substring(0, 5)} • {b.guests} PAX</p>
                                             </div>
                                         </div>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${(b.status === 'confirmed' || b.status === 'approved') ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50' : b.status === 'pending' ? 'bg-amber-400 shadow-lg shadow-amber-400/50' : 'bg-slate-100'}`} />
+                                        <div className="flex items-center gap-3">
+                                            {b.status === 'pending' && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        disabled={actionLoadingId === b.id}
+                                                        onClick={() => performBookingAction(b.id, 'confirm')}
+                                                        className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-emerald-100 transition-all active:scale-95"
+                                                    >
+                                                        {actionLoadingId === b.id ? '...' : (t('bookings.confirm') || 'Confirm')}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        disabled={actionLoadingId === b.id}
+                                                        onClick={() => performBookingAction(b.id, 'reject')}
+                                                        className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-rose-100 transition-all active:scale-95"
+                                                    >
+                                                        {actionLoadingId === b.id ? '...' : (t('bookings.reject') || 'Reject')}
+                                                    </button>
+                                                </>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate('/app/bookings')}
+                                                className="text-[9px] font-black text-slate-400 hover:text-primary uppercase tracking-[0.2em] transition-all flex items-center gap-2 group italic"
+                                            >
+                                                {t('dashboard.open') || 'Open'}
+                                                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${(b.status === 'confirmed' || b.status === 'approved') ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50' : b.status === 'pending' ? 'bg-amber-400 shadow-lg shadow-amber-400/50' : 'bg-slate-100'}`} />
+                                        </div>
                                     </motion.div>
                                 ))
                             )}

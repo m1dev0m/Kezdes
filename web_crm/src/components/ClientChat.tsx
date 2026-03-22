@@ -49,7 +49,7 @@ export default function ClientChat({ restaurantId, restaurantName, isOpen, onClo
 
     const loadMessages = async () => {
         try {
-            const res = await api.get(`/chat/messages/?restaurant_id=${restaurantId}`);
+            const res = await api.get(`/chat/messages/?restaurant=${restaurantId}`);
             setMessages(res.data.results || res.data);
             setTimeout(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

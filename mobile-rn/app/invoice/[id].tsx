@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     },
     invoiceCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        borderRadius: 40,
         padding: 24,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fef3c7',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 12,
+        borderRadius: 40,
         marginBottom: 12,
     },
     statusText: {
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#0047FF',
         flexDirection: 'row',
         height: 60,
-        borderRadius: 20,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
         gap: 12,

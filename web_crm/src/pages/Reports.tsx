@@ -23,7 +23,7 @@ export default function Reports() {
         { id: 'customers', name: t('reports.guestDatabase'), icon: Users, color: 'text-purple-500 bg-purple-50 dark:bg-purple-500/10', desc: t('reports.guestDatabaseDesc') },
         { id: 'occupancy', name: t('reports.tableOccupancy'), icon: TableIcon, color: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10', desc: t('reports.tableOccupancyDesc') },
         { id: 'performance', name: t('reports.staffPerformance'), icon: ChefHat, color: 'text-rose-500 bg-rose-50 dark:bg-rose-500/10', desc: t('reports.staffPerformanceDesc') },
-        { id: 'growth', name: t('reports.growthAnalytics'), icon: TrendingUp, color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10', desc: t('reports.growthAnalyticsDesc') }
+        { id: 'growth', name: t('reports.growthAnalytics'), icon: TrendingUp, color: 'text-primary bg-primary/5 dark:bg-primary/5', desc: t('reports.growthAnalyticsDesc') }
     ];
 
     const [generating, setGenerating] = useState<string | null>(null);

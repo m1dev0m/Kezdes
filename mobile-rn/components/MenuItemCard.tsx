@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     card: {
         flexDirection: 'row',
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 40,
         backgroundColor: '#fff',
         marginBottom: 16,
         borderWidth: 1,
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     iconContainer: {
         width: 56,
         height: 56,
-        borderRadius: 16,
+        borderRadius: 32,
         backgroundColor: '#f8fafc',
         alignItems: 'center',
         justifyContent: 'center',
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     toggle: {
         width: 44,
         height: 24,
-        borderRadius: 12,
+        borderRadius: 40,
         paddingHorizontal: 4,
         justifyContent: 'center',
     },
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     dot: {
         width: 16,
         height: 16,
-        borderRadius: 8,
+        borderRadius: 32,
         backgroundColor: '#fff',
         alignSelf: 'flex-end',
     },

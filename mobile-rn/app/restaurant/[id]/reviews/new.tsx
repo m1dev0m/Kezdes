@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 32,
         backgroundColor: colors.background,
         alignItems: 'center',
         justifyContent: 'center',
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 16,
         fontSize: 16,
         color: colors.text,
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     submitBtn: {
         backgroundColor: colors.primary,
         paddingVertical: 16,
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -16,7 +16,9 @@ interface Message {
     timestamp: string;
     sender: number;
     sender_username: string;
-    booking: number;
+    booking: number | null;
+    restaurant?: number | null;
+    conversation?: number | null;
     is_read: boolean;
 }
 
@@ -97,7 +99,10 @@ export default function MessagesPage() {
         const seq = ++fetchSeqRef.current;
         try {
             setLoadingMessages(true);
-            const res = await api.get(`/chat/messages/?booking=${bookingId}`);
+            const restaurantId = user?.restaurant;
+            const res = restaurantId
+                ? await api.get(`/chat/messages/?booking=${bookingId}`)
+                : await api.get(`/chat/messages/?booking=${bookingId}`);
             const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
             const normalized: Message[] = (data as any[]).map((m) => ({
                 id: m.id,
@@ -105,7 +110,9 @@ export default function MessagesPage() {
                 timestamp: m.timestamp,
                 sender: m.sender,
                 sender_username: m.sender_username || m.sender_name || m.senderUsername || '',
-                booking: m.booking,
+                booking: m.booking ?? null,
+                restaurant: m.restaurant ?? null,
+                conversation: m.conversation ?? null,
                 is_read: Boolean(m.is_read),
             }));
             if (activeBookingIdRef.current !== bookingId) return;
@@ -212,16 +219,16 @@ export default function MessagesPage() {
                                             key={booking.id}
                                             onClick={() => setSelectedBooking(booking)}
                                             className={`w-full text-left flex items-center gap-3 px-4 py-3.5 transition-all relative ${isActive
-                                                ? 'bg-indigo-50/50'
+                                                ? 'bg-primary/5/50'
                                                 : 'hover:bg-slate-50'
                                                 }`}
                                         >
-                                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 border border-slate-100 uppercase ${isActive ? 'bg-indigo-600 text-white shadow-sm border-indigo-500' : 'bg-slate-50 text-slate-400'}`}>
+                                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 border border-slate-100 uppercase ${isActive ? 'bg-primary text-white shadow-sm border-primary' : 'bg-slate-50 text-slate-400'}`}>
                                                 {initial}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
-                                                    <p className={`font-bold text-xs uppercase tracking-tight truncate ${isActive ? 'text-indigo-600' : 'text-slate-700'}`}>
+                                                    <p className={`font-bold text-xs uppercase tracking-tight truncate ${isActive ? 'text-primary' : 'text-slate-700'}`}>
                                                         {booking.user_name || t('messages.guest')}
                                                     </p>
                                                     <span className="text-[9px] text-slate-300 font-bold tabular-nums shrink-0 ml-2">#{booking.id}</span>
@@ -249,7 +256,7 @@ export default function MessagesPage() {
             {selectedBooking ? (
                 <div className="flex-1 flex flex-col min-w-0 bg-slate-50/30">
                     <div className="flex items-center gap-4 px-6 py-3 border-b border-slate-200 bg-white/50 backdrop-blur-sm">
-                        <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm uppercase">
+                        <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-xs shadow-sm uppercase">
                             {(selectedBooking.user_name || t('messages.guest'))[0].toUpperCase()}
                         </div>
                         <div className="flex-1">
@@ -273,7 +280,7 @@ export default function MessagesPage() {
                                 <button
                                     onClick={() => handleBookingAction('confirm')}
                                     disabled={actionLoading !== null}
-                                    className="px-2.5 py-1.5 bg-indigo-600 text-white rounded-md text-[9px] font-black underline-offset-2 hover:underline transition-all disabled:opacity-50 shadow-sm"
+                                    className="px-2.5 py-1.5 bg-primary text-white rounded-md text-[9px] font-black underline-offset-2 hover:underline transition-all disabled:opacity-50 shadow-sm"
                                 >
                                     {actionLoading === 'confirm' ? <Loader2 size={10} className="animate-spin" /> : 'ПРИНЯТЬ'}
                                 </button>
@@ -321,7 +328,7 @@ export default function MessagesPage() {
                                                     <span className="text-[9px] text-slate-400 font-bold px-1 uppercase tracking-wider">{msg.sender_username}</span>
                                                 )}
                                                 <div className={`px-3.5 py-2.5 rounded-2xl text-[13px] font-medium leading-relaxed shadow-sm ${isMe
-                                                    ? 'bg-indigo-600 text-white rounded-tr-sm'
+                                                    ? 'bg-primary text-white rounded-tr-sm'
                                                     : 'bg-white text-slate-800 border border-slate-200/60 rounded-tl-sm'
                                                     }`}>
                                                     {msg.content}
@@ -349,12 +356,12 @@ export default function MessagesPage() {
                                 value={newMsg}
                                 onChange={e => setNewMsg(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                                className="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-medium outline-none text-slate-900 placeholder-slate-400 focus:border-indigo-600 transition-all shadow-sm"
+                                className="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-medium outline-none text-slate-900 placeholder-slate-400 focus:border-primary transition-all shadow-sm"
                             />
                             <button
                                 onClick={handleSend}
                                 disabled={!newMsg.trim() || sending}
-                                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${newMsg.trim() ? 'bg-indigo-600 text-white hover:scale-105 active:scale-95' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${newMsg.trim() ? 'bg-primary text-white hover:scale-105 active:scale-95' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                             >
                                 {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                             </button>

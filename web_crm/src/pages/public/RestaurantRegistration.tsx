@@ -18,6 +18,20 @@ export default function RestaurantRegistration() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const safeSetToken = (key: string, value: string) => {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch {
+            try {
+                sessionStorage.setItem(key, value);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
@@ -36,13 +50,31 @@ export default function RestaurantRegistration() {
         setLoading(true);
         setError('');
         try {
-            await api.post('/restaurants/requests/', {
+            const res = await api.post('/restaurants/requests/', {
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
                 city: formData.city,
                 password: formData.password,
             });
+
+            const access = res.data?.access;
+            const refresh = res.data?.refresh;
+            if (access && refresh) {
+                const ok1 = safeSetToken('accessToken', access);
+                const ok2 = safeSetToken('refreshToken', refresh);
+                if (!ok1 || !ok2) {
+                    const msg = 'Could not save login session on this device/browser. Please disable private mode or try another browser.';
+                    toast.error(msg);
+                    setError(msg);
+                    return;
+                }
+            } else {
+                const msg = 'Registration succeeded but session tokens were not returned. Please try logging in.';
+                toast.error(msg);
+                setError(msg);
+                return;
+            }
             navigate('/pending-approval');
         } catch (err: any) {
             toast.error(err.response?.data?.detail || err.message || 'An error occurred during registration.');

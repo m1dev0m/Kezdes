@@ -24,7 +24,6 @@ def _tomorrow():
 
 
 class BookingModelTests(TestCase):
-    """Tests for Booking model logic."""
 
     def setUp(self):
         self.user = User.objects.create_user("testuser", "test@test.com", "pass1234")
@@ -43,7 +42,6 @@ class BookingModelTests(TestCase):
         )
 
     def test_start_end_datetime_auto_calculated(self):
-        """save() should auto-calculate start_datetime and end_datetime."""
         booking = Booking.objects.create(
             user=self.user,
             restaurant=self.restaurant,
@@ -59,7 +57,6 @@ class BookingModelTests(TestCase):
         self.assertEqual(diff, 90 * 60)
 
     def test_transition_to_valid(self):
-        """Valid transition: PENDING → APPROVED."""
         booking = Booking.objects.create(
             user=self.user,
             restaurant=self.restaurant,
@@ -72,14 +69,13 @@ class BookingModelTests(TestCase):
         booking.refresh_from_db()
         self.assertEqual(booking.status, Booking.APPROVED)
 
-        # History should be created
         history = ReservationHistory.objects.filter(reservation=booking)
         self.assertEqual(history.count(), 1)
         self.assertEqual(history.first().from_status, Booking.PENDING)
         self.assertEqual(history.first().to_status, Booking.APPROVED)
 
     def test_transition_to_invalid_raises(self):
-        """Invalid transition: COMPLETED → APPROVED should raise."""
+
         booking = Booking.objects.create(
             user=self.user,
             restaurant=self.restaurant,
@@ -93,7 +89,7 @@ class BookingModelTests(TestCase):
             booking.transition_to(Booking.APPROVED)
 
     def test_expire_stale_bookings(self):
-        """Bookings older than TTL should be expired."""
+
         old_booking = Booking.objects.create(
             user=self.user,
             restaurant=self.restaurant,
@@ -103,7 +99,6 @@ class BookingModelTests(TestCase):
             guests=2,
             status=Booking.PENDING,
         )
-        # Manually backdate
         Booking.objects.filter(pk=old_booking.pk).update(
             created_at=timezone.now() - timedelta(minutes=60)
         )
@@ -379,6 +374,39 @@ class BookingAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = res.data if isinstance(res.data, list) else res.data.get("results", [])
         self.assertEqual(len(data), 1)
+
+    def test_my_restaurant_limit(self):
+        """my_restaurant supports limit param (used by Dashboard)."""
+        # Create multiple bookings
+        self._create_booking(time="18:00")
+        self._create_booking(time="19:00")
+        self._create_booking(time="20:00")
+
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.get("/api/v1/bookings/my_restaurant/?limit=2")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.data if isinstance(res.data, list) else res.data.get("results", [])
+        self.assertEqual(len(data), 2)
+
+    def test_my_restaurant_filters_by_date_and_time(self):
+        """my_restaurant supports date + time_from/time_to filters."""
+        target_date = str(_tomorrow())
+
+        # Create two bookings on same date, different times
+        r1 = self._create_booking(date=target_date, time="18:00")
+        r2 = self._create_booking(date=target_date, time="21:00")
+        self.assertEqual(r1.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(r2.status_code, status.HTTP_201_CREATED)
+
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.get(
+            "/api/v1/bookings/my_restaurant/?date=" + target_date + "&time_from=20:00"
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.data if isinstance(res.data, list) else res.data.get("results", [])
+        ids = {row["id"] for row in data}
+        self.assertIn(r2.data["id"], ids)
+        self.assertNotIn(r1.data["id"], ids)
 
     def test_reschedule_booking(self):
         """Owner can reschedule an active booking and the booking is reallocated."""

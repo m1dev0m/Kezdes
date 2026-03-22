@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     },
     iconButton: {
         padding: 8,
-        borderRadius: 20,
+        borderRadius: 32,
     },
     headerTitle: {
         fontSize: 18,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
         width: 32,
         height: 32,
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 71, 255, 0.1)',
         paddingHorizontal: 12,
         paddingVertical: 4,
-        borderRadius: 12,
+        borderRadius: 40,
         marginTop: 8,
         gap: 4,
     },
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     },
     groupCard: {
         backgroundColor: '#ffffff',
-        borderRadius: 24,
+        borderRadius: 40,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#F0F0F0',
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     menuIconBox: {
         width: 40,
         height: 40,
-        borderRadius: 8,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(239, 68, 68, 0.3)',
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 40,
         marginTop: 16,
         gap: 8,
     },

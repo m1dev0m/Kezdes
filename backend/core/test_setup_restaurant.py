@@ -10,8 +10,8 @@ class SetupRestaurantFlowTests(APITestCase):
         register_payload = {
             "username": "rest_setup_user",
             "email": "rest_setup_user@test.local",
-            "password": "pass1234",
-            "password2": "pass1234",
+            "password": "Str0ng!Pass#2026",
+            "password2": "Str0ng!Pass#2026",
             "role": "restaurant_admin",
         }
         reg = self.client.post(reverse("register"), register_payload, format="json")
@@ -19,7 +19,7 @@ class SetupRestaurantFlowTests(APITestCase):
 
         login = self.client.post(
             reverse("token_obtain_pair"),
-            {"username": "rest_setup_user@test.local", "password": "pass1234"},
+            {"username": "rest_setup_user@test.local", "password": "Str0ng!Pass#2026"},
             format="json",
         )
         self.assertEqual(login.status_code, status.HTTP_200_OK)

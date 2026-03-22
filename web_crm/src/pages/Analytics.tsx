@@ -93,7 +93,7 @@ export default function Analytics() {
             label: t('analytics.confirmationRate'),
             value: `${data.confirmation_rate}%`,
             icon: Percent,
-            color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400',
+            color: 'bg-primary/5 text-primary dark:bg-primary/5 dark:text-indigo-400',
         },
         {
             label: t('analytics.repeatCustomers'),
@@ -122,14 +122,14 @@ export default function Analytics() {
         <div className="space-y-6 pb-12">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t('analytics.title')}</h1>
-                    <p className="text-slate-500 font-medium text-sm mt-0.5">{t('analytics.description')}</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{t('analytics.title')}</h1>
+                    <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.3em] mt-1.5">{t('analytics.description')}</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" className="h-9 px-4 text-xs font-semibold rounded-lg" onClick={loadAnalytics}>
+                    <Button variant="secondary" size="sm" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-[0.2em]" onClick={loadAnalytics}>
                         <RefreshCw size={14} className="mr-2" /> {t('analytics.refresh')}
                     </Button>
-                    <Button variant="secondary" size="sm" className="h-9 px-4 text-xs font-semibold rounded-lg">
+                    <Button variant="secondary" size="sm" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-[0.2em]">
                         <Download size={14} className="mr-2" /> {t('analytics.export')}
                     </Button>
                 </div>
@@ -149,19 +149,19 @@ export default function Analytics() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                 {secondaryKpis.map((kpi, i) => (
-                    <div key={i} className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col items-center justify-center text-center">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{kpi.label}</span>
-                        <span className="text-base font-bold text-slate-900 tabular-nums">{kpi.value}</span>
+                    <div key={i} className="bg-white border border-slate-100 rounded-3xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1.5">{kpi.label}</span>
+                        <span className="text-lg font-black text-slate-900 tracking-tighter tabular-nums">{kpi.value}</span>
                     </div>
                 ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white border border-slate-200 rounded-xl p-6">
-                    <div className="flex justify-between items-start mb-6">
+                <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                    <div className="flex justify-between items-start mb-8">
                         <div>
-                            <h3 className="text-sm font-bold text-slate-900 tracking-tight">{t('analytics.weeklyTrend')}</h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t('analytics.weeklyTrendDesc')}</p>
+                            <h3 className="text-lg font-black text-slate-900 tracking-tighter">{t('analytics.weeklyTrend')}</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">{t('analytics.weeklyTrendDesc')}</p>
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={240}>
@@ -190,11 +190,11 @@ export default function Analytics() {
                     </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl p-6">
-                    <div className="flex justify-between items-start mb-6">
+                <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                    <div className="flex justify-between items-start mb-8">
                         <div>
-                            <h3 className="text-sm font-bold text-slate-900 tracking-tight">{t('analytics.dailyLoad')}</h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t('analytics.dailyLoadDesc')}</p>
+                            <h3 className="text-lg font-black text-slate-900 tracking-tighter">{t('analytics.dailyLoad')}</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">{t('analytics.dailyLoadDesc')}</p>
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={240}>
@@ -220,23 +220,23 @@ export default function Analytics() {
             </div>
 
             {data.channels && data.channels.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl p-6">
-                    <h3 className="text-sm font-bold text-slate-900 tracking-tight mb-1">
+                <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tighter mb-1.5">
                         {t('analytics.channelsTitle')}
                     </h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8">
                         {t('analytics.channelsDesc')}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {data.channels.map((ch) => (
                             <div
                                 key={ch.id}
-                                className="bg-slate-50 border border-slate-100 rounded-lg p-4 flex items-center justify-between"
+                                className="bg-slate-50/50 border border-slate-100 rounded-[1.5rem] p-6 flex flex-col gap-2"
                             >
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
                                     {ch.name}
                                 </span>
-                                <span className="text-lg font-bold text-slate-900 tabular-nums">
+                                <span className="text-3xl font-black text-slate-900 tracking-tighter tabular-nums">
                                     {ch.count}
                                 </span>
                             </div>

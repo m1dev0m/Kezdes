@@ -19,7 +19,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; badge: string }>
     confirmed: { bg: 'bg-emerald-50/50 dark:bg-emerald-500/5', text: 'text-emerald-700 dark:text-emerald-400', badge: 'bg-emerald-100 dark:bg-emerald-500/10' },
     approved: { bg: 'bg-emerald-50/50 dark:bg-emerald-500/5', text: 'text-emerald-700 dark:text-emerald-400', badge: 'bg-emerald-100 dark:bg-emerald-500/10' },
     pending: { bg: 'bg-amber-50/50 dark:bg-amber-500/5', text: 'text-amber-700 dark:text-amber-400', badge: 'bg-amber-100 dark:bg-amber-500/10' },
-    payment_pending: { bg: 'bg-indigo-50/50 dark:bg-indigo-500/5', text: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 dark:bg-indigo-500/10' },
+    payment_pending: { bg: 'bg-primary/5/50 dark:bg-primary/5', text: 'text-primary dark:text-indigo-400', badge: 'bg-indigo-100 dark:bg-primary/5' },
     cancelled: { bg: 'bg-slate-50/50 dark:bg-slate-800/40', text: 'text-slate-500 dark:text-slate-400', badge: 'bg-slate-100 dark:bg-slate-700/40' },
 };
 
@@ -169,11 +169,11 @@ export default function CalendarPage() {
             : null;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8rem)] bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-xl shadow-slate-900/5">
+        <div className="flex flex-col h-[calc(100vh-8rem)] bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-xl shadow-slate-900/5">
             <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between px-8 py-6 border-b border-slate-100 bg-white gap-6">
                 <div className="flex items-center gap-6">
                     <div className="w-12 h-12 bg-slate-50 rounded-[18px] flex items-center justify-center border border-slate-100">
-                        <CalendarRange size={22} className="text-indigo-600" />
+                        <CalendarRange size={22} className="text-primary" />
                     </div>
                     <div>
                         <h1 className="text-[14px] font-black text-slate-900 uppercase tracking-[0.2em] italic leading-none">{t('calendar.title')}</h1>
@@ -195,14 +195,14 @@ export default function CalendarPage() {
                                         placeholder={t('calendar.guestSearch')}
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
-                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none text-slate-900 focus:border-indigo-600 transition-all shadow-inner"
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none text-slate-900 focus:border-primary transition-all shadow-inner"
                                     />
                                 </motion.div>
                             )}
                         </AnimatePresence>
                         <button
                             onClick={() => setShowSearch(s => !s)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-indigo-600 transition-all border border-slate-100 ${showSearch ? 'bg-white border-indigo-600 text-indigo-600' : ''}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-primary transition-all border border-slate-100 ${showSearch ? 'bg-white border-primary text-primary' : ''}`}
                         >
                             {showSearch ? <X size={16} /> : <Search size={16} />}
                         </button>
@@ -217,7 +217,7 @@ export default function CalendarPage() {
                             <button
                                 key={m.id}
                                 onClick={() => setViewMode(m.id)}
-                                className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === m.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.3em] transition-all ${viewMode === m.id ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                             >
                                 {m.label}
                             </button>
@@ -227,19 +227,19 @@ export default function CalendarPage() {
                     <div className="flex items-center gap-1.5">
                         <button
                             onClick={() => setCurrentDate(d => addDays(d, viewMode === 'day' ? -1 : -7))}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-slate-400 hover:text-indigo-600 transition-all border border-slate-100 hover:border-indigo-600 shadow-sm"
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-slate-400 hover:text-primary transition-all border border-slate-100 hover:border-primary shadow-sm"
                         >
                             <ChevronLeft size={18} />
                         </button>
                         <button
                             onClick={() => setCurrentDate(new Date())}
-                            className="px-4 h-10 text-[9px] font-black uppercase tracking-widest rounded-xl bg-white text-slate-400 hover:text-indigo-600 transition-all border border-slate-100 hover:border-indigo-600 shadow-sm"
+                            className="px-4 h-10 text-[10px] font-black uppercase tracking-[0.3em] rounded-xl bg-white text-slate-400 hover:text-primary transition-all border border-slate-100 hover:border-primary shadow-sm"
                         >
                             {t('calendar.today')}
                         </button>
                         <button
                             onClick={() => setCurrentDate(d => addDays(d, viewMode === 'day' ? 1 : 7))}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-slate-400 hover:text-indigo-600 transition-all border border-slate-100 hover:border-indigo-600 shadow-sm"
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-slate-400 hover:text-primary transition-all border border-slate-100 hover:border-primary shadow-sm"
                         >
                             <ChevronRight size={18} />
                         </button>
@@ -247,7 +247,7 @@ export default function CalendarPage() {
 
                     <button
                         onClick={() => navigate('/app/bookings')}
-                        className="flex items-center gap-2 px-6 h-10 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all shadow-lg shadow-indigo-600/10 hover:opacity-90 active:scale-95 border-none"
+                        className="flex items-center gap-2 px-6 h-10 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all shadow-lg shadow-primary/10 hover:opacity-90 active:scale-95 border-none"
                     >
                         <Plus size={16} />
                         {t('calendar.book')}
@@ -269,11 +269,11 @@ export default function CalendarPage() {
                                 <span className={`text-[9px] font-black uppercase tracking-[0.2em] italic ${isSelected ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'}`}>
                                     {d.toLocaleDateString('ru-RU', { weekday: 'short' })}
                                 </span>
-                                <span className={`text-xl font-black mt-2 w-10 h-10 flex items-center justify-center rounded-xl transition-all italic tracking-tighter ${isToday ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10' : 'text-slate-900'}`}>
+                                <span className={`text-xl font-black mt-2 w-10 h-10 flex items-center justify-center rounded-xl transition-all italic tracking-tighter ${isToday ? 'bg-primary text-white shadow-lg shadow-primary/10' : 'text-slate-900'}`}>
                                     {d.getDate()}
                                 </span>
                                 {isSelected && (
-                                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-indigo-600" />
+                                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-primary" />
                                 )}
                             </button>
                         );
@@ -286,7 +286,7 @@ export default function CalendarPage() {
                     <button
                         key={tab.id}
                         onClick={() => setSelectedTab(tab.id)}
-                        className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all whitespace-nowrap ${selectedTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/10' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         {tab.label}
                     </button>
@@ -297,7 +297,7 @@ export default function CalendarPage() {
                 <div ref={scrollRef} className={`flex-1 overflow-y-auto no-scrollbar ${viewMode === 'timeline' ? 'min-w-max' : 'overflow-x-hidden'}`}>
                     {loading ? (
                         <div className="flex items-center justify-center h-64">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                         </div>
                     ) : viewMode === 'timeline' ? (
                         <div className="flex flex-col relative w-full">
@@ -344,7 +344,7 @@ export default function CalendarPage() {
                                                     drag={false}
                                                     key={`booking-unassigned-${booking.id}`}
                                                     style={{ left, width, top: 12, height: 60 }}
-                                                    className={`absolute rounded-2xl px-5 py-2 cursor-pointer border shadow-sm backdrop-blur-sm transition-all hover:shadow-xl hover:shadow-slate-900/5 z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-indigo-600 ring-offset-2' : 'border-slate-100'}`}
+                                                    className={`absolute rounded-2xl px-5 py-2 cursor-pointer border shadow-sm backdrop-blur-sm transition-all hover:shadow-xl hover:shadow-slate-900/5 z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-primary ring-offset-2' : 'border-slate-100'}`}
                                                     onClick={() => setSelectedBooking(booking)}
                                                     whileHover={{ zIndex: 30, scale: 1.02 }}
                                                 >
@@ -352,7 +352,7 @@ export default function CalendarPage() {
                                                         <p className="font-black text-[11px] truncate uppercase tracking-tight italic">
                                                             {booking.user_name || t('calendar.guest')}
                                                         </p>
-                                                        <div className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest opacity-60 mt-1 truncate">
+                                                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-1 truncate">
                                                             <Clock size={8} /> {booking.time?.slice(0, 5)} • {booking.guests} PAX
                                                         </div>
                                                     </div>
@@ -423,7 +423,7 @@ export default function CalendarPage() {
                                                         }}
                                                         key={`booking-${booking.id}`}
                                                         style={{ left, width, top: 12, height: 60 }}
-                                                        className={`absolute rounded-2xl px-5 py-2 cursor-pointer border shadow-sm backdrop-blur-sm transition-all hover:shadow-xl hover:shadow-slate-900/5 z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-indigo-600 ring-offset-2' : 'border-slate-100'}`}
+                                                        className={`absolute rounded-2xl px-5 py-2 cursor-pointer border shadow-sm backdrop-blur-sm transition-all hover:shadow-xl hover:shadow-slate-900/5 z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-primary ring-offset-2' : 'border-slate-100'}`}
                                                         onClick={() => setSelectedBooking(booking)}
                                                         whileHover={{ zIndex: 30, scale: 1.02 }}
                                                         whileDrag={{ zIndex: 40, scale: 1.05, opacity: 0.9 }}
@@ -432,7 +432,7 @@ export default function CalendarPage() {
                                                             <p className="font-black text-[11px] truncate uppercase tracking-tight italic">
                                                                 {booking.user_name || t('calendar.guest')}
                                                             </p>
-                                                            <div className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest opacity-60 mt-1 truncate">
+                                                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-1 truncate">
                                                                 <Clock size={8} /> {booking.time?.slice(0, 5)} • {booking.guests} PAX
                                                             </div>
                                                         </div>
@@ -492,7 +492,7 @@ export default function CalendarPage() {
                                                 initial={{ opacity: 0, scale: 0.95 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 style={{ top: top + 24, height: height - 8, left: '2%', width: '96%' }}
-                                                className={`absolute rounded-[24px] px-8 py-5 text-left border shadow-xl shadow-slate-900/5 backdrop-blur-md transition-all hover:scale-[1.01] hover:shadow-2xl z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-indigo-600 ring-offset-2' : 'border-slate-100'}`}
+                                                className={`absolute rounded-[2rem] px-8 py-5 text-left border shadow-xl shadow-slate-900/5 backdrop-blur-md transition-all hover:scale-[1.01] hover:shadow-2xl z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-primary ring-offset-2' : 'border-slate-100'}`}
                                                 onClick={() => setSelectedBooking(booking)}
                                             >
                                                 <div className="flex justify-between items-start h-full">
@@ -540,7 +540,7 @@ export default function CalendarPage() {
                                 <h2 className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em] italic">{t('calendar.booking')}</h2>
                                 <button
                                     onClick={() => setSelectedBooking(null)}
-                                    className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-slate-50 text-slate-400 hover:text-indigo-600 transition-all border border-slate-100"
+                                    className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-slate-50 text-slate-400 hover:text-primary transition-all border border-slate-100"
                                 >
                                     <X size={20} />
                                 </button>
@@ -548,7 +548,7 @@ export default function CalendarPage() {
 
                             <div className="flex-1 overflow-y-auto p-10 space-y-10 no-scrollbar">
                                 <div className="flex items-center gap-6">
-                                    <div className="w-20 h-20 rounded-[24px] bg-indigo-600 flex items-center justify-center text-white font-black text-3xl italic shadow-xl shadow-indigo-600/10">
+                                    <div className="w-20 h-20 rounded-[2rem] bg-primary flex items-center justify-center text-white font-black text-3xl italic shadow-xl shadow-primary/10">
                                         {(selectedBooking.user_name || 'G')[0]}
                                     </div>
                                     <div>
@@ -568,10 +568,10 @@ export default function CalendarPage() {
                                         { icon: Users, label: t('calendar.guests'), val: `${selectedBooking.guests} ${t('calendar.guestsCount')}` },
                                         { icon: Clock, label: t('calendar.duration'), val: `${(selectedBooking.duration_minutes ? selectedBooking.duration_minutes / 60 : (selectedBooking.duration_hours || 2))} ${t('calendar.durationHours')}` },
                                     ].map(({ icon: Icon, label, val }) => (
-                                        <div key={label} className="bg-slate-50 rounded-[24px] p-5 border border-slate-100">
+                                        <div key={label} className="bg-slate-50 rounded-[2rem] p-5 border border-slate-100">
                                             <div className="flex items-center gap-2 text-slate-400 mb-2 opacity-60">
                                                 <Icon size={12} />
-                                                <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+                                                <span className="text-[10px] font-black uppercase tracking-[0.3em]">{label}</span>
                                             </div>
                                             <p className="font-black text-slate-900 text-base italic">{val || '—'}</p>
                                         </div>
@@ -579,7 +579,7 @@ export default function CalendarPage() {
                                 </div>
 
                                 {selectedBooking.comment && (
-                                    <div className="bg-amber-50/50 rounded-[24px] p-6 border border-amber-100/50">
+                                    <div className="bg-amber-50/50 rounded-[2rem] p-6 border border-amber-100/50">
                                         <p className="text-[9px] font-black text-amber-700/60 uppercase tracking-widest mb-2 italic">{t('calendar.comment')}</p>
                                         <p className="text-sm text-amber-900 font-medium leading-relaxed">{selectedBooking.comment}</p>
                                     </div>
@@ -599,7 +599,7 @@ export default function CalendarPage() {
                                         <button
                                             onClick={() => handleBookingAction(selectedBooking.id, 'confirm')}
                                             disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-indigo-600/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {t('bookings.confirm')}
                                         </button>
@@ -618,7 +618,7 @@ export default function CalendarPage() {
                                         <button
                                             onClick={() => handleBookingAction(selectedBooking.id, 'complete')}
                                             disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-indigo-600/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {t('bookings.complete')}
                                         </button>
@@ -645,7 +645,7 @@ export default function CalendarPage() {
                                             setSelectedBooking(null);
                                             navigate('/app/messages', { state: { bookingId: selectedBooking.id, guestName: selectedBooking.user_name } });
                                         }}
-                                        className="flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-indigo-600/10 active:scale-95"
+                                        className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10 active:scale-95"
                                     >
                                         <MessageSquare size={18} />
                                         {t('calendar.chat')}
@@ -655,7 +655,7 @@ export default function CalendarPage() {
                                             setSelectedBooking(null);
                                             navigate('/app/bookings');
                                         }}
-                                        className="flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/10 active:scale-95"
+                                        className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-primary/10 active:scale-95"
                                     >
                                         {t('calendar.open')}
                                         <ArrowRight size={18} />

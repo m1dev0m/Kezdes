@@ -65,7 +65,7 @@ export function PricingCard({
                     ))}
 
                     {savingsPercent !== null && (
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+                        <span className="inline-flex items-center rounded-full bg-primary/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
                             Экономия {savingsPercent}%
                         </span>
                     )}
@@ -110,7 +110,7 @@ export function PricingCard({
                             <span
                                 className={
                                     'mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ' +
-                                    (plan.highlight ? 'bg-primary/10 text-primary' : 'bg-slate-50 text-slate-500')
+                                    (plan.highlight ? 'bg-primary/5 text-primary' : 'bg-slate-50 text-slate-500')
                                 }
                             >
                                 <Check size={14} strokeWidth={3} />

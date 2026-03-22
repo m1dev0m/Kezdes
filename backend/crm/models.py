@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Max
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from restaurants.models import Restaurant
@@ -46,7 +47,6 @@ class Customer(models.Model):
             self.avg_check = 0
         self.save(update_fields=['visits_count', 'total_spent', 'avg_check', 'last_visit'])
 
-from django.db.models import Max
 
 class Visit(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='visit_history')

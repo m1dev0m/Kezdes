@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import filters
+from rest_framework.filters import OrderingFilter
 from django.db import models
 from django.http import StreamingHttpResponse
 import csv
@@ -9,13 +10,16 @@ import csv
 from .models import Customer, CustomerNote, Visit, Lead
 from .serializers import CustomerSerializer, CustomerNoteSerializer, VisitSerializer, LeadSerializer
 from core.utils import get_user_restaurant
+from core.viewsets import OptionalPaginationMixin
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.SearchFilter, OrderingFilter]
     search_fields = ['name', 'phone', 'email', 'tags']
+    ordering_fields = ['last_visit', 'visits_count', 'total_spent', 'created_at', 'name']
+    ordering = ['-last_visit', '-created_at']
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
@@ -23,7 +27,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
         user = self.request.user
         restaurant = get_user_restaurant(user)
         if restaurant:
-            return Customer.objects.filter(restaurant=restaurant).prefetch_related('visit_history', 'internal_notes')
+            qs = Customer.objects.filter(restaurant=restaurant)
+            # Keep list endpoint lightweight; prefetch only when needed.
+            if getattr(self, 'action', None) in ['retrieve', 'partial_update', 'update']:
+                qs = qs.prefetch_related('visit_history', 'internal_notes')
+            return qs
         return Customer.objects.none()
 
     def perform_create(self, serializer):
@@ -111,14 +119,28 @@ class CustomerViewSet(viewsets.ModelViewSet):
         from crm.services import normalize_phone
         
         customer_phone_normalized = normalize_phone(customer.phone)
-        qs = Booking.objects.filter(
-            restaurant=customer.restaurant,
-        ).select_related('restaurant', 'table').order_by('-date', '-time')[:50]
+        qs = (
+            Booking.objects.filter(
+                restaurant=customer.restaurant,
+            )
+            .exclude(user_phone__isnull=True)
+            .exclude(user_phone__exact='')
+            .select_related('restaurant', 'table', 'user')
+            .prefetch_related('tables')
+            .order_by('-date', '-time')[:100]
+        )
         
         data = []
         for b in qs:
             booking_phone_normalized = normalize_phone(b.user_phone)
             if booking_phone_normalized == customer_phone_normalized:
+                tables = []
+                try:
+                    tables = list(b.tables.all())
+                except Exception:
+                    tables = []
+                table_numbers = [t.number for t in tables] if tables else ([] if not b.table_id else [b.table.number])
+
                 data.append({
                     'id': b.id,
                     'date': b.date.isoformat() if b.date else None,
@@ -127,6 +149,16 @@ class CustomerViewSet(viewsets.ModelViewSet):
                     'status': b.status,
                     'status_display': b.get_status_display(),
                     'restaurant_name': b.restaurant.name,
+                    'duration_minutes': getattr(b, 'duration_minutes', None),
+                    'budget': float(b.budget) if getattr(b, 'budget', None) is not None else None,
+                    'is_checked_in': bool(getattr(b, 'is_checked_in', False)),
+                    'check_in_time': (
+                        b.check_in_time.isoformat()
+                        if getattr(b, 'check_in_time', None) else None
+                    ),
+                    'table_numbers': table_numbers,
+                    'guest_name': b.user_name or (b.user.get_full_name() if b.user else None),
+                    'guest_phone': b.user_phone,
                 })
         return Response(data)
 

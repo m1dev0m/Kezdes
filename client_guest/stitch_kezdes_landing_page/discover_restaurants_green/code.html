@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kezdes | Discover Premium Dining</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1A3C34",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#121d1a",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-50 px-6 lg:px-20 py-4">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-8 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">diamond</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">Kezdes</h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-primary text-sm font-semibold leading-normal border-b-2 border-primary pb-1" href="#">Discover</a>
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Reservations</a>
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Favorites</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<div class="hidden sm:flex items-center gap-2 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-xl">location_on</span>
+<span class="text-sm font-medium">New York, NY</span>
+</div>
+<button class="bg-primary text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all">
+                        Sign In
+                    </button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-primary/20" data-alt="User profile placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBmbctV6AnhsPUyOFG4HmbzQwELgDG9eNGAcmn3dJ3MP90m4xQ1Se2SL4hXez7r7wqOEoG7kETnbpE2okO4botldA0-LPwWDVoOjMCvRo2jKlcuqVzU5Cw4NDC0ZzWVYKSHCBzRO8tBmXsRfPuEVknXdXuLP9SRv5lt1cPtxep5QHrRTAOaxQEbSGmL7LuouwLa_q5dIshU9PJFkND-Ek6yckaeJl01J2PWhydymPgEwWsr9RHxtFQBORUE7jZGhwj8Gamt7vJbg9X2");'></div>
+</div>
+</header>
+<main class="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
+<!-- Hero Section & Search -->
+<section class="mb-12">
+<div class="flex flex-col gap-2 mb-8">
+<h1 class="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Discover Excellence</h1>
+<p class="text-slate-600 dark:text-slate-400 text-lg">Curated dining experiences for the discerning palate.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-primary/5 border border-slate-200 dark:border-slate-800">
+<div class="lg:col-span-5 flex items-center px-4 py-2 gap-3 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-primary">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400" placeholder="Search restaurants, cuisines..." type="text"/>
+</div>
+<div class="lg:col-span-4 flex items-center px-4 py-2 gap-3 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-slate-400">location_on</span>
+<input class="w-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400" placeholder="Location" type="text" value="Manhattan, NY"/>
+</div>
+<div class="lg:col-span-3 flex items-center px-4 py-2 gap-3">
+<button class="w-full bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">tune</span>
+                                Search
+                            </button>
+</div>
+</div>
+</section>
+<!-- Filter Pills -->
+<section class="flex gap-3 pb-8 overflow-x-auto no-scrollbar">
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary text-white px-6 font-medium shadow-lg shadow-primary/20">
+                        All Venues
+                    </button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-6 font-medium hover:border-primary hover:text-primary transition-colors">
+                        Michelin Star
+                    </button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-6 font-medium hover:border-primary hover:text-primary transition-colors">
+                        Romantic
+                    </button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-6 font-medium hover:border-primary hover:text-primary transition-colors">
+                        New Openings
+                    </button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-6 font-medium hover:border-primary hover:text-primary transition-colors">
+                        Rooftop
+                    </button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-6 font-medium hover:border-primary hover:text-primary transition-colors">
+                        Price: $$$$
+                        <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+</section>
+<!-- Restaurant Grid -->
+<section class="mb-16">
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white">Featured Collections</h2>
+<a class="text-primary font-semibold flex items-center gap-1 hover:underline" href="#">
+                            View all
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Restaurant Card 1 -->
+<div class="group flex flex-col bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="relative h-64 overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="Elegant interior of a luxury restaurant with soft lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAwMJmGFAVq_DH-3zbpuzRikoc3VncN0dfdditshdSiBerq_eoFgYU5n7uHGV4Z6iHBk3HPN-Uutb1M_Ab_FCWCAYZoeyoNOo0v7jkVWYreWq6wvGcTsDR0HY7HI3745AQ0j1N8BFmby2tZh_V-ZrIXf2XYcMzkEaQtafMYGiVoVcX17ufbihvJMCA7VMzpxCc9P1wv8whr6ZBPxkR9vGznNaBEPLQvRSdV7XQZ3jwJggdiMf0aiwTNpHhZEYGvJEAGgdFcNY6Mncgt');"></div>
+<div class="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-sm fill-icon">star</span>
+                                    MICHELIN 2024
+                                </div>
+<button class="absolute top-4 left-4 bg-black/20 hover:bg-black/40 backdrop-blur rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined text-white">favorite</span>
+</button>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">L'Avenue</h3>
+<p class="text-slate-500 text-sm">French Contemporary • Upper East Side</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-primary font-bold">4.9</span>
+<span class="text-slate-400 text-[10px] uppercase font-bold">2.4k Reviews</span>
+</div>
+</div>
+<p class="text-slate-600 dark:text-slate-400 text-sm mb-4 line-clamp-2">An exquisite journey through modern French cuisine featuring seasonal truffle menus and a world-class wine list.</p>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
+<span class="text-slate-900 dark:text-slate-200 font-bold">$$$$</span>
+<button class="text-primary text-sm font-bold flex items-center gap-1 hover:translate-x-1 transition-transform">
+                                        Reserve Table
+                                        <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Restaurant Card 2 -->
+<div class="group flex flex-col bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="relative h-64 overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="High-end sushi platter being prepared by a chef" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA56LnRRyQ3YICRRyL1n6i1sNsDu0XJdHFCq1X7RrQq3cYGou1wsxpeCz23ASbmuac95YZwoEUkd19WLzgPpqHqeyNHPZB5f9sNTseown-3Sw2WXvYabvROgV8S5SBhip_VOn3-q_g_rIGIlT5dnDycm9ui58W2Qn9ijgNW8geG5wXkMysJO-9wE6_XjGkku6M1QnWSlLm2qRWxy2f_uix0Vjw0DlkEiZj3jY6qcR0GToht_LmDtC6zTk8ph9UVssFzH9TXxNIljLNL');"></div>
+<div class="absolute top-4 right-4 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                    NEW OPENING
+                                </div>
+<button class="absolute top-4 left-4 bg-black/20 hover:bg-black/40 backdrop-blur rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined text-white">favorite</span>
+</button>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Kenzō Sushi</h3>
+<p class="text-slate-500 text-sm">Japanese Omakase • Chelsea</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-primary font-bold">4.8</span>
+<span class="text-slate-400 text-[10px] uppercase font-bold">128 Reviews</span>
+</div>
+</div>
+<p class="text-slate-600 dark:text-slate-400 text-sm mb-4 line-clamp-2">Intimate 10-seat omakase counter serving rare fish flown in daily from Tokyo's Toyosu Market.</p>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
+<span class="text-slate-900 dark:text-slate-200 font-bold">$$$$</span>
+<button class="text-primary text-sm font-bold flex items-center gap-1 hover:translate-x-1 transition-transform">
+                                        Reserve Table
+                                        <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Restaurant Card 3 -->
+<div class="group flex flex-col bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="relative h-64 overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="Rooftop bar with a view of the city skyline at night" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBZJiIbG2mUDtdAyv1KaiUfU8WKxSje1FKPzlXaaBqxjsla0Eqdi0-JQ49nGYAuHONndky6KTgXrI1FG4J4FfON6DuaiwSHOf7Q96TAIGdc8gngU8xaBmXF_OfekdQ2zOPo6FICNtRL05rIWf0dOyjuJnb0HW9bNAITwwXmR7XNvA4qiUmGMD8mCkVQ2ni4A0EnIQEt1PEZEz9ruzeiBpcWl06LDsUap8-znaVRc0sUUw6gO3YlTkXVaKoyLewbegH6oxIme_srj-vS');"></div>
+<div class="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-800 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">visibility</span>
+                                    ROMANTIC VIEW
+                                </div>
+<button class="absolute top-4 left-4 bg-black/20 hover:bg-black/40 backdrop-blur rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined text-white">favorite</span>
+</button>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Skyline Terrace</h3>
+<p class="text-slate-500 text-sm">Mediterranean • Midtown</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-primary font-bold">4.7</span>
+<span class="text-slate-400 text-[10px] uppercase font-bold">3.1k Reviews</span>
+</div>
+</div>
+<p class="text-slate-600 dark:text-slate-400 text-sm mb-4 line-clamp-2">Panoramic views of the Manhattan skyline paired with artisanal cocktails and fresh Mediterranean seafood.</p>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
+<span class="text-slate-900 dark:text-slate-200 font-bold">$$$</span>
+<button class="text-primary text-sm font-bold flex items-center gap-1 hover:translate-x-1 transition-transform">
+                                        Reserve Table
+                                        <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Map View Teaser -->
+<section class="rounded-3xl overflow-hidden relative h-[400px] bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+<div class="absolute inset-0 bg-cover bg-center opacity-70 grayscale-[0.5]" data-alt="Stylized map showing premium restaurant locations in Manhattan" data-location="New York" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBUxuWfwDn_QEoy-v1FO-NNljioyiD06gryqLJXGZmZwsdmXrbmVA6Yu03QKnyurL0gED5viLesRLOiwrf8VL67rPwSwGUsjsA8z-NSytlvTkvk6Q0qpMPbhjyTxoH1SiYNW3T0C0bjAoDb-cWJYdi8GAPRRjPA1Llo8J6E1r3_bcA2ViGNRnOZVN4M7lKtffQ3h3WQuK57y8-CDDB5dK86JdBmnEHgfOFNVH9uAV08xmCGeLoZt3iqHDy-1cbFnGKCo2DzssHV2SjU');"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark/80 to-transparent"></div>
+<div class="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+<span class="material-symbols-outlined text-5xl text-primary mb-4">map</span>
+<h2 class="text-3xl font-extrabold text-white mb-4">Explore by Location</h2>
+<p class="text-slate-200 max-w-md mb-8">Find the perfect table in your favorite neighborhood with our interactive map view.</p>
+<button class="bg-white text-primary px-8 py-3 rounded-full font-bold hover:bg-primary hover:text-white transition-all shadow-xl">
+                            Open Interactive Map
+                        </button>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-12">
+<div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
+<div class="col-span-1 md:col-span-1">
+<div class="flex items-center gap-3 text-primary mb-6">
+<span class="material-symbols-outlined text-3xl">diamond</span>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight">Kezdes</h2>
+</div>
+<p class="text-slate-500 text-sm mb-6 leading-relaxed">The world's most exclusive dining community. Discover, reserve, and experience the extraordinary.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-primary hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-xl">share</span>
+</a>
+<a class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-primary hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-xl">public</span>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-slate-900 dark:text-white font-bold mb-6">Quick Links</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Discover Restaurants</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Michelin Selections</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Private Dining</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Gift Cards</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-slate-900 dark:text-white font-bold mb-6">Company</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">About Us</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Our Curators</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Partner With Us</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Careers</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-slate-900 dark:text-white font-bold mb-6">Support</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Concierge Service</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Terms of Service</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Privacy Policy</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors text-sm" href="#">Contact Us</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-6 mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-slate-400 text-xs">© 2024 Kezdes Dining Group. All rights reserved.</p>
+<div class="flex gap-6">
+<span class="text-slate-400 text-xs flex items-center gap-1 italic">
+<span class="material-symbols-outlined text-[10px]">auto_awesome</span>
+                            Always Fresh. Always Premium.
+                        </span>
+</div>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

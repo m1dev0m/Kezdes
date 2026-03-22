@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     },
     summaryCard: {
         backgroundColor: '#ffffff',
-        borderRadius: 24,
+        borderRadius: 40,
         marginHorizontal: 16,
         marginBottom: 24,
         borderWidth: 1,
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     },
     addonsList: {
         backgroundColor: '#f8fafc',
-        borderRadius: 16,
+        borderRadius: 32,
         overflow: 'hidden',
     },
     addonItem: {
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     addonIconBox: {
         width: 40,
         height: 40,
-        borderRadius: 10,
+        borderRadius: 32,
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: '#e2e8f0',
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
     submitBtn: {
         backgroundColor: '#0047FF',
         paddingVertical: 18,
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#0047FF',
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     },
     paymentMethodCard: {
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     methodIconBox: {
         width: 48,
         height: 48,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#f8fafc',
         alignItems: 'center',
         justifyContent: 'center',
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
     checkbox: {
         width: 24,
         height: 24,
-        borderRadius: 12,
+        borderRadius: 40,
         borderWidth: 2,
         borderColor: '#cbd5e1',
         alignItems: 'center',

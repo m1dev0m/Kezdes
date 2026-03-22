@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#F8F9FA',
         height: 52, // adjust height slightly for inputs if needed, or keep 44. User said 52 for buttons. Let's make it 44 but radius 14.
-        borderRadius: 14,
+        borderRadius: 40,
         paddingHorizontal: 16,
     },
     searchIconLeft: {
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderRadius: 20,
+        borderRadius: 32,
         padding: 24,
         overflow: 'hidden',
     },
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 32,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
     },
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     },
     venueCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        borderRadius: 40,
         borderWidth: 1,
         borderColor: '#F0F0F0',
         shadowColor: '#000',
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 32,
     },
     ratingText: {
         fontSize: 12,
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
         height: 52,
         justifyContent: 'center',
         backgroundColor: '#0047FF', // Deep Blue CTA
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
     },
     bookButtonText: {
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        borderRadius: 20,
+        borderRadius: 32,
         gap: 6,
     },
     chipText: {

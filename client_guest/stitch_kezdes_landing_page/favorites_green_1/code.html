@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Favorites - Kezdes Premium Dining</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#304724", // Deep Forest Green as primary
+                        "accent": "#5de619",
+                        "background-light": "#f8fdf6", // Very light green-tinted cream
+                        "background-dark": "#172211",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100">
+<div class="flex min-h-screen">
+<!-- Sidebar Navigation -->
+<aside class="w-64 bg-background-dark text-white flex flex-col fixed h-full border-r border-primary/10">
+<div class="p-6 flex flex-col h-full">
+<div class="flex items-center gap-3 mb-10">
+<div class="size-10 rounded-full bg-primary flex items-center justify-center border border-accent/20">
+<span class="material-symbols-outlined text-accent">restaurant</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-lg font-bold leading-tight">Kezdes</h1>
+<p class="text-accent/70 text-xs font-medium uppercase tracking-wider">Premium Dining</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-sm font-medium">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="text-sm font-medium">Explore</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-xl shadow-lg shadow-primary/20" href="#">
+<span class="material-symbols-outlined filled-icon">favorite</span>
+<span class="text-sm font-medium">Favorites</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-sm font-medium">Reservations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-sm font-medium">Profile</span>
+</a>
+</nav>
+<div class="pt-6 border-t border-white/10">
+<button class="w-full flex items-center justify-center gap-2 bg-accent text-background-dark py-3 rounded-xl font-bold text-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-sm">logout</span>
+                    Logout
+                </button>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 ml-64 p-8">
+<header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+<div>
+<h2 class="text-4xl font-black text-primary dark:text-accent tracking-tight">My Favorites</h2>
+<p class="text-slate-600 dark:text-slate-400 mt-1">Your curated list of top dining experiences</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="pl-10 pr-4 py-2 border-slate-200 dark:border-primary/20 bg-white dark:bg-background-dark rounded-xl text-sm focus:ring-primary focus:border-primary" placeholder="Search favorites..." type="text"/>
+</div>
+</div>
+</header>
+<!-- Filters -->
+<div class="flex flex-wrap gap-3 mb-8">
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full text-sm font-medium">
+                All Cuisine
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-slate-200 dark:border-primary/20 text-slate-700 dark:text-slate-300 rounded-full text-sm font-medium hover:bg-slate-50">
+                Location
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-slate-200 dark:border-primary/20 text-slate-700 dark:text-slate-300 rounded-full text-sm font-medium hover:bg-slate-50">
+                Price Range
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+</div>
+<!-- Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Card 1 -->
+<div class="bg-white dark:bg-background-dark rounded-xl overflow-hidden border border-slate-100 dark:border-primary/10 shadow-sm hover:shadow-md transition-shadow group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Close up of gourmet French steak dish" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9xERcrFKqO9OuX1monvHzj_uBkVDPMY1eFR8sOhj9Zrt_BnrgBCxXtqou5OPugmd8xS5h1x06qqdOxU8wHOx4V6qsJ08dY1jbwaRFIFkmdE3OrA1ZdjgSheaywfqiBVGcYME1NiJXTBlLYpC0ve6kFYUwcQkMLnJKFWEJiXJGoLxDOmUvmM4Ir4PANhC6u3waLho7gI16kYPz9oWRWymT2evM2yhTxU_y9IPo7IAWWmhiv3hXvocFY6HVI7TvO7f2FR07HNpdYSvb"/>
+<button class="absolute top-3 right-3 p-2 bg-white/90 dark:bg-background-dark/80 backdrop-blur-sm rounded-full text-primary shadow-sm">
+<span class="material-symbols-outlined filled-icon text-red-500">favorite</span>
+</button>
+<div class="absolute bottom-3 left-3 bg-primary/90 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">
+                        Premium
+                    </div>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-lg text-primary dark:text-slate-100">L'Artiste Bistro</h3>
+<div class="flex items-center gap-1 text-primary dark:text-accent">
+<span class="material-symbols-outlined text-sm filled-icon">star</span>
+<span class="text-sm font-bold">4.8</span>
+</div>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4">French • Upper East Side</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-slate-400">120 reviews</span>
+<button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                            Book Table
+                        </button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white dark:bg-background-dark rounded-xl overflow-hidden border border-slate-100 dark:border-primary/10 shadow-sm hover:shadow-md transition-shadow group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Minimalist Japanese sushi counter with chef" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6QUkf2GMO2Kos4ZM-d4C9If0POHsBX80rWoGxcPqw4raUiWcPpEbyaRemPh0werb1XB_80VvZ-Aej88flPGFQS6nSUeb0-wYuhV72BgxKyJ3Of56JtoIactMinrxeXp0asPTeggOqBN-4_P8-0dnsvtYt4Kl9L5kdfad0aYp0Sro4_ZDTuAFS3wcY2vy3UPT_Yq5Az12d_9rZf-0YHP2jalouwdapElx1kV8TAodshmn4PGc3UuCKChvTmgPFTuQXPttktxlW4PbU"/>
+<button class="absolute top-3 right-3 p-2 bg-white/90 dark:bg-background-dark/80 backdrop-blur-sm rounded-full text-primary shadow-sm">
+<span class="material-symbols-outlined filled-icon text-red-500">favorite</span>
+</button>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-lg text-primary dark:text-slate-100">Sakura Zen</h3>
+<div class="flex items-center gap-1 text-primary dark:text-accent">
+<span class="material-symbols-outlined text-sm filled-icon">star</span>
+<span class="text-sm font-bold">4.9</span>
+</div>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Japanese • Downtown</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-slate-400">250 reviews</span>
+<button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                            Book Table
+                        </button>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white dark:bg-background-dark rounded-xl overflow-hidden border border-slate-100 dark:border-primary/10 shadow-sm hover:shadow-md transition-shadow group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Warm rustic interior of a European hearth restaurant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWuv80kLO44y-FVVcdW9TMznP313gvBpGx2Fovub2_5Jf-s4wKJvPtpPosDRtK3pDCEpiWzrZ8fL-inSMWDqDP2FBqsjcrB2DGgUM-FO1uwTkwjqfQMeawuyIhA2B0Bi6F_4rUG5saGtJ_v7ICuJcrP3iQPzNE5eyePki3tZXi6TEyZLTVH-0XVpwcHyU0MPuQCkmDeVXLNrIaUi4N4mJ8R4R10vdQ039QNyJyQTpQkd1ExvIIDoPQvdkuPdJBeBqfwqI7GNPcusEv"/>
+<button class="absolute top-3 right-3 p-2 bg-white/90 dark:bg-background-dark/80 backdrop-blur-sm rounded-full text-primary shadow-sm">
+<span class="material-symbols-outlined filled-icon text-red-500">favorite</span>
+</button>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-lg text-primary dark:text-slate-100">The Golden Hearth</h3>
+<div class="flex items-center gap-1 text-primary dark:text-accent">
+<span class="material-symbols-outlined text-sm filled-icon">star</span>
+<span class="text-sm font-bold">4.7</span>
+</div>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Modern European • West End</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-slate-400">85 reviews</span>
+<button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                            Book Table
+                        </button>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-white dark:bg-background-dark rounded-xl overflow-hidden border border-slate-100 dark:border-primary/10 shadow-sm hover:shadow-md transition-shadow group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Fresh seafood platter overlooking a marina" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZVttyPBEZImtA7slCHxLsuAmVV5UOcEa98_gzT2caJxnAWEGy59FNkbcqFMkRq9xe0q4_Ujj5r8isQ09ZVa0vuKaEAx5nnlIR0G40KrU8J6iiP5sgBbpcri7shr4jqbL2FQm4aXJJyjuuz2hPJG75HR4FIzPjrQkMFvXK-JwCoErmDqAXlyZwJx6KTZWO5X_R039wiua761Odv-YMn0JF4eIndrBpluRgCRV-Ys5cSyMVAvIo2_LfzLBAcX8UWMjZYDjyFbhjAIXa"/>
+<button class="absolute top-3 right-3 p-2 bg-white/90 dark:bg-background-dark/80 backdrop-blur-sm rounded-full text-primary shadow-sm">
+<span class="material-symbols-outlined filled-icon text-red-500">favorite</span>
+</button>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-lg text-primary dark:text-slate-100">Azure Marina</h3>
+<div class="flex items-center gap-1 text-primary dark:text-accent">
+<span class="material-symbols-outlined text-sm filled-icon">star</span>
+<span class="text-sm font-bold">4.6</span>
+</div>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Seafood • Coastal Drive</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-slate-400">110 reviews</span>
+<button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                            Book Table
+                        </button>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="bg-white dark:bg-background-dark rounded-xl overflow-hidden border border-slate-100 dark:border-primary/10 shadow-sm hover:shadow-md transition-shadow group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Traditional Italian pasta dish with fresh herbs" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkSt5OKudk4GRtoRXS-QPdFfB_5OLcZ9RIHezgAHEf8kiKMF5GAcHBFdjky45d2XKKyx7tY8XS6sKs00zOBZLd9_3KeLV0G0CUn115B-0WJspbSGI1ifajA4qHXNo5QpoaX7Za3HTnbmJTvprnRgYoPkWbKNri_JL3T-AeKuFpJgvJ3ZL5TKLN-K-sdrCYMW3hnFJ_UT1zA5DnFxCmrCueT0zIUA5oqHB2YvD_l8sNlPplsDcDxN2d28Q_-nc6r3Ul8mxec22vZyCB"/>
+<button class="absolute top-3 right-3 p-2 bg-white/90 dark:bg-background-dark/80 backdrop-blur-sm rounded-full text-primary shadow-sm">
+<span class="material-symbols-outlined filled-icon text-red-500">favorite</span>
+</button>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-lg text-primary dark:text-slate-100">Pasta e Vino</h3>
+<div class="flex items-center gap-1 text-primary dark:text-accent">
+<span class="material-symbols-outlined text-sm filled-icon">star</span>
+<span class="text-sm font-bold">4.9</span>
+</div>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Italian • Little Italy</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-slate-400">342 reviews</span>
+<button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                            Book Table
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Featured Favorite Banner -->
+<div class="mt-12 p-1 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl">
+<div class="bg-primary dark:bg-background-dark rounded-xl overflow-hidden flex flex-col lg:flex-row items-stretch">
+<div class="lg:w-1/2 min-h-[300px]">
+<img class="w-full h-full object-cover" data-alt="Spacious upscale restaurant dining room with crystal chandeliers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAo9KnMxn4pmXH6H6JBFvyGIqZPAt_iK6n0aS5ozTjnrW9n4JYb-wMTUNQzZktTf0HWlMHnBcq2ikzDZ8P69jj6nPPOKlw3WHdrATgDn6hg--gW6tyZhcpNZa6dMzwW8vbGou57ldiXm0f4X3ITzu6mfGvqcAIS_WwhdUiT5dP3agmc1FC3PqrvwOSdMNfT1MFA4TPO98QcfmhOZf2P8wnk4w1DHImN45Wmnspff2RDfiTgx8xoHUAk0LMcXlYNxeG2s-mJt88l4rXi"/>
+</div>
+<div class="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
+<div class="flex items-center gap-2 mb-4">
+<div class="flex text-accent">
+<span class="material-symbols-outlined filled-icon text-sm">star</span>
+<span class="material-symbols-outlined filled-icon text-sm">star</span>
+<span class="material-symbols-outlined filled-icon text-sm">star</span>
+<span class="material-symbols-outlined filled-icon text-sm">star</span>
+<span class="material-symbols-outlined filled-icon text-sm">star</span>
+</div>
+<span class="text-accent text-xs font-bold tracking-widest uppercase">Editor's Choice</span>
+</div>
+<h3 class="text-3xl font-black text-white mb-2">Grand Heritage Grill</h3>
+<p class="text-slate-300 mb-6 leading-relaxed">Voted the #1 steakhouse in the city for three consecutive years. Your favorite spot for celebrating special occasions with impeccable service.</p>
+<div class="flex items-center gap-4">
+<button class="bg-accent text-background-dark px-8 py-3 rounded-xl font-bold transition-transform active:scale-95">
+                            Reserve Now
+                        </button>
+<button class="flex items-center gap-2 text-white font-medium hover:text-accent transition-colors">
+<span class="material-symbols-outlined">map</span>
+                            View on Map
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

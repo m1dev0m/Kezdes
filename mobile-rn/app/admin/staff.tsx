@@ -57,7 +57,7 @@ export default function AdminStaffScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#ffffff' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 20 },
-    backBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+    backBtn: { width: 44, height: 44, borderRadius: 40, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
     headerTitle: { fontSize: 24, fontWeight: '900', color: '#000', fontStyle: 'italic', marginLeft: 12, flex: 1 },
     headerRight: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
         gap: 12,
         backgroundColor: colors.primary,
         paddingVertical: 18,
-        borderRadius: 20,
+        borderRadius: 32,
     },
     inviteBtnText: {
         fontSize: 13,

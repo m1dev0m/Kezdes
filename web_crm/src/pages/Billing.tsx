@@ -22,7 +22,7 @@ export default function Billing() {
             features: ['Unlimited tables', 'Unlimited bookings', 'Advanced analytics', 'Visual map editor', 'Staff management', 'Multi-device support'],
             current: false,
             recommended: true,
-            color: 'bg-indigo-50 border-indigo-100 ring-2 ring-primary ring-offset-2'
+            color: 'bg-primary/5 border-indigo-100 ring-2 ring-primary ring-offset-2'
         },
         {
             name: 'Enterprise',

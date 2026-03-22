@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
     Plus, Trash2, Pencil, X, Save,
-    UtensilsCrossed, Eye, EyeOff, Upload, Image
+    UtensilsCrossed, Upload
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { MenuItemCard } from '@/components/MenuItemCard';
 import { useI18n } from '@/i18n';
 
 interface Category {
@@ -244,46 +245,18 @@ export default function Menu() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredItems.map((item) => (
-                        <div key={item.id} className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] overflow-hidden hover:shadow-xl transition-all group ${!item.is_available ? 'opacity-60' : ''}`}>
-                            <div className="h-40 bg-slate-50 dark:bg-slate-800 relative overflow-hidden">
-                                {item.image || item.image_url ? (
-                                    <img src={item.image || item.image_url || ''} alt={item.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-slate-200">
-                                        <Image size={48} />
-                                    </div>
-                                )}
-                                <button
-                                    onClick={() => toggleAvailability(item)}
-                                    className={`absolute top-3 right-3 p-2 rounded-xl shadow-lg backdrop-blur-sm transition-all ${item.is_available ? 'bg-emerald-500/90 text-white hover:bg-emerald-600' : 'bg-rose-500/90 text-white hover:bg-rose-600'}`}
-                                >
-                                    {item.is_available ? <Eye size={14} /> : <EyeOff size={14} />}
-                                </button>
-                            </div>
-
-                            <div className="p-6">
-                                <div className="flex items-start justify-between mb-2">
-                                    <h3 className="font-bold text-slate-900 dark:text-white text-lg tracking-tight">{item.name}</h3>
-                                    <span className="text-lg font-black text-slate-900 dark:text-white whitespace-nowrap ml-4">₸{item.price?.toLocaleString()}</span>
-                                </div>
-                                {item.description && (
-                                    <p className="text-xs text-slate-500 font-medium line-clamp-2 mb-4">{item.description}</p>
-                                )}
-                                <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        {categories.find(c => c.id === item.category)?.name || t('menu.uncategorized')}
-                                    </span>
-                                    <div className="flex gap-1">
-                                        <button onClick={() => openItemModal(item)} className="p-2 text-slate-300 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
-                                            <Pencil size={14} />
-                                        </button>
-                                        <button onClick={() => setDeleteTarget({ type: 'item', id: item.id })} className="p-2 text-rose-300 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20">
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <MenuItemCard
+                            key={item.id}
+                            id={item.id.toString()}
+                            imageUrl={item.image || item.image_url || undefined}
+                            name={item.name}
+                            price={`₸${item.price?.toLocaleString()}`}
+                            category={categories.find(c => c.id === item.category)?.name || t('menu.uncategorized') as string}
+                            inStock={item.is_available}
+                            onEdit={() => openItemModal(item)}
+                            onDelete={() => setDeleteTarget({ type: 'item', id: item.id })}
+                            onToggleStock={() => toggleAvailability(item)}
+                        />
                     ))}
                 </div>
             )}

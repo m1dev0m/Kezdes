@@ -74,16 +74,25 @@ class CanManageTables(permissions.BasePermission):
     """
     Permission to manage tables.
     Owner: can create, edit, delete tables
-    Manager: can create, edit tables
+    Manager: can create, edit tables (no delete)
     Host: can only view and assign tables
     """
     def has_permission(self, request, view):
         return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
+            request.user and
+            request.user.is_authenticated and
+            hasattr(request.user, 'profile') and
             request.user.profile.role in ('owner', 'restaurant_admin', 'manager', 'global_admin')
         )
+
+    def has_object_permission(self, request, view, obj):
+        if not (request.user and request.user.is_authenticated and hasattr(request.user, 'profile')):
+            return False
+        role = request.user.profile.role
+        # Only owners/admins can delete
+        if view.action == 'destroy':
+            return role in ('owner', 'restaurant_admin', 'global_admin')
+        return role in ('owner', 'restaurant_admin', 'manager', 'global_admin')
 
 
 class CanManageReservations(permissions.BasePermission):

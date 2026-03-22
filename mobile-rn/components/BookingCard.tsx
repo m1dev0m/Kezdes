@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     statusBadge: {
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 10,
+        borderRadius: 32,
         borderWidth: 1,
     },
     statusText: {
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     chatIconBtn: {
         width: 44,
         height: 44,
-        borderRadius: 14,
+        borderRadius: 40,
         backgroundColor: '#f8fafc',
         alignItems: 'center',
         justifyContent: 'center',
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f8fafc',
         paddingVertical: 14,
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#e2e8f0',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.primary,
         paddingVertical: 14,
-        borderRadius: 16,
+        borderRadius: 32,
         alignItems: 'center',
     },
     btnPrimaryText: {

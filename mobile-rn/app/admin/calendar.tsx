@@ -227,8 +227,8 @@ const styles = StyleSheet.create({
     headerSubtitle: { fontSize: 13, color: colors.textSecondary },
     headerRight: { flexDirection: 'row', alignItems: 'center' },
     iconCircleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
-    viewModeSwitcher: { flexDirection: 'row', backgroundColor: '#f8fafc', marginHorizontal: 20, borderRadius: 12, padding: 4, marginBottom: 16 },
-    viewModeBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+    viewModeSwitcher: { flexDirection: 'row', backgroundColor: '#f8fafc', marginHorizontal: 20, borderRadius: 40, padding: 4, marginBottom: 16 },
+    viewModeBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 32 },
     viewModeBtnActive: { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
     viewModeText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
     viewModeTextActive: { color: colors.text },
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     gridLineVertical: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: '#f1f5f9' },
 
     bookingBlock: {
-        position: 'absolute', borderRadius: 12, padding: 12, marginHorizontal: 4, marginTop: 4,
+        position: 'absolute', borderRadius: 40, padding: 12, marginHorizontal: 4, marginTop: 4,
         shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4
     },
     bgBlue: { backgroundColor: colors.primary },
@@ -268,11 +268,11 @@ const styles = StyleSheet.create({
     bTimeBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, marginTop: 8 },
     bTimeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
-    floatingActionBox: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#0f172a', borderRadius: 20, padding: 16, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 12 },
-    fabAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    floatingActionBox: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#0f172a', borderRadius: 32, padding: 16, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 12 },
+    fabAvatar: { width: 40, height: 40, borderRadius: 32, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     fabTitle: { color: '#fff', fontSize: 13, fontWeight: '700' },
     fabSub: { color: '#94a3b8', fontSize: 11 },
-    fabIconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+    fabIconBtn: { width: 40, height: 40, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
     fab: {
         position: 'absolute',
         right: 20,

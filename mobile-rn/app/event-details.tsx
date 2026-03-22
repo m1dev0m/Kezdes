@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 16,
+        borderRadius: 32,
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: colors.border,
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 20,
         marginBottom: 24,
     },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     iconBox: {
         width: 44,
         height: 44,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#eff6ff',
         justifyContent: 'center',
         alignItems: 'center',
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     },
     mapCard: {
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         borderWidth: 1,
         borderColor: colors.border,
     },
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     mapPin: {
         width: 24,
         height: 24,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: 'rgba(59, 130, 246, 0.2)', // blue overlay
         justifyContent: 'center',
         alignItems: 'center',
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#eff6ff',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 16,
+        borderRadius: 32,
     },
     routeBtnText: {
         fontSize: 12,
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     gridCard: {
         flex: 1,
         backgroundColor: '#ffffff',
-        borderRadius: 16,
+        borderRadius: 32,
         padding: 16,
         borderWidth: 1,
         borderColor: colors.border,
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     gridIconBox: {
         width: 40,
         height: 40,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#eff6ff',
         justifyContent: 'center',
         alignItems: 'center',
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 16,
         paddingHorizontal: 24,
-        borderRadius: 12,
+        borderRadius: 40,
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: colors.border,
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 12,
+        borderRadius: 40,
         paddingVertical: 16,
     },
     mainActionBtnText: {
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingVertical: 12,
         backgroundColor: '#eff6ff',
-        borderRadius: 12,
+        borderRadius: 40,
     },
     invoiceBtnText: {
         fontSize: 14,
