@@ -142,19 +142,21 @@ class TestEdgeCases:
         tomorrow = date.today() + timedelta(days=1)
         day_of_week = tomorrow.weekday()
 
-        # Get or create hours for the target day
+        # Ensure closing time is 21:00 for the target day
         hours, _ = OpeningHours.objects.get_or_create(
             restaurant=restaurant,
             day_of_week=day_of_week,
             defaults={
                 'opening_time': time(10, 0),
-                'closing_time': time(21, 0),  # Close at 21:00
+                'closing_time': time(21, 0),
                 'is_closed': False
             }
         )
-        if not hours.id:
-            hours.closing_time = time(21, 0)
-            hours.save()
+        # Always enforce closing_time=21:00 regardless of existing value
+        hours.closing_time = time(21, 0)
+        hours.opening_time = time(10, 0)
+        hours.is_closed = False
+        hours.save()
 
         customer = User.objects.create_user(
             username='late_customer',
