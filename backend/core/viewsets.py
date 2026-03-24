@@ -38,30 +38,9 @@ class TenantModelViewSet(viewsets.ModelViewSet):
     Ensures that users can only access data belonging to their assigned restaurant.
     """
     def get_queryset(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return self.queryset.none()
-        
-        profile = None
-        if hasattr(user, 'profile'):
-            try:
-                profile = user.profile
-            except Profile.DoesNotExist:
-                profile = None
-            except AttributeError:
-                profile = None
-        
-        if profile and profile.role == 'global_admin':
-            return self.queryset.all()
-        
-        restaurant = getattr(user, 'owned_restaurant', None)
-        if not restaurant and profile:
-            restaurant = profile.restaurant
-            
-        if restaurant:
-            return self.queryset.filter(restaurant=restaurant)
-        
-        return self.queryset.none()
+        return self.queryset.filter(
+            restaurant=self.request.user.profile.restaurant
+        )
 
     def perform_create(self, serializer):
         user = self.request.user

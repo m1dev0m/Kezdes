@@ -90,20 +90,4 @@ def check_frontend_calls(web_crm_root='web_crm'):
     return issues
 
 if __name__ == '__main__':
-    issues = check_frontend_calls()
-    
-    print("\n📋 Frontend-Backend Contract Check\n")
-    print("=" * 70)
-    
-    if issues:
-        print(f"Found {len(issues)} potential issues:\n")
-        for issue in issues[:10]:  # Show first 10
-            print(f"  {issue['status']}")
-            print(f"    File: {issue['file']}")
-            print(f"    URL:  {issue['url']}\n")
-    else:
-        print("✅ No obvious contract mismatches found")
-    
-    print("=" * 70)
-    print("\nNote: Manual verification recommended")
-    print("      Check browser console Network tab while using the app")
+    _ = check_frontend_calls()

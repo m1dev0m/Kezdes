@@ -50,7 +50,6 @@ export default function ResultsScreen() {
                     contractorTypes: [],
                 };
                 if (__DEV__) {
-                    console.log("API failed, generating mock venues with: ", wizardState);
                 }
                 setVenues(generateVenues(wizardState));
             } finally {

@@ -91,7 +91,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         return Booking.objects.filter(
             user=user,
             restaurant_id=restaurant_id,
-            status__in=['pending', 'approved', 'completed']
+            status__in=['pending', 'confirmed', 'completed']
         ).exists()
 
     @database_sync_to_async

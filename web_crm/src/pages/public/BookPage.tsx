@@ -110,10 +110,10 @@ export default function BookPage() {
                 user_email: user ? (user.email || '') : formData.user_email,
                 special_requests: finalRequests,
                 event_type: formData.event_type,
-                table: formData.table_id || null
+                table_id: formData.table_id || null
             };
 
-            await api.post('/reservations/', payload);
+            await api.post('/bookings/', payload);
             toast.success(t('booking.success'));
             navigate(-1);
         } catch (err: any) {

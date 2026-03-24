@@ -141,11 +141,11 @@ class Phase6CRMAPI(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.owner = User.objects.create_user("own", "o@t.com", "pass")
-        Profile.objects.filter(user=self.owner).update(role="owner")
         self.rest = Restaurant.objects.create(
             name="R", address="A", city="C", owner=self.owner,
             is_claimed=True, is_verified=True,
         )
+        Profile.objects.filter(user=self.owner).update(role="owner", restaurant=self.rest)
         self.customer = Customer.objects.create(
             restaurant=self.rest, name="John", phone="+77771234567",
         )

@@ -15,7 +15,8 @@ class TsRange(Func):
 class Booking(models.Model):
     PENDING = 'pending'
     PAYMENT_PENDING = 'payment_pending'
-    APPROVED = 'approved'
+    CONFIRMED = 'confirmed'
+    APPROVED = 'confirmed'  # alias for backward compatibility
     SEATED = 'seated'
     REJECTED = 'rejected'
     CANCELLED_BY_USER = 'cancelled_by_user'
@@ -26,7 +27,7 @@ class Booking(models.Model):
     STATUS_CHOICES = [
         (PENDING, 'Ожидает подтверждения'),
         (PAYMENT_PENDING, 'Ожидает предоплаты'),
-        (APPROVED, 'Подтверждено'),
+        (CONFIRMED, 'Подтверждено'),
         (SEATED, 'Гость за столом'),
         (REJECTED, 'Отклонено'),
         (CANCELLED_BY_USER, 'Отменено пользователем'),
@@ -36,9 +37,9 @@ class Booking(models.Model):
         (NO_SHOW, 'Неявка'),
     ]
     TRANSITIONS = {
-        PENDING: [APPROVED, PAYMENT_PENDING, REJECTED, EXPIRED, CANCELLED_BY_USER],
-        PAYMENT_PENDING: [APPROVED, EXPIRED, CANCELLED_BY_USER],
-        APPROVED: [SEATED, CANCELLED_BY_USER, CANCELLED_BY_RESTAURANT, COMPLETED, NO_SHOW],
+        PENDING: [CONFIRMED, PAYMENT_PENDING, REJECTED, EXPIRED, CANCELLED_BY_USER],
+        PAYMENT_PENDING: [CONFIRMED, EXPIRED, CANCELLED_BY_USER],
+        CONFIRMED: [SEATED, CANCELLED_BY_USER, CANCELLED_BY_RESTAURANT, COMPLETED, NO_SHOW],
         SEATED: [COMPLETED, NO_SHOW],
         REJECTED: [],
         CANCELLED_BY_USER: [],
@@ -47,7 +48,7 @@ class Booking(models.Model):
         COMPLETED: [],
         NO_SHOW: [],
     }
-    ACTIVE_STATUSES = [PENDING, APPROVED, PAYMENT_PENDING, SEATED]
+    ACTIVE_STATUSES = [PENDING, CONFIRMED, PAYMENT_PENDING, SEATED]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='bookings')
     table = models.ForeignKey('restaurants.Table', on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
@@ -96,7 +97,7 @@ class Booking(models.Model):
             ),
             models.UniqueConstraint(
                 fields=['user', 'restaurant', 'date', 'time'],
-                condition=models.Q(status__in=['pending', 'approved']),
+                condition=models.Q(status__in=['pending', 'confirmed']),
                 name='unique_active_booking_per_slot',
             ),
         ]
@@ -275,7 +276,7 @@ def update_availability_on_booking_change(sender, instance, **kwargs):
     booked_guests = Booking.objects.filter(
         restaurant=restaurant,
         date=date,
-        status__in=[Booking.PENDING, Booking.APPROVED]
+        status__in=[Booking.PENDING, Booking.CONFIRMED]
     ).aggregate(Sum('guests'))['guests__sum'] or 0
     
     available_seats = max(0, total_capacity - booked_guests)

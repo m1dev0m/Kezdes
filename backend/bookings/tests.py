@@ -613,7 +613,7 @@ class OnboardingFlowTests(TestCase):
             city="Almaty",
             phone="+77001234567",
             email="req2@test.com",
-            status="approved",
+            status="confirmed",
         )
 
         result, error = RestaurantService.approve_request(req.id)

@@ -70,6 +70,15 @@ def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
 
 
+# Normalize legacy role aliases before saving Profile
+from django.db.models.signals import pre_save
+
+@receiver(pre_save, sender=Profile)
+def normalize_profile_role(sender, instance, **kwargs):
+    if instance.role in Profile.ROLE_MAPPING:
+        instance.role = Profile.ROLE_MAPPING[instance.role]
+
+
 class PushToken(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='push_tokens')
     token = models.CharField(max_length=255, unique=True)

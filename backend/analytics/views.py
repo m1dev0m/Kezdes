@@ -38,28 +38,28 @@ class DashboardAnalyticsView(APIView):
         tomorrow_qs = Booking.objects.filter(restaurant=restaurant, date=tomorrow)
 
         bookings_today = today_qs.filter(
-            status__in=['pending', 'approved', 'completed']
+            status__in=['pending', 'confirmed', 'completed']
         ).count()
 
         bookings_tomorrow = tomorrow_qs.filter(
-            status__in=['pending', 'approved', 'completed']
+            status__in=['pending', 'confirmed', 'completed']
         ).count()
 
         pending_bookings_today = today_qs.filter(status__in=['pending']).count()
 
         bookings_month = month_qs.filter(
-            status__in=['pending', 'approved', 'completed']
+            status__in=['pending', 'confirmed', 'completed']
         ).count()
 
         now = timezone.now()
         upcoming_bookings = today_qs.filter(
-            status__in=['pending', 'approved'],
+            status__in=['pending', 'confirmed'],
             start_datetime__gt=now
         ).count()
 
         active_tables = restaurant.tables.filter(is_active=True).count()
         occupied_tables_qs = today_qs.filter(
-            status__in=['pending', 'approved'],
+            status__in=['pending', 'confirmed'],
             start_datetime__lte=now,
             end_datetime__gt=now
         ).prefetch_related('tables')
@@ -75,7 +75,7 @@ class DashboardAnalyticsView(APIView):
 
         capacity = restaurant.capacity or 1
         overlapping_guests = today_qs.filter(
-            status__in=['pending', 'approved'],
+            status__in=['pending', 'confirmed'],
             start_datetime__lte=now,
             end_datetime__gt=now,
         ).aggregate(total=Sum('guests'))['total'] or 0
@@ -103,14 +103,14 @@ class DashboardAnalyticsView(APIView):
         
         revenue = float(order_revenue) + float(estimated_revenue)
 
-        approved_count = month_qs.filter(status='approved').count() + completed_month_count
+        approved_count = month_qs.filter(status='confirmed').count() + completed_month_count
         rejected_count = month_qs.filter(status='rejected').count()
         total_decided = approved_count + rejected_count
         confirmation_rate = round((approved_count / total_decided * 100) if total_decided > 0 else 0)
 
         all_customers = Booking.objects.filter(
             restaurant=restaurant,
-            status__in=['approved', 'completed']
+            status__in=['confirmed', 'completed']
         ).values('user').annotate(visit_count=Count('id'))
         total_customers = all_customers.count()
         repeat_customers = all_customers.filter(visit_count__gte=2).count()
@@ -168,7 +168,7 @@ class DashboardAnalyticsView(APIView):
         retention_30_days = round((retained_users / base_users * 100) if base_users > 0 else 0)
 
         avg_guests_val = month_qs.filter(
-            status__in=['approved', 'completed']
+            status__in=['confirmed', 'completed']
         ).aggregate(avg=Avg('guests'))['avg']
         avg_guests = round(avg_guests_val, 1) if avg_guests_val else 0
 
@@ -179,7 +179,7 @@ class DashboardAnalyticsView(APIView):
             count = Booking.objects.filter(
                 restaurant=restaurant,
                 date=d,
-                status__in=['pending', 'approved', 'completed']
+                status__in=['pending', 'confirmed', 'completed']
             ).count()
             weekly_chart.append({
                 "name": day_names[d.weekday()],
@@ -190,7 +190,7 @@ class DashboardAnalyticsView(APIView):
         recent_bookings = Booking.objects.filter(
             restaurant=restaurant,
             date__gte=last_30,
-            status__in=['approved', 'completed']
+            status__in=['confirmed', 'completed']
         ).values_list('date', flat=True)
 
         weekday_counts = Counter()

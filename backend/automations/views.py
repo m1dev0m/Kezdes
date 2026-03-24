@@ -7,13 +7,6 @@ class AutomationLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        restaurant_id = self.request.query_params.get('restaurant_id')
-        
-        qs = AutomationLog.objects.all().select_related('customer')
-        
-        if restaurant_id:
-            qs = qs.filter(restaurant_id=restaurant_id)
-            
-        # Filter by owner or staff
-        return qs.filter(restaurant__owner=user) | qs.filter(restaurant__staff_profiles__user=user)
+        return AutomationLog.objects.filter(
+            restaurant=self.request.user.profile.restaurant
+        ).select_related('restaurant')

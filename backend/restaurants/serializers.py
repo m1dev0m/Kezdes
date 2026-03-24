@@ -23,59 +23,122 @@ class RestaurantRequestSerializer(serializers.ModelSerializer):
             'instagram': {'required': False, 'allow_blank': True},
         }
 class TableSerializer(serializers.ModelSerializer):
-    table_number = serializers.CharField(source='number', required=False)
+    # API exposes 'name' and 'capacity' as primary fields (map to number/seats)
+    name = serializers.CharField(source='number', required=False)
     capacity = serializers.IntegerField(source='seats', required=False)
+    # Legacy aliases
+    table_number = serializers.CharField(source='number', required=False)
     pos_x = serializers.FloatField(source='x', required=False)
     pos_y = serializers.FloatField(source='y', required=False)
     active = serializers.BooleanField(source='is_active', required=False)
+    status = serializers.CharField(read_only=True)
 
     def validate(self, attrs):
-        request = self.context.get('request')
-        # Check source='number' if 'number' is present in attrs
+        # seats is the model field; capacity maps to it via source='seats'
+        seats = attrs.get('seats')
+        if seats is not None:
+            if seats < 1:
+                raise serializers.ValidationError({"capacity": "Вместимость должна быть не менее 1."})
+            if seats > Table.CAPACITY_MAX:
+                raise serializers.ValidationError({"capacity": f"Вместимость не может превышать {Table.CAPACITY_MAX}."})
+
+        # Unique number per restaurant
         number = attrs.get('number')
-        
         if not number and self.instance:
             number = self.instance.number
-            
-        if number and request and hasattr(request, 'user'):
-            user = request.user
-            restaurant = getattr(user, 'owned_restaurant', None)
-            if not restaurant and hasattr(user, 'profile'):
-                restaurant = user.profile.restaurant
-                
+        if number:
+            request = self.context.get('request')
+            restaurant = None
+            if request and hasattr(request, 'user'):
+                user = request.user
+                restaurant = getattr(user, 'owned_restaurant', None)
+                if not restaurant and hasattr(user, 'profile'):
+                    restaurant = getattr(user.profile, 'restaurant', None)
             if restaurant:
                 qs = Table.objects.filter(restaurant=restaurant, number=number)
                 if self.instance:
                     qs = qs.exclude(pk=self.instance.pk)
                 if qs.exists():
-                    from rest_framework.exceptions import ValidationError
-                    raise ValidationError({"number": "Стол с таким номером уже существует в этом ресторане."})
-                    
+                    raise serializers.ValidationError({"name": "Стол с таким именем уже существует в этом ресторане."})
         return attrs
 
     class Meta:
         model = Table
         fields = [
-            'id',
-            'restaurant',
-            'number',
-            'table_number',
-            'seats',
-            'capacity',
-            'x',
-            'pos_x',
-            'y',
-            'pos_y',
-            'width',
-            'height',
-            'rotation',
-            'table_type',
-            'status',
-            'is_active',
-            'active',
+            'id', 'restaurant',
+            'name', 'table_number', 'number',
+            'capacity', 'seats',
+            'x', 'pos_x', 'y', 'pos_y',
+            'width', 'height', 'rotation',
+            'table_type', 'status',
+            'is_active', 'active',
             'created_at',
         ]
-        read_only_fields = ['restaurant']
+        read_only_fields = ['restaurant', 'status', 'created_at']
+
+
+class TableAPISerializer(serializers.ModelSerializer):
+    """
+    Minimal contract for `/api/v1/tables/` endpoints.
+    """
+    status = serializers.SerializerMethodField()
+    # Backward-compatible input aliases (older clients/tests may still send these)
+    number = serializers.CharField(write_only=True, required=False)
+    seats = serializers.IntegerField(write_only=True, required=False)
+
+    class Meta:
+        model = Table
+        fields = ["id", "name", "capacity", "number", "seats", "x", "y", "status"]
+        read_only_fields = ["id", "x", "y", "status"]
+
+    def get_status(self, obj):
+        return "free"
+
+    def validate(self, attrs):
+        if "restaurant" in attrs:
+            raise serializers.ValidationError({"restaurant": "Changing restaurant is not allowed."})
+
+        # Accept legacy keys
+        if "name" not in attrs and "number" in attrs:
+            attrs["name"] = attrs["number"]
+        if "capacity" not in attrs and "seats" in attrs:
+            attrs["capacity"] = attrs["seats"]
+
+        name = attrs.get("name")
+        if name is not None and not str(name).strip():
+            raise serializers.ValidationError({"name": "name is required."})
+
+        capacity = attrs.get("capacity")
+        if capacity is not None:
+            try:
+                capacity_int = int(capacity)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({"capacity": "capacity must be an integer."})
+            if capacity_int <= 0:
+                raise serializers.ValidationError({"capacity": "capacity must be > 0"})
+            if capacity_int > Table.CAPACITY_MAX:
+                raise serializers.ValidationError({"capacity": f"capacity must be <= {Table.CAPACITY_MAX}"})
+            attrs["capacity"] = capacity_int
+
+        return attrs
+
+    def create(self, validated_data):
+        restaurant = validated_data["restaurant"]
+        name = validated_data["name"]
+        capacity = validated_data["capacity"]
+        return Table.objects.create(
+            restaurant=restaurant,
+            number=name,
+            seats=capacity,
+        )
+
+    def update(self, instance, validated_data):
+        if "name" in validated_data:
+            instance.number = validated_data["name"]
+        if "capacity" in validated_data:
+            instance.seats = validated_data["capacity"]
+        instance.save()
+        return instance
 class AvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Availability

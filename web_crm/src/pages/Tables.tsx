@@ -1,544 +1,411 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Plus,
-    Trash2,
-    Edit2,
-    Layout,
-    List,
-    X,
-    RotateCw,
-    Users,
-    Calendar,
-    Clock,
-    ChevronRight,
-    Combine
-} from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, Pencil, Trash2, RefreshCw, AlertCircle, Users, CheckCircle } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { useI18n } from '@/i18n/index.tsx';
-import { AxiosError } from 'axios';
-import type { PanInfo } from 'framer-motion';
-import { useAuth } from '@/modules/auth/logic/AuthContext';
 
-interface TableModel {
-    id: number;
-    number: string;
-    seats: number;
-    is_active: boolean;
-    status: 'free' | 'reserved' | 'occupied' | 'cleaning';
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    rotation: number;
-    table_type: 'rectangle' | 'circle' | 'square';
-    current_booking?: {
-        id: number;
-        guest_name: string;
-        guests: number;
-        time: string;
-        duration_minutes: number;
-    };
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface Table {
+  id: number;
+  name: string;
+  capacity: number;
+  status: 'free' | 'reserved' | 'occupied' | 'cleaning';
+  is_active: boolean;
+  table_type: 'rectangle' | 'circle' | 'square';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
 }
 
-interface ApiErrorResponse {
-    detail?: string;
-    number?: string | string[];
-    seats?: string | string[];
+interface TableForm {
+  name: string;
+  capacity: number;
+  table_type: 'rectangle' | 'circle' | 'square';
+  is_active: boolean;
 }
 
-const statusColors = {
-    free: {
-        fill: 'fill-emerald-50',
-        stroke: 'stroke-emerald-200',
-        text: 'text-emerald-700',
-        dot: 'bg-emerald-500',
-        bg: 'bg-emerald-50'
-    },
-    reserved: {
-        fill: 'fill-amber-50',
-        stroke: 'stroke-amber-300',
-        text: 'text-amber-700',
-        dot: 'bg-amber-500',
-        bg: 'bg-amber-50'
-    },
-    occupied: {
-        fill: 'fill-rose-50',
-        stroke: 'stroke-rose-300',
-        text: 'text-rose-700',
-        dot: 'bg-rose-500',
-        bg: 'bg-rose-50'
-    },
-    cleaning: {
-        fill: 'fill-slate-50',
-        stroke: 'stroke-slate-300',
-        text: 'text-slate-500',
-        dot: 'bg-slate-400',
-        bg: 'bg-slate-50'
-    }
+const EMPTY_FORM: TableForm = {
+  name: '',
+  capacity: 2,
+  table_type: 'rectangle',
+  is_active: true,
 };
 
-export default function Tables() {
-    const { t } = useI18n();
-    const { user } = useAuth();
-    const isHost = user?.role === 'host' || user?.role === 'hostess';
+const STATUS_LABELS: Record<Table['status'], string> = {
+  free: 'Свободен',
+  reserved: 'Забронирован',
+  occupied: 'Занят',
+  cleaning: 'Уборка',
+};
 
-    const [tables, setTables] = useState<TableModel[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState<'grid' | 'visual'>(() => {
-        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-            return 'grid';
-        }
-        return 'visual';
-    });
-    const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
-    const [showModal, setShowModal] = useState(false);
-    const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-    const [deleteId, setDeleteId] = useState<number | null>(null);
-    const [saving, setSaving] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
+const STATUS_COLORS: Record<Table['status'], string> = {
+  free: 'bg-emerald-100 text-emerald-700',
+  reserved: 'bg-amber-100 text-amber-700',
+  occupied: 'bg-red-100 text-red-700',
+  cleaning: 'bg-slate-100 text-slate-600',
+};
 
-    const [formData, setFormData] = useState<Partial<TableModel>>({
-        number: '',
-        seats: 4,
-        is_active: true,
-        table_type: 'rectangle',
-        x: 100,
-        y: 100,
-        width: 80,
-        height: 80,
-        rotation: 0
-    });
+// ── Modal ──────────────────────────────────────────────────────────────────────
 
-    const floorPlanRef = useRef<SVGSVGElement>(null);
+interface ModalProps {
+  title: string;
+  onClose: () => void;
+  onSubmit: (form: TableForm) => Promise<void>;
+  initial?: TableForm;
+  loading: boolean;
+}
 
-    useEffect(() => { loadTables(); }, []);
+function TableModal({ title, onClose, onSubmit, initial = EMPTY_FORM, loading }: ModalProps) {
+  const [form, setForm] = useState<TableForm>(initial);
 
-    const loadTables = async () => {
-        setLoading(true);
-        try {
-            const res = await api.get('/restaurants/tables/status/');
-            setTables(res.data);
-        } catch {
-            toast.error(t('tables.failedToLoad'));
-        } finally {
-            setLoading(false);
-        }
-    };
+  const set = (k: keyof TableForm, v: unknown) =>
+    setForm(prev => ({ ...prev, [k]: v }));
 
-    const handleSave = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) return toast.error('Введите название стола');
+    if (form.capacity < 1 || form.capacity > 20) return toast.error('Вместимость: 1–20');
+    await onSubmit(form);
+  };
 
-        if (!formData.number || !formData.number.trim()) {
-            toast.error('Введите номер стола');
-            return;
-        }
-
-        if (!formData.seats || formData.seats < 1) {
-            toast.error('Количество мест должно быть至少 1');
-            return;
-        }
-
-        setSaving(true);
-        try {
-            if (modalMode === 'add') {
-                await api.post('/restaurants/tables/', formData);
-                toast.success(t('tables.tableCreated'));
-            } else if (selectedTableId) {
-                await api.patch(`/restaurants/tables/${selectedTableId}/`, formData);
-                toast.success(t('tables.tableUpdated'));
-            }
-            setShowModal(false);
-            loadTables();
-        } catch (err: unknown) {
-            const apiErr = err as AxiosError<ApiErrorResponse>;
-            const errorData = apiErr.response?.data;
-            const errorMsg = (errorData?.number || errorData?.detail || t('tables.errorSaving')) as string | string[];
-            toast.error(Array.isArray(errorMsg) ? errorMsg[0] : errorMsg);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = async (id: number) => {
-        try {
-            await api.delete(`/restaurants/tables/${id}/`);
-            toast.success(t('tables.tableRemoved'));
-            loadTables();
-            setDeleteId(null);
-            if (selectedTableId === id) setSelectedTableId(null);
-        } catch {
-            toast.error(t('tables.couldNotDelete'));
-        }
-    };
-
-    const handleDragStart = () => { setIsDragging(true); };
-
-    const openEditModal = (table: TableModel) => {
-        setModalMode('edit');
-        setSelectedTableId(table.id);
-        setFormData(table);
-        setShowModal(true);
-    };
-
-    const handleRotate = async (tableId: number) => {
-        const table = tables.find(t => t.id === tableId);
-        if (!table) return;
-        const newRotation = (table.rotation + 90) % 360;
-        try {
-            await api.patch(`/restaurants/tables/${tableId}/`, { rotation: newRotation });
-            setTables(prev => prev.map(t => t.id === tableId ? { ...t, rotation: newRotation } : t));
-        } catch {
-            toast.error(t('tables.rotationFailed'));
-        }
-    };
-
-    const handleDragEnd = async (tableId: number, info: PanInfo) => {
-        setTimeout(() => setIsDragging(false), 100);
-        const table = tables.find(t => t.id === tableId);
-        if (!table) return;
-
-        const newX = Math.round(table.x + info.offset.x);
-        const newY = Math.round(table.y + info.offset.y);
-
-        try {
-            await api.patch(`/restaurants/tables/${tableId}/`, { x: newX, y: newY });
-            setTables(prev => prev.map(t => t.id === tableId ? { ...t, x: newX, y: newY } : t));
-        } catch {
-            toast.error(t('tables.failedToSavePos'));
-            loadTables();
-        }
-    };
-
-    const selectedTable = tables.find(t => t.id === selectedTableId);
-
-    return (
-        <div className="flex h-[calc(100vh-8rem)] gap-8 relative overflow-hidden">
-            <div className="flex-1 flex flex-col space-y-4 min-w-0">
-                <div className="flex flex-col sm:flex-row justify-between items-end gap-6">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{t('tables.title')}</h1>
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mt-1.5 opacity-80">{t('tables.restaurantSeatingLayout')}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-                            <button
-                                onClick={() => setViewMode('grid')}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm border border-transparent' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                <List size={14} /> {t('tables.listView')}
-                            </button>
-                            <button
-                                onClick={() => setViewMode('visual')}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-2 ${viewMode === 'visual' ? 'bg-white text-primary shadow-sm border border-transparent' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                <Layout size={14} /> {t('tables.planView')}
-                            </button>
-                        </div>
-                        {!isHost && (
-                            <Button onClick={() => { setModalMode('add'); setFormData({ number: '', seats: 4, is_active: true, table_type: 'rectangle', x: 200, y: 200, width: 80, height: 80, rotation: 0 }); setShowModal(true); }} className="h-12 px-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] shadow-lg shadow-primary/20 bg-primary text-primary-foreground border-none outline-none">
-                                <Plus size={16} className="mr-2" /> {t('tables.addTable')}
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                {!loading && viewMode === 'visual' && (
-                    <div className="flex gap-4 p-3 bg-white/50 backdrop-blur-md rounded-2xl border border-slate-100 w-fit">
-                        {(['free', 'reserved', 'occupied', 'cleaning'] as const).map(s => (
-                            <div key={s} className="flex items-center gap-2 px-2">
-                                <div className={`w-1.5 h-1.5 rounded-full ${statusColors[s].dot}`} />
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{t(`tables.${s}`)}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {loading ? (
-                    <div className="flex-1 bg-white border border-slate-200 rounded-xl p-8">
-                        <Skeleton className="w-full h-full rounded-lg" />
-                    </div>
-                ) : viewMode === 'grid' ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 overflow-y-auto pr-1 no-scrollbar pb-12">
-                        {tables.map(table => (
-                            <motion.div
-                                key={table.id}
-                                layout
-                                onClick={() => setSelectedTableId(table.id)}
-                                className={`aspect-square bg-white border ${selectedTableId === table.id
-                                    ? 'border-primary shadow-xl shadow-primary/10'
-                                    : 'border-slate-100'} rounded-[2rem] p-6 flex flex-col justify-between group hover:border-primary transition-all cursor-pointer relative overflow-hidden`}
-                            >
-                                <div className="flex justify-between items-start relative z-10">
-                                    <div className={`w-2 h-2 rounded-full ${statusColors[table.status]?.dot} shadow-sm`}></div>
-                                    <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest opacity-60 italic">{t(`tables.${table.status}`)}</div>
-                                </div>
-                                <div className="text-center relative z-10">
-                                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic">{table.number}</h3>
-                                    <div className="flex items-center justify-center gap-1 text-slate-400 mt-2">
-                                        <Users size={12} className="opacity-40" /> <span className="text-[10px] font-black uppercase tracking-widest">{table.seats}</span>
-                                    </div>
-                                </div>
-                                {!isHost && (
-                                    <div className="flex justify-center relative z-10">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setDeleteId(table.id); }}
-                                            className="p-2 opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                )}
-                                {selectedTableId === table.id && (
-                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-primary" />
-                                )}
-                            </motion.div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="flex-1 bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm relative flex flex-col group/canvas">
-                        <div className="flex-1 bg-slate-50 relative overflow-hidden">
-                            <svg
-                                ref={floorPlanRef}
-                                className="w-full h-full touch-none select-none"
-                                viewBox="0 0 1000 800"
-                                onMouseDown={() => !isDragging && setSelectedTableId(null)}
-                            >
-                                <defs>
-                                    <pattern id="grid-p" width="40" height="40" patternUnits="userSpaceOnUse">
-                                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" className="text-slate-200/50" />
-                                    </pattern>
-                                </defs>
-                                <rect width="100%" height="100%" fill="url(#grid-p)" />
-
-                                {tables.map(table => (
-                                    <motion.g
-                                        key={table.id}
-                                        drag={!isHost}
-                                        dragElastic={0}
-                                        dragMomentum={false}
-                                        onDragStart={!isHost ? handleDragStart : undefined}
-                                        onDragEnd={!isHost ? (_, info) => handleDragEnd(table.id, info) : undefined}
-                                        initial={false}
-                                        animate={{
-                                            x: table.x,
-                                            y: table.y,
-                                            rotate: table.rotation,
-                                            scale: selectedTableId === table.id ? 1.05 : 1
-                                        }}
-                                        className={`${!isHost ? 'cursor-move' : 'cursor-pointer'} group/table origin-center`}
-                                        onClick={(e) => { e.stopPropagation(); if (!isDragging) setSelectedTableId(table.id); }}
-                                    >
-                                        <rect width={table.width} height={table.height} rx={table.table_type === 'circle' ? 999 : 12} className="fill-slate-900/5 blur-sm" />
-                                        {table.table_type === 'circle' ? (
-                                            <circle
-                                                r={table.width / 2} cx={table.width / 2} cy={table.width / 2}
-                                                className={`transition-all duration-300 stroke-[1.5] ${selectedTableId === table.id ? 'stroke-primary' : statusColors[table.status].stroke} ${statusColors[table.status].fill}`}
-                                            />
-                                        ) : (
-                                            <rect
-                                                width={table.width} height={table.height}
-                                                rx={table.table_type === 'square' ? 8 : 12}
-                                                className={`transition-all duration-300 stroke-[1.5] ${selectedTableId === table.id ? 'stroke-primary' : statusColors[table.status].stroke} ${statusColors[table.status].fill}`}
-                                            />
-                                        )}
-                                        <text
-                                            x={table.width / 2} y={table.height / 2}
-                                            textAnchor="middle" dominantBaseline="middle"
-                                            className={`text-[13px] font-black italic ${statusColors[table.status].text} pointer-events-none tracking-tighter`}
-                                        >
-                                            {table.number}
-                                        </text>
-                                        {selectedTableId === table.id && (
-                                            <rect width={table.width + 12} height={table.height + 12} x={-6} y={-6} rx={table.table_type === 'circle' ? 999 : 14} fill="none" stroke="currentColor" className="text-primary" strokeWidth="1" strokeDasharray="4 4" />
-                                        )}
-                                    </motion.g>
-                                ))}
-                            </svg>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <AnimatePresence>
-                {selectedTableId && (
-                    <motion.div
-                        initial={{ x: 400, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 400, opacity: 0 }}
-                        className="w-[380px] bg-white border-l border-slate-100 shadow-2xl flex flex-col gap-8 p-10 overflow-y-auto no-scrollbar"
-                    >
-                        <div className="flex justify-between items-start relative">
-                            <div className={`px-6 py-10 rounded-[2rem] text-center border ${statusColors[selectedTable?.status || 'free'].stroke} ${statusColors[selectedTable?.status || 'free'].bg} w-full shadow-inner`}>
-                                <h2 className="text-7xl font-black text-slate-900 dark:text-white tracking-tighter">{selectedTable?.number}</h2>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-4 opacity-80">{t(`tables.${selectedTable?.status}`)}</p>
-                            </div>
-                            <button onClick={() => setSelectedTableId(null)} className="absolute -top-2 -right-2 p-3 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-2xl transition-all"><X size={20} /></button>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">{t('tables.seatsCount')}</p>
-                                    <p className="text-2xl font-black text-slate-900 tracking-tighter tabular-nums">{selectedTable?.seats} <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest ml-1">PAX</span></p>
-                                </div>
-                                <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-2">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{t('tables.rotation')}</p>
-                                    <button disabled={isHost} onClick={() => selectedTableId && handleRotate(selectedTableId)} className="h-10 w-10 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-slate-900 hover:border-primary transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><RotateCw size={14} /></button>
-                                </div>
-                            </div>
-
-                            {!isHost && (
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={() => selectedTable && openEditModal(selectedTable)}
-                                        className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-[1.5rem] hover:border-primary transition-all group"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary transition-all"><Edit2 size={16} /></div>
-                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">{t('tables.editTable')}</span>
-                                        </div>
-                                        <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
-                                    </button>
-                                    <button className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-[1.5rem] hover:border-primary transition-all group opacity-50">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary transition-all"><Combine size={16} /></div>
-                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">{t('tables.mergeTables')}</span>
-                                        </div>
-                                        <ChevronRight size={16} className="text-slate-300" />
-                                    </button>
-                                    <button onClick={() => selectedTableId && setDeleteId(selectedTableId)} className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-[1.5rem] hover:border-rose-500 hover:bg-rose-50 transition-all group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-rose-500 transition-all"><Trash2 size={16} /></div>
-                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 group-hover:text-rose-600">{t('tables.deletePermanently')}</span>
-                                        </div>
-                                        <ChevronRight size={16} className="text-slate-300" />
-                                    </button>
-                                </div>
-                            )}
-
-                            <div className="space-y-4 pt-4">
-                                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-3 italic">
-                                    {t('tables.nextReservation')}
-                                    <div className="h-[1px] flex-1 bg-slate-50"></div>
-                                </h4>
-                                {selectedTable?.status === 'free' || !selectedTable?.current_booking ? (
-                                    <div className="p-8 border border-dashed border-slate-100 rounded-2xl text-center bg-slate-50/20 space-y-4">
-                                        <Calendar size={28} className="mx-auto text-slate-200" />
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-60 leading-relaxed max-w-[160px] mx-auto">{t('bookings.noBookings')}</p>
-                                        <Button variant="secondary" size="sm" className="w-full text-[9px] h-10 font-black uppercase tracking-widest rounded-xl border-slate-100">
-                                            {t('bookings.newBooking')}
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="p-6 bg-primary rounded-3xl text-white space-y-6 shadow-2xl shadow-primary/20">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center italic font-black text-sm">{selectedTable.current_booking.guest_name.charAt(0)}</div>
-                                                <div>
-                                                    <p className="text-xs font-black uppercase tracking-tight italic">{selectedTable.current_booking.guest_name}</p>
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-0.5">{selectedTable.current_booking.guests} {t('calendar.guestsCount')}</p>
-                                                </div>
-                                            </div>
-                                            <div className="px-3 py-1 bg-white/20 rounded-lg text-[10px] font-black tabular-nums tracking-widest">
-                                                {selectedTable.current_booking.time.substring(0, 5)}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.3em] opacity-60 border-t border-white/20 pt-4">
-                                            <div className="flex items-center gap-2"><Clock size={12} /> {selectedTable.current_booking.duration_minutes} MINS</div>
-                                        </div>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="w-full bg-white text-primary hover:opacity-90 text-[10px] h-12 font-black uppercase tracking-[0.3em] rounded-2xl border-none"
-                                            onClick={() => {
-                                                window.location.href = `/app/bookings?booking=${selectedTable.current_booking?.id}`;
-                                            }}
-                                        >
-                                            {t('bookings.details')}
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Modal */}
-            <AnimatePresence>
-                {showModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)} className="absolute inset-0 bg-slate-800/40 backdrop-blur-sm" />
-                        <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100">
-                            <form onSubmit={handleSave} className="p-12 space-y-8">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <h2 className="text-2xl font-black text-slate-900 tracking-tighter">{modalMode === 'add' ? t('tables.newTable') : t('tables.editTable')}</h2>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1.5 opacity-80">{t('tables.configureSeating')}</p>
-                                    </div>
-                                    <button type="button" onClick={() => setShowModal(false)} className="p-3 text-slate-400 hover:text-primary bg-slate-50 rounded-2xl transition-all"><X size={16} /></button>
-                                </div>
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.tableNumber')}</label>
-                                            <input required type="text" value={formData.number} onChange={(e) => setFormData({ ...formData, number: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.3em] outline-none focus:border-primary transition-all" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.seatsCount')}</label>
-                                            <input required type="number" value={formData.seats} onChange={(e) => setFormData({ ...formData, seats: parseInt(e.target.value) || 0 })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.3em] outline-none focus:border-primary transition-all tabular-nums" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.shapeType')}</label>
-                                        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
-                                            {(['rectangle', 'square', 'circle'] as const).map((type) => (
-                                                <button key={type} type="button" onClick={() => setFormData({ ...formData, table_type: type })} className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all ${formData.table_type === type ? 'bg-white text-primary shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>{type}</button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">DIMENSIONS (PX)</label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input type="number" placeholder="W" value={formData.width} onChange={e => setFormData({ ...formData, width: Number(e.target.value) })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black outline-none tabular-nums" />
-                                                <input type="number" placeholder="H" value={formData.height} onChange={e => setFormData({ ...formData, height: Number(e.target.value) })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black outline-none tabular-nums" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block ml-1">{t('tables.rotation')}°</label>
-                                            <input type="number" value={formData.rotation} onChange={(e) => setFormData({ ...formData, rotation: parseInt(e.target.value) || 0 })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black outline-none tabular-nums" />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <input
-                                            type="checkbox"
-                                            id="is_active"
-                                            checked={formData.is_active}
-                                            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                            className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
-                                        />
-                                        <label htmlFor="is_active" className="text-[10px] font-black text-slate-900 uppercase tracking-widest cursor-pointer select-none">
-                                            {t('tables.activeForBookings')}
-                                        </label>
-                                    </div>
-                                </div>
-                                <div className="flex gap-4 pt-4">
-                                    <Button variant="secondary" className="flex-1 text-[10px] h-12 font-black uppercase tracking-[0.3em] rounded-2xl border-slate-100" onClick={() => setShowModal(false)}>{t('tables.cancel')}</Button>
-                                    <Button type="submit" isLoading={saving} className="flex-1 bg-primary text-primary-foreground text-[10px] h-12 font-black uppercase tracking-[0.3em] rounded-2xl shadow-lg shadow-primary/20 border-none"> {t('tables.saveTable')}</Button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-            <ConfirmModal isOpen={!!deleteId} title={t('tables.deleteTableTitle')} description={t('tables.deleteTableDesc')} confirmLabel={t('tables.deletePermanently')} onConfirm={() => deleteId && handleDelete(deleteId)} onCancel={() => setDeleteId(null)} />
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-900">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
         </div>
-    );
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Название стола *</label>
+            <input
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+              placeholder="Например: 1, A1, VIP-1"
+              maxLength={50}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Вместимость (мест) *</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={form.capacity}
+              onChange={e => set('capacity', Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Форма стола</label>
+            <select
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={form.table_type}
+              onChange={e => set('table_type', e.target.value as TableForm['table_type'])}
+            >
+              <option value="rectangle">Прямоугольный</option>
+              <option value="circle">Круглый</option>
+              <option value="square">Квадратный</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="is_active"
+              checked={form.is_active}
+              onChange={e => set('is_active', e.target.checked)}
+              className="w-4 h-4 accent-primary"
+            />
+            <label htmlFor="is_active" className="text-sm text-slate-700">Активен (принимает бронирования)</label>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
+
+export default function Tables() {
+  const [tables, setTables] = useState<Table[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [editTarget, setEditTarget] = useState<Table | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Table | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      // Use /tables/status/ for real-time occupied/reserved counts
+      const res = await api.get('/tables/status/');
+      setTables(res.data);
+      setError(null);
+    } catch {
+      // Fallback to plain list if status endpoint fails (e.g. no date/time context)
+      try {
+        const res = await api.get('/tables/');
+        setTables(res.data);
+        setError(null);
+      } catch {
+        setError('Не удалось загрузить столы');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // CREATE
+  const handleCreate = async (form: TableForm) => {
+    setSaving(true);
+    try {
+      await api.post('/tables/', form);
+      toast.success('Стол добавлен');
+      setShowCreate(false);
+      load();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string; number?: string[] } } })
+        ?.response?.data?.detail
+        || (e as { response?: { data?: { number?: string[] } } })?.response?.data?.number?.[0]
+        || 'Ошибка при создании';
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // UPDATE
+  const handleUpdate = async (form: TableForm) => {
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      await api.patch(`/tables/${editTarget.id}/`, form);
+      toast.success('Стол обновлён');
+      setEditTarget(null);
+      load();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail || 'Ошибка при обновлении';
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // DELETE
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      await api.delete(`/tables/${deleteTarget.id}/`);
+      toast.success('Стол удалён');
+      setDeleteTarget(null);
+      load();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail || 'Ошибка при удалении';
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const active = tables.filter(t => t.is_active).length;
+  const occupied = tables.filter(t => t.status === 'occupied').length;
+  const reserved = tables.filter(t => t.status === 'reserved').length;
+
+  return (
+    <div className="space-y-6 pb-20">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Столы</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Управление столами ресторана</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          <Plus size={16} /> Добавить стол
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: 'Всего столов', value: tables.length, icon: <Users size={18} /> },
+          { label: 'Активных', value: active, icon: <CheckCircle size={18} className="text-emerald-500" /> },
+          { label: 'Занято', value: occupied, icon: <Users size={18} className="text-red-500" /> },
+          { label: 'Забронировано', value: reserved, icon: <RefreshCw size={18} className="text-amber-500" /> },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-slate-100 rounded-xl p-4 flex items-center gap-3">
+            <div className="text-slate-400">{s.icon}</div>
+            <div>
+              <div className="text-xl font-bold text-slate-900">{s.value}</div>
+              <div className="text-xs text-slate-500">{s.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+          <AlertCircle size={18} /> {error}
+        </div>
+      )}
+
+      {/* Table list */}
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <RefreshCw size={32} className="animate-spin text-primary opacity-30" />
+        </div>
+      ) : tables.length === 0 ? (
+        <div className="text-center py-20 bg-white border border-slate-100 rounded-xl">
+          <Users size={40} className="mx-auto text-slate-300 mb-3" />
+          <p className="text-slate-500 font-medium">Столов пока нет</p>
+          <p className="text-slate-400 text-sm mt-1">Нажмите «Добавить стол» чтобы начать</p>
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Номер</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Вместимость</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Форма</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Статус</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Активен</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {tables.map((table, i) => (
+                <motion.tr
+                  key={table.id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.03 }}
+                  className="hover:bg-slate-50 transition-colors group"
+                >
+                  <td className="px-4 py-3 font-semibold text-slate-900">{table.name}</td>
+                  <td className="px-4 py-3 text-slate-700">
+                    <span className="flex items-center gap-1.5">
+                      <Users size={14} className="text-slate-400" />
+                      {table.capacity}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 capitalize">{table.table_type}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[table.status]}`}>
+                      {STATUS_LABELS[table.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${table.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {table.is_active ? 'Да' : 'Нет'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-30 lg:group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setEditTarget(table)}
+                        className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        title="Редактировать"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(table)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Удалить"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Create modal */}
+      {showCreate && (
+        <TableModal
+          title="Добавить стол"
+          onClose={() => setShowCreate(false)}
+          onSubmit={handleCreate}
+          loading={saving}
+        />
+      )}
+
+      {/* Edit modal */}
+      {editTarget && (
+        <TableModal
+          title={`Редактировать стол ${editTarget.name}`}
+          onClose={() => setEditTarget(null)}
+          onSubmit={handleUpdate}
+          initial={{
+            name: editTarget.name,
+            capacity: editTarget.capacity,
+            table_type: editTarget.table_type,
+            is_active: editTarget.is_active,
+          }}
+          loading={saving}
+        />
+      )}
+
+      {/* Delete confirm */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6 animate-in zoom-in-95 duration-200">
+            <h2 className="font-semibold text-slate-900 mb-2">Удалить стол {deleteTarget.name}?</h2>
+            <p className="text-sm text-slate-500 mb-6">
+              Стол будет удалён. Существующие бронирования не затронуты.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={saving}
+                className="flex-1 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Удаление...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

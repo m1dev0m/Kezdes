@@ -70,22 +70,18 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if data.get('status') == Booking.APPROVED:
+        if data.get('status') == Booking.CONFIRMED:
             data['status'] = 'confirmed'
         elif data.get('status') == Booking.SEATED:
             data['status'] = 'seated'
         elif data.get('status') in (Booking.CANCELLED_BY_USER, Booking.CANCELLED_BY_RESTAURANT):
             data['status'] = 'cancelled'
 
-        # Legacy alias: confirmed + checked-in = seated (backwards compat)
-        if data.get('status') == 'confirmed' and getattr(instance, 'is_checked_in', False):
-            data['status'] = 'seated'
-            
         if instance.user:
             data['user_name'] = instance.user.get_full_name() or instance.user.username or data.get('user_name')
             if hasattr(instance.user, 'profile') and instance.user.profile.phone:
                 data['user_phone'] = instance.user.profile.phone
-                
+
         return data
 
     def get_table_number(self, obj: Booking):
@@ -337,6 +333,14 @@ class AdminBookingSerializer(serializers.ModelSerializer):
         if not is_available:
             raise serializers.ValidationError(
                 {"guests": f"Превышена вместимость. Доступно мест: {available_seats}, запрошено: {guests}."}
+            )
+
+        # Restrict allowed initial statuses for manual bookings
+        requested_status = attrs.get('status', Booking.CONFIRMED)
+        allowed_initial = {Booking.PENDING, Booking.CONFIRMED}
+        if requested_status not in allowed_initial:
+            raise serializers.ValidationError(
+                {"status": f"Ручное бронирование может быть создано только со статусом pending или confirmed."}
             )
 
         return attrs

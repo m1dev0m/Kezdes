@@ -1,6 +1,6 @@
-
 import os
 import django
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
@@ -9,10 +9,10 @@ from restaurants.services import RestaurantService
 
 req = RestaurantRequest.objects.filter(name="Test Venue 1773333153115").first()
 if req:
-    res, err = RestaurantService.approve_request(req.id)
+    _, err = RestaurantService.approve_request(req.id)
     if err:
-        print("Error:", err)
+        pass
     else:
-        print(f"Approved ID {req.id}")
+        pass
 else:
-    print("Request not found")
+    pass

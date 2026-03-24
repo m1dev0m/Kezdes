@@ -1,157 +1,97 @@
 from rest_framework import permissions
 
+def _get_profile(user):
+    if user and user.is_authenticated and hasattr(user, 'profile'):
+        return user.profile
+    return None
 
 class IsRestaurantAdmin(permissions.BasePermission):
-    """
-    Allows access only to restaurant owners (owner role).
-    Owner can: create/edit/delete tables, manage reservations, view customers, edit restaurant
-    """
+    """Allows access only to restaurant owners."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role in ('restaurant_admin', 'owner')
-        )
-
+        p = _get_profile(request.user)
+        return bool(p and p.is_owner)
 
 class IsGlobalAdmin(permissions.BasePermission):
-    """
-    Allows access only to global admin (platform administrator).
-    Can: approve/reject restaurants, view all restaurants, view all bookings, block users, manage system
-    """
+    """Allows access only to platform global admins."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role == 'global_admin'
-        )
-
+        p = _get_profile(request.user)
+        return bool(p and p.is_global_admin)
 
 class IsRestaurantOrGlobalAdmin(permissions.BasePermission):
     """Allows access to restaurant owners and global admins."""
     def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and hasattr(request.user, 'profile')
-            and request.user.profile.role in ('restaurant_admin', 'owner', 'global_admin')
-        )
-
+        p = _get_profile(request.user)
+        return bool(p and (p.is_owner or p.is_global_admin))
 
 class IsManager(permissions.BasePermission):
-    """
-    Allows access to restaurant managers.
-    Manager can: view reservations, confirm/cancel reservations, manage tables
-    Cannot: delete restaurant, change owner
-    """
+    """Allows access to restaurant managers, owners, and global admins."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role in ('manager', 'owner', 'restaurant_admin', 'global_admin')
-        )
-
+        p = _get_profile(request.user)
+        return bool(p and (p.is_manager or p.is_owner or p.is_global_admin))
 
 class IsHost(permissions.BasePermission):
-    """
-    Allows access to hosts/receptionists.
-    Host can: view reservations, check-in guests, create manual reservations, change tables
-    Cannot: change restaurant settings, delete tables
-    """
+    """Allows access to hosts, managers, owners, and global admins."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role in ('host', 'hostess', 'manager', 'owner', 'restaurant_admin', 'global_admin')
-        )
-
+        p = _get_profile(request.user)
+        return bool(p and (p.is_host or p.is_manager or p.is_owner or p.is_global_admin))
 
 class CanManageTables(permissions.BasePermission):
     """
     Permission to manage tables.
-    Owner: can create, edit, delete tables
-    Manager: can create, edit tables (no delete)
-    Host: can only view and assign tables
+    Owner/GlobalAdmin: can create, edit, delete tables.
+    Manager: can create, edit tables (no delete).
+    Host: can view/assign tables via endpoints (read-level access).
     """
     def has_permission(self, request, view):
-        return bool(
-            request.user and
-            request.user.is_authenticated and
-            hasattr(request.user, 'profile') and
-            request.user.profile.role in ('owner', 'restaurant_admin', 'manager', 'global_admin')
-        )
+        p = _get_profile(request.user)
+        return bool(p and (p.is_owner or p.is_manager or p.is_global_admin or (p.is_host and view.action in ['list', 'retrieve'])))
 
     def has_object_permission(self, request, view, obj):
-        if not (request.user and request.user.is_authenticated and hasattr(request.user, 'profile')):
+        p = _get_profile(request.user)
+        if not p:
             return False
-        role = request.user.profile.role
-        # Only owners/admins can delete
         if view.action == 'destroy':
-            return role in ('owner', 'restaurant_admin', 'global_admin')
-        return role in ('owner', 'restaurant_admin', 'manager', 'global_admin')
-
+            return p.is_owner or p.is_global_admin
+        if view.action in ['update', 'partial_update']:
+            return p.is_owner or p.is_manager or p.is_global_admin
+        # Default read access for all staff
+        return p.is_staff_member or p.is_global_admin
 
 class CanManageReservations(permissions.BasePermission):
-    """
-    Permission to manage reservations.
-    Owner, Manager, Host: can view, confirm, cancel reservations
-    """
+    """Allows any staff member (Owner, Manager, Host, GlobalAdmin) to manage reservations."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role in ('owner', 'restaurant_admin', 'manager', 'host', 'hostess', 'global_admin')
-        )
-
+        p = _get_profile(request.user)
+        if not p:
+            return False
+        if p.is_global_admin:
+            return True
+        if not p.is_staff_member:
+            return False
+        from core.utils import get_user_restaurant
+        return get_user_restaurant(request.user) is not None
 
 class CanViewCustomers(permissions.BasePermission):
-    """
-    Permission to view customers.
-    Owner and Manager can view customer data.
-    """
+    """Allows Owner, Manager, GlobalAdmin to view CRM customers."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role in ('owner', 'restaurant_admin', 'manager', 'global_admin')
-        )
-
+        p = _get_profile(request.user)
+        return bool(p and (p.is_owner or p.is_manager or p.is_global_admin))
 
 class CanEditRestaurant(permissions.BasePermission):
-    """
-    Permission to edit restaurant settings.
-    Only Owner can edit restaurant details.
-    """
+    """Only Owner and GlobalAdmin can edit restaurant settings."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role in ('owner', 'restaurant_admin', 'global_admin')
-        )
-
+        p = _get_profile(request.user)
+        return bool(p and (p.is_owner or p.is_global_admin))
 
 class IsRestaurantStaff(permissions.BasePermission):
-    """
-    Generic permission for any restaurant staff member.
-    Owner, Manager, Host can access restaurant-specific features.
-    """
+    """Generic permission validating the user is staff OR a global admin."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            hasattr(request.user, 'profile') and 
-            request.user.profile.role in (
-                'owner', 'restaurant_admin', 'restaurant_owner',
-                'manager', 'host', 'hostess', 'worker', 'global_admin'
-            ) and (
-                request.user.profile.role == 'global_admin' or
-                request.user.profile.restaurant is not None
-            )
-        )
+        p = _get_profile(request.user)
+        if not p:
+            return False
+        if p.is_global_admin:
+            return True
+        # For staff members, ensure they actually have a restaurant assigned (or are owners who own one)
+        from core.utils import get_user_restaurant
+        if p.is_staff_member and get_user_restaurant(request.user) is not None:
+            return True
+        return False

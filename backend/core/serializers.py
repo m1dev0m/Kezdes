@@ -112,6 +112,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
         normalized_role = role_aliases.get(role, role)
         allowed_roles = {r[0] for r in Profile.ROLE_CHOICES}
+        # Block privileged roles from public registration
+        blocked_roles = {'global_admin'}
+        if normalized_role in blocked_roles:
+            raise serializers.ValidationError({"role": "Invalid role."})
         if normalized_role not in allowed_roles:
             raise serializers.ValidationError({"role": "Invalid role."})
         attrs['role'] = normalized_role

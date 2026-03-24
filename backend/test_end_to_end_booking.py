@@ -79,7 +79,7 @@ class EndToEndBookingFlowTest(APITestCase):
             "guests": 2,
             "event_type": "business",
             "event_title": "Walk-in",
-            "status": "approved",
+            "status": "confirmed",
         }
         manual_res = self.client.post("/api/v1/bookings/create_manual/", manual_payload, format="json")
         self.assertEqual(manual_res.status_code, status.HTTP_201_CREATED)
@@ -88,5 +88,6 @@ class EndToEndBookingFlowTest(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {organizer_token}")
         user_list_res = self.client.get("/api/v1/bookings/", format="json")
         self.assertEqual(user_list_res.status_code, status.HTTP_200_OK)
-        user_booking_ids = [row["id"] for row in user_list_res.data]
+        data = user_list_res.data if isinstance(user_list_res.data, list) else user_list_res.data.get("results", [])
+        user_booking_ids = [row["id"] for row in data]
         self.assertNotIn(manual_res.data["id"], user_booking_ids)

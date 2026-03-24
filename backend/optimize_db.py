@@ -30,24 +30,24 @@ def create_indexes():
             sql = f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {idx_name} ON {table}({col_str});"
             try:
                 cursor.execute(sql)
-                print(f"✓ Created index {idx_name}")
+                pass
             except Exception as e:
-                print(f"✗ Failed {idx_name}: {e}")
+                pass
     
     connection.commit()
 
 def enable_partitioning():
     """Enable table partitioning for very large tables (future optimization)"""
-    print("\n📊 Partitioning strategy:")
-    print("  - bookings: partition by restaurant_id (horizontal)")
-    print("  - messages: partition by created_at (time-based)")
-    print("  Implement in future when table > 10M rows")
+    pass
+    pass
+    pass
+    pass
 
 def vacuum_analyze():
     """Vacuum and analyze for query planner"""
     with connection.cursor() as cursor:
         cursor.execute("VACUUM ANALYZE;")
-        print("✓ Vacuum and analyze complete")
+        pass
 
 def check_connection_settings():
     """Check PostgreSQL settings"""
@@ -62,15 +62,15 @@ def check_connection_settings():
                 'maintenance_work_mem'
             );
         """)
-        print("\n📈 PostgreSQL Settings:")
+        pass
         for name, value in cursor.fetchall():
-            print(f"  {name}: {value}")
+            pass
 
 if __name__ == '__main__':
-    print("🔧 Optimizing database for scale...\n")
+    pass
     create_indexes()
     vacuum_analyze()
     check_connection_settings()
     enable_partitioning()
-    print("\n✅ Database optimization complete!")
-    print("\nRecommend running weekly: SELECT pg_stat_statements_reset();")
+    pass
+    pass

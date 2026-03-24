@@ -94,7 +94,7 @@ class TestCustomerCreation:
             'date': tomorrow,
             'time': '20:00',
             'guests': 4,
-            'status': 'approved',
+            'status': 'confirmed',
             'user_name_manual': 'John Walk-in',
             'user_phone_manual': '+77779876543'
         })

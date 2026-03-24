@@ -22,17 +22,9 @@ class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     ordering = ['-last_visit', '-created_at']
 
     def get_queryset(self):
-        if getattr(self, "swagger_fake_view", False):
-            return Customer.objects.none()
-        user = self.request.user
-        restaurant = get_user_restaurant(user)
-        if restaurant:
-            qs = Customer.objects.filter(restaurant=restaurant)
-            # Keep list endpoint lightweight; prefetch only when needed.
-            if getattr(self, 'action', None) in ['retrieve', 'partial_update', 'update']:
-                qs = qs.prefetch_related('visit_history', 'internal_notes')
-            return qs
-        return Customer.objects.none()
+        return Customer.objects.filter(
+            restaurant=self.request.user.profile.restaurant
+        ).select_related('restaurant').prefetch_related('visit_history', 'internal_notes')
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -167,12 +159,9 @@ class CustomerNoteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        if getattr(self, "swagger_fake_view", False):
-            return CustomerNote.objects.none()
-        restaurant = get_user_restaurant(self.request.user)
-        if not restaurant:
-            return CustomerNote.objects.none()
-        return CustomerNote.objects.filter(customer__restaurant=restaurant)
+        return CustomerNote.objects.filter(
+            customer__restaurant=self.request.user.profile.restaurant
+        ).select_related('customer', 'author')
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -182,12 +171,9 @@ class VisitViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        if getattr(self, "swagger_fake_view", False):
-            return Visit.objects.none()
-        restaurant = get_user_restaurant(self.request.user)
-        if not restaurant:
-            return Visit.objects.none()
-        return Visit.objects.filter(customer__restaurant=restaurant)
+        return Visit.objects.filter(
+            customer__restaurant=self.request.user.profile.restaurant
+        ).select_related('customer', 'booking')
 
 
 class LeadViewSet(viewsets.ModelViewSet):
@@ -202,9 +188,17 @@ class LeadViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return Lead.objects.none()
-        if not hasattr(user, "profile") or user.profile.role not in ("owner", "restaurant_admin", "global_admin"):
+        if not hasattr(user, "profile"):
             return Lead.objects.none()
-        return Lead.objects.all()
+        role = user.profile.role
+        if role == "global_admin":
+            return Lead.objects.all()
+        if role in ("owner", "restaurant_admin"):
+            from core.utils import get_user_restaurant
+            restaurant = get_user_restaurant(user)
+            if restaurant:
+                return Lead.objects.filter(restaurant=restaurant)
+        return Lead.objects.none()
 
     def perform_create(self, serializer):
         source = self.request.data.get('source') or 'pricing'

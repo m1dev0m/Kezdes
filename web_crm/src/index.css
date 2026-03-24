@@ -4,19 +4,24 @@
 
 @layer base {
   :root {
-    --accent-rgb: 26 60 52;
-    --accent-weak-rgb: 26 60 52;
-  }
-
-  .theme-crm {
-    --accent-rgb: 79 70 229;
-    --accent-weak-rgb: 79 70 229;
+    --bg-primary: #F9FAFB;
+    --bg-surface: #FFFFFF;
+    --color-primary: #1A3C34;
+    --text-primary: #111827;
+    --text-muted: #4B5563;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --card-padding: 16px;
+    --gap: 12px;
+    --border-radius: 6px;
   }
 
   body {
-    @apply text-slate-900 antialiased;
-    background-color: #FDFBF7;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply antialiased;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   ::selection {
@@ -59,9 +64,7 @@
 }
 
 @layer utilities {
-  .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-white/50;
-  }
+
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;

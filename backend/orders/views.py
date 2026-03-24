@@ -48,12 +48,19 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Order.objects.none()
-        if not self.request.user.is_authenticated:
+        user = self.request.user
+        if not user.is_authenticated:
             return Order.objects.none()
+            
+        # Support both customer view and staff view
+        if hasattr(user, 'profile') and user.profile.role in ('owner', 'manager', 'host'):
+            return Order.objects.filter(
+                restaurant=user.profile.restaurant
+            ).select_related("restaurant", "reservation", "user").prefetch_related("items__menu_item").order_by("-created_at")
         
-        # Default behavior: user's own orders
+        # Default behavior: user's own orders (customer view)
         return (
-            Order.objects.filter(user=self.request.user)
+            Order.objects.filter(user=user)
             .select_related("restaurant", "reservation")
             .prefetch_related("items__menu_item")
             .order_by("-created_at")

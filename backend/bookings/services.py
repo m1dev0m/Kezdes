@@ -13,6 +13,8 @@ def make_aware_if_needed(dt):
     return dt
 
 class BookingService:
+    LOCK_GRANULARITY_MINUTES = 15
+
     @staticmethod
     def is_within_operating_hours(restaurant, date, request_time, duration_minutes=90):
         """
@@ -38,6 +40,18 @@ class BookingService:
             close_dt = make_aware_if_needed(datetime.combine(date, hours.closing_time))
 
         return open_dt <= start_dt and end_dt <= close_dt
+
+    @staticmethod
+    def _lock_keys_for_range(restaurant_id, start_dt, end_dt):
+        keys = []
+        cursor = start_dt
+        step = timedelta(minutes=BookingService.LOCK_GRANULARITY_MINUTES)
+        while cursor < end_dt:
+            keys.append(
+                f"lock:booking:{restaurant_id}:{cursor.date().isoformat()}:{cursor.time().strftime('%H%M')}"
+            )
+            cursor += step
+        return keys
 
     @staticmethod
     def find_best_tables(
@@ -109,15 +123,50 @@ class BookingService:
             # Return the one with smallest sufficient capacity
             return [suitable_single[0]]
 
-        # 5. Try to combine tables (Greedy approach)
-        # Sort available tables by capacity descending to use fewer tables
+        # 5. Try to combine tables to minimize unused capacity.
+        # Guests are capped at 20 (serializer), so a bounded DP is enough.
+        total_capacity = sum(t.seats for t in available_tables)
+        if total_capacity < guests:
+            return []
+
+        max_table_seats = max(t.seats for t in available_tables)
+        max_sum = guests + max_table_seats
+
+        best_for_sum = {0: []}
+        for t in available_tables:
+            for seat_sum, combo in list(best_for_sum.items()):
+                new_sum = seat_sum + t.seats
+                if new_sum > max_sum:
+                    continue
+                new_combo = combo + [t]
+                existing = best_for_sum.get(new_sum)
+                if existing is None or len(new_combo) < len(existing):
+                    best_for_sum[new_sum] = new_combo
+
+        best_combo = None
+        best_sum = None
+        for seat_sum, combo in best_for_sum.items():
+            if seat_sum < guests:
+                continue
+            if best_sum is None:
+                best_sum = seat_sum
+                best_combo = combo
+                continue
+            if seat_sum < best_sum or (seat_sum == best_sum and len(combo) < len(best_combo)):
+                best_sum = seat_sum
+                best_combo = combo
+
+        if best_combo:
+            return best_combo
+
+        # Fallback: greedy (should be rare)
         available_sorted = sorted(available_tables, key=lambda x: x.seats, reverse=True)
         combination = []
-        total_seats = 0
+        running = 0
         for t in available_sorted:
             combination.append(t)
-            total_seats += t.seats
-            if total_seats >= guests:
+            running += t.seats
+            if running >= guests:
                 return combination
 
         return []
@@ -229,17 +278,42 @@ class BookingService:
         return [t.id for t in suitable_tables if t.id not in occupied_table_ids]
 
     @staticmethod
-    def acquire_booking_lock(restaurant_id, date, time_val, timeout=60):
+    def acquire_booking_lock(restaurant_id, date, time_val, duration_minutes=90, timeout=60):
         """
-        Production-ready distributed lock for specific time slots.
+        Distributed lock for a reservation time range (prevents overlaps under concurrency).
         """
-        lock_key = f"lock:booking:{restaurant_id}:{date}:{time_val}"
-        return cache.add(lock_key, "locked", timeout=timeout)
+        import time as time_module
+        start_dt = make_aware_if_needed(datetime.combine(date, time_val))
+        end_dt = start_dt + timedelta(minutes=duration_minutes or 90)
+        keys = BookingService._lock_keys_for_range(restaurant_id, start_dt, end_dt)
+
+        # Retry for up to 5 seconds
+        for _ in range(50):
+            acquired = []
+            ok = True
+            for key in sorted(keys):
+                if cache.add(key, "locked", timeout=timeout):
+                    acquired.append(key)
+                    continue
+                ok = False
+                break
+
+            if ok:
+                return True
+
+            for k in acquired:
+                cache.delete(k)
+            time_module.sleep(0.1)
+
+        return False
 
     @staticmethod
-    def release_booking_lock(restaurant_id, date, time_val):
-        lock_key = f"lock:booking:{restaurant_id}:{date}:{time_val}"
-        cache.delete(lock_key)
+    def release_booking_lock(restaurant_id, date, time_val, duration_minutes=90):
+        start_dt = make_aware_if_needed(datetime.combine(date, time_val))
+        end_dt = start_dt + timedelta(minutes=duration_minutes or 90)
+        keys = BookingService._lock_keys_for_range(restaurant_id, start_dt, end_dt)
+        for key in keys:
+            cache.delete(key)
 
     @staticmethod
     def confirm_booking(booking_id, actor=None):
@@ -267,7 +341,7 @@ class BookingService:
             if not is_ok:
                 return None, f"Capacity exceeded. Available: {available}, Needed: {booking.guests}"
 
-            booking.transition_to(Booking.APPROVED, actor=actor)
+            booking.transition_to(Booking.CONFIRMED, actor=actor)
             NotificationService.notify_customer_booking_confirmed(booking)
             return booking, None
 
@@ -306,7 +380,7 @@ class BookingService:
         now = timezone.now()
         # 1. Approved + Past end time + Checked in -> COMPLETED
         completed = Booking.objects.filter(
-            status=Booking.APPROVED,
+            status=Booking.CONFIRMED,
             end_datetime__lt=now,
             is_checked_in=True
         ).update(status=Booking.COMPLETED)
@@ -314,7 +388,7 @@ class BookingService:
         # 2. Approved + Past end time + NOT Checked in -> NO_SHOW (with a grace period of 30 mins)
         cutoff = now - timedelta(minutes=30)
         no_shows = Booking.objects.filter(
-            status=Booking.APPROVED,
+            status=Booking.CONFIRMED,
             end_datetime__lt=cutoff,
             is_checked_in=False
         ).update(status=Booking.NO_SHOW)
@@ -362,4 +436,3 @@ class WaitlistService:
             data={"type": "waitlist_promoted", "waitlist_id": entry.id},
         )
         return entry
-

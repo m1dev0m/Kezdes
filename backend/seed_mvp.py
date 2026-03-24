@@ -56,6 +56,5 @@ def seed_data():
                 'price_level': 2,
             }
         )
-    print("Successfully seeded 4 restaurants with coordinates!")
 if __name__ == "__main__":
     seed_data()

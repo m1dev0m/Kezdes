@@ -120,6 +120,17 @@ class MessageViewSet(viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 return response.Response({"detail": "Invalid restaurant"}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Verify user belongs to this restaurant
+            from restaurants.models import Restaurant
+            restaurant_obj = Restaurant.objects.filter(id=rid).first()
+            if not restaurant_obj:
+                return response.Response({"detail": "Restaurant not found"}, status=status.HTTP_404_NOT_FOUND)
+            is_owner = restaurant_obj.owner_id == user.id
+            is_staff = hasattr(user, 'profile') and getattr(user.profile, 'restaurant_id', None) == rid
+            is_guest = Message.objects.filter(restaurant_id=rid, sender=user).exists()
+            if not (is_owner or is_staff or is_guest):
+                return response.Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
             updated = qs.filter(restaurant_id=rid).update(is_read=True)
             return response.Response({"updated": updated})
 

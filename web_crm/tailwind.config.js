@@ -10,20 +10,32 @@ export default {
         extend: {
             colors: {
                 ...colors,
+                primary: 'var(--color-primary)',
+                success: 'var(--success)',
+                warning: 'var(--warning)',
+                danger: 'var(--danger)',
+                bg: {
+                    primary: 'var(--bg-primary)',
+                    surface: 'var(--bg-surface)'
+                },
                 brand: {
-                    green: '#1A3C34', // Deep Elegant Green
-                    gold: '#C5A059',  // Sophisticated Gold
-                    cream: '#FDFBF7', // Soft Cream
-                    accent: '#E9E3D5'
+                    green: 'var(--color-primary)',
+                    cream: 'var(--bg-primary)',
                 }
             },
             fontFamily: {
                 ...fontFamily,
-                serif: ['Playfair Display', 'serif'],
-                sans: ['Plus Jakarta Sans', 'sans-serif'],
+                sans: ['Inter', 'sans-serif'],
             },
-            spacing,
-            borderRadius: radii,
+            spacing: {
+                ...spacing,
+                'card': 'var(--card-padding)',
+                'gap': 'var(--gap)',
+            },
+            borderRadius: {
+                ...radii,
+                'card': 'var(--border-radius)',
+            },
             boxShadow: shadows,
         },
     },

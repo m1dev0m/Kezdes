@@ -22,6 +22,8 @@ class ReproIssuesTest(APITestCase):
             is_verified=True,
             capacity=10,
         )
+        self.admin.profile.restaurant = self.restaurant
+        self.admin.profile.save()
         self.table1 = Table.objects.create(restaurant=self.restaurant, number="T1", seats=4, is_active=True)
         self.table2 = Table.objects.create(restaurant=self.restaurant, number="T2", seats=6, is_active=True)
 
@@ -45,7 +47,7 @@ class ReproIssuesTest(APITestCase):
             "guests": 2,
             "user_name_manual": "Guest 1",
             "user_phone_manual": "+123456789",
-            "status": "approved",
+            "status": "confirmed",
         }
         res = self.client.post("/api/v1/bookings/create_manual/", manual_payload, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
@@ -66,7 +68,7 @@ class ReproIssuesTest(APITestCase):
             "guests": 2,
             "user_name_manual": "Guest 2",
             "user_phone_manual": "+987654321",
-            "status": "approved",
+            "status": "confirmed",
         }
         res = self.client.post("/api/v1/bookings/create_manual/", manual_payload, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)

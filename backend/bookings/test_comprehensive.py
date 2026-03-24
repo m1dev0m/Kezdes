@@ -167,15 +167,13 @@ class TestTableManagement:
         api_client.force_authenticate(user=admin)
         
         response = api_client.post('/api/v1/tables/', {
-            'restaurant': restaurant.id,
-            'number': '1',
-            'seats': 4,
-            'is_active': True,
-            'table_type': 'rectangle'
+            'name': '1',
+            'capacity': 4,
         })
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['number'] == '1'
-        assert response.data['seats'] == 4
+        assert response.data['name'] == '1'
+        assert response.data['capacity'] == 4
+        assert response.data['status'] == 'free'
 
     def test_list_tables(self, api_client, restaurant_with_admin):
         """Test that a restaurant admin can list their tables"""
@@ -203,7 +201,7 @@ class TestTableManagement:
         
         api_client.force_authenticate(user=admin)
         response = api_client.patch(f'/api/v1/tables/{table.id}/', {
-            'seats': 6
+            'capacity': 6
         })
         assert response.status_code == status.HTTP_200_OK
         table.refresh_from_db()

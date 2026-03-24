@@ -88,7 +88,6 @@ export default function WizardScreen() {
             setStep(step + 1);
         } else {
             if (__DEV__) {
-                console.log("Wizard complete", { eventType, guests, budget: maxBudget, addons });
             }
 
             const rId = params.restaurantId || params.venueId;

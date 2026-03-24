@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 class Restaurant(models.Model):
     SOURCE_CHOICES = [
         ('2gis', '2GIS'),
@@ -146,26 +147,59 @@ class Table(models.Model):
         ('occupied', 'Занят'),
         ('cleaning', 'Уборка'),
     ]
-    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='tables')
-    number = models.CharField(max_length=50)
-    seats = models.PositiveIntegerField()
+    CAPACITY_MAX = 20
+
+    restaurant = models.ForeignKey(
+        Restaurant, on_delete=models.CASCADE, related_name='tables',
+        null=False,
+    )
+    # Primary fields — used everywhere in code and tests
+    number = models.CharField(max_length=50, help_text="Table label, e.g. '1', 'A1', 'VIP-1'")
+    seats = models.PositiveIntegerField(help_text="Max guests (1–20)")
+    # Canonical aliases kept in sync via save()
+    name = models.CharField(max_length=50, blank=True)
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+
     is_active = models.BooleanField(default=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='free')
-    x = models.FloatField(default=0.0, help_text="X position in floor plan")
-    y = models.FloatField(default=0.0, help_text="Y position in floor plan")
-    width = models.FloatField(default=60.0, help_text="Width in pixels")
-    height = models.FloatField(default=60.0, help_text="Height in pixels")
-    rotation = models.FloatField(default=0.0, help_text="Rotation in degrees")
+    x = models.FloatField(null=True, blank=True, default=None)
+    y = models.FloatField(null=True, blank=True, default=None)
+    width = models.FloatField(default=60.0)
+    height = models.FloatField(default=60.0)
+    rotation = models.FloatField(default=0.0)
     table_type = models.CharField(max_length=20, choices=TABLE_TYPE_CHOICES, default='rectangle')
     created_at = models.DateTimeField(auto_now_add=True, null=True)
+
     class Meta:
         unique_together = ['restaurant', 'number']
         indexes = [
             models.Index(fields=['restaurant', 'status']),
             models.Index(fields=['restaurant', 'is_active']),
         ]
+
     def __str__(self):
         return f"Table {self.number} ({self.seats} seats) - {self.restaurant.name}"
+
+    def clean(self):
+        if self.restaurant_id is None:
+            raise ValidationError({"restaurant": "Table must be linked to a restaurant."})
+
+        if self.seats <= 0:
+            raise ValidationError({"capacity": "capacity must be > 0"})
+        if self.seats > self.CAPACITY_MAX:
+            raise ValidationError({"capacity": f"capacity must be <= {self.CAPACITY_MAX}"})
+
+    def save(self, *args, **kwargs):
+        # If created via name/capacity (API path), sync to number/seats
+        if self.name and not self.number:
+            self.number = self.name
+        if self.capacity and not self.seats:
+            self.seats = self.capacity
+        # Always keep aliases in sync
+        self.name = self.number
+        self.capacity = self.seats
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 class Availability(models.Model):
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='availabilities')

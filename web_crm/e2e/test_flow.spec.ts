@@ -13,7 +13,6 @@ test('Full E2E User Journey (Registration -> Booking -> Confirmation)', async ({
     // =======================================================
     // 1. Restaurant Owner Registration
     // =======================================================
-    console.log("-> 1. Registering Restaurant Owner...");
     await page.goto('/register?mode=restaurant');
 
     const ownerEmail = `owner_${ts}@test.com`;
@@ -34,12 +33,10 @@ test('Full E2E User Journey (Registration -> Booking -> Confirmation)', async ({
     // Should navigate to pending
     await expect(page).toHaveURL(/.*\/register-restaurant\/pending/, { timeout: 15000 });
     await expect(page.locator('text=Аккаунт создан')).toBeVisible({ timeout: 10000 });
-    console.log("   Registration success. At pending page.");
 
     // =======================================================
     // 2. Automate Backend Approval using Django Script
     // =======================================================
-    console.log("-> 2. Backend Admin Approval...");
     const scriptPath = path.resolve(process.cwd(), '../backend/approve_latest.py');
     const pythonScript = `
 import os
@@ -65,12 +62,10 @@ else:
 
     // Execute via POSIX-compliant dot
     const output = execSync(`cd ../backend && . .venv/bin/activate && python3 approve_latest.py`).toString();
-    console.log("   Backend Approval Output:", output.trim());
 
     // =======================================================
     // 3. Login as the newly approved Owner
     // =======================================================
-    console.log("-> 3. Logging in as restaurant owner...");
     await page.goto('/login');
     // Use correct placeholder from Login.tsx
     await page.fill('input[placeholder="your@email.com"]', ownerUser);
@@ -78,10 +73,8 @@ else:
     await page.click('button[type="submit"]');
 
     await expect(page).toHaveURL(/.*\/app\/dashboard/, { timeout: 20000 });
-    console.log("   Owner Dashboard loaded successfully.");
 
     // Quick check: go to Tables page and add a table
-    console.log("   Adding a test table...");
     await page.goto('/app/tables');
     // Use Russian text from i18n
     await page.click('button:has-text("Добавить стол")');
@@ -95,14 +88,12 @@ else:
     await page.waitForTimeout(3000);
 
     // Logout owner
-    console.log("   Logging out owner...");
     await page.context().clearCookies();
     await page.evaluate(() => localStorage.clear());
 
     // =======================================================
     // 4. Customer Flow: Search and Book
     // =======================================================
-    console.log("-> 4. Registering a customer...");
     await page.goto('/register?mode=customer');
 
     const custEmail = `cust_${ts}@test.com`;
@@ -120,7 +111,6 @@ else:
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL(/.*\/guest\/dashboard/, { timeout: 20000 });
 
-    console.log("-> Searching for restaurant and booking...");
     await page.goto('/discover');
     // Use Russian placeholder from i18n
     await page.fill('input[placeholder="Поиск ресторана или адреса"]', restaurantName);
@@ -144,5 +134,4 @@ else:
     await expect(page).toHaveURL(/.*\/restaurant\/\d+\/success/, { timeout: 20000 });
     await expect(page.locator('text=Booking Requested!')).toBeVisible();
 
-    console.log("✅ FULL FLOW TEST PASSED SUCCESSFULLY!");
 });

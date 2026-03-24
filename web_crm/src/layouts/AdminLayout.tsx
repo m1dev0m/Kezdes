@@ -25,7 +25,7 @@ import {
     Star
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+
 
 type OwnedRestaurantUser = {
     owned_restaurant?: { name?: string | null } | null;
@@ -69,10 +69,8 @@ export default function AdminLayout() {
 
     return (
         <div className="flex h-screen bg-slate-50 font-display text-slate-900 overflow-hidden">
-            <motion.aside
-                initial={false}
-                animate={{ width: isSidebarOpen ? 264 : 0 }}
-                className="bg-white border-r border-slate-200 flex flex-col z-40 overflow-hidden relative"
+            <aside
+                className={`bg-white border-r border-slate-200 flex flex-col z-40 overflow-hidden relative transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-[220px]' : 'w-0'}`}
             >
                 <div className="h-14 px-4 flex items-center shrink-0 border-b border-slate-200">
                     <Link to="/app/dashboard" className="flex items-center gap-2">
@@ -85,7 +83,7 @@ export default function AdminLayout() {
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] font-semibold transition-colors duration-150 group ${isActive(item.path)
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] font-semibold transition-all duration-200 group ${isActive(item.path)
                                 ? 'bg-indigo-50 text-indigo-700'
                                 : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                                 }`}
@@ -105,7 +103,7 @@ export default function AdminLayout() {
                         <span>Sign out</span>
                     </button>
                 </div>
-            </motion.aside>
+            </aside>
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <header className="h-14 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center justify-between z-30">
@@ -154,32 +152,27 @@ export default function AdminLayout() {
                                 <ChevronDown size={10} className={`text-slate-300 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                             </button>
 
-                            <AnimatePresence>
-                                {isUserMenuOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                                        className="absolute right-0 mt-3 w-56 bg-white border border-slate-200 rounded-lg shadow-lg p-1.5 z-50"
+                            {isUserMenuOpen && (
+                                <div
+                                    className="absolute right-0 mt-3 w-56 bg-white border border-slate-200 rounded-lg shadow-lg p-1.5 z-50"
+                                >
+                                    <div className="px-3 py-2.5 bg-slate-50 rounded-md mb-1.5 border border-slate-200">
+                                        <p className="text-[10px] font-semibold text-slate-500 mb-1">{t('restaurant.myRestaurant')}</p>
+                                        <p className="text-sm font-semibold text-slate-900 truncate">{(user as OwnedRestaurantUser | null)?.owned_restaurant?.name || 'Grand Bistro'}</p>
+                                    </div>
+                                    <Link to="/app/settings" className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                                        <Settings size={14} />
+                                        <span>{t('nav.settings')}</span>
+                                    </Link>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors mt-0.5"
                                     >
-                                        <div className="px-3 py-2.5 bg-slate-50 rounded-md mb-1.5 border border-slate-200">
-                                            <p className="text-[10px] font-semibold text-slate-500 mb-1">{t('restaurant.myRestaurant')}</p>
-                                            <p className="text-sm font-semibold text-slate-900 truncate">{(user as OwnedRestaurantUser | null)?.owned_restaurant?.name || 'Grand Bistro'}</p>
-                                        </div>
-                                        <Link to="/app/settings" className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors">
-                                            <Settings size={14} />
-                                            <span>{t('nav.settings')}</span>
-                                        </Link>
-                                        <button
-                                            onClick={handleLogout}
-                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors mt-0.5"
-                                        >
-                                            <LogOut size={14} />
-                                            <span>Sign Out</span>
-                                        </button>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                        <LogOut size={14} />
+                                        <span>Sign Out</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

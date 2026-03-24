@@ -45,14 +45,14 @@ class ReservationConcurrencyTests(TransactionTestCase):
             is_active=True,
         )
 
-    def _attempt_booking(self, user: User, barrier: Barrier):
+    def _attempt_booking(self, user: User, barrier: Barrier, *, time_str: str = "19:00"):
         try:
             client = APIClient()
             client.force_authenticate(user=user)
             payload = {
                 "restaurant": self.restaurant.id,
                 "date": "2030-01-10",
-                "time": "19:00",
+                "time": time_str,
                 "guests": 2,
             }
             barrier.wait()
@@ -109,6 +109,33 @@ class ReservationConcurrencyTests(TransactionTestCase):
             restaurant=self.restaurant,
             date="2030-01-10",
             time="19:00",
+            status__in=Booking.ACTIVE_STATUSES,
+        ).count()
+        self.assertEqual(active, 1)
+
+    def test_parallel_overlapping_time_ranges_prevented(self):
+        import uuid
+        suffix = uuid.uuid4().hex[:6]
+        user_a = User.objects.create_user(username=f"user_ov_a_{suffix}", password="pwd-123")
+        user_b = User.objects.create_user(username=f"user_ov_b_{suffix}", password="pwd-123")
+        user_a.profile.role = "customer"
+        user_b.profile.role = "customer"
+        user_a.profile.save()
+        user_b.profile.save()
+
+        barrier = Barrier(2)
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            f1 = ex.submit(self._attempt_booking, user_a, barrier, time_str="19:00")
+            f2 = ex.submit(self._attempt_booking, user_b, barrier, time_str="19:30")
+            outcomes = [f1.result(), f2.result()]
+
+        success_count = sum(1 for code, _ in outcomes if code == status.HTTP_201_CREATED)
+        self.assertEqual(success_count, 1, f"Unexpected outcomes: {outcomes}")
+
+        active = Booking.objects.filter(
+            restaurant=self.restaurant,
+            date="2030-01-10",
+            time__in=["19:00", "19:30"],
             status__in=Booking.ACTIVE_STATUSES,
         ).count()
         self.assertEqual(active, 1)

@@ -111,7 +111,7 @@ class TestStaffManagement:
             date=date.today() + timedelta(days=1),
             time=time(19, 0),
             guests=2,
-            status='approved'
+            status='confirmed'
         )
         
         api_client.force_authenticate(user=manager)

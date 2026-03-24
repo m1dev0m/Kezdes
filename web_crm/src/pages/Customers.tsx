@@ -1,82 +1,55 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-    Search,
-    Download,
-    ChevronRight,
-    Mail,
-    Phone,
-    Calendar,
-    Star
-} from 'lucide-react';
+import { Search, Phone, Star, Download, AlertCircle, ChevronRight, User } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
-import { Table } from '@/components/ui/Table';
-import { useI18n } from '@/i18n';
+import { useI18n } from '@/i18n/index.tsx';
+import { motion } from 'framer-motion';
 
 interface Customer {
     id: number;
     full_name: string;
     email: string;
     phone: string;
-    visits_count?: number;
-    total_bookings?: number;
+    visits_count: number;
     last_visit: string;
     notes: string;
     is_vip: boolean;
-    tags?: string;
 }
 
 export default function Customers() {
-    const navigate = useNavigate();
     const { t } = useI18n();
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [segment, setSegment] = useState<'all' | 'vip' | 'regular'>('all');
-    const pageSize = 20;
 
     useEffect(() => {
-        const t = setTimeout(() => setDebouncedSearch(search), 300);
-        return () => clearTimeout(t);
+        const timeout = setTimeout(() => setDebouncedSearch(search), 400);
+        return () => clearTimeout(timeout);
     }, [search]);
 
-    useEffect(() => {
-        setPage(1);
-    }, [segment, debouncedSearch]);
-
-    useEffect(() => {
-        loadCustomers();
-    }, [page, debouncedSearch]);
-
     const loadCustomers = async () => {
-        setLoading(true);
         try {
             const params = new URLSearchParams();
-            params.set('page', String(page));
-            params.set('page_size', String(pageSize));
+            if (debouncedSearch) params.set('search', debouncedSearch);
             params.set('ordering', '-last_visit');
-            if (debouncedSearch.trim()) {
-                params.set('search', debouncedSearch.trim());
-            }
+
             const res = await api.get(`/crm/customers/?${params.toString()}`);
-            if (res.data.results) {
-                setCustomers(res.data.results);
-                setTotalPages(Math.ceil((res.data.count || 0) / pageSize));
-            } else {
-                setCustomers(Array.isArray(res.data) ? res.data : []);
-                setTotalPages(1);
-            }
+            setCustomers(res.data.results || (Array.isArray(res.data) ? res.data : []));
+            setError(null);
         } catch {
-            toast.error(t('customers.failedToLoad'));
+            setError("Failed to fetch guest database");
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        loadCustomers();
+        const interval = setInterval(loadCustomers, 15000);
+        return () => clearInterval(interval);
+    }, [debouncedSearch]);
 
     const handleExport = async () => {
         try {
@@ -84,194 +57,106 @@ export default function Customers() {
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'customers.csv';
+            a.download = 'guest_list.csv';
             a.click();
-            window.URL.revokeObjectURL(url);
-            toast.success(t('customers.exportDownloaded'));
+            toast.success("Guest list exported");
         } catch {
-            toast.error(t('customers.exportNotAvailable'));
-        }
-    };
-
-    const filtered = customers.filter(c => {
-        const visits = (c.visits_count ?? c.total_bookings ?? 0);
-        const isVip = visits >= 5 || c.is_vip;
-        if (segment === 'vip') return isVip;
-        if (segment === 'regular') return !isVip;
-        return true;
-    });
-
-    const getSegmentLabel = (s: string) => {
-        switch (s) {
-            case 'all': return t('customers.filterAll');
-            case 'vip': return t('customers.filterVip');
-            case 'regular': return t('customers.filterRegular');
-            default: return s;
+            toast.error("Export failed");
         }
     };
 
     return (
-        <div className="space-y-4 pb-12">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div className="space-y-gap pb-20">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-gap mb-8">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{t('customers.title')}</h1>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mt-1.5 opacity-80">{t('customers.manageRelationships')}</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('customers.title')}</h1>
+                    <p className="text-xs text-text-muted font-bold uppercase tracking-widest mt-1">CRM Database Manager</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="secondary" size="sm" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] border-slate-100 bg-white flex items-center gap-2" onClick={handleExport}>
-                        <Download className="w-3 h-3 opacity-60" /> {t('customers.export')}
-                    </Button>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                {(['all', 'vip', 'regular'] as const).map((s) => (
-                    <button
-                        key={s}
-                        onClick={() => setSegment(s)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all whitespace-nowrap flex items-center gap-2 border ${segment === s
-                            ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                            : 'bg-white text-slate-400 border-slate-100 hover:text-primary hover:bg-slate-50'}`}
-                    >
-                        {s === 'vip' && <Star size={10} className={segment === s ? 'text-amber-400 fill-amber-400' : 'text-amber-500'} />}
-                        {getSegmentLabel(s)}
+                <div className="flex gap-gap">
+                    <button onClick={handleExport} className="px-6 py-2.5 bg-bg-surface border border-slate-100 rounded-card text-[10px] font-bold uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2">
+                        <Download size={14} /> Export CSV
                     </button>
-                ))}
-            </div>
-
-            <div className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm">
-                <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="relative flex-1 max-w-md group w-full">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-primary transition-colors" />
-                        <input
-                            type="text"
-                            placeholder={t('customers.searchBy')}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:border-primary transition-all outline-none text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 placeholder:text-slate-300"
-                        />
-                    </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] opacity-80 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                            {filtered.length} {t('customers.guestsCount')}
-                        </div>
-                    </div>
                 </div>
+            </header>
 
-                <Table<Customer>
-                    columns={[
-                        {
-                            key: 'info',
-                            title: t('customers.guestInfo'),
-                            render: (customer) => {
-                                const visits = (customer.visits_count ?? customer.total_bookings ?? 0);
-                                const isVip = visits >= 5 || customer.is_vip;
-                                return (
-                                    <div className="flex items-center gap-4 py-2">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black transition-colors ${isVip
-                                            ? 'bg-amber-50 text-amber-600 border border-amber-200 shadow-sm'
-                                            : 'bg-slate-50 text-slate-900 border border-slate-200 group-hover:bg-primary group-hover:text-white shadow-sm'}`}>
-                                            {customer.full_name?.charAt(0)?.toUpperCase() || 'G'}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <p className="text-sm font-black text-slate-900 tracking-tighter">{customer.full_name}</p>
-                                                {isVip && (
-                                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-700 text-[9px] font-black uppercase tracking-[0.3em]">
-                                                        <Star size={10} className="fill-current" /> VIP
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] opacity-80">ID://{customer.id}</p>
-                                        </div>
-                                    </div>
-                                );
-                            }
-                        },
-                        {
-                            key: 'contact',
-                            title: t('customers.contact'),
-                            render: (customer) => (
-                                <div className="space-y-1.5 py-2">
-                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] tabular-nums">
-                                        <Mail size={14} className="opacity-40" /> {customer.email || '—'}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] tabular-nums">
-                                        <Phone size={14} className="opacity-40" /> {customer.phone || '—'}
-                                    </div>
-                                </div>
-                            )
-                        },
-                        {
-                            key: 'visits',
-                            title: t('customers.visits'),
-                            align: 'center',
-                            render: (customer) => {
-                                const visits = (customer.visits_count ?? customer.total_bookings ?? 0);
-                                const isVip = visits >= 5 || customer.is_vip;
-                                return (
-                                    <div className={`inline-flex items-center justify-center min-w-[3rem] h-8 rounded-lg font-black text-[11px] border tabular-nums ${isVip
-                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                        : 'bg-slate-50 text-slate-900 border-slate-200'}`}>
-                                        {visits}
-                                    </div>
-                                );
-                            }
-                        },
-                        {
-                            key: 'last_visit',
-                            title: t('customers.lastVisit'),
-                            render: (customer) => (
-                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] tabular-nums">
-                                    <Calendar size={14} className="opacity-40" />
-                                    {customer.last_visit ? new Date(customer.last_visit).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : t('customers.never')}
-                                </div>
-                            )
-                        },
-                        {
-                            key: 'tags',
-                            title: t('customers.tags'),
-                            render: (customer) => customer.tags ? (
-                                <div className="flex flex-wrap gap-1.5 py-2">
-                                    {customer.tags.split(',').map(tag => (
-                                        <span
-                                            key={tag}
-                                            className="px-2.5 py-1 rounded-lg bg-slate-50 text-[9px] font-black text-slate-600 border border-slate-200 uppercase tracking-[0.3em]"
-                                        >
-                                            {tag.trim()}
-                                        </span>
-                                    ))}
-                                </div>
-                            ) : (
-                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">—</span>
-                            )
-                        },
-                        {
-                            key: 'action',
-                            title: '',
-                            align: 'right',
-                            render: () => (
-                                <div className="flex items-center justify-end">
-                                    <ChevronRight size={18} className="text-slate-300 group-hover:text-primary transition-all transform group-hover:translate-x-1" />
-                                </div>
-                            )
-                        }
-                    ]}
-                    data={filtered}
-                    rowKey={(c) => c.id.toString()}
-                    isLoading={loading}
-                    onRowClick={(c) => navigate(`/app/customers/${c.id}`)}
-                    pagination={{
-                        currentPage: page,
-                        totalPages,
-                        onPageChange: setPage,
-                        pageSize: pageSize,
-                        totalItems: totalPages * pageSize // approximate or leave out
-                    }}
-                    className="border-none shadow-none rounded-none"
-                    stickyHeader={false}
-                />
+            <div className="flex flex-col md:flex-row gap-gap">
+                <div className="relative flex-1 group">
+                    <Search className="absolute left-card top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-all" size={16} />
+                    <input
+                        type="text" value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder="Search by name or phone..."
+                        className="w-full pl-12 pr-6 py-4 bg-bg-surface border border-slate-100 rounded-card focus:border-primary transition-all shadow-sm outline-none text-sm font-medium"
+                    />
+                </div>
             </div>
+
+            {loading && !customers.length ? (
+                <div className="space-y-gap">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-24 bg-bg-surface rounded-card animate-pulse border border-slate-50 shadow-sm"></div>
+                    ))}
+                </div>
+            ) : error ? (
+                <div className="p-card bg-danger/5 text-danger rounded-card border border-danger/20 flex items-center gap-gap">
+                    <AlertCircle size={24} />
+                    <p className="font-bold">{error}</p>
+                </div>
+            ) : (
+                <div className="bg-bg-surface rounded-card border border-slate-100 shadow-xl shadow-slate-900/5 divide-y divide-slate-50 overflow-hidden">
+                    {customers.length === 0 ? (
+                        <div className="p-20 text-center space-y-4">
+                            <User size={64} className="mx-auto text-slate-100 opacity-50" />
+                            <p className="text-text-muted uppercase font-bold tracking-[0.2em] text-xs transition-opacity">Database empty</p>
+                        </div>
+                    ) : (
+                        customers.map((c, i) => (
+                            <motion.div
+                                key={c.id}
+                                initial={{ opacity: 0, scale: 0.99, x: -5 }} animate={{ opacity: 1, scale: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                                className="p-card flex flex-col md:flex-row md:items-center justify-between gap-gap hover:bg-bg-primary/30 transition-all group cursor-pointer relative overflow-hidden"
+                            >
+                                <div className="flex items-center gap-4 flex-1">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl transition-all shadow-inner border border-slate-100 italic ${c.is_vip ? 'bg-warning/10 text-warning border-warning/20' : 'bg-bg-primary text-primary/40 group-hover:bg-primary group-hover:text-white group-hover:border-primary'}`}>
+                                        {c.full_name?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-bold tracking-tight text-base">{c.full_name || 'Anonymous Guest'}</h4>
+                                            {c.is_vip && <div className="px-2 py-0.5 rounded-lg bg-warning/10 text-warning text-[8px] font-black uppercase tracking-widest border border-warning/20">VIP ELITE</div>}
+                                        </div>
+                                        <div className="flex items-center gap-3 text-text-muted text-[10px] font-bold uppercase tracking-widest mt-1 opacity-70">
+                                            <span className="flex items-center gap-1"><Phone size={10} /> {c.phone}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-6 lg:gap-12 md:px-card border-slate-50">
+                                    <div className="text-center group-hover:scale-105 transition-transform duration-300">
+                                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Visits</p>
+                                        <p className="text-lg font-bold text-text-primary tabular-nums tracking-tighter shadow-sm font-sans">{c.visits_count || 0}</p>
+                                    </div>
+                                    <div className="text-center group-hover:scale-105 transition-transform duration-300">
+                                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Last seen</p>
+                                        <p className="text-[12px] font-bold text-text-primary uppercase tracking-tighter opacity-80 tabular-nums font-sans">
+                                            {c.last_visit ? new Date(c.last_visit).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : 'Never'}
+                                        </p>
+                                    </div>
+                                    {c.notes && (
+                                        <div className="max-w-[200px] text-left opacity-60 group-hover:opacity-100 transition-opacity">
+                                            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-2"><Star size={8} /> Guest Preference</p>
+                                            <p className="text-[10px] font-medium leading-relaxed truncate group-hover:overflow-visible group-hover:whitespace-normal group-hover:break-words transition-all font-sans italic">“{c.notes}”</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all">
+                                    <ChevronRight size={18} />
+                                </button>
+                            </motion.div>
+                        ))
+                    )}
+                </div>
+            )}
         </div>
     );
 }

@@ -15,7 +15,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from bookings.models import Booking
 from core.permissions import (
-    CanManageTables,
     IsGlobalAdmin,
     IsRestaurantOrGlobalAdmin,
     IsRestaurantStaff,
@@ -32,6 +31,7 @@ from .serializers import (
     RestaurantSerializer,
     ReviewSerializer,
     StaffSerializer,
+    TableAPISerializer,
     TableSerializer,
 )
 
@@ -383,42 +383,49 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
 class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
     queryset = Table.objects.select_related('restaurant').all()
-    serializer_class = TableSerializer
+    serializer_class = TableAPISerializer
     filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['number', 'seats', 'created_at']
-    ordering = ['number'] # Default ordering by number ascending
+    ordering_fields = ['name', 'capacity', 'created_at']
+    ordering = ['name']
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        user = self.request.user
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            return Table.objects.none()
+
+        qs = Table.objects.select_related("restaurant").filter(restaurant=restaurant)
         active = self.request.query_params.get('active')
         if active is not None:
-            active_bool = active.lower() in ('true', '1', 'yes')
-            qs = qs.filter(is_active=active_bool)
+            qs = qs.filter(is_active=active.lower() in ('true', '1', 'yes'))
         return qs
 
     def get_permissions(self):
-        # View-only actions: host/manager/owner can see tables
-        if self.action in ["list", "retrieve", "status"]:
-            return [IsRestaurantStaff()]
+        return [IsRestaurantStaff()]
 
-        # Create/update/delete: manager/owner/admin
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [CanManageTables()]
+    def perform_create(self, serializer):
+        user = self.request.user
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            raise PermissionDenied("You don't have a restaurant to attach tables to.")
+        serializer.save(restaurant=restaurant)
 
-        return [permissions.IsAuthenticated()]
+    def update(self, request, *args, **kwargs):
+        # 'restaurant' is read_only in serializer — no need to strip it
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     @action(detail=False, methods=["get"])
     def status(self, request):
         tables = self.get_queryset()
 
         user = self.request.user
-        restaurant = getattr(user, 'owned_restaurant', None)
-        if not restaurant:
-            try:
-                if hasattr(user, 'profile') and user.profile:
-                    restaurant = user.profile.restaurant
-            except (Profile.DoesNotExist, AttributeError):
-                restaurant = None
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
             
         if not restaurant:
              return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
@@ -491,19 +498,23 @@ class StaffViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if not hasattr(user, "profile") or not user.profile.restaurant:
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
             return User.objects.none()
         return User.objects.filter(
-            profile__restaurant=user.profile.restaurant,
+            profile__restaurant=restaurant,
             profile__role__in=["manager", "host"],
         )
 
     def perform_create(self, serializer):
         user = self.request.user
-        if not hasattr(user, "profile") or not user.profile.restaurant:
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
             raise PermissionDenied("You don't have a restaurant to attach staff to.")
         staff_user = serializer.save()
-        staff_user.profile.restaurant = user.profile.restaurant
+        staff_user.profile.restaurant = restaurant
         staff_user.profile.save()
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -511,10 +522,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        restaurant_id = self.kwargs.get('restaurant_pk')
+        restaurant_id = self.kwargs.get('restaurant_pk') or self.request.query_params.get('restaurant')
         if restaurant_id:
             return Review.objects.filter(restaurant_id=restaurant_id).select_related('user')
-        return Review.objects.all().select_related('user', 'restaurant')
+        # Fallback: only show reviews for the user's own restaurant (staff) or none
+        user = self.request.user
+        if user.is_authenticated:
+            from core.utils import get_user_restaurant
+            restaurant = get_user_restaurant(user)
+            if restaurant:
+                return Review.objects.filter(restaurant=restaurant).select_related('user')
+        return Review.objects.none()
 
     def perform_create(self, serializer):
         restaurant_id = self.kwargs.get('restaurant_pk')

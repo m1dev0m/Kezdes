@@ -68,7 +68,7 @@ def future_date():
     return date.today() + timedelta(days=7)
 
 
-def make_booking(restaurant, table, user, booking_date, booking_time, guests=2, duration=90, status=Booking.APPROVED):
+def make_booking(restaurant, table, user, booking_date, booking_time, guests=2, duration=90, status='confirmed'):
     b = Booking.objects.create(
         restaurant=restaurant,
         table=table,
