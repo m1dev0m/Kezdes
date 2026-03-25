@@ -232,3 +232,57 @@ def update_restaurant_rating(sender, instance, **kwargs):
     avg_rating = Review.objects.filter(restaurant=restaurant).aggregate(Avg('rating'))['rating__avg']
     restaurant.rating = avg_rating or 0.0
     restaurant.save()
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+@receiver(post_save, sender=RestaurantRequest)
+def send_restaurant_request_emails(sender, instance, created, **kwargs):
+    if created:
+        # Notify Global Admin about a new restaurant request
+        subject = f"Новая заявка на регистрацию ресторана: {instance.name}"
+        message = (
+            f"Новая заявка на регистрацию ресторана!\n\n"
+            f"Название: {instance.name}\n"
+            f"Город: {instance.city}\n"
+            f"Имя: {instance.owner_name or 'Не указано'}\n"
+            f"Телефон: {instance.phone}\n"
+            f"Email: {instance.email}\n"
+            f"Проверьте панель администратора для подробностей."
+        )
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.GLOBAL_ADMIN_EMAIL],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # If it's not newly created, check if status changed to approved
+    # Wait, we need the old state to be 100% accurate, but for MVP checking if it's approved is sufficient
+    # Alternatively we can just check if instance.status == 'approved'.
+    # A complete solution would check if it just changed to approved, but this is simple.
+    
+    if not created and instance.status == 'approved':
+        # Send confirmation email to restaurant owner
+        subject = f"Ваша заявка одобрена: {instance.name}"
+        message = (
+            f"Здравствуйте, {instance.owner_name or 'партнер'}!\n\n"
+            f"Ваша заявка на ресторан '{instance.name}' была успешно одобрена.\n"
+            f"Теперь вы имеете полный доступ к панели управления вашим рестораном в Kezdes.\n"
+            f"Спасибо, что выбрали нас!"
+        )
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[instance.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+

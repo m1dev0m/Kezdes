@@ -269,15 +269,14 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     Serializer used exclusively by restaurant admins to manually create bookings.
     Bypasses user linkage validation, relying instead on explicit name/phone fields.
     """
-    user_name_manual = serializers.CharField(
-        source='user_name',
+    # Accept both 'user_name' (frontend) and 'user_name_manual' (legacy)
+    user_name = serializers.CharField(
         max_length=255,
         required=False,
         allow_blank=True,
         allow_null=True,
     )
-    user_phone_manual = serializers.CharField(
-        source='user_phone',
+    user_phone = serializers.CharField(
         max_length=50,
         required=False,
         allow_blank=True,
@@ -288,13 +287,27 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = [
-            'id', 'user_name_manual', 'user_phone_manual', 'restaurant',
+            'id', 'user_name', 'user_phone', 'restaurant',
             'date', 'time', 'duration_minutes', 'duration_hours', 'guests', 'event_type', 'event_title',
             'status', 'special_requests', 'created_at'
         ]
+        extra_kwargs = {
+            'restaurant': {'required': False}
+        }
 
     def validate(self, attrs):
         restaurant = attrs.get('restaurant')
+        if not restaurant:
+            request = self.context.get('request')
+            if request and hasattr(request.user, 'profile'):
+                from core.utils import get_user_restaurant
+                restaurant = get_user_restaurant(request.user)
+                if not restaurant:
+                    raise serializers.ValidationError({"restaurant": "Не удалось определить ресторан пользователя."})
+                attrs['restaurant'] = restaurant
+            else:
+                 raise serializers.ValidationError({"restaurant": "Обязательное поле."})
+                 
         booking_date = attrs.get('date')
         start_time = attrs.get('time')
         

@@ -25,53 +25,26 @@ export default function GuestLayout() {
     const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-brand-cream font-display">
-            <header className="flex items-center justify-between border-b border-brand-accent bg-brand-cream/90 backdrop-blur-md px-6 md:px-20 py-4 sticky top-0 z-50">
-                <div className="flex items-center gap-10">
-                    <Link to="/" className="flex items-center gap-3">
-                        <h2 className="text-xl font-bold tracking-tight"><Logo /></h2>
-                    </Link>
-
-                    <nav className="hidden md:flex items-center gap-8">
-                        {navItems.map(item => (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                className={`text-sm font-semibold transition-colors ${isActive(item.path)
-                                    ? 'text-brand-green border-b-2 border-brand-green pb-1'
-                                    : 'text-slate-600 hover:text-brand-green'
-                                    }`}
-                            >
-                                {item.label}
-                            </Link>
-                        ))}
+        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-50 font-sans text-slate-900 transition-colors duration-200">
+            {/* GLOBAL GUEST HEADER - MATCHING SNAPSHOT */}
+            <header className="flex items-center justify-between whitespace-nowrap bg-white px-6 md:px-10 py-4 shadow-sm sticky top-0 z-50">
+                <Link to="/" className="flex items-center">
+                    <Logo className="h-6" />
+                </Link>
+                <div className="flex items-center gap-8">
+                    <nav className="hidden md:flex items-center gap-6">
+                        <Link to="/search" className="text-[#334155] text-[15px] font-bold hover:text-primary transition-colors">Explore</Link>
+                        <Link to="/guest/dashboard" className="text-[#334155] text-[15px] font-bold hover:text-primary transition-colors">My Bookings</Link>
+                        <Link to="/guest/profile" className="text-[#334155] text-[15px] font-bold hover:text-primary transition-colors">Profile</Link>
                     </nav>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <div className="relative hidden sm:block">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
-                        <input
-                            onClick={() => navigate('/discover')}
-                            readOnly
-                            className="w-56 pl-10 pr-4 py-2 bg-white border border-brand-accent rounded-xl text-sm focus:ring-2 focus:ring-gold/30 placeholder:text-slate-400 cursor-pointer"
-                            placeholder="Find a restaurant..."
-                            type="text"
-                        />
-                    </div>
-
-                    <button className="flex items-center justify-center size-10 rounded-full bg-white border border-brand-accent text-slate-600 hover:bg-brand-accent/30 hover:text-brand-green transition-all">
-                        <span className="material-symbols-outlined">notifications</span>
-                    </button>
-
                     <div
-                        className="h-10 w-10 rounded-full bg-brand-accent/30 border-2 border-gold/30 flex items-center justify-center text-brand-green font-bold text-sm cursor-pointer hover:bg-brand-accent/60 transition-all"
+                        className="size-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-[#0f172a] font-bold text-lg shadow-sm cursor-pointer hover:bg-slate-50 transition-colors"
                         onClick={() => navigate('/guest/profile')}
                     >
-                        {user?.username?.charAt(0).toUpperCase()}
+                        {user?.username?.charAt(0).toUpperCase() || 'M'}
                     </div>
 
-                    <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 text-slate-700 dark:text-white">
+                    <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 text-slate-700">
                         <span className="material-symbols-outlined">{menuOpen ? 'close' : 'menu'}</span>
                     </button>
                 </div>
@@ -100,8 +73,10 @@ export default function GuestLayout() {
                 </div>
             )}
 
-            <main className="flex-1 px-6 md:px-20 py-10 max-w-7xl mx-auto w-full">
-                <Outlet />
+            <main className="flex-1 w-full flex justify-center py-10">
+                <div className="flex flex-col w-full max-w-[1024px] px-4 md:px-8">
+                    <Outlet />
+                </div>
             </main>
 
             <footer className="border-t border-brand-accent py-8 px-6 md:px-20">

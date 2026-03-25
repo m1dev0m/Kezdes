@@ -713,10 +713,22 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return Response(self.get_serializer(booking).data)
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def seat(self, request, pk=None):
-        """APPROVED → SEATED (guest has arrived and been seated)."""
+        """APPROVED → SEATED (guest has arrived and been seated). Allows setting a table_id."""
+        from restaurants.models import Table
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+            
+        table_id = request.data.get('table_id')
+        if table_id:
+            try:
+                table = Table.objects.get(id=table_id, restaurant=booking.restaurant)
+                booking.table = table
+                booking.save(update_fields=['table', 'updated_at'])
+                booking.tables.set([table])
+            except Table.DoesNotExist:
+                return api_error("Указанный стол не найден.", status.HTTP_400_BAD_REQUEST)
+
         try:
             booking.transition_to(Booking.SEATED, actor=request.user)
         except ValidationError as e:

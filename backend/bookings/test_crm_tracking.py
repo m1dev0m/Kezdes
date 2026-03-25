@@ -95,8 +95,8 @@ class TestCustomerCreation:
             'time': '20:00',
             'guests': 4,
             'status': 'confirmed',
-            'user_name_manual': 'John Walk-in',
-            'user_phone_manual': '+77779876543'
+            'user_name': 'John Walk-in',
+            'user_phone': '+77779876543'
         })
         
         assert response.status_code == 201, f"Manual booking failed: {response.data}"

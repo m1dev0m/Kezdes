@@ -88,10 +88,22 @@ class TableAPISerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Table
-        fields = ["id", "name", "capacity", "number", "seats", "x", "y", "status"]
+        fields = ["id", "name", "capacity", "number", "seats", "x", "y", "status",
+                  "is_active", "table_type"]
         read_only_fields = ["id", "x", "y", "status"]
 
     def get_status(self, obj):
+        from bookings.models import Booking
+        from django.utils import timezone
+        now = timezone.now()
+        active = Booking.objects.filter(
+            table=obj,
+            status__in=Booking.ACTIVE_STATUSES,
+            start_datetime__lte=now,
+            end_datetime__gt=now,
+        ).first()
+        if active:
+            return "occupied" if active.status == Booking.SEATED else "reserved"
         return "free"
 
     def validate(self, attrs):
@@ -126,10 +138,14 @@ class TableAPISerializer(serializers.ModelSerializer):
         restaurant = validated_data["restaurant"]
         name = validated_data["name"]
         capacity = validated_data["capacity"]
+        is_active = validated_data.get("is_active", True)
+        table_type = validated_data.get("table_type", "rectangle")
         return Table.objects.create(
             restaurant=restaurant,
             number=name,
             seats=capacity,
+            is_active=is_active,
+            table_type=table_type,
         )
 
     def update(self, instance, validated_data):
@@ -137,6 +153,10 @@ class TableAPISerializer(serializers.ModelSerializer):
             instance.number = validated_data["name"]
         if "capacity" in validated_data:
             instance.seats = validated_data["capacity"]
+        if "is_active" in validated_data:
+            instance.is_active = validated_data["is_active"]
+        if "table_type" in validated_data:
+            instance.table_type = validated_data["table_type"]
         instance.save()
         return instance
 class AvailabilitySerializer(serializers.ModelSerializer):

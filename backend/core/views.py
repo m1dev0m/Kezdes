@@ -8,14 +8,18 @@ from django.core.cache import cache
 from django.db import connections
 from django.db import OperationalError
 from django.db import IntegrityError
-from .models import PushToken
+from .models import PushToken, OTPVerification
 from .serializers import (
     RegisterSerializer,
     CustomTokenObtainPairSerializer,
     PushTokenSerializer,
     SetupRestaurantSerializer,
     UserMeSerializer,
+    SendOTPSerializer,
 )
+import random
+from django.core.mail import send_mail
+from django.conf import settings
 
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserMeSerializer
@@ -41,6 +45,43 @@ class PushTokenUpdateView(generics.CreateAPIView):
                 'device_name': serializer.validated_data.get('device_name')
             }
         )
+
+class SendOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth'
+
+    def post(self, request, *args, **kwargs):
+        serializer = SendOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            code = f"{random.randint(100000, 999999)}"
+            
+            # Save or update OTP
+            OTPVerification.objects.update_or_create(
+                email=email,
+                defaults={'code': code, 'is_verified': False}
+            )
+            
+            # Send Email
+            try:
+                send_mail(
+                    subject='Код подтверждения Kezdes',
+                    message=f'Ваш код подтверждения: {code}\nНикому не сообщайте этот код.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                return Response(
+                    {"detail": "Не удалось отправить письмо. Проверьте настройки почты."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            return Response(
+                {"detail": "Код отправлен на ваш email."},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()

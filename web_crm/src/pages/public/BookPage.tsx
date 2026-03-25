@@ -30,6 +30,7 @@ export default function BookPage() {
         event_title: '',
         budget: '',
         table_id: null as number | null,
+        table_name: '' as string,
     });
 
     const [isTableSelectorOpen, setIsTableSelectorOpen] = useState(false);
@@ -117,7 +118,17 @@ export default function BookPage() {
             toast.success(t('booking.success'));
             navigate(-1);
         } catch (err: any) {
-            setError(err.response?.data?.detail || t('errors.validationError'));
+            const data = err?.response?.data;
+            let msg = t('errors.validationError');
+            if (data) {
+                if (typeof data.detail === 'string') msg = data.detail;
+                else if (typeof data.error?.message === 'string') msg = data.error.message;
+                else {
+                    const first = Object.values(data).find(v => Array.isArray(v) && v.length > 0);
+                    if (Array.isArray(first) && typeof first[0] === 'string') msg = first[0];
+                }
+            }
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -151,10 +162,10 @@ export default function BookPage() {
                 guests={parseInt(formData.guests, 10)}
                 isOpen={isTableSelectorOpen}
                 onClose={() => setIsTableSelectorOpen(false)}
-                onSelect={(tableId) => {
-                    setFormData(p => ({ ...p, table_id: tableId }));
+                onSelect={(tableId, tableName) => {
+                    setFormData(p => ({ ...p, table_id: tableId, table_name: tableName }));
                     setIsTableSelectorOpen(false);
-                    toast.success(`Стол #${tableId} выбран`);
+                    toast.success(`Стол ${tableName} выбран`);
                 }}
             />
 
@@ -223,7 +234,7 @@ export default function BookPage() {
                                             required
                                             min={minDate}
                                             value={formData.date}
-                                            onChange={e => setFormData(p => ({ ...p, date: e.target.value, time: '', table_id: null }))}
+                                            onChange={e => setFormData(p => ({ ...p, date: e.target.value, time: '', table_id: null, table_name: '' }))}
                                             className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332]"
                                         />
                                     </div>
@@ -252,7 +263,7 @@ export default function BookPage() {
                                             <button
                                                 key={slot}
                                                 type="button"
-                                                onClick={() => setFormData(p => ({ ...p, time: slot, table_id: null }))}
+                                                onClick={() => setFormData(p => ({ ...p, time: slot, table_id: null, table_name: '' }))}
                                                 className={`py-2 px-3 text-sm font-semibold rounded-lg border transition-colors ${
                                                     formData.time === slot
                                                         ? 'border-[#1B4332] bg-[#1B4332]/10 text-[#1B4332]'
@@ -274,7 +285,7 @@ export default function BookPage() {
                                         onClick={() => setIsTableSelectorOpen(true)}
                                         className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-[#1B4332] text-sm font-semibold text-slate-500 hover:text-[#1B4332] transition-colors flex items-center justify-center gap-2"
                                     >
-                                        {formData.table_id ? `Стол #${formData.table_id} выбран ✓` : 'Выбрать конкретный стол (опционально)'}
+                                        {formData.table_id ? `Стол ${formData.table_name || formData.table_id} выбран ✓` : 'Выбрать конкретный стол (опционально)'}
                                     </button>
                                 </div>
                             )}
@@ -444,7 +455,7 @@ export default function BookPage() {
                                     {formData.table_id && (
                                         <div className="flex items-center gap-2">
                                             <span className="w-4 h-4 text-[#1B4332] text-xs font-black">T</span>
-                                            <span>Table #{formData.table_id}</span>
+                                            <span>Стол {formData.table_name || formData.table_id}</span>
                                         </div>
                                     )}
                                 </div>

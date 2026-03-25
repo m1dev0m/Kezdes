@@ -231,3 +231,14 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
     'SIGNING_KEY': JWT_SIGNING_KEY,
 }
+
+# Email Settings
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', default='')
+EMAIL_PORT = int(env('EMAIL_PORT', default=587))
+EMAIL_USE_TLS = env('EMAIL_USE_TLS', default='True').lower() == 'true'
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@kezdes.kz')
+
+GLOBAL_ADMIN_EMAIL = env('GLOBAL_ADMIN_EMAIL', default='admin@kezdes.kz')

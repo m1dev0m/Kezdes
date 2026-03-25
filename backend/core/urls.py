@@ -2,8 +2,9 @@ from django.urls import path
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
-from .views import RegisterView, CustomTokenObtainPairView, PushTokenUpdateView, SetupRestaurantView, UserProfileView
+from .views import RegisterView, CustomTokenObtainPairView, PushTokenUpdateView, SetupRestaurantView, UserProfileView, SendOTPView
 urlpatterns = [
+    path('send-otp/', SendOTPView.as_view(), name='send_otp'),
     path('register/', RegisterView.as_view(), name='register'),
     path('setup-restaurant/', SetupRestaurantView.as_view(), name='setup_restaurant'),
     path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),

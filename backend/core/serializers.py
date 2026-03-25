@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
-from .models import Profile, PushToken
+from .models import Profile, PushToken, OTPVerification
 from contractors.models import Contractor
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -63,6 +63,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     description = serializers.CharField(write_only=True, required=False)
     city = serializers.CharField(write_only=True, required=False)
     password2 = serializers.CharField(write_only=True, required=False)
+    # otp_code = serializers.CharField(write_only=True, required=True, min_length=4, max_length=6)
 
     class Meta:
         model = User
@@ -119,9 +120,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         if normalized_role not in allowed_roles:
             raise serializers.ValidationError({"role": "Invalid role."})
         attrs['role'] = normalized_role
+        
+        # [TMP] Email OTP Verification disabled temporarily
+        # email = attrs.get('email')
+        # otp_code = attrs.get('otp_code')
+        # if not otp_code:
+        #     raise serializers.ValidationError({"otp_code": "OTP code is required."})
+        # 
+        # otp_record = OTPVerification.objects.filter(email=email).order_by('-created_at').first()
+        # if not otp_record or otp_record.code != otp_code:
+        #     raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
+
         return attrs
 
     def create(self, validated_data):
+        # otp_code = validated_data.pop('otp_code', None)
         role = validated_data.pop('role', 'customer')
         phone = validated_data.pop('phone', '')
         first_name = validated_data.pop('first_name', '')
@@ -171,8 +184,19 @@ class RegisterSerializer(serializers.ModelSerializer):
                 description=description,
                 city=city
             )
+        
+        # [TMP] Email OTP Verification disabled temporarily
+        # OTPVerification.objects.filter(email=user.email).update(is_verified=True)
             
         return user
+
+class SendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Учетная запись с таким email уже существует.")
+        return value
 
 
 class SetupRestaurantSerializer(serializers.Serializer):

@@ -4,6 +4,17 @@ import { Plus, Pencil, Trash2, RefreshCw, AlertCircle, Users, CheckCircle } from
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
+/** Extract first human-readable error from Django REST response */
+function extractApiError(data: any): string | null {
+  if (!data || typeof data !== 'object') return null;
+  if (typeof data.detail === 'string') return data.detail;
+  for (const val of Object.values(data)) {
+    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'string') return val[0];
+    if (typeof val === 'string') return val;
+  }
+  return null;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Table {
@@ -187,10 +198,8 @@ export default function Tables() {
       setShowCreate(false);
       load();
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string; number?: string[] } } })
-        ?.response?.data?.detail
-        || (e as { response?: { data?: { number?: string[] } } })?.response?.data?.number?.[0]
-        || 'Ошибка при создании';
+      const data = (e as any)?.response?.data;
+      const msg = extractApiError(data) || 'Ошибка при создании';
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -207,8 +216,8 @@ export default function Tables() {
       setEditTarget(null);
       load();
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail || 'Ошибка при обновлении';
+      const data = (e as any)?.response?.data;
+      const msg = extractApiError(data) || 'Ошибка при обновлении';
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -225,8 +234,8 @@ export default function Tables() {
       setDeleteTarget(null);
       load();
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail || 'Ошибка при удалении';
+      const data = (e as any)?.response?.data;
+      const msg = extractApiError(data) || 'Ошибка при удалении';
       toast.error(msg);
     } finally {
       setSaving(false);

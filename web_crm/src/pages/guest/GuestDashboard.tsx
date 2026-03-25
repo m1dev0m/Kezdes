@@ -107,60 +107,57 @@ export default function GuestDashboard() {
     }, [pastBookings]);
 
     return (
-        <div className="space-y-8 pb-20">
-            <header className="flex items-center justify-between mb-2">
+        <div className="space-y-10 pb-20 w-full animate-in fade-in duration-500">
+            {/* Header Block */}
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm mt-4">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-slate-900">
+                    <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-2">
                         Welcome back, {user?.username || 'Guest'}
                     </h1>
-                    <p className="text-slate-500">
+                    <p className="text-slate-500 font-medium">
                         {activeBookings.length > 0
                             ? t('guestDashboard.upcomingReservations', { count: activeBookings.length })
-                            : t('guestDashboard.noUpcomingReservations')}
+                            : "You don't have any upcoming reservations. Let's change that."}
                     </p>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
                     <button
-                        type="button"
-                        className="relative text-slate-500 hover:text-brand-green transition-colors"
-                        aria-label="Notifications"
+                        onClick={() => navigate('/discover')}
+                        className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2"
                     >
-                        <Bell className="w-5 h-5" />
-                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-brand-green" />
+                        <span className="material-symbols-outlined text-[18px]">search</span>
+                        {t('guestDashboard.findRestaurants')}
                     </button>
-                    <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
-                        <div className="text-right">
-                            <p className="text-sm font-bold leading-none">{user?.username || 'Guest'}</p>
-                            <p className="text-xs text-gold font-semibold">Gold Tier Member</p>
-                        </div>
-                        <div
-                            className="size-10 rounded-full bg-brand-accent/30 ring-2 ring-brand-green/20 flex items-center justify-center text-brand-green font-bold text-sm"
-                        >
-                            {(user?.username?.charAt(0) || 'G').toUpperCase()}
-                        </div>
-                    </div>
                 </div>
             </header>
 
             <div className="grid grid-cols-12 gap-8">
                 <div className="col-span-12 lg:col-span-8 space-y-8">
                     <section>
-                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <CalendarDays className="w-5 h-5 text-brand-green" />
+                        <h2 className="text-xl font-black mb-6 text-slate-900 flex items-center gap-3">
+                            <span className="bg-primary/10 text-primary p-2 rounded-lg">
+                                <CalendarDays className="w-5 h-5" />
+                            </span>
                             Upcoming Reservation
                         </h2>
 
                         {loading ? (
-                            <div className="h-52 rounded-xl bg-white border border-slate-200 animate-pulse" />
+                            <div className="h-64 rounded-2xl bg-slate-100 animate-pulse border border-slate-200" />
                         ) : !upcomingBooking ? (
-                            <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                                <p className="text-slate-500">{t('guestDashboard.noUpcomingReservations')}</p>
+                            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center flex flex-col items-center justify-center min-h-[300px] shadow-sm">
+                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                                    <span className="material-symbols-outlined text-4xl text-slate-300">restaurant</span>
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 mb-2">No Active Bookings</h3>
+                                <p className="text-slate-500 max-w-sm mx-auto leading-relaxed mb-8">
+                                    Your dining calendar is currently clear. Discover premium restaurants and book your next unforgettable meal.
+                                </p>
                                 <button
                                     type="button"
                                     onClick={() => navigate('/discover')}
-                                    className="mt-6 bg-brand-green hover:bg-brand-green/90 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg transition-all"
                                 >
-                                    {t('guestDashboard.findRestaurants')}
+                                    Explore Top Restaurants
                                 </button>
                             </div>
                         ) : (
@@ -241,7 +238,7 @@ export default function GuestDashboard() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setConfirmCancelId(upcomingBooking.id)}
-                                                        className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-colors"
+                                                        className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-colors"
                                                     >
                                                         {t('guestDashboard.cancel')}
                                                     </button>
@@ -251,7 +248,7 @@ export default function GuestDashboard() {
                                             <button
                                                 type="button"
                                                 onClick={() => navigate(`/guest/bookings/${upcomingBooking.id}`)}
-                                                className="bg-brand-green hover:bg-[#2D5A4C] text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all"
+                                                className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md"
                                             >
                                                 View Details
                                             </button>
@@ -263,9 +260,9 @@ export default function GuestDashboard() {
                     </section>
 
                     <section>
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold">Favorite Restaurants</h2>
-                            <Link to="/guest/favorites" className="text-brand-green text-sm font-bold hover:underline">View All</Link>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-black text-slate-900">Curated For You</h2>
+                            <Link to="/guest/favorites" className="text-primary text-sm font-bold hover:underline">View All</Link>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -301,7 +298,12 @@ export default function GuestDashboard() {
 
                 <div className="col-span-12 lg:col-span-4 space-y-8">
                     <section>
-                        <h2 className="text-xl font-bold mb-4">Dining Summary</h2>
+                        <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                            <span className="bg-emerald-100 text-emerald-700 p-2 rounded-lg">
+                                <Star className="w-5 h-5 fill-emerald-700" />
+                            </span>
+                            Dining Summary
+                        </h2>
                         <div className="grid grid-cols-1 gap-4">
                             <div className="bg-brand-green/5 p-5 rounded-xl border border-brand-green/10">
                                 <div className="flex items-center gap-4">
@@ -316,24 +318,24 @@ export default function GuestDashboard() {
                             </div>
 
                             <div className="bg-white p-5 rounded-xl border border-slate-200">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-12 rounded-xl bg-slate-100 flex items-center justify-center text-brand-green">
-                                        <Star className="w-6 h-6 fill-brand-green" />
+                                <div className="flex items-center gap-5">
+                                    <div className="size-14 rounded-xl bg-slate-100 flex items-center justify-center text-primary">
+                                        <Star className="w-7 h-7 fill-primary" />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-black">{loyaltyPoints.toLocaleString('ru-RU')}</p>
+                                        <p className="text-3xl font-black text-slate-900">{loyaltyPoints.toLocaleString('ru-RU')}</p>
                                         <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Loyalty Points</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="bg-white p-5 rounded-xl border border-slate-200">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-12 rounded-xl bg-slate-100 flex items-center justify-center text-brand-green">
-                                        <Heart className="w-6 h-6 fill-brand-green" />
+                                <div className="flex items-center gap-5">
+                                    <div className="size-14 rounded-xl bg-slate-100 flex items-center justify-center text-rose-500">
+                                        <Heart className="w-7 h-7 fill-rose-500" />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-black">French</p>
+                                        <p className="text-3xl font-black text-slate-900">French</p>
                                         <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Top Cuisine</p>
                                     </div>
                                 </div>

@@ -5,14 +5,23 @@ import api from '@/services/api';
 
 interface RealTable {
     id: number;
+    name: string;
     number: string;
+    capacity: number;
     seats: number;
     is_active: boolean;
-    x: number;
-    y: number;
+    x: number | null;
+    y: number | null;
     width: number;
     height: number;
     table_type: string;
+}
+
+interface LayoutTable extends RealTable {
+    lx: number;
+    ly: number;
+    lw: number;
+    lh: number;
 }
 
 interface TableSelectionProps {
@@ -22,8 +31,13 @@ interface TableSelectionProps {
     guests: number;
     isOpen: boolean;
     onClose: () => void;
-    onSelect: (tableId: number) => void;
+    onSelect: (tableId: number, tableName: string) => void;
 }
+
+const COLS = 4;
+const CELL_W = 200;
+const CELL_H = 160;
+const PAD = 40;
 
 export default function TableSelection({
     restaurantId,
@@ -32,72 +46,72 @@ export default function TableSelection({
     guests,
     isOpen,
     onClose,
-    onSelect
+    onSelect,
 }: TableSelectionProps) {
-    const [realTables, setRealTables] = useState<RealTable[]>([]);
-    const [availableTableIds, setAvailableTableIds] = useState<number[]>([]);
+    const [tables, setTables] = useState<RealTable[]>([]);
+    const [availableIds, setAvailableIds] = useState<number[] | null>(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (isOpen && restaurantId) {
-            setLoading(true);
+        if (!isOpen || !restaurantId) return;
+        setLoading(true);
+        setAvailableIds(null);
 
-            const fetchTables = api.get(`/restaurants/${restaurantId}/`).then(res => {
-                const tables: RealTable[] = res.data.tables || [];
-                setRealTables(tables.filter(t => t.is_active));
-            }).catch(() => {
-                setRealTables([]);
-            });
+        const fetchTables = api
+            .get(`/restaurants/${restaurantId}/`)
+            .then(res => {
+                const raw: RealTable[] = res.data.tables || [];
+                setTables(raw.filter(t => t.is_active));
+            })
+            .catch(() => setTables([]));
 
-            const fetchAvailability = (date && time)
-                ? api.get(`/bookings/available_tables/?restaurant_id=${restaurantId}&date=${date}&time=${time}`).then(res => {
-                    setAvailableTableIds(res.data.available_table_ids || []);
-                }).catch(() => {
-                    setAvailableTableIds([]);
-                })
+        const fetchAvail =
+            date && time
+                ? api
+                      .get(`/bookings/available_tables/?restaurant_id=${restaurantId}&date=${date}&time=${time}`)
+                      .then(res => setAvailableIds(res.data.available_table_ids ?? []))
+                      .catch(() => setAvailableIds([]))
                 : Promise.resolve();
 
-            Promise.all([fetchTables, fetchAvailability]).finally(() => {
-                setLoading(false);
-            });
-        }
+        Promise.all([fetchTables, fetchAvail]).finally(() => setLoading(false));
     }, [isOpen, restaurantId, date, time]);
 
     if (!isOpen) return null;
 
-    // Auto-layout tables in a grid if they have no coordinates
-    const layoutTables = realTables.map((table, idx) => {
-        const hasCoords = table.x > 0 || table.y > 0;
-        if (hasCoords) return table;
-        // Auto-grid: 3 columns
-        const cols = 3;
-        const col = idx % cols;
-        const row = Math.floor(idx / cols);
+    // Build layout — use stored coords if meaningful, else auto-grid
+    const layoutTables: LayoutTable[] = tables.map((t, idx) => {
+        const hasCoords = t.x != null && t.y != null && (t.x > 0 || t.y > 0);
+        const lw = t.width > 10 ? t.width : 140;
+        const lh = t.height > 10 ? t.height : 100;
+        if (hasCoords) {
+            return { ...t, lx: t.x!, ly: t.y!, lw, lh };
+        }
+        const col = idx % COLS;
+        const row = Math.floor(idx / COLS);
         return {
-            ...table,
-            x: 10 + col * 30,
-            y: 10 + row * 28,
-            width: table.width || 22,
-            height: table.height || 18,
+            ...t,
+            lx: PAD + col * CELL_W,
+            ly: PAD + row * CELL_H,
+            lw,
+            lh,
         };
     });
 
-    const isAvailable = (tableId: number) => {
-        if (availableTableIds.length > 0) {
-            return availableTableIds.includes(tableId);
-        }
-        return true;
-    };
+    const rows = Math.ceil(tables.length / COLS);
+    const vbW = PAD * 2 + COLS * CELL_W;
+    const vbH = PAD * 2 + rows * CELL_H;
 
-    const isLargeEnough = (table: RealTable) => table.seats >= guests;
+    const isAvailable = (id: number) => (availableIds === null ? true : availableIds.includes(id));
+    const fitsGuests = (t: RealTable) => (t.capacity || t.seats) >= guests;
+
+    const label = (t: RealTable) => t.name || t.number || String(t.id);
+    const cap = (t: RealTable) => t.capacity || t.seats;
 
     return (
         <AnimatePresence>
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     onClick={onClose}
                     className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                 />
@@ -105,125 +119,96 @@ export default function TableSelection({
                     initial={{ scale: 0.95, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                    className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden"
+                    transition={{ duration: 0.18 }}
+                    className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
                 >
-                    <div className="p-8 bg-slate-50 border-b-2 border-slate-100 flex items-center justify-between">
+                    {/* Header */}
+                    <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                         <div>
-                            <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Выберите стол</h3>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                                {date} в {time} · {guests} гост.
+                            <h3 className="text-lg font-bold text-slate-900">Выберите стол</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                {date} · {time} · {guests} {guests === 1 ? 'гость' : 'гостей'}
                             </p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-12 h-12 rounded-2xl bg-white border-2 border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-100 hover:bg-rose-50 transition-all cursor-pointer"
+                            className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-colors"
                         >
-                            <X className="w-5 h-5" />
+                            <X size={16} />
                         </button>
                     </div>
 
-                    <div className="p-8">
+                    <div className="p-6">
                         {loading ? (
-                            <div className="h-64 flex flex-col items-center justify-center gap-4 text-slate-400">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Проверяем доступность...</span>
+                            <div className="h-56 flex flex-col items-center justify-center gap-3 text-slate-400">
+                                <Loader2 className="w-7 h-7 animate-spin text-primary" />
+                                <span className="text-xs font-semibold">Проверяем доступность...</span>
                             </div>
-                        ) : realTables.length === 0 ? (
-                            <div className="h-64 flex flex-col items-center justify-center gap-4 text-slate-400">
-                                <Users className="w-10 h-10" />
-                                <span className="text-sm font-bold">Столы не найдены</span>
-                                <span className="text-xs text-slate-400">У ресторана пока нет столов</span>
+                        ) : tables.length === 0 ? (
+                            <div className="h-56 flex flex-col items-center justify-center gap-3 text-slate-400">
+                                <Users className="w-9 h-9" />
+                                <span className="text-sm font-semibold">Столы не найдены</span>
+                                <span className="text-xs">У ресторана пока нет столов</span>
                             </div>
                         ) : (
-                            <div className="relative w-full aspect-[10/8] bg-slate-100 rounded-[2.5rem] border-2 border-slate-200 overflow-hidden shadow-inner flex items-center justify-center p-4 group/canvas">
+                            <div className="w-full overflow-auto rounded-xl border border-slate-200 bg-slate-50">
                                 <svg
-                                    viewBox="0 0 1000 800"
-                                    className="w-full h-full drop-shadow-xl"
+                                    viewBox={`0 0 ${vbW} ${vbH}`}
+                                    className="w-full"
+                                    style={{ minHeight: 200, maxHeight: 420 }}
                                 >
-                                    <defs>
-                                        <pattern id="grid-sub" width="40" height="40" patternUnits="userSpaceOnUse">
-                                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-200" />
-                                        </pattern>
-                                    </defs>
-                                    <rect width="100%" height="100%" fill="url(#grid-sub)" rx={40} />
+                                    {layoutTables.map(t => {
+                                        const avail = isAvailable(t.id);
+                                        const fits = fitsGuests(t);
+                                        const selectable = avail && fits;
 
-                                    {layoutTables.map(table => {
-                                        const available = isAvailable(table.id);
-                                        const fits = isLargeEnough(table);
-                                        const selectable = available && fits;
+                                        const fill = selectable ? '#f0fdf4' : !avail ? '#fff1f2' : '#fffbeb';
+                                        const stroke = selectable ? '#34d399' : !avail ? '#fca5a5' : '#fcd34d';
+                                        const textColor = selectable ? '#065f46' : '#94a3b8';
 
                                         return (
                                             <g
-                                                key={table.id}
-                                                transform={`translate(${table.x}, ${table.y})`}
-                                                onClick={() => selectable && onSelect(table.id)}
-                                                className={`cursor-pointer transition-all duration-300 group/table ${!selectable ? 'opacity-40 grayscale-[0.5]' : 'hover:scale-105 origin-center'}`}
+                                                key={t.id}
+                                                transform={`translate(${t.lx}, ${t.ly})`}
+                                                onClick={() => selectable && onSelect(t.id, label(t))}
+                                                style={{ cursor: selectable ? 'pointer' : 'not-allowed' }}
                                             >
-                                                {table.table_type === 'circle' ? (
+                                                {t.table_type === 'circle' ? (
                                                     <circle
-                                                        r={table.width / 2}
-                                                        cx={table.width / 2}
-                                                        cy={table.height / 2}
-                                                        className={`transition-all duration-300 stroke-[4] ${selectable
-                                                                ? 'fill-white stroke-emerald-400 group-hover/table:fill-emerald-50'
-                                                                : !available
-                                                                    ? 'fill-rose-50 stroke-rose-300'
-                                                                    : 'fill-amber-50 stroke-amber-300'
-                                                            }`}
+                                                        cx={t.lw / 2} cy={t.lh / 2}
+                                                        r={Math.min(t.lw, t.lh) / 2 - 4}
+                                                        fill={fill} stroke={stroke} strokeWidth={3}
                                                     />
                                                 ) : (
                                                     <rect
-                                                        width={table.width}
-                                                        height={table.height}
-                                                        rx={table.table_type === 'square' ? 12 : 20}
-                                                        className={`transition-all duration-300 stroke-[4] ${selectable
-                                                                ? 'fill-white stroke-emerald-400 group-hover/table:fill-emerald-50'
-                                                                : !available
-                                                                    ? 'fill-rose-50 stroke-rose-300'
-                                                                    : 'fill-amber-50 stroke-amber-300'
-                                                            }`}
+                                                        width={t.lw} height={t.lh}
+                                                        rx={t.table_type === 'square' ? 10 : 16}
+                                                        fill={fill} stroke={stroke} strokeWidth={3}
                                                     />
                                                 )}
-
                                                 <text
-                                                    x={table.width / 2}
-                                                    y={table.height / 2}
-                                                    textAnchor="middle"
-                                                    dominantBaseline="middle"
-                                                    className="text-[14px] font-black fill-slate-900 pointer-events-none"
+                                                    x={t.lw / 2} y={t.lh / 2 - 8}
+                                                    textAnchor="middle" dominantBaseline="middle"
+                                                    fontSize={22} fontWeight="700"
+                                                    fill={textColor}
                                                 >
-                                                    T{table.number}
+                                                    {label(t)}
                                                 </text>
-
                                                 <text
-                                                    x={table.width / 2}
-                                                    y={table.height / 2 + 16}
-                                                    textAnchor="middle"
-                                                    dominantBaseline="middle"
-                                                    className="text-[10px] font-bold fill-slate-400 pointer-events-none"
+                                                    x={t.lw / 2} y={t.lh / 2 + 18}
+                                                    textAnchor="middle" dominantBaseline="middle"
+                                                    fontSize={14} fill="#94a3b8"
                                                 >
-                                                    {table.seats}p
+                                                    {cap(t)} мест
                                                 </text>
-
                                                 {selectable && (
-                                                    <g className="opacity-0 group-hover/table:opacity-100 transition-opacity pointer-events-none">
-                                                        <rect
-                                                            x={table.width / 2 - 35}
-                                                            y={table.height + 10}
-                                                            width={70}
-                                                            height={24}
-                                                            rx={12}
-                                                            className="fill-emerald-600 shadow-lg"
-                                                        />
-                                                        <text
-                                                            x={table.width / 2}
-                                                            y={table.height + 27}
-                                                            textAnchor="middle"
-                                                            className="text-[10px] font-black fill-white uppercase tracking-widest"
-                                                        >
-                                                            Выбрать
-                                                        </text>
-                                                    </g>
+                                                    <text
+                                                        x={t.lw / 2} y={t.lh - 10}
+                                                        textAnchor="middle" dominantBaseline="middle"
+                                                        fontSize={11} fontWeight="600" fill="#059669"
+                                                    >
+                                                        Выбрать
+                                                    </text>
                                                 )}
                                             </g>
                                         );
@@ -231,19 +216,21 @@ export default function TableSelection({
                                 </svg>
                             </div>
                         )}
-                        <div className="mt-6 flex items-center justify-center gap-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full border-2 border-emerald-400 bg-white"></div>
+
+                        {/* Legend */}
+                        <div className="mt-4 flex items-center justify-center gap-5 text-xs text-slate-500">
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-3 h-3 rounded-full border-2 border-emerald-400 bg-emerald-50 inline-block" />
                                 Свободен
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full border-2 border-rose-300 bg-rose-50"></div>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-3 h-3 rounded-full border-2 border-red-300 bg-red-50 inline-block" />
                                 Занят
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full border-2 border-amber-300 bg-amber-50"></div>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-3 h-3 rounded-full border-2 border-amber-300 bg-amber-50 inline-block" />
                                 Мало мест
-                            </div>
+                            </span>
                         </div>
                     </div>
                 </motion.div>

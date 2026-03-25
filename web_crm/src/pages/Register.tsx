@@ -88,6 +88,8 @@ export default function Register() {
       return;
     }
 
+
+
     if (formData.password !== formData.password2) {
       setFieldErrors(p => ({ ...p, password2: 'Пароли не совпадают' }));
       toast.error('Пароли не совпадают');
@@ -113,7 +115,7 @@ export default function Register() {
           role: 'customer',
         });
         setSuccessMessage(t('auth.registerSuccess') || 'Registration successful');
-        const loginRes = await api.post('/auth/login/', {
+        const loginRes = await api.post('/login/', {
           username,
           password: formData.password,
         });
@@ -131,7 +133,7 @@ export default function Register() {
           phone,
         });
 
-        const loginRes = await api.post('/auth/login/', {
+        const loginRes = await api.post('/login/', {
           username,
           password: formData.password,
         });
@@ -422,7 +424,7 @@ export default function Register() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
