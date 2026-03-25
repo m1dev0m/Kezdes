@@ -73,26 +73,32 @@ class BookingService:
         start_dt = make_aware_if_needed(datetime.combine(date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
-        # 1) Identify occupied tables in this slot (FK + legacy M2M)
+        # 1) Identify occupied tables in this slot (FK + legacy M2M) with minimal queries.
         overlapping_bookings = Booking.objects.filter(
             restaurant=restaurant,
             status__in=Booking.ACTIVE_STATUSES,
             start_datetime__lt=end_dt,
             end_datetime__gt=start_dt,
-        )
+        ).values('id', 'table_id')
 
         if exclude_booking_id:
             overlapping_bookings = overlapping_bookings.exclude(id=exclude_booking_id)
 
-        occupied_fk_ids = set(
-            overlapping_bookings.exclude(table_id=None).values_list("table_id", flat=True)
-        )
+        booking_ids = []
+        occupied_fk_ids = set()
+        for item in overlapping_bookings:
+            booking_ids.append(item['id'])
+            table_id = item.get('table_id')
+            if table_id:
+                occupied_fk_ids.add(table_id)
 
-        occupied_m2m_ids = set(
-            Booking.tables.through.objects.filter(
-                booking_id__in=overlapping_bookings.values_list("id", flat=True)
-            ).values_list("table_id", flat=True)
-        )
+        occupied_m2m_ids = set()
+        if booking_ids:
+            occupied_m2m_ids = set(
+                Booking.tables.through.objects.filter(
+                    booking_id__in=booking_ids
+                ).values_list('table_id', flat=True)
+            )
 
         occupied_table_ids = occupied_fk_ids | occupied_m2m_ids
 
@@ -258,27 +264,31 @@ class BookingService:
             status__in=Booking.ACTIVE_STATUSES,
             start_datetime__lt=end_dt,
             end_datetime__gt=start_dt
-        ).prefetch_related('tables')
+        )
 
         if exclude_booking_id:
             overlapping_bookings = overlapping_bookings.exclude(id=exclude_booking_id)
 
-        occupied_table_ids = set()
-        for b in overlapping_bookings:
-            if b.table_id:
-                occupied_table_ids.add(b.table_id)
-            for t in b.tables.all():
-                occupied_table_ids.add(t.id)
+        occupied_fk_ids = set(overlapping_bookings.exclude(table_id=None).values_list('table_id', flat=True))
 
-        suitable_tables = Table.objects.filter(
+        booking_ids = list(overlapping_bookings.values_list('id', flat=True))
+        occupied_m2m_ids = set()
+        if booking_ids:
+            occupied_m2m_ids = set(
+                Booking.tables.through.objects.filter(booking_id__in=booking_ids).values_list('table_id', flat=True)
+            )
+
+        occupied_table_ids = occupied_fk_ids | occupied_m2m_ids
+
+        available_table_ids = Table.objects.filter(
             restaurant=restaurant,
             is_active=True
-        )
+        ).exclude(id__in=occupied_table_ids).values_list('id', flat=True)
 
-        return [t.id for t in suitable_tables if t.id not in occupied_table_ids]
+        return list(available_table_ids)
 
     @staticmethod
-    def acquire_booking_lock(restaurant_id, date, time_val, duration_minutes=90, timeout=60):
+    def acquire_booking_lock(restaurant_id, date, time_val, duration_minutes=90, timeout=30):
         """
         Distributed lock for a reservation time range (prevents overlaps under concurrency).
         """

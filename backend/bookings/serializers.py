@@ -1,8 +1,6 @@
 from rest_framework import serializers
 from datetime import datetime, timedelta, date
 from .models import Booking, ReservationHistory
-from orders.models import Order
-from chat.models import Message
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,8 +34,7 @@ class BookingSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     user_phone = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
-    order_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
-    preorder = serializers.SerializerMethodField(read_only=True)
+
     table_number = serializers.SerializerMethodField(read_only=True)
     table_ids = serializers.SerializerMethodField(read_only=True)
     reservation_date = serializers.DateField(source='date', required=False)
@@ -60,13 +57,36 @@ class BookingSerializer(serializers.ModelSerializer):
             'date', 'time', 'duration_minutes', 'duration_hours', 'guests', 'event_type', 'event_title',
             'status', 'status_display', 'special_requests', 'created_at',
             'budget', 'pay_at_restaurant',
-            'order_id', 'preorder', 'table_number', 'table_ids',
+            'table_number', 'table_ids',
             'reservation_date', 'reservation_time', 'customer_id', 'table_id',
             'is_checked_in', 'check_in_time',
             'history',
         ]
         read_only_fields = ['user', 'status']
         validators = []
+
+    def validate_guests(self, value):
+        if value < 1 or value > 20:
+            raise serializers.ValidationError("Количество гостей должно быть от 1 до 20.")
+        return value
+
+    def validate_duration_minutes(self, value):
+        if value < 15 or value > 480:
+            raise serializers.ValidationError("Длительность бронирования должна быть от 15 до 480 минут.")
+        return value
+
+    def validate(self, attrs):
+        # general validator for date/time formats is done by DRF fields,
+        # but we include explicit fallback for invalid schedule.
+        if 'date' in attrs and attrs['date'] is None:
+            raise serializers.ValidationError({
+                'date': 'Неверный формат даты.'
+            })
+        if 'time' in attrs and attrs['time'] is None:
+            raise serializers.ValidationError({
+                'time': 'Неверный формат времени.'
+            })
+        return super().validate(attrs)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -93,17 +113,6 @@ class BookingSerializer(serializers.ModelSerializer):
     def get_table_id(self, obj: Booking):
         return obj.table_id
 
-    def get_preorder(self, obj: Booking):
-        order = obj.orders.order_by("-created_at").first()
-        if not order:
-            return None
-        return {
-            "id": order.id,
-            "status": order.status,
-            "payment_status": order.payment_status,
-            "total_amount": str(order.total_amount),
-        }
-
     def get_table_ids(self, obj: Booking):
         return list(obj.tables.values_list('id', flat=True))
 
@@ -119,7 +128,6 @@ class BookingSerializer(serializers.ModelSerializer):
         booking_date = attrs.get('date')
         start_time = attrs.get('time')
         guests = attrs.get('guests', 1)
-        order_id = attrs.get("order_id")
         
         # Prevent booking in the past
         if booking_date and booking_date == date.today() and start_time:
@@ -158,17 +166,7 @@ class BookingSerializer(serializers.ModelSerializer):
                 {"restaurant": "Ресторан еще не одобрен платформой и не принимает бронирования."}
             )
 
-        if order_id:
-            try:
-                order = Order.objects.select_related("restaurant").get(id=order_id, user=user)
-            except Order.DoesNotExist:
-                raise serializers.ValidationError({"order_id": "Заказ не найден."})
-            if order.reservation_id is not None:
-                raise serializers.ValidationError({"order_id": "Этот заказ уже привязан к бронированию."})
-            if order.restaurant_id != restaurant.id:
-                raise serializers.ValidationError({"order_id": "Заказ относится к другому ресторану."})
-            if order.status not in (Order.Status.DRAFT, Order.Status.CONFIRMED):
-                raise serializers.ValidationError({"order_id": "Невозможно использовать этот заказ."})
+
 
         from .services import BookingService, make_aware_if_needed
         start_dt = make_aware_if_needed(datetime.combine(booking_date, start_time))
@@ -227,40 +225,8 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
-        order_id = validated_data.pop("order_id", None)
         validated_data['user'] = user
         booking = super().create(validated_data)
-
-        if order_id:
-            order = Order.objects.select_for_update().get(id=order_id, user=user)
-            if order.reservation_id is not None:
-                raise serializers.ValidationError({"order_id": "Этот заказ уже привязан к бронированию."})
-            if order.restaurant_id != booking.restaurant_id:
-                raise serializers.ValidationError({"order_id": "Заказ относится к другому ресторану."})
-
-            payment_status = Order.PaymentStatus.UNPAID if booking.pay_at_restaurant else Order.PaymentStatus.PAID
-            if order.status == Order.Status.DRAFT:
-                try:
-                    order.confirm_atomic(payment_status=payment_status)
-                except Exception as e:
-                    raise serializers.ValidationError({"order_id": str(e)})
-            else:
-                if booking.pay_at_restaurant and order.payment_status != Order.PaymentStatus.UNPAID:
-                    order.payment_status = Order.PaymentStatus.UNPAID
-                    order.save(update_fields=["payment_status"])
-
-            order.reservation = booking
-            order.save(update_fields=["reservation"])
-
-        try:
-            Message.objects.create(
-                booking=booking,
-                sender=user,
-                content=f"Новая заявка на бронирование в «{booking.restaurant.name}» на {booking.date} {booking.time.strftime('%H:%M')} ({booking.guests} гостей).",
-            )
-        except Exception as e:
-            logger.warning(f"Failed to create message for booking {booking.id}: {e}")
-
         return booking
 
 

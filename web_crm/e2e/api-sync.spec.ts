@@ -71,9 +71,11 @@ test.describe("Web API Sync", () => {
     });
 
     await page.goto("/restaurant/1/book");
-    await page.fill("input[name='date']", "2030-01-10");
-    await page.fill("input[name='user_name']", "API Sync User");
-    await page.fill("input[name='user_phone']", "+77010000000");
+    await page.locator('input[type="date"]').fill("2030-01-10");
+    // user_name input: text input in guest details section (no name attr, use type+position)
+    await page.locator('input[type="text"]').first().fill("API Sync User");
+    // user_phone input: tel input
+    await page.locator('input[type="tel"]').first().fill("+77010000000");
     await page.locator("button:has-text('19:00')").click();
     await page.locator("button[type='submit']").click();
 

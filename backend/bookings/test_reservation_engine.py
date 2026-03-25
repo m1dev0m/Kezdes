@@ -109,6 +109,13 @@ def test_find_best_tables_returns_empty_when_impossible(restaurant, tables, futu
     assert result == []
 
 
+@pytest.mark.django_db
+def test_find_best_tables_query_count(restaurant, tables, future_date, django_assert_num_queries):
+    with django_assert_num_queries(3):
+        result = BookingService.find_best_tables(restaurant, future_date, time(18, 0), guests=3)
+        assert len(result) == 1
+
+
 # ── Tests: Overlap prevention ──────────────────────────────────────────────────
 
 @pytest.mark.django_db

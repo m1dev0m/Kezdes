@@ -65,8 +65,13 @@ export default function BookingConfirmationScreen() {
         };
 
         pollStatus(); // Initial check
-        const interval = setInterval(pollStatus, 500); // Faster polling for 1.5s target
-        return () => clearInterval(interval);
+        const interval = setInterval(pollStatus, 2000); // Poll every 2 seconds for better UX
+        const timeout = setTimeout(() => clearInterval(interval), 120000); // Stop after 2 minutes
+
+        return () => {
+            clearInterval(interval);
+            clearTimeout(timeout);
+        };
     }, [user, bookingId, bookingStatus, isRedirecting]);
 
     const getStatusConfig = () => {

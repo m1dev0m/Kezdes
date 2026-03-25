@@ -16,7 +16,7 @@ class Booking(models.Model):
     PENDING = 'pending'
     PAYMENT_PENDING = 'payment_pending'
     CONFIRMED = 'confirmed'
-    APPROVED = 'confirmed'  # alias for backward compatibility
+    APPROVED = 'confirmed'  
     SEATED = 'seated'
     REJECTED = 'rejected'
     CANCELLED_BY_USER = 'cancelled_by_user'
@@ -66,7 +66,7 @@ class Booking(models.Model):
     event_title = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default=PENDING)
     
-    # Deposit fields
+
     deposit_required = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     is_deposit_paid = models.BooleanField(default=False)
     
@@ -77,6 +77,7 @@ class Booking(models.Model):
     check_in_time = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ['-date', '-time']
         indexes = [
@@ -94,6 +95,14 @@ class Booking(models.Model):
             models.CheckConstraint(
                 condition=models.Q(duration_minutes__gte=15),
                 name='booking_duration_min_15',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(duration_minutes__lte=480),
+                name='booking_duration_max_480',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(guests__lte=20),
+                name='booking_guests_lte_20',
             ),
             models.UniqueConstraint(
                 fields=['user', 'restaurant', 'date', 'time'],

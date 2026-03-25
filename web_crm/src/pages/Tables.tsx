@@ -15,7 +15,11 @@ function extractApiError(data: any): string | null {
   return null;
 }
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+const TABLE_TYPE_LABELS: Record<string, string> = {
+  rectangle: 'Прямоугольный',
+  circle: 'Круглый',
+  square: 'Квадратный',
+};
 
 interface Table {
   id: number;
@@ -307,7 +311,7 @@ export default function Tables() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Вместимость</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Форма</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Статус</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Активен</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" title="Нажмите на статус чтобы переключить">Активен ↕</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -327,16 +331,27 @@ export default function Tables() {
                       {table.capacity}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500 capitalize">{table.table_type}</td>
+                  <td className="px-4 py-3 text-slate-500 capitalize">{TABLE_TYPE_LABELS[table.table_type] || table.table_type}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[table.status]}`}>
                       {STATUS_LABELS[table.status]}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${table.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                      {table.is_active ? 'Да' : 'Нет'}
-                    </span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await api.patch(`/tables/${table.id}/`, { is_active: !table.is_active });
+                          load();
+                        } catch {
+                          toast.error('Не удалось изменить статус');
+                        }
+                      }}
+                      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${table.is_active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                      title="Нажмите чтобы переключить"
+                    >
+                      {table.is_active ? 'Активен' : 'Неактивен'}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-30 lg:group-hover:opacity-100 transition-opacity">

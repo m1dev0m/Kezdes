@@ -421,7 +421,8 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
 
     @action(detail=False, methods=["get"])
     def status(self, request):
-        tables = self.get_queryset()
+        # Tenant enforced by get_queryset from TenantModelViewSet
+        tables = self.get_queryset().select_related('restaurant')
 
         user = self.request.user
         from core.utils import get_user_restaurant
@@ -435,7 +436,10 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
 
         from bookings.services import make_aware_if_needed
         target_date = parse_date(date_str) if date_str else timezone.now().date()
-        target_time = parse_time(time_str) if time_str else timezone.now().time()
+        try:
+            target_time = parse_time(time_str) if time_str else timezone.now().time()
+        except (ValueError, TypeError):
+            target_time = None
 
         if not target_date or not target_time:
             return api_error("Invalid date/time format.", status.HTTP_400_BAD_REQUEST)

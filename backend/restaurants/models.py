@@ -46,7 +46,6 @@ class Restaurant(models.Model):
     # Deposit settings
     deposit_min_guests = models.PositiveIntegerField(null=True, blank=True, help_text="Мин. кол-во гостей для предоплаты")
     deposit_amount_per_guest = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Сумма предоплаты за гостя")
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -176,6 +175,20 @@ class Table(models.Model):
             models.Index(fields=['restaurant', 'status']),
             models.Index(fields=['restaurant', 'is_active']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(seats__gte=1),
+                name='table_seats_gte_1',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(seats__lte=20),
+                name='table_seats_lte_20',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(restaurant__isnull=False),
+                name='table_restaurant_not_null',
+            ),
+        ]
 
     def __str__(self):
         return f"Table {self.number} ({self.seats} seats) - {self.restaurant.name}"
@@ -285,4 +298,3 @@ def send_restaurant_request_emails(sender, instance, created, **kwargs):
             )
         except Exception:
             pass
-

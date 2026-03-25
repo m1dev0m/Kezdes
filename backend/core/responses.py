@@ -5,6 +5,7 @@ def api_error(message: str, status_code: int, *, details=None):
     payload = {
         "success": False,
         "detail": message,
+        "errors": details or {},
         "error": {
             "message": message,
             "details": details,

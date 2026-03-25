@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 
-const BASE = 'http://127.0.0.1:5176';
+const BASE = 'http://127.0.0.1:5174';
 const OWNER_USERNAME = 'Meatp';
 const OWNER_PASSWORD = 'testpass123';
 
@@ -112,8 +112,8 @@ test.describe('2. Admin flow', () => {
 
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        await page.locator('input[type="date"]').fill(tomorrow.toISOString().split('T')[0]);
-        await page.locator('input[type="time"]').fill('19:00');
+        await page.locator('form input[type="date"]').fill(tomorrow.toISOString().split('T')[0]);
+        await page.locator('form input[type="time"]').fill('19:00');
 
         console.log('✓ Form filled');
 
@@ -176,8 +176,8 @@ test.describe('2. Admin flow', () => {
 
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        await page.locator('input[type="date"]').fill(tomorrow.toISOString().split('T')[0]);
-        await page.locator('input[type="time"]').fill('20:00');
+        await page.locator('form input[type="date"]').fill(tomorrow.toISOString().split('T')[0]);
+        await page.locator('form input[type="time"]').fill('20:00');
 
         await page.locator('button', { hasText: 'Создать бронь' }).click();
         await page.waitForTimeout(3000);

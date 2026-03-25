@@ -32,7 +32,7 @@ JWT_SIGNING_KEY = env('JWT_SIGNING_KEY', default=SECRET_KEY)
 if not DEBUG and len(JWT_SIGNING_KEY) < 32:
     raise ValueError('JWT_SIGNING_KEY must be at least 32 characters when DEBUG=False')
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'testserver'])
 TWOGIS_API_KEY = env('TWOGIS_API_KEY', default='')
 
 ADMIN_URL = env('ADMIN_URL', default='secure-super-admin-9481')
@@ -50,17 +50,16 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'django_filters',
-    'venues',
-    'contractors',
     'core',
     'restaurants',
     'bookings',
-    'chat',
-    'orders.apps.OrdersConfig',
     'crm',
+    'chat',
+    'orders',
+    'contractors',
     'analytics',
-    'reports',
     'automations',
+    'venues',
     'django_celery_beat',
 ]
 MIDDLEWARE = [

@@ -6,7 +6,7 @@ export default defineConfig({
   expect: { timeout: 8_000 },
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:5176",
+    baseURL: "http://127.0.0.1:5174",
     headless: true,
     channel: "chromium",
     launchOptions: {

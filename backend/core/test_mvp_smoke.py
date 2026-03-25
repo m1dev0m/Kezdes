@@ -26,6 +26,10 @@ class MvpSmokeFlowTests(APITestCase):
         return res.data["access"]
 
     def test_end_to_end_owner_customer_admin_flow(self):
+        from core.models import OTPVerification
+        OTPVerification.objects.update_or_create(
+            email="owner_smoke@test.local", defaults={"code": "111222", "is_verified": False}
+        )
         reg_owner = self.client.post(
             reverse("register"),
             {
@@ -34,6 +38,7 @@ class MvpSmokeFlowTests(APITestCase):
                 "password": "owner-pass-123",
                 "password2": "owner-pass-123",
                 "role": "restaurant_admin",
+                "otp_code": "111222",
             },
             format="json",
         )
@@ -74,6 +79,10 @@ class MvpSmokeFlowTests(APITestCase):
         restaurant_id = me_rest.data["id"]
 
         self.client.credentials()
+        from core.models import OTPVerification
+        OTPVerification.objects.update_or_create(
+            email="customer_smoke@test.local", defaults={"code": "999000", "is_verified": False}
+        )
         reg_customer = self.client.post(
             reverse("register"),
             {
@@ -82,6 +91,7 @@ class MvpSmokeFlowTests(APITestCase):
                 "password": "customer-pass-123",
                 "password2": "customer-pass-123",
                 "role": "customer",
+                "otp_code": "999000",
             },
             format="json",
         )

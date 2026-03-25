@@ -4,34 +4,11 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth-context';
-import { fetchUnreadMessagesCount } from '../../lib/api';
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const [hasNewEvents, setHasNewEvents] = useState(false);
-
-    useEffect(() => {
-        let interval: any;
-        const load = async () => {
-            if (!user?.access) {
-                setHasNewEvents(false);
-                return;
-            }
-            try {
-                const res = await fetchUnreadMessagesCount(user.access);
-                setHasNewEvents(res.unread > 0);
-            } catch {
-            }
-        };
-        load();
-        if (user?.access) {
-            interval = setInterval(load, 5000);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [user]);
 
     return (
         <Tabs screenOptions={{
@@ -91,15 +68,6 @@ export default function TabLayout() {
                                 </View>
                             )}
                         </View>
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="messages"
-                options={{
-                    title: 'Сообщения',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="chatbubble-outline" size={24} color={color} />
                     ),
                 }}
             />

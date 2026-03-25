@@ -40,16 +40,20 @@ fi
 BACKEND_PID=$!
 cd ..
 
-echo "====================================="
+
 echo " Запуск Web CRM (Admin Panel)..."
-echo "====================================="
+
 cd web_crm
 npm run dev &
 WEB_PID=$!
 cd ..
 
-echo "====================================="
 echo " Запуск React Native (Expo) Frontend..."
-echo "====================================="
 cd mobile-rn
 npx expo start --clear
+
+
+echo "Запуск телеграм бота"
+cd telegram_bot
+source venv/bin/activate
+python3 main.py 

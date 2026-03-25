@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, CalendarDays, Plus, MessageSquare, RefreshCw, AlertCircle, Phone, Check, X, Users } from 'lucide-react';
+import { Search, CalendarDays, Plus, MessageSquare, RefreshCw, AlertCircle, Phone, Check, X, Users, Send } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/i18n/index.tsx';
@@ -25,19 +25,16 @@ function TableSeatingModal({ booking, onClose, onConfirm }: TableSeatingModalPro
         if (!booking) return;
         const load = async () => {
             try {
-                const [tablesRes, availRes] = await Promise.all([
-                    api.get('/tables/'),
-                    api.get('/bookings/available_tables/', {
-                        params: {
-                            restaurant_id: user?.restaurant,
-                            date: booking.date,
-                            time: booking.time.substring(0, 5)
-                        }
-                    })
-                ]);
-                const data = Array.isArray(tablesRes.data) ? tablesRes.data : (tablesRes.data.results || []);
-                setTables(data);
-                setAvailableIds(availRes.data.available_table_ids || []);
+                const availRes = await api.get('/bookings/available_tables/', {
+                    params: {
+                        restaurant_id: user?.restaurant,
+                        date: booking.date,
+                        time: booking.time.substring(0, 5)
+                    }
+                });
+                const availableTables = availRes.data.available_tables || [];
+                setTables(availableTables);
+                setAvailableIds(availableTables.map((t: any) => t.id));
             } catch (err) {
                 toast.error("Ошибка загрузки столов");
             } finally {
@@ -50,45 +47,45 @@ function TableSeatingModal({ booking, onClose, onConfirm }: TableSeatingModalPro
     const filtered = tables.filter(t => availableIds.includes(t.id) && (t.capacity || t.seats) >= booking.guests);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
                     <div>
-                        <h2 className="font-bold text-slate-900">Выберите стол</h2>
+                        <h2 className="font-bold text-slate-900 text-sm">Выберите стол</h2>
                         <p className="text-xs text-slate-500">Для {booking.user_name} ({booking.guests} персон)</p>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-700">&times;</button>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-lg">&times;</button>
                 </div>
-                <div className="p-6">
+                <div className="p-5">
                     {loading ? (
-                        <div className="flex justify-center p-8"><RefreshCw className="animate-spin text-primary opacity-50" /></div>
+                        <div className="flex justify-center p-6"><RefreshCw className="animate-spin text-primary opacity-50" /></div>
                     ) : filtered.length === 0 ? (
-                        <div className="text-center p-6 bg-slate-50 rounded-lg border border-slate-100">
+                        <div className="text-center p-5 bg-slate-50 rounded-lg border border-slate-100">
                             <p className="text-slate-500 font-medium text-sm">Нет свободных столов на {booking.guests} чел.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
+                        <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
                             {filtered.map(t => (
                                 <button
                                     key={t.id}
                                     onClick={() => setSelectedId(t.id)}
-                                    className={`col-span-1 border rounded-lg p-3 text-left transition-all ${selectedId === t.id ? 'border-primary ring-1 ring-primary bg-primary/5' : 'border-slate-200 hover:border-primary/40 focus:bg-slate-50'}`}
+                                    className={`border rounded-lg p-2.5 text-left transition-all duration-150 ${selectedId === t.id ? 'border-primary ring-1 ring-primary bg-primary/5' : 'border-slate-200 hover:border-slate-300'}`}
                                 >
-                                    <div className="font-bold text-slate-900">{t.name || t.number}</div>
-                                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                                        <Users size={12} /> {t.capacity || t.seats} мест
+                                    <div className="font-bold text-sm text-slate-900">{t.name || t.number}</div>
+                                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                        <Users size={11} /> {t.capacity || t.seats} мест
                                     </div>
                                 </button>
                             ))}
                         </div>
                     )}
                 </div>
-                <div className="p-4 border-t border-slate-100 flex gap-3 bg-slate-50">
-                    <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Отмена</button>
+                <div className="px-5 py-3 border-t border-slate-100 flex gap-2 bg-slate-50">
+                    <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Отмена</button>
                     <button
                         onClick={() => selectedId && onConfirm(selectedId)}
                         disabled={!selectedId}
-                        className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 transition-colors tracking-wide"
+                        className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-40 transition-colors"
                     >
                         Посадить
                     </button>
@@ -98,12 +95,46 @@ function TableSeatingModal({ booking, onClose, onConfirm }: TableSeatingModalPro
     );
 }
 
+// ── Source Badge ────────────────────────────────────────────────────────────────
+function SourceBadge({ source }: { source?: string }) {
+    if (source === 'telegram') {
+        return (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-600 text-[10px] font-semibold border border-sky-100">
+                <Send size={9} />TG
+            </span>
+        );
+    }
+    if (source === 'admin') {
+        return (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 text-[10px] font-semibold border border-violet-100">
+                Admin
+            </span>
+        );
+    }
+    if (source === 'phone') {
+        return (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 text-[10px] font-semibold border border-amber-100">
+                <Phone size={9} />Phone
+            </span>
+        );
+    }
+    // web or undefined — show nothing (default)
+    return null;
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 const TABS = [
-    { id: 'requests', label: 'Запросы и Активные', statuses: ['pending', 'confirmed', 'approved', 'seated'] },
+    { id: 'requests', label: 'Активные', statuses: ['pending', 'confirmed', 'approved', 'seated'] },
     { id: 'past', label: 'Прошедшие', statuses: ['completed'] },
     { id: 'cancelled', label: 'Отмененные', statuses: ['rejected', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'no_show', 'expired'] },
+];
+
+const SOURCE_FILTERS = [
+    { id: 'all', label: 'Все' },
+    { id: 'web', label: 'Web' },
+    { id: 'telegram', label: 'Telegram' },
+    { id: 'admin', label: 'Admin' },
 ];
 
 export default function Bookings() {
@@ -117,13 +148,16 @@ export default function Bookings() {
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState(TABS[0].id);
     const [seatingBooking, setSeatingBooking] = useState<any | null>(null);
+    const [sourceFilter, setSourceFilter] = useState('all');
+    const [dateFilter, setDateFilter] = useState('');
+    const [pendingAction, setPendingAction] = useState<string | null>(null); // "bookingId:action"
 
     useEffect(() => {
-        const timeout = setTimeout(() => setDebouncedSearch(search), 400);
+        const timeout = setTimeout(() => setDebouncedSearch(search), 200);
         return () => clearTimeout(timeout);
     }, [search]);
 
-    const loadBookings = async () => {
+    const loadBookings = useCallback(async () => {
         setRefreshing(true);
         try {
             const params = new URLSearchParams();
@@ -132,23 +166,37 @@ export default function Bookings() {
             setBookings(res.data.results || (Array.isArray(res.data) ? res.data : []));
             setError(null);
         } catch {
-            setError("Failed to fetch reservation stream");
+            setError("Не удалось загрузить бронирования");
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadBookings();
         const interval = setInterval(loadBookings, 15000);
         return () => clearInterval(interval);
-    }, []);
+    }, [loadBookings]);
 
     const filteredBookings = useMemo(() => {
         const tabStatuses = TABS.find(t => t.id === activeTab)?.statuses || [];
         let list = bookings.filter(b => tabStatuses.includes(b.status));
 
+        // Source filter
+        if (sourceFilter !== 'all') {
+            list = list.filter(b => {
+                const src = b.source || (b.special_requests?.includes('source: telegram') ? 'telegram' : 'web');
+                return src === sourceFilter;
+            });
+        }
+
+        // Date filter
+        if (dateFilter) {
+            list = list.filter(b => b.date === dateFilter);
+        }
+
+        // Search
         if (debouncedSearch) {
             const lower = debouncedSearch.toLowerCase();
             list = list.filter(b =>
@@ -157,19 +205,37 @@ export default function Bookings() {
             );
         }
         return list;
-    }, [bookings, activeTab, debouncedSearch]);
+    }, [bookings, activeTab, debouncedSearch, sourceFilter, dateFilter]);
 
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'confirmed':
-            case 'approved': return 'bg-success/10 text-success border-success/20';
-            case 'seated': return 'bg-primary/10 text-primary border-primary/20';
-            case 'pending': return 'bg-warning/10 text-warning border-warning/20';
+            case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'seated': return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
             case 'rejected':
             case 'cancelled':
-            case 'cancelled_by_user': return 'bg-danger/10 text-danger border-danger/20';
-            default: return 'bg-slate-100 text-slate-600 border-slate-200';
+            case 'cancelled_by_user':
+            case 'cancelled_by_restaurant': return 'bg-rose-50 text-rose-600 border-rose-200';
+            case 'no_show': return 'bg-slate-100 text-slate-600 border-slate-200';
+            default: return 'bg-slate-50 text-slate-500 border-slate-200';
         }
+    };
+
+    const getStatusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            pending: 'Ожидает',
+            confirmed: 'Подтв.',
+            approved: 'Подтв.',
+            seated: 'За столом',
+            completed: 'Завершен',
+            rejected: 'Отклонен',
+            cancelled_by_user: 'Отменен',
+            cancelled_by_restaurant: 'Отменен',
+            no_show: 'Неявка',
+            expired: 'Истекло',
+        };
+        return labels[status] || status;
     };
 
     const ACTION_LABELS: Record<string, string> = {
@@ -180,7 +246,18 @@ export default function Bookings() {
         cancel_by_restaurant: 'Бронь отменена',
     };
 
+    const DESTRUCTIVE_ACTIONS = new Set(['reject', 'cancel_by_restaurant']);
+    const DESTRUCTIVE_CONFIRM: Record<string, string> = {
+        reject: 'Отклонить бронирование?',
+        cancel_by_restaurant: 'Отменить бронирование?',
+    };
+
     const handleAction = async (bookingId: number, action: string, extraData: any = {}) => {
+        if (DESTRUCTIVE_ACTIONS.has(action)) {
+            if (!window.confirm(DESTRUCTIVE_CONFIRM[action] || 'Вы уверены?')) return;
+        }
+        const key = `${bookingId}:${action}`;
+        setPendingAction(key);
         try {
             await api.post(`/bookings/${bookingId}/${action}/`, extraData);
             toast.success(ACTION_LABELS[action] || `Действие выполнено`);
@@ -191,6 +268,8 @@ export default function Bookings() {
                 || (typeof data?.error === 'string' ? data.error : null)
                 || `Ошибка: ${action}`;
             toast.error(msg);
+        } finally {
+            setPendingAction(null);
         }
     };
 
@@ -206,7 +285,6 @@ export default function Bookings() {
         const booking = seatingBooking;
         setSeatingBooking(null);
         try {
-            // First assign the table, then seat
             await api.post(`/bookings/${booking.id}/reassign_table/`, { table_id: tableId });
             await api.post(`/bookings/${booking.id}/seat/`);
             toast.success('Гость посажен');
@@ -220,33 +298,50 @@ export default function Bookings() {
         }
     };
 
+    // Derive source for backward compat (old bookings without source field)
+    const getSource = (b: any) => {
+        if (b.source) return b.source;
+        if (b.special_requests?.includes('source: telegram')) return 'telegram';
+        return 'web';
+    };
+
+    // Count helpers
+    const tabCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        TABS.forEach(tab => {
+            counts[tab.id] = bookings.filter(b => tab.statuses.includes(b.status)).length;
+        });
+        return counts;
+    }, [bookings]);
+
     return (
-        <div className="space-y-6 min-h-screen pb-20">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+        <div className="space-y-4 pb-12">
+            {/* Header */}
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">{t('bookings.title', 'Бронирования')}</h1>
-                    <p className="text-sm text-slate-500 mt-1">Управление потоком гостей</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('bookings.title', 'Бронирования')}</h1>
+                    <p className="text-sm text-slate-500 mt-0.5">Управление потоком гостей</p>
                 </div>
                 <button
                     onClick={() => setIsFormOpen(true)}
-                    className="px-4 py-2 bg-primary text-white rounded-md text-sm font-semibold shadow-sm hover:bg-primary/90 transition-all flex items-center gap-2"
+                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold shadow-sm hover:bg-primary/90 transition-all duration-150 flex items-center gap-2 active:scale-[0.98]"
                 >
                     <Plus size={16} /> Новая бронь
                 </button>
             </header>
 
-            {/* TABS */}
-            <div className="flex space-x-1 border-b border-slate-200 mb-6">
+            {/* Tabs */}
+            <div className="flex space-x-1 border-b border-slate-200">
                 {TABS.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-3 text-sm font-semibold tracking-wide flex items-center gap-2 transition-colors relative ${activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-800'
+                        className={`px-4 py-2.5 text-sm font-semibold flex items-center gap-2 transition-colors duration-150 relative ${activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-800'
                             }`}
                     >
                         {tab.label}
-                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs font-bold">
-                            {bookings.filter(b => tab.statuses.includes(b.status)).length}
+                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${activeTab === tab.id ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}>
+                            {tabCounts[tab.id] || 0}
                         </span>
                         {activeTab === tab.id && (
                             <motion.div layoutId="book-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
@@ -255,117 +350,169 @@ export default function Bookings() {
                 ))}
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 items-center mb-6">
-                <div className="relative group flex-1 w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-all" size={16} />
+            {/* Filters Row */}
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+                <div className="relative group flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors duration-150" size={16} />
                     <input
                         type="text" value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="Поиск по имени или телефону..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md focus:border-primary transition-all shadow-sm outline-none text-sm font-medium"
+                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-150 outline-none text-sm"
                     />
                 </div>
-                <button onClick={loadBookings} className="h-10 w-10 flex items-center justify-center bg-white border border-slate-200 rounded-md text-slate-500 hover:text-primary transition-all">
-                    <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-                </button>
+                <div className="flex gap-2">
+                    <input
+                        type="date"
+                        value={dateFilter}
+                        onChange={e => setDateFilter(e.target.value)}
+                        className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all duration-150"
+                    />
+                    <select
+                        value={sourceFilter}
+                        onChange={e => setSourceFilter(e.target.value)}
+                        className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all duration-150 cursor-pointer"
+                    >
+                        {SOURCE_FILTERS.map(sf => (
+                            <option key={sf.id} value={sf.id}>{sf.label}</option>
+                        ))}
+                    </select>
+                    <button onClick={loadBookings} className="h-9 w-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-primary hover:border-slate-300 transition-all duration-150 shrink-0">
+                        <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+                    </button>
+                </div>
             </div>
 
+            {/* Content */}
             {loading && !bookings.length ? (
-                <div className="space-y-4">
+                <div className="space-y-2">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="h-20 bg-white rounded-md animate-pulse border border-slate-200 shadow-sm"></div>
+                        <div key={i} className="h-14 bg-white rounded-lg animate-pulse border border-slate-200"></div>
                     ))}
                 </div>
             ) : error ? (
-                <div className="p-4 bg-danger/10 text-danger rounded-md border border-danger/20 flex items-center gap-3">
-                    <AlertCircle size={20} />
+                <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-200 flex items-center gap-3">
+                    <AlertCircle size={18} />
                     <p className="font-semibold text-sm">{error}</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-md border border-slate-200 shadow-sm overflow-x-auto">
+                <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
                     {filteredBookings.length === 0 ? (
-                        <div className="p-16 text-center space-y-3">
-                            <CalendarDays size={48} className="mx-auto text-slate-200" />
-                            <p className="text-slate-500 font-medium text-sm">В этой вкладке ничего нет</p>
+                        <div className="p-12 text-center space-y-2">
+                            <CalendarDays size={40} className="mx-auto text-slate-300" />
+                            <p className="text-slate-500 font-medium text-sm">Нет бронирований</p>
                         </div>
                     ) : (
-                        <table className="w-full text-left border-collapse min-w-[900px]">
+                        <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50">
-                                    <th className="py-2.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Guest</th>
-                                    <th className="py-2.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone</th>
-                                    <th className="py-2.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pax</th>
-                                    <th className="py-2.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
-                                    <th className="py-2.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Table</th>
-                                    <th className="py-2.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                                <tr className="border-b border-slate-200 bg-slate-50/80">
+                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Гость</th>
+                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Телефон</th>
+                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Пакс</th>
+                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Время</th>
+                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Стол</th>
+                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Действия</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 <AnimatePresence mode="popLayout">
-                                    {filteredBookings.map((b, i) => (
+                                    {filteredBookings.map((b) => (
                                         <motion.tr
                                             layout
                                             key={b.id}
-                                            initial={{ opacity: 0, scale: 0.98 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, y: -10 }}
-                                            transition={{ duration: 0.2 }}
-                                            className="hover:bg-slate-50 transition-colors group"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="hover:bg-slate-50 transition-colors duration-150 group"
                                         >
-                                            <td className="py-2.5 px-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-7 h-7 rounded border border-slate-200 bg-white flex items-center justify-center text-slate-700 font-bold text-xs shadow-sm">
+                                            {/* Guest */}
+                                            <td className="py-2 px-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-7 h-7 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-700 font-bold text-xs shrink-0">
                                                         {b.user_name?.charAt(0).toUpperCase() || 'G'}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <span className="font-semibold text-sm text-slate-900 block truncate max-w-[150px]">{b.user_name || 'Guest'}</span>
-                                                        <span className={`inline-flex px-1.5 py-0.5 rounded flex items-center w-max gap-1 text-[10px] uppercase font-bold border mt-0.5 ${getStatusStyle(b.status)}`}>
-                                                            {b.status_display || b.status}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-semibold text-sm text-slate-900 truncate max-w-[130px]">{b.user_name || 'Guest'}</span>
+                                                            <SourceBadge source={getSource(b)} />
+                                                        </div>
+                                                        <span className={`inline-flex px-1.5 py-px rounded text-[10px] font-semibold border mt-0.5 ${getStatusStyle(b.status)}`}>
+                                                            {getStatusLabel(b.status)}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-2.5 px-4 text-sm text-slate-600">
-                                                <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                                    <Phone size={12} className="text-slate-400" /> {b.user_phone || '—'}
+                                            {/* Phone */}
+                                            <td className="py-2 px-3 text-sm text-slate-600 whitespace-nowrap">
+                                                <span className="flex items-center gap-1"><Phone size={12} className="text-slate-400" /> {b.user_phone || '—'}</span>
+                                            </td>
+                                            {/* Guests */}
+                                            <td className="py-2 px-3 text-sm font-bold text-slate-900">{b.guests}</td>
+                                            {/* Time */}
+                                            <td className="py-2 px-3 whitespace-nowrap">
+                                                <span className="text-sm font-semibold text-slate-900">{b.time?.substring(0, 5)}</span>
+                                                <span className="text-xs text-slate-500 ml-1.5">{new Date(b.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}</span>
+                                            </td>
+                                            {/* Table */}
+                                            <td className="py-2 px-3">
+                                                <div className="flex items-center gap-1.5">
+                                                    {b.table_number || b.table ? (
+                                                        <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-semibold border border-slate-200">T{b.table_number || b.table}</span>
+                                                    ) : <span className="text-slate-400 text-xs">—</span>}
+                                                    {b.special_requests && !b.special_requests.startsWith('source:') && (
+                                                        <button onClick={() => toast(b.special_requests)} className="text-slate-400 hover:text-primary transition-colors duration-150" title="Запрос">
+                                                            <MessageSquare size={13} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
-                                            <td className="py-2.5 px-4 text-sm font-bold text-slate-900">{b.guests}</td>
-                                            <td className="py-2.5 px-4 whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-semibold text-slate-900">{b.time?.substring(0, 5)}</span>
-                                                    <span className="text-xs text-slate-500">{new Date(b.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}</span>
-                                                </div>
-                                            </td>
-                                            <td className="py-2.5 px-4">
-                                                {b.table_number || b.table ? (
-                                                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-semibold border border-slate-200">T{b.table_number || b.table}</span>
-                                                ) : <span className="text-slate-400 text-xs italic">Не назначен</span>}
-                                                {b.special_requests && (
-                                                    <button onClick={() => toast("Special Request: " + b.special_requests)} className="px-2 py-1 ml-1 inline-flex text-slate-400 hover:text-primary transition-colors cursor-pointer" title="View Special Request">
-                                                        <MessageSquare size={14} />
-                                                    </button>
-                                                )}
-                                            </td>
-                                            <td className="py-2.5 px-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 lg:opacity-30 lg:group-hover:opacity-100 transition-opacity">
+                                            {/* Actions */}
+                                            <td className="py-2 px-3 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
                                                     {b.status === 'pending' && (
                                                         <>
-                                                            <button onClick={() => handleAction(b.id, 'confirm')} className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success text-xs font-bold rounded-lg hover:bg-success/20 transition-colors tracking-wide">
-                                                                <Check size={14} /> Принять
+                                                            <button
+                                                                onClick={() => handleAction(b.id, 'confirm')}
+                                                                disabled={!!pendingAction}
+                                                                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md hover:bg-emerald-100 border border-emerald-200 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50"
+                                                            >
+                                                                {pendingAction === `${b.id}:confirm` ? <RefreshCw size={11} className="animate-spin" /> : <Check size={13} />} Принять
                                                             </button>
-                                                            <button onClick={() => handleAction(b.id, 'reject')} className="flex items-center gap-1.5 px-3 py-1.5 bg-danger/10 text-danger text-xs font-bold rounded-lg hover:bg-danger/20 transition-colors tracking-wide">
-                                                                <X size={14} /> Отклонить
+                                                            <button
+                                                                onClick={() => handleAction(b.id, 'reject')}
+                                                                disabled={!!pendingAction}
+                                                                className="flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-600 text-xs font-semibold rounded-md hover:bg-rose-100 border border-rose-200 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50"
+                                                            >
+                                                                {pendingAction === `${b.id}:reject` ? <RefreshCw size={11} className="animate-spin" /> : <X size={13} />} Отклонить
                                                             </button>
                                                         </>
                                                     )}
                                                     {(b.status === 'confirmed' || b.status === 'approved') && (
-                                                        <button onClick={() => handleSeatClick(b)} className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-sm hover:bg-primary/90 transition-colors tracking-wide">Посадить (Seat)</button>
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleSeatClick(b)}
+                                                                disabled={!!pendingAction}
+                                                                className="px-3 py-1 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50 flex items-center gap-1"
+                                                            >
+                                                                {pendingAction === `${b.id}:seat` ? <RefreshCw size={11} className="animate-spin" /> : null} Посадить
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleAction(b.id, 'cancel_by_restaurant')}
+                                                                disabled={!!pendingAction}
+                                                                className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md hover:bg-slate-200 border border-slate-200 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50"
+                                                            >
+                                                                {pendingAction === `${b.id}:cancel_by_restaurant` ? <RefreshCw size={11} className="animate-spin inline" /> : null} Отмена
+                                                            </button>
+                                                        </>
                                                     )}
                                                     {b.status === 'seated' && (
-                                                        <button onClick={() => handleAction(b.id, 'complete')} className="px-4 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-slate-800 transition-colors tracking-wide">Завершить</button>
-                                                    )}
-                                                    {['confirmed', 'approved'].includes(b.status) && (
-                                                        <button onClick={() => handleAction(b.id, 'cancel_by_restaurant')} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors tracking-wide">Отмена</button>
+                                                        <button
+                                                            onClick={() => handleAction(b.id, 'complete')}
+                                                            disabled={!!pendingAction}
+                                                            className="px-3 py-1 bg-slate-900 text-white text-xs font-semibold rounded-md hover:bg-slate-800 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50 flex items-center gap-1"
+                                                        >
+                                                            {pendingAction === `${b.id}:complete` ? <RefreshCw size={11} className="animate-spin" /> : null} Завершить
+                                                        </button>
                                                     )}
                                                 </div>
                                             </td>

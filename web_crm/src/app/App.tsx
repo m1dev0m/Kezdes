@@ -17,23 +17,14 @@ const Bookings = lazy(() => import('@/pages/Bookings'));
 const Customers = lazy(() => import('@/pages/Customers'));
 const CustomerDetail = lazy(() => import('@/pages/CustomerDetail'));
 const Tables = lazy(() => import('@/pages/Tables'));
-const Staff = lazy(() => import('@/pages/Staff'));
-const Automations = lazy(() => import('@/pages/Automations'));
-const Reviews = lazy(() => import('@/pages/Reviews'));
-const Analytics = lazy(() => import('@/pages/Analytics'));
 const Settings = lazy(() => import('@/pages/Settings'));
-const Reports = lazy(() => import('@/pages/Reports'));
-const Menu = lazy(() => import('@/pages/Menu'));
-const Orders = lazy(() => import('@/pages/Orders'));
 const Calendar = lazy(() => import('@/pages/Calendar'));
-const Messages = lazy(() => import('@/pages/Messages'));
 const RestaurantPage = lazy(() => import('@/pages/public/RestaurantPage'));
 const BookPage = lazy(() => import('@/pages/public/BookPage'));
 const ConfirmationPage = lazy(() => import('@/pages/public/ConfirmationPage'));
 const Search = lazy(() => import('@/pages/public/Search'));
 const GuestDashboard = lazy(() => import('@/pages/guest/GuestDashboard'));
 const GuestBookingDetails = lazy(() => import('@/pages/guest/GuestBookingDetails'));
-const GuestMessages = lazy(() => import('@/pages/guest/GuestMessages'));
 const GuestProfile = lazy(() => import('@/pages/guest/GuestProfile'));
 const GuestFavorites = lazy(() => import('@/pages/guest/GuestFavorites'));
 const GuestSettings = lazy(() => import('@/pages/guest/GuestSettings'));
@@ -44,7 +35,6 @@ const SystemLogs = lazy(() => import('@/pages/global_admin/SystemLogs'));
 const Welcome = lazy(() => import('@/pages/public/Welcome'));
 const Pricing = lazy(() => import('@/pages/public/Pricing'));
 const Contact = lazy(() => import('@/pages/public/Contact'));
-const Billing = lazy(() => import('@/pages/Billing'));
 const RestaurantPendingApproval = lazy(() => import('@/pages/public/RestaurantPendingApproval'));
 const SetupRestaurant = lazy(() => import('@/pages/public/SetupRestaurant'));
 
@@ -123,7 +113,6 @@ function App() {
                 <Route element={<GuestLayout />}>
                   <Route path="dashboard" element={<GuestDashboard />} />
                   <Route path="bookings/:id" element={<GuestBookingDetails />} />
-                  <Route path="messages" element={<GuestMessages />} />
                   <Route path="profile" element={<GuestProfile />} />
                   <Route path="favorites" element={<GuestFavorites />} />
                   <Route path="settings" element={<GuestSettings />} />
@@ -135,26 +124,16 @@ function App() {
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="bookings" element={<Bookings />} />
                   <Route path="calendar" element={<Calendar />} />
-                  <Route path="messages" element={<Messages />} />
                   <Route path="customers" element={<Customers />} />
                   <Route path="customers/:id" element={<CustomerDetail />} />
                   <Route path="tables" element={<Tables />} />
-                  <Route path="menu" element={<Menu />} />
-                  <Route path="orders" element={<Orders />} />
-                  <Route path="staff" element={<Staff />} />
-                  <Route path="automations" element={<Automations />} />
-                  <Route path="reviews" element={<Reviews />} />
-                  <Route path="analytics" element={<Analytics />} />
-                  <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
-                  <Route path="billing" element={<Billing />} />
                 </Route>
               </Route>
 
               <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
               <Route path="/dashboard/reservations" element={<Navigate to="/app/bookings" replace />} />
               <Route path="/dashboard/tables" element={<Navigate to="/app/tables" replace />} />
-              <Route path="/dashboard/menu" element={<Navigate to="/app/menu" replace />} />
               <Route path="/dashboard/settings" element={<Navigate to="/app/settings" replace />} />
 
               <Route path="/admin" element={<ProtectedRoute />}>

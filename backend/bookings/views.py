@@ -896,8 +896,10 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         """
         Public endpoint to get available tables for a specific time slot.
         Query params: restaurant_id, date, time, duration_minutes (default 90)
+        Returns: {"available_tables": [table objects]}
         """
         from restaurants.models import Restaurant
+        from restaurants.serializers import TableSerializer
         from .services import BookingService
         
         restaurant_id = request.query_params.get('restaurant_id')
@@ -937,7 +939,9 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             )
             
         table_ids = BookingService.get_available_table_ids(restaurant, date_obj, time_obj, duration)
-        return Response({"available_table_ids": table_ids})
+        available_tables = Table.objects.filter(id__in=table_ids).order_by('name')
+        serializer = TableSerializer(available_tables, many=True)
+        return Response({"available_tables": serializer.data})
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def cancel(self, request, pk=None):

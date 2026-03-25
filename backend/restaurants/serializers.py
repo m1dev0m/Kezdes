@@ -182,11 +182,12 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'address', 'latitude', 'longitude',
             'phone', 'image_url', 'image', 'photo_url', 'source', 'is_claimed', 'is_verified',
             'capacity', 'average_price', 'rating', 'price_level', 'plan', 'views_count', 'availabilities',
-            'reviews', 'tables', 'floor', 'entrance', 'extra_address_info', 'city', 'status'
+            'reviews', 'tables', 'floor', 'entrance', 'extra_address_info', 'city', 'status',
+            'deposit_min_guests', 'deposit_amount_per_guest',
         ]
         read_only_fields = ['views_count', 'rating']
+
     def get_photo_url(self, obj):
-        """Return uploaded image URL first, then image_url fallback."""
         request = self.context.get('request')
         if obj.image:
             url = obj.image.url
@@ -194,6 +195,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(url)
             return url
         return obj.image_url or None
+
 class RestaurantClaimSerializer(serializers.Serializer):
     restaurant_id = serializers.IntegerField()
 from django.contrib.auth.models import User

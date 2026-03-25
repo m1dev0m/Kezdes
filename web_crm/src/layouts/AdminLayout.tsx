@@ -9,40 +9,26 @@ import {
     Settings,
     LogOut,
     Search,
-    ChevronDown,
 } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 type OwnedRestaurantUser = {
     owned_restaurant?: { name?: string | null } | null;
 };
 
 const NAV = [
-    { path: '/app/dashboard',  label: 'Dashboard',     icon: LayoutDashboard, key: null },
-    { path: '/app/bookings',   label: 'Reservations',  icon: CalendarDays,    key: 'r' },
-    { path: '/app/tables',     label: 'Tables',        icon: Grid3X3,         key: 't' },
-    { path: '/app/customers',  label: 'Guests',        icon: Users,           key: null },
-    { path: '/app/settings',   label: 'Settings',      icon: Settings,        key: null },
+    { path: '/app/dashboard', label: 'Dashboard',    icon: LayoutDashboard, shortcut: null },
+    { path: '/app/bookings',  label: 'Reservations', icon: CalendarDays,    shortcut: 'r' },
+    { path: '/app/tables',    label: 'Tables',        icon: Grid3X3,         shortcut: 't' },
+    { path: '/app/customers', label: 'Guests',        icon: Users,           shortcut: null },
+    { path: '/app/settings',  label: 'Settings',      icon: Settings,        shortcut: null },
 ];
 
 export default function AdminLayout() {
     const { user, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const searchRef = useRef<HTMLInputElement>(null);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    // Close user menu on outside click
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-                setUserMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -69,48 +55,76 @@ export default function AdminLayout() {
         navigate('/login');
     };
 
-    const restaurantName = (user as OwnedRestaurantUser | null)?.owned_restaurant?.name || 'My Restaurant';
+    const restaurantName = (user as OwnedRestaurantUser | null)?.owned_restaurant?.name || 'Мой Ресторан';
+
+    const getInitials = (name?: string | null) => {
+        if (!name) return 'U';
+        return name.charAt(0).toUpperCase();
+    };
 
     return (
-        <div className="flex h-screen bg-[#F8F9FA] font-display text-slate-900 overflow-hidden">
+        <div className="flex xl:h-screen h-[100dvh] bg-white font-sans text-slate-900 overflow-hidden">
 
-            {/* ── Sidebar ── */}
-            <aside className="w-[200px] shrink-0 bg-white border-r border-slate-200 flex flex-col">
+            {/* ── Fixed Left Sidebar ── */}
+            <aside className="w-[240px] shrink-0 bg-[#F4F7F9] border-r border-[#E2E8F0] flex flex-col h-full z-20">
 
-                {/* Logo */}
-                <div className="h-14 px-5 flex items-center border-b border-slate-200">
-                    <Link to="/app/dashboard">
-                        <Logo variant="admin" className="h-7" />
+                {/* 1. Header & Logo */}
+                <div className="h-[72px] px-6 flex items-center shrink-0">
+                    <Link to="/app/dashboard" className="transition-opacity hover:opacity-80 active:opacity-60">
+                        <Logo variant="admin" className="h-[22px]" />
                     </Link>
                 </div>
 
-                {/* Nav items */}
-                <nav className="flex-1 px-3 py-4 space-y-0.5">
+                {/* 2. Global Search */}
+                <div className="px-5 mb-6">
+                    <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] group-focus-within:text-[#334155] transition-colors duration-150" size={16} />
+                        <input
+                            ref={searchRef}
+                            type="text"
+                            placeholder='Search... ("/" to focus)'
+                            className="w-full pl-9 pr-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-[13px] text-[#334155] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#CBD5E1] focus:ring-1 focus:ring-[#CBD5E1] shadow-sm transition-all duration-150"
+                        />
+                    </div>
+                </div>
+
+                {/* 3. Main Navigation */}
+                <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
                     {NAV.map(item => {
                         const active = isActive(item.path);
                         return (
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                title={item.key ? `Shortcut: ${item.key}` : undefined}
+                                title={item.shortcut ? `Shortcut: ${item.shortcut}` : undefined}
                                 className={`
-                                    flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-semibold
-                                    transition-colors duration-150 group
+                                    flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] 
+                                    transition-all duration-150 active:scale-[0.98] group
                                     ${active
-                                        ? 'bg-[#1A3C34]/8 text-[#1A3C34]'
-                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                        ? 'bg-[#F1F5F9] font-bold text-[#0F172A]'
+                                        : 'text-[#64748B] font-medium hover:bg-[#F8FAFC] hover:text-[#334155]'
                                     }
                                 `}
                             >
                                 <item.icon
-                                    size={16}
-                                    strokeWidth={active ? 2.2 : 1.8}
-                                    className={active ? 'text-[#1A3C34]' : 'text-slate-400 group-hover:text-slate-600'}
+                                    size={18}
+                                    strokeWidth={active ? 2.5 : 2}
+                                    className={`
+                                        transition-colors duration-150
+                                        ${active ? 'text-[#0F172A]' : 'text-[#94A3B8] group-hover:text-[#64748B]'}
+                                    `}
                                 />
                                 <span className="flex-1 truncate">{item.label}</span>
-                                {item.key && (
-                                    <kbd className="hidden group-hover:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-400 border border-slate-200 leading-none">
-                                        {item.key}
+                                {item.shortcut && (
+                                    <kbd className={`
+                                        hidden lg:inline-flex items-center justify-center min-w-[20px] h-5 rounded 
+                                        text-[10px] font-mono leading-none border
+                                        ${active
+                                            ? 'bg-white text-slate-500 border-slate-200 shadow-sm'
+                                            : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:shadow-sm transition-all duration-150'
+                                        }
+                                    `}>
+                                        {item.shortcut}
                                     </kbd>
                                 )}
                             </Link>
@@ -118,81 +132,43 @@ export default function AdminLayout() {
                     })}
                 </nav>
 
-                {/* Sign out */}
-                <div className="px-3 pb-4 border-t border-slate-100 pt-3">
+                {/* 4. User Profile & Settings/Logout */}
+                <div className="p-5 border-t border-[#F1F5F9] shrink-0">
+                    <div className="flex items-center justify-between bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-sm mb-4">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-8 h-8 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center text-[#0F172A] text-xs font-bold uppercase shadow-sm shrink-0">
+                                {getInitials(user?.username)}
+                            </div>
+                            <div className="flex flex-col min-w-0 pr-2">
+                                <span className="text-[13px] font-bold text-[#0F172A] truncate leading-tight">
+                                    {restaurantName}
+                                </span>
+                                <span className="text-[11px] font-medium text-[#64748B] truncate mt-0.5">
+                                    {user?.username}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors duration-150"
+                        className="flex items-center gap-3 px-3 py-2 text-[14px] font-semibold text-[#64748B] hover:text-[#0F172A] transition-all duration-150 active:scale-[0.98] group"
                     >
-                        <LogOut size={16} strokeWidth={1.8} />
+                        <LogOut size={16} strokeWidth={2.5} className="text-[#94A3B8] group-hover:text-[#64748B] transition-colors duration-150" />
                         <span>Sign out</span>
                     </button>
                 </div>
             </aside>
 
-            {/* ── Main area ── */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-                {/* Top bar */}
-                <header className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
-
-                    {/* Search */}
-                    <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5 group-focus-within:text-[#1A3C34] transition-colors" />
-                        <input
-                            ref={searchRef}
-                            type="text"
-                            placeholder='Search... ("/" to focus)'
-                            className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 focus:border-[#1A3C34]/40 focus:bg-white rounded-md text-sm w-72 transition-colors outline-none placeholder:text-slate-400"
-                        />
-                    </div>
-
-                    {/* User menu */}
-                    <div className="relative" ref={menuRef}>
-                        <button
-                            onClick={() => setUserMenuOpen(v => !v)}
-                            className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-slate-100 transition-colors duration-150 border border-transparent"
-                        >
-                            <div className="w-7 h-7 rounded-md bg-[#1A3C34]/10 flex items-center justify-center text-[#1A3C34] text-[11px] font-bold uppercase">
-                                {user?.username?.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[12px] font-bold text-slate-900 leading-none">{user?.username}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px]">{restaurantName}</p>
-                            </div>
-                            <ChevronDown size={12} className={`text-slate-400 transition-transform duration-150 ${userMenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        {userMenuOpen && (
-                            <div className="absolute right-0 mt-1.5 w-48 bg-white border border-slate-200 rounded-md shadow-md p-1 z-50">
-                                <Link
-                                    to="/app/settings"
-                                    onClick={() => setUserMenuOpen(false)}
-                                    className="flex items-center gap-2 px-3 py-2 rounded text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                                >
-                                    <Settings size={14} />
-                                    Settings
-                                </Link>
-                                <div className="my-1 border-t border-slate-100" />
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center gap-2 px-3 py-2 rounded text-[13px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-                                >
-                                    <LogOut size={14} />
-                                    Sign out
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </header>
-
-                {/* Page content */}
-                <main className="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar">
-                    <div className="max-w-6xl mx-auto">
+            {/* ── Main Content Area ── */}
+            <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-white lg:rounded-tl-2xl border-l border-t border-[#E2E8F0] shadow-[inset_0_4px_24px_rgba(0,0,0,0.02)] relative z-10 overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-8 py-10 custom-scrollbar">
+                    <div className="max-w-[1200px] w-full mx-auto">
                         <Outlet />
                     </div>
-                </main>
-            </div>
+                </div>
+            </main>
+
         </div>
     );
 }

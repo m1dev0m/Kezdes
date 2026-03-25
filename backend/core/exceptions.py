@@ -29,7 +29,8 @@ def api_exception_handler(exc, context):
 
     response.data = {
         "success": False,
-        "detail": message,  # Root-level detail for frontend/Axios compatibility
+        "detail": message,
+        "errors": details if isinstance(details, dict) else {},
         "error": {
             "message": message,
             "details": details,

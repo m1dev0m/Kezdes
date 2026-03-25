@@ -553,6 +553,10 @@ class OnboardingFlowTests(TestCase):
     def test_register_owner_creates_request(self):
         """Registering as 'owner' with a restaurant_name should create a RestaurantRequest."""
         from restaurants.models import RestaurantRequest
+        from core.models import OTPVerification
+        OTPVerification.objects.update_or_create(
+            email="newowner@test.com", defaults={"code": "654321", "is_verified": False}
+        )
 
         res = self.client.post("/api/v1/auth/register/", {
             "username": "newowner",
@@ -562,6 +566,7 @@ class OnboardingFlowTests(TestCase):
             "role": "owner",
             "restaurant_name": "New Bistro",
             "phone": "+77771112233",
+            "otp_code": "654321",
         }, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
