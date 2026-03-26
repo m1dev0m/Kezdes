@@ -98,19 +98,13 @@ class AuthenticationAPITest(APITestCase):
 
 
 class RegistrationAPITest(APITestCase):
-    def _create_otp(self, email: str, code: str = "123456"):
-        from core.models import OTPVerification
-        OTPVerification.objects.update_or_create(email=email, defaults={"code": code, "is_verified": False})
-
     def test_registration_success(self):
-        self._create_otp("newuser@example.com")
         response = self.client.post('/api/v1/auth/register/', {
             'username': 'newuser',
             'email': 'newuser@example.com',
             'password': 'newpass123',
             'password2': 'newpass123',
             'role': 'customer',
-            'otp_code': '123456',
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(User.objects.filter(username='newuser').exists())

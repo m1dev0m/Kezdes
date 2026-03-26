@@ -34,34 +34,24 @@ class TestAuthentication:
 
     def test_registration_as_customer(self, api_client, db):
         """Test that a user can register as a customer"""
-        from core.models import OTPVerification
-        OTPVerification.objects.update_or_create(
-            email="newcustomer@test.com", defaults={"code": "555666", "is_verified": False}
-        )
         response = api_client.post('/api/v1/auth/register/', {
             'username': 'new_customer',
             'email': 'newcustomer@test.com',
             'password': 'testpass123',
             'password2': 'testpass123',
             'role': 'customer',
-            'otp_code': '555666',
         })
         assert response.status_code == status.HTTP_201_CREATED
         assert User.objects.filter(username='new_customer').exists()
 
     def test_registration_as_restaurant_admin(self, api_client, db):
         """Test that a user can register as a restaurant admin (mapped to owner)"""
-        from core.models import OTPVerification
-        OTPVerification.objects.update_or_create(
-            email="newadmin@test.com", defaults={"code": "777888", "is_verified": False}
-        )
         response = api_client.post('/api/v1/auth/register/', {
             'username': 'new_restaurant_admin',
             'email': 'newadmin@test.com',
             'password': 'testpass123',
             'password2': 'testpass123',
             'role': 'restaurant_admin',
-            'otp_code': '777888',
         })
         assert response.status_code == status.HTTP_201_CREATED
         user = User.objects.get(username='new_restaurant_admin')

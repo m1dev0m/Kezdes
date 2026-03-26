@@ -7,17 +7,12 @@ from restaurants.models import RestaurantRequest
 
 class SetupRestaurantFlowTests(APITestCase):
     def test_two_step_restaurant_onboarding_flow(self):
-        from core.models import OTPVerification
-        OTPVerification.objects.update_or_create(
-            email="rest_setup_user@test.local", defaults={"code": "333444", "is_verified": False}
-        )
         register_payload = {
             "username": "rest_setup_user",
             "email": "rest_setup_user@test.local",
             "password": "Str0ng!Pass#2026",
             "password2": "Str0ng!Pass#2026",
             "role": "restaurant_admin",
-            "otp_code": "333444",
         }
         reg = self.client.post(reverse("register"), register_payload, format="json")
         self.assertEqual(reg.status_code, status.HTTP_201_CREATED)

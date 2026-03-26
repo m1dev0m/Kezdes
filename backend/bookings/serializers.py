@@ -42,7 +42,7 @@ class BookingSerializer(serializers.ModelSerializer):
     customer_id = serializers.SerializerMethodField(read_only=True)
     table_id = serializers.SerializerMethodField(read_only=True)
     history = ReservationHistorySerializer(many=True, read_only=True)
-    
+
     duration_hours = serializers.IntegerField(required=False, write_only=True)
 
     def validate_date(self, value):
@@ -116,119 +116,6 @@ class BookingSerializer(serializers.ModelSerializer):
     def get_table_ids(self, obj: Booking):
         return list(obj.tables.values_list('id', flat=True))
 
-    def validate(self, attrs):
-        from django.utils import timezone
-        
-        request = self.context.get('request')
-        if not request or not request.user:
-            raise serializers.ValidationError("Требуется авторизация.")
-
-        user = request.user
-        restaurant = attrs.get('restaurant')
-        booking_date = attrs.get('date')
-        start_time = attrs.get('time')
-        guests = attrs.get('guests', 1)
-        
-        # Prevent booking in the past
-        if booking_date and booking_date == date.today() and start_time:
-            now = timezone.now()
-            current_time = now.time()
-            if start_time < current_time:
-                raise serializers.ValidationError(
-                    {"time": "Нельзя забронировать на прошедшее время сегодня."}
-                )
-        
-        duration_minutes = attrs.get('duration_minutes')
-        duration_hours = attrs.get('duration_hours')
-        
-        if duration_minutes:
-            duration = duration_minutes
-        elif duration_hours:
-            duration = duration_hours * 60
-        else:
-            duration = 90
-            
-        attrs['duration_minutes'] = duration
-        if 'duration_hours' in attrs:
-            del attrs['duration_hours']
-
-        if duration < 15 or duration > 480:
-            raise serializers.ValidationError(
-                {"duration_minutes": "Длительность должна быть от 15 до 480 минут (8 часов)."}
-            )
-
-        if guests < 1 or guests > 20:
-            raise serializers.ValidationError(
-                {"guests": "Количество гостей должно быть от 1 до 20."}
-            )
-        if restaurant and not restaurant.is_verified:
-            raise serializers.ValidationError(
-                {"restaurant": "Ресторан еще не одобрен платформой и не принимает бронирования."}
-            )
-
-
-
-        from .services import BookingService, make_aware_if_needed
-        start_dt = make_aware_if_needed(datetime.combine(booking_date, start_time))
-        end_dt = start_dt + timedelta(minutes=duration)
-
-        if not BookingService.is_within_operating_hours(restaurant, booking_date, start_time, duration):
-            raise serializers.ValidationError({"time": "Бронирование недоступно на выбранное время."})
-
-        user_same_restaurant = Booking.objects.filter(
-            user=user,
-            restaurant=restaurant,
-            status__in=Booking.ACTIVE_STATUSES,
-            start_datetime__lt=end_dt,
-            end_datetime__gt=start_dt
-        )
-        for existing in user_same_restaurant:
-            raise serializers.ValidationError(
-                {"time": f"У вас уже есть активная бронь на пересекающееся время "
-                         f"в этом ресторане (статус: {existing.get_status_display()}). "
-                         f"Отмените её перед созданием новой."}
-            )
-
-        user_all_bookings = Booking.objects.filter(
-            user=user,
-            status__in=Booking.ACTIVE_STATUSES,
-            start_datetime__lt=end_dt,
-            end_datetime__gt=start_dt
-        ).exclude(restaurant=restaurant).select_related('restaurant')
-        if user_all_bookings.exists():
-            existing = user_all_bookings.first()
-            raise serializers.ValidationError(
-                {"time": f"У вас уже есть бронь на пересекающееся время "
-                         f"в «{existing.restaurant.name}». Отмените её сначала."}
-            )
-
-        is_available, available_seats = BookingService.check_capacity(
-            restaurant, booking_date, start_time, guests, duration
-        )
-        if not is_available:
-            raise serializers.ValidationError(
-                {"guests": f"Превышена вместимость ресторана. "
-                           f"Доступно мест: {available_seats}, запрошено: {guests}."}
-            )
-
-        active_count = Booking.objects.filter(
-            user=user,
-            status__in=Booking.ACTIVE_STATUSES
-        ).count()
-        if active_count >= 3:
-            raise serializers.ValidationError(
-                {"non_field_errors": "Слишком много активных бронирований (максимум 3). "
-                                     "Отмените существующие, чтобы создать новые."}
-            )
-
-        return attrs
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        validated_data['user'] = user
-        booking = super().create(validated_data)
-        return booking
-
 
 class AdminBookingSerializer(serializers.ModelSerializer):
     """
@@ -273,20 +160,20 @@ class AdminBookingSerializer(serializers.ModelSerializer):
                 attrs['restaurant'] = restaurant
             else:
                  raise serializers.ValidationError({"restaurant": "Обязательное поле."})
-                 
+
         booking_date = attrs.get('date')
         start_time = attrs.get('time')
-        
+
         duration_minutes = attrs.get('duration_minutes')
         duration_hours = attrs.get('duration_hours')
-        
+
         if duration_minutes:
             duration = duration_minutes
         elif duration_hours:
             duration = duration_hours * 60
         else:
             duration = 90
-            
+
         attrs['duration_minutes'] = duration
         if 'duration_hours' in attrs:
             del attrs['duration_hours']
@@ -296,36 +183,9 @@ class AdminBookingSerializer(serializers.ModelSerializer):
                 {"duration_minutes": "Длительность должна быть от 15 до 480 минут (8 часов)."}
             )
 
-        from .services import BookingService, make_aware_if_needed
+        from .services import BookingService
         if not BookingService.is_within_operating_hours(restaurant, booking_date, start_time, duration):
             raise serializers.ValidationError({"time": "Бронирование недоступно на выбранное время."})
 
-        guests = attrs.get('guests', 1)
-        if guests < 1 or guests > 20:
-            raise serializers.ValidationError(
-                {"guests": "Количество гостей должно быть от 1 до 20."}
-            )
-
-        is_available, available_seats = BookingService.check_capacity(
-            restaurant, booking_date, start_time, guests, duration
-        )
-        if not is_available:
-            raise serializers.ValidationError(
-                {"guests": f"Превышена вместимость. Доступно мест: {available_seats}, запрошено: {guests}."}
-            )
-
-        # Restrict allowed initial statuses for manual bookings
-        requested_status = attrs.get('status', Booking.CONFIRMED)
-        allowed_initial = {Booking.PENDING, Booking.CONFIRMED}
-        if requested_status not in allowed_initial:
-            raise serializers.ValidationError(
-                {"status": f"Ручное бронирование может быть создано только со статусом pending или confirmed."}
-            )
-
         return attrs
 
-    def create(self, validated_data):
-        # We do NOT set validated_data['user'] to self.context['request'].user
-        # because this is a manual booking for a guest who might not have an account.
-        # The admin is just the creator, not the subject of the booking.
-        return super().create(validated_data)

@@ -178,8 +178,10 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        """Create booking inside atomic transaction with slot lock + table auto-allocation."""
+        """Create booking using the BookingService."""
         from .services import BookingService
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
         restaurant = serializer.validated_data['restaurant']
 
         # Gate: reject bookings for unverified restaurants
@@ -190,103 +192,42 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
         date = serializer.validated_data['date']
         time_val = serializer.validated_data['time']
+        guests = serializer.validated_data.get('guests', 1)
+        duration = serializer.validated_data.get('duration_minutes', 90)
 
-        guests_pre = serializer.validated_data.get('guests', 1)
-        duration_pre = serializer.validated_data.get('duration_minutes')
-        if not duration_pre or duration_pre == 90:
-            if guests_pre <= 2:
-                duration_pre = 90
-            elif guests_pre <= 4:
-                duration_pre = 120
-            else:
-                duration_pre = 150
+        # Extract preferred table ID from request data
+        preferred_table_id = None
+        preferred_table_id_raw = self.request.data.get('table_id')
+        if preferred_table_id_raw not in (None, ''):
+            try:
+                preferred_table_id = int(preferred_table_id_raw)
+            except (TypeError, ValueError):
+                raise drf_serializers.ValidationError({"table_id": "Некорректный table_id."})
 
-        if not BookingService.acquire_booking_lock(restaurant.id, date, time_val, duration_minutes=duration_pre):
-            raise drf_serializers.ValidationError(
-                {"detail": "Это время сейчас бронируется другим пользователем. Попробуйте снова через несколько секунд."}
-            )
+        user = self.request.user if self.request.user.is_authenticated else None
+
+        # Extract additional booking data
+        booking_data = {
+            'user_name': serializer.validated_data.get('user_name'),
+            'user_phone': serializer.validated_data.get('user_phone'),
+            'event_type': serializer.validated_data.get('event_type'),
+            'event_title': serializer.validated_data.get('event_title'),
+            'special_requests': serializer.validated_data.get('special_requests'),
+        }
+
         try:
-            with transaction.atomic():
-                guests = guests_pre
-                duration = duration_pre
-
-                # NEW: Extract the optional preferred table ID from the original unvalidated request data
-                preferred_table_id = None
-                preferred_table_id_raw = self.request.data.get('table_id')
-                if preferred_table_id_raw not in (None, ''):
-                    try:
-                        preferred_table_id = int(preferred_table_id_raw)
-                    except (TypeError, ValueError):
-                        raise drf_serializers.ValidationError({"table_id": "Некорректный table_id."})
-
-                    if not Table.objects.filter(
-                        id=preferred_table_id,
-                        restaurant=restaurant,
-                        is_active=True,
-                    ).exists():
-                        raise drf_serializers.ValidationError({"table_id": "Стол не найден для этого ресторана."})
-
-                user = self.request.user if self.request.user.is_authenticated else None
-
-                allocated_tables = BookingService.find_best_tables(
-                    restaurant=restaurant,
-                    date=date,
-                    start_time=time_val,
-                    guests=guests,
-                    duration_minutes=duration,
-                    preferred_table_id=preferred_table_id
-                )
-
-                if not allocated_tables:
-                    raise drf_serializers.ValidationError(
-                        {
-                            "detail": (
-                                "Нет доступных столов на выбранное время. "
-                                "Измените время/количество гостей или обновите карту столов."
-                            )
-                        }
-                    )
-
-                # Check if deposit is required
-                deposit_required = 0.0
-                initial_status = Booking.PENDING
-                
-                if restaurant.deposit_min_guests and guests >= restaurant.deposit_min_guests:
-                    if restaurant.deposit_amount_per_guest:
-                        deposit_required = restaurant.deposit_amount_per_guest * guests
-                        initial_status = Booking.PAYMENT_PENDING
-                
-                booking = serializer.save(
-                    user=user, 
-                    status=initial_status, 
-                    table=allocated_tables[0],
-                    deposit_required=deposit_required
-                )
-                booking.tables.set(allocated_tables)
-
-                # CRM: ensure customer exists, but do NOT record a visit until booking is completed.
-                try:
-                    from crm.services import CRMService
-                    customer_phone = booking.user_phone
-                    if not customer_phone and user and hasattr(user, 'profile'):
-                        customer_phone = user.profile.phone
-                    if customer_phone:
-                        CRMService.ensure_customer(
-                            restaurant=restaurant,
-                            phone=customer_phone,
-                            name=booking.user_name or (user.get_full_name() if user else None),
-                            email=user.email if user else None,
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to ensure CRM customer for booking {booking.id}: {e}")
-
-                NotificationService.notify_restaurant_new_booking(booking)
-        except IntegrityError:
-            raise drf_serializers.ValidationError(
-                {"detail": "Бронирование на это время уже существует. Попробуйте другое время."}
+            BookingService.create_booking(
+                user=user,
+                restaurant=restaurant,
+                booking_date=date,
+                start_time=time_val,
+                guests=guests,
+                duration_minutes=duration,
+                preferred_table_id=preferred_table_id,
+                **booking_data
             )
-        finally:
-            BookingService.release_booking_lock(restaurant.id, date, time_val, duration_minutes=duration_pre)
+        except DjangoValidationError as e:
+            raise drf_serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else str(e))
 
     def _is_restaurant_staff(self, request, booking):
         """Check if user is restaurant staff for this booking's restaurant."""
@@ -336,14 +277,18 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def create_manual(self, request):
         """Allows admins to manually create a booking for a walk-in guest."""
         from .services import BookingService
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
         serializer = AdminBookingSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        
+
         restaurant = serializer.validated_data['restaurant']
         date = serializer.validated_data['date']
         time_val = serializer.validated_data['time']
+        guests = serializer.validated_data.get('guests', 1)
+        duration = serializer.validated_data.get('duration_minutes', 90)
 
-        # Permission check BEFORE acquiring the lock
+        # Permission check
         profile = getattr(request.user, 'profile', None)
         role = getattr(profile, 'role', None) if profile else None
 
@@ -359,68 +304,42 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
         else:
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
-        
-        guests_pre = serializer.validated_data.get('guests', 1)
-        duration_pre = serializer.validated_data.get('duration_minutes', 90)
-        if not BookingService.acquire_booking_lock(restaurant.id, date, time_val, duration_minutes=duration_pre):
-            return api_error(
-                "Это время сейчас бронируется другим пользователем. Попробуйте снова.",
-                status.HTTP_409_CONFLICT,
-            )
-            
+
+        # Extract preferred table ID
+        preferred_table_id = None
+        preferred_table_id_raw = request.data.get('table_id')
+        if preferred_table_id_raw not in (None, ''):
+            try:
+                preferred_table_id = int(preferred_table_id_raw)
+            except (TypeError, ValueError):
+                return api_error("Некорректный table_id.", status.HTTP_400_BAD_REQUEST)
+
+        # Extract booking data
+        booking_data = {
+            'user_name': serializer.validated_data.get('user_name'),
+            'user_phone': serializer.validated_data.get('user_phone'),
+            'event_type': serializer.validated_data.get('event_type'),
+            'event_title': serializer.validated_data.get('event_title'),
+            'special_requests': serializer.validated_data.get('special_requests'),
+            'status': serializer.validated_data.get('status', Booking.CONFIRMED),
+        }
+
         try:
-            with transaction.atomic():
-                guests = serializer.validated_data.get('guests', 1)
-                duration = serializer.validated_data.get('duration_minutes', 90)
-
-                preferred_table_id = None
-                preferred_table_id_raw = request.data.get('table_id')
-                if preferred_table_id_raw not in (None, ''):
-                    try:
-                        preferred_table_id = int(preferred_table_id_raw)
-                    except (TypeError, ValueError):
-                        return api_error("Некорректный table_id.", status.HTTP_400_BAD_REQUEST)
-
-                    if not Table.objects.filter(
-                        id=preferred_table_id,
-                        restaurant=restaurant,
-                        is_active=True,
-                    ).exists():
-                        return api_error("Стол не найден для этого ресторана.", status.HTTP_400_BAD_REQUEST)
-                 
-                allocated_tables = BookingService.find_best_tables(
-                    restaurant=restaurant,
-                    date=date,
-                    start_time=time_val,
-                    guests=guests,
-                    duration_minutes=duration,
-                    preferred_table_id=preferred_table_id
-                )
-                
-                if not allocated_tables:
-                    return api_error("Нет доступных столов на выбранное время.", status.HTTP_400_BAD_REQUEST)
-                
-                booking_status = serializer.validated_data.get('status', Booking.CONFIRMED)
-                booking = serializer.save(status=booking_status, table=allocated_tables[0])
-                booking.tables.set(allocated_tables)
-
-                # CRM: ensure customer exists, but do NOT record a visit until booking is completed.
-                try:
-                    from crm.services import CRMService
-                    customer_phone = booking.user_phone
-                    if customer_phone:
-                        CRMService.ensure_customer(
-                            restaurant=restaurant,
-                            phone=customer_phone,
-                            name=booking.user_name or "Walk-in Guest",
-                            email=None,
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to ensure CRM customer for booking {booking.id}: {e}")
-        finally:
-            BookingService.release_booking_lock(restaurant.id, date, time_val, duration_minutes=duration_pre)
-                
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            booking = BookingService.create_booking(
+                user=None,  # Manual booking, no user
+                restaurant=restaurant,
+                booking_date=date,
+                start_time=time_val,
+                guests=guests,
+                duration_minutes=duration,
+                preferred_table_id=preferred_table_id,
+                **booking_data
+            )
+            # Return the created booking data
+            response_serializer = AdminBookingSerializer(booking)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        except DjangoValidationError as e:
+            return api_error(str(e), status.HTTP_400_BAD_REQUEST)
     @action(detail=False, methods=['get'], permission_classes=[CanManageReservations])
     def my_restaurant(self, request):
         """Get all bookings for the admin's restaurant."""

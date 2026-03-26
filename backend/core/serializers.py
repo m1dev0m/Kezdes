@@ -63,7 +63,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     description = serializers.CharField(write_only=True, required=False)
     city = serializers.CharField(write_only=True, required=False)
     password2 = serializers.CharField(write_only=True, required=False)
-    otp_code = serializers.CharField(write_only=True, required=True, min_length=4, max_length=6)
+    otp_code = serializers.CharField(write_only=True, required=False, allow_blank=True, min_length=4, max_length=6)
 
     class Meta:
         model = User
@@ -121,15 +121,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"role": "Invalid role."})
         attrs['role'] = normalized_role
         
-        # Email OTP Verification
-        email = attrs.get('email')
-        otp_code = attrs.get('otp_code')
-        if not otp_code:
-            raise serializers.ValidationError({"otp_code": "OTP code is required."})
-        
-        otp_record = OTPVerification.objects.filter(email=email).order_by('-created_at').first()
-        if not otp_record or otp_record.code != otp_code:
-            raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
+        # Email OTP Verification — temporarily disabled
+        # otp_code = attrs.get('otp_code')
+        # otp_record = OTPVerification.objects.filter(email=email).order_by('-created_at').first()
+        # if not otp_record or otp_record.code != otp_code:
+        #     raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
 
         return attrs
 

@@ -2,21 +2,22 @@ from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from datetime import timedelta, datetime, time
+from datetime import timedelta, datetime, time, date
 from restaurants.models import Restaurant
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import RangeOperators, DateTimeRangeField
 from django.db.models import Func
+from typing import Optional, List, Dict, Any
 
 class TsRange(Func):
     function = 'tstzrange'
     output_field = DateTimeRangeField()
 
 class Booking(models.Model):
+    # Status constants
     PENDING = 'pending'
     PAYMENT_PENDING = 'payment_pending'
     CONFIRMED = 'confirmed'
-    APPROVED = 'confirmed'  
     SEATED = 'seated'
     REJECTED = 'rejected'
     CANCELLED_BY_USER = 'cancelled_by_user'
@@ -24,6 +25,7 @@ class Booking(models.Model):
     EXPIRED = 'expired'
     COMPLETED = 'completed'
     NO_SHOW = 'no_show'
+
     STATUS_CHOICES = [
         (PENDING, 'Ожидает подтверждения'),
         (PAYMENT_PENDING, 'Ожидает предоплаты'),
@@ -36,6 +38,7 @@ class Booking(models.Model):
         (COMPLETED, 'Завершено'),
         (NO_SHOW, 'Неявка'),
     ]
+
     TRANSITIONS = {
         PENDING: [CONFIRMED, PAYMENT_PENDING, REJECTED, EXPIRED, CANCELLED_BY_USER],
         PAYMENT_PENDING: [CONFIRMED, EXPIRED, CANCELLED_BY_USER],
@@ -48,33 +51,115 @@ class Booking(models.Model):
         COMPLETED: [],
         NO_SHOW: [],
     }
+
     ACTIVE_STATUSES = [PENDING, CONFIRMED, PAYMENT_PENDING, SEATED]
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
-    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='bookings')
-    table = models.ForeignKey('restaurants.Table', on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
-    tables = models.ManyToManyField('restaurants.Table', blank=True, related_name='legacy_bookings')
+
+    # Fields
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='bookings',
+        null=True,
+        blank=True
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name='bookings'
+    )
+    table = models.ForeignKey(
+        'restaurants.Table',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings'
+    )
+    tables = models.ManyToManyField(
+        'restaurants.Table',
+        blank=True,
+        related_name='legacy_bookings'
+    )
+
+    # Date/Time fields
     date = models.DateField()
     time = models.TimeField()
-    duration_minutes = models.PositiveIntegerField(default=90, help_text="Длительность бронирования в минутах")
-    start_datetime = models.DateTimeField(editable=False, null=True, blank=True)
-    end_datetime = models.DateTimeField(editable=False, null=True, blank=True)
-    guests = models.PositiveIntegerField(default=1)
-    event_type = models.CharField(max_length=100, blank=True, null=True)
-    special_requests = models.TextField(blank=True, null=True)
-    user_name = models.CharField(max_length=255, blank=True, null=True, help_text="Имя клиента (для ручного ввода)")
-    user_phone = models.CharField(max_length=50, blank=True, null=True, help_text="Телефон клиента (для ручного ввода)")
-    event_title = models.CharField(max_length=255, blank=True, null=True)
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default=PENDING)
-    
+    duration_minutes = models.PositiveIntegerField(
+        default=90,
+        help_text="Длительность бронирования в минутах"
+    )
+    start_datetime = models.DateTimeField(
+        editable=False,
+        null=True,
+        blank=True
+    )
+    end_datetime = models.DateTimeField(
+        editable=False,
+        null=True,
+        blank=True
+    )
 
-    deposit_required = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    # Guest information
+    guests = models.PositiveIntegerField(default=1)
+    user_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Имя клиента (для ручного ввода)"
+    )
+    user_phone = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Телефон клиента (для ручного ввода)"
+    )
+
+    # Event details
+    event_type = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+    event_title = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+    special_requests = models.TextField(blank=True, null=True)
+
+    # Status and workflow
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default=PENDING
+    )
+
+    # Financial fields
+    deposit_required = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.0
+    )
     is_deposit_paid = models.BooleanField(default=False)
-    
-    guest_email = models.EmailField(blank=True, null=True, help_text="Email for unauthenticated guests")
-    budget = models.PositiveIntegerField(null=True, blank=True, help_text="Примерный бюджет события")
-    pay_at_restaurant = models.BooleanField(default=False, help_text="Оплатить в ресторане")
+    budget = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Примерный бюджет события"
+    )
+    pay_at_restaurant = models.BooleanField(
+        default=False,
+        help_text="Оплатить в ресторане"
+    )
+
+    # Additional fields
+    guest_email = models.EmailField(
+        blank=True,
+        null=True,
+        help_text="Email for unauthenticated guests"
+    )
     is_checked_in = models.BooleanField(default=False)
     check_in_time = models.DateTimeField(null=True, blank=True)
+
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -86,6 +171,8 @@ class Booking(models.Model):
             models.Index(fields=['user', 'status']),
             models.Index(fields=['table', 'date', 'time']),
             models.Index(fields=['restaurant', 'created_at']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['start_datetime', 'end_datetime']),
         ]
         constraints = [
             models.CheckConstraint(
@@ -106,75 +193,101 @@ class Booking(models.Model):
             ),
             models.UniqueConstraint(
                 fields=['user', 'restaurant', 'date', 'time'],
-                condition=models.Q(status__in=['pending', 'confirmed']),
+                condition=models.Q(status__in=['pending', 'confirmed', 'payment_pending', 'seated']),
                 name='unique_active_booking_per_slot',
             ),
         ]
-    def __str__(self):
+
+    def __str__(self) -> str:
         user_label = self.user.username if self.user_id else (self.user_name or "guest")
         return f"Booking {self.id} - {user_label} @ {self.restaurant.name}"
-    
+
     @property
-    def duration_hours(self):
-        return self.duration_minutes // 60
-    
+    def duration_hours(self) -> float:
+        """Get duration in hours"""
+        return self.duration_minutes / 60
+
     @duration_hours.setter
-    def duration_hours(self, value):
-        self.duration_minutes = value * 60
+    def duration_hours(self, value: float) -> None:
+        """Set duration from hours"""
+        self.duration_minutes = int(value * 60)
 
-    def save(self, *args, **kwargs):
-        from datetime import datetime, time, date
+    @property
+    def end_time(self) -> time:
+        """Calculate end time based on start time and duration"""
+        start_dt = datetime.combine(self.date, self.time)
+        end_dt = start_dt + timedelta(minutes=self.duration_minutes)
+        return end_dt.time()
 
-        # Handle strings like '2030-01-01' and '19:00'
-        parsed_date = self.date
-        parsed_time = self.time
+    @property
+    def is_active(self) -> bool:
+        """Check if booking is in active status"""
+        return self.status in self.ACTIVE_STATUSES
 
-        if isinstance(parsed_date, str):
-            parsed_date = datetime.strptime(parsed_date, '%Y-%m-%d').date()
-        if isinstance(parsed_time, str):
-            if len(parsed_time) == 5: # HH:MM
-                 parsed_time = datetime.strptime(parsed_time, '%H:%M').time()
-            else: # HH:MM:SS
-                 parsed_time = datetime.strptime(parsed_time, '%H:%M:%S').time()
+    @property
+    def is_past(self) -> bool:
+        """Check if booking is in the past"""
+        if not self.end_datetime:
+            return False
+        return self.end_datetime < timezone.now()
 
-        self.date = parsed_date
-        self.time = parsed_time
+    @property
+    def can_be_cancelled(self) -> bool:
+        """Check if booking can be cancelled by user"""
+        return self.status in [self.PENDING, self.CONFIRMED, self.PAYMENT_PENDING]
 
-        start_dt = datetime.combine(parsed_date, parsed_time)
-        # Always make timezone-aware when USE_TZ is enabled
+    @property
+    def can_be_modified(self) -> bool:
+        """Check if booking can be modified"""
+        return self.status in [self.PENDING, self.CONFIRMED] and not self.is_past
+
+    def overlaps_with(self, other_start_dt: datetime, other_end_dt: datetime) -> bool:
+        """Check if this booking overlaps with given time range"""
+        if not self.start_datetime or not self.end_datetime:
+            return False
+        return self.start_datetime < other_end_dt and other_start_dt < self.end_datetime
+
+    def clean(self) -> None:
+        """Validate booking data"""
+        if self.guests < 1:
+            raise ValidationError({'guests': 'Количество гостей должно быть больше 0'})
+
+        if self.duration_minutes < 15:
+            raise ValidationError({'duration_minutes': 'Длительность должна быть не менее 15 минут'})
+
+        if self.duration_minutes > 480:
+            raise ValidationError({'duration_minutes': 'Длительность не может превышать 8 часов'})
+
+        if self.date < date.today():
+            raise ValidationError({'date': 'Нельзя создать бронирование на прошедшую дату'})
+
+    def save(self, *args, **kwargs) -> None:
+        """Save booking with automatic datetime calculation"""
+        self.full_clean()
+
+        # Calculate start and end datetimes
+        start_dt = datetime.combine(self.date, self.time)
         if settings.USE_TZ:
             start_dt = timezone.make_aware(start_dt)
 
-        # Check if we need to update the datetime fields
-        needs_update = False
-        if not self.start_datetime:
-            needs_update = True
-        else:
-            # Compare aware datetimes properly
-            existing = self.start_datetime
-            if settings.USE_TZ and timezone.is_naive(existing):
-                existing = timezone.make_aware(existing)
-            if existing != start_dt:
-                needs_update = True
-
-        if needs_update:
-            self.start_datetime = start_dt
-            self.end_datetime = start_dt + timedelta(minutes=self.duration_minutes)
+        self.start_datetime = start_dt
+        self.end_datetime = start_dt + timedelta(minutes=self.duration_minutes)
 
         super().save(*args, **kwargs)
 
-    def transition_to(self, new_status, *, actor=None):
-        """Enforce valid status transitions. Raises ValidationError on illegal ones."""
-        allowed = self.TRANSITIONS.get(self.status, [])
-        if new_status not in allowed:
+    def transition_to(self, new_status: str, *, actor: Optional[settings.AUTH_USER_MODEL] = None) -> 'Booking':
+        """Transition booking to new status with validation"""
+        if new_status not in self.TRANSITIONS.get(self.status, []):
             raise ValidationError(
-                f"Недопустимый переход статуса: {self.get_status_display()} → {new_status}. "
-                f"Допустимые: {', '.join(allowed) if allowed else 'нет (терминальный статус)'}."
+                f"Недопустимый переход статуса: {self.get_status_display()} → {new_status}"
             )
+
         old_status = self.status
         old_table = self.table
         self.status = new_status
         self.save()
+
+        # Create history record
         ReservationHistory.objects.create(
             reservation=self,
             status=new_status,
@@ -185,40 +298,43 @@ class Booking(models.Model):
             from_table=old_table,
             to_table=self.table,
         )
+
         return self
-    @property
-    def end_time(self):
-        start_dt = datetime.combine(self.date, self.time)
-        end_dt = start_dt + timedelta(minutes=self.duration_minutes)
-        return end_dt.time()
-    @property
-    def is_active(self):
-        return self.status in self.ACTIVE_STATUSES
-    def overlaps_with(self, other_start_dt: datetime, other_end_dt: datetime) -> bool:
-        if not self.start_datetime or not self.end_datetime:
-            return False
-        return self.start_datetime < other_end_dt and other_start_dt < self.end_datetime
 
     @classmethod
-    def expire_stale_bookings(cls, ttl_minutes=30):
-        """Mark pending bookings older than TTL as expired."""
+    def expire_stale_bookings(cls, ttl_minutes: int = 30) -> int:
+        """Mark pending bookings older than TTL as expired"""
         cutoff = timezone.now() - timedelta(minutes=ttl_minutes)
-        expired_count = cls.objects.filter(
+        expired_count, _ = cls.objects.filter(
             status=cls.PENDING,
             created_at__lt=cutoff
         ).update(status=cls.EXPIRED)
         return expired_count
+
     @classmethod
-    def get_active_for_slot(cls, restaurant, date, start_time, duration_minutes=90):
-        """Get all active bookings that overlap with the given time slot."""
+    def get_active_for_slot(
+        cls,
+        restaurant: Restaurant,
+        date: date,
+        start_time: time,
+        duration_minutes: int = 90
+    ) -> models.QuerySet['Booking']:
+        """Get all active bookings that overlap with the given time slot"""
         start_dt = datetime.combine(date, start_time)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+        if settings.USE_TZ:
+            start_dt = timezone.make_aware(start_dt)
+            end_dt = timezone.make_aware(end_dt)
+
         return cls.objects.filter(
             restaurant=restaurant,
             status__in=cls.ACTIVE_STATUSES,
             start_datetime__lt=end_dt,
             end_datetime__gt=start_dt
         )
+
+
 class BookingSecurity(models.Model):
     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='security')
     qr_code_data = models.CharField(max_length=255, unique=True)
