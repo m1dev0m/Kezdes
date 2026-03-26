@@ -27,7 +27,7 @@ export default function GuestLayout() {
     return (
         <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-50 font-sans text-slate-900 transition-colors duration-200">
             {/* GLOBAL GUEST HEADER - MATCHING SNAPSHOT */}
-            <header className="flex items-center justify-between whitespace-nowrap bg-white px-6 md:px-10 py-4 shadow-sm sticky top-0 z-50">
+            <header className="flex items-center justify-between whitespace-nowrap bg-white px-4 md:px-8 py-4 shadow-sm sticky top-0 z-50">
                 <Link to="/" className="flex items-center">
                     <Logo className="h-6" />
                 </Link>

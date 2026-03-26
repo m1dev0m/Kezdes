@@ -5,7 +5,7 @@ import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { format, parseISO, isValid } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import toast from 'react-hot-toast';
-import { ArrowRight, Bell, CalendarDays, Heart, Loader2, MapPin, Star, Users, XCircle } from 'lucide-react';
+import { ArrowRight, CalendarDays, Heart, Loader2, MapPin, Star, Users, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 
 interface Booking {
@@ -131,134 +131,136 @@ export default function GuestDashboard() {
                 </div>
             </header>
 
-            <div className="grid grid-cols-12 gap-8">
-                <div className="col-span-12 lg:col-span-8 space-y-8">
-                    <section>
-                        <h2 className="text-xl font-black mb-6 text-slate-900 flex items-center gap-3">
-                            <span className="bg-primary/10 text-primary p-2 rounded-lg">
-                                <CalendarDays className="w-5 h-5" />
-                            </span>
-                            Upcoming Reservation
-                        </h2>
+            {/* Upcoming Reservation — full width, first */}
+            <section>
+                <h2 className="text-xl font-black mb-6 text-slate-900 flex items-center gap-3">
+                    <span className="bg-primary/10 text-primary p-2 rounded-lg">
+                        <CalendarDays className="w-5 h-5" />
+                    </span>
+                    Upcoming Reservation
+                </h2>
 
-                        {loading ? (
-                            <div className="h-64 rounded-2xl bg-slate-100 animate-pulse border border-slate-200" />
-                        ) : !upcomingBooking ? (
-                            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center flex flex-col items-center justify-center min-h-[300px] shadow-sm">
-                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                                    <span className="material-symbols-outlined text-4xl text-slate-300">restaurant</span>
+                {loading ? (
+                    <div className="h-64 rounded-2xl bg-slate-100 animate-pulse border border-slate-200" />
+                ) : !upcomingBooking ? (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center flex flex-col items-center justify-center min-h-[300px] shadow-sm">
+                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                            <span className="material-symbols-outlined text-4xl text-slate-300">restaurant</span>
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 mb-2">No Active Bookings</h3>
+                        <p className="text-slate-500 max-w-sm mx-auto leading-relaxed mb-8">
+                            Your dining calendar is currently clear. Discover premium restaurants and book your next unforgettable meal.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/discover')}
+                            className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg transition-all"
+                        >
+                            Explore Top Restaurants
+                        </button>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 flex flex-col md:flex-row">
+                        <div className="w-full md:w-1/3 h-48 md:h-auto bg-slate-200 overflow-hidden">
+                            {upcomingBooking.restaurant_photo_url ? (
+                                <img
+                                    src={upcomingBooking.restaurant_photo_url}
+                                    alt={upcomingBooking.restaurant_name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-slate-200" />
+                            )}
+                        </div>
+
+                        <div className="flex-1 p-6 flex flex-col justify-between">
+                            <div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-[10px] font-bold tracking-widest text-brand-green uppercase">Confirmed • Upcoming</span>
+                                    <span className="px-2 py-1 bg-brand-green/10 text-brand-green text-[10px] font-bold rounded uppercase tracking-wider">PREMIUM SEATING</span>
                                 </div>
-                                <h3 className="text-xl font-black text-slate-900 mb-2">No Active Bookings</h3>
-                                <p className="text-slate-500 max-w-sm mx-auto leading-relaxed mb-8">
-                                    Your dining calendar is currently clear. Discover premium restaurants and book your next unforgettable meal.
+
+                                <h3 className="text-2xl font-bold mb-1">{upcomingBooking.restaurant_name}</h3>
+                                <p className="text-slate-500 flex items-center gap-2 text-sm mb-4">
+                                    <MapPin className="w-4 h-4" />
+                                    {upcomingBooking.restaurant_city || '—'}
                                 </p>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/discover')}
-                                    className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg transition-all"
-                                >
-                                    Explore Top Restaurants
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 flex flex-col md:flex-row">
-                                <div className="w-full md:w-1/3 h-48 md:h-auto bg-slate-200 overflow-hidden">
-                                    {upcomingBooking.restaurant_photo_url ? (
-                                        <img
-                                            src={upcomingBooking.restaurant_photo_url}
-                                            alt={upcomingBooking.restaurant_name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-slate-200" />
-                                    )}
-                                </div>
 
-                                <div className="flex-1 p-6 flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="text-[10px] font-bold tracking-widest text-brand-green uppercase">Confirmed • Upcoming</span>
-                                            <span className="px-2 py-1 bg-brand-green/10 text-brand-green text-[10px] font-bold rounded uppercase tracking-wider">PREMIUM SEATING</span>
-                                        </div>
-
-                                        <h3 className="text-2xl font-bold mb-1">{upcomingBooking.restaurant_name}</h3>
-                                        <p className="text-slate-500 flex items-center gap-2 text-sm mb-4">
-                                            <MapPin className="w-4 h-4" />
-                                            {upcomingBooking.restaurant_city || '—'}
-                                        </p>
-
-                                        <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100">
-                                            <div className="flex items-center gap-3">
-                                                <CalendarDays className="w-4 h-4 text-slate-400" />
-                                                <div>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Date</p>
-                                                    <p className="text-sm font-medium">{formatDate(upcomingBooking.date)}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="material-symbols-outlined text-slate-400">schedule</span>
-                                                <div>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Time</p>
-                                                    <p className="text-sm font-medium">{upcomingBooking.time.substring(0, 5)}</p>
-                                                </div>
-                                            </div>
+                                <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <CalendarDays className="w-4 h-4 text-slate-400" />
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Date</p>
+                                            <p className="text-sm font-medium">{formatDate(upcomingBooking.date)}</p>
                                         </div>
                                     </div>
-
-                                    <div className="flex items-center justify-between mt-6">
-                                        <div className="flex -space-x-2">
-                                            <div className="size-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">AT</div>
-                                            <div className="size-8 rounded-full border-2 border-white bg-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">JT</div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="material-symbols-outlined text-slate-400">schedule</span>
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Time</p>
+                                            <p className="text-sm font-medium">{upcomingBooking.time.substring(0, 5)}</p>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                        <div className="flex gap-2">
-                                            {(['pending', 'approved', 'confirmed', 'payment_pending'].includes(upcomingBooking.status)) && (
-                                                confirmCancelId === upcomingBooking.id ? (
-                                                    <>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setConfirmCancelId(null)}
-                                                            className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-colors"
-                                                        >
-                                                            {t('guestDashboard.keep')}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleCancel(upcomingBooking.id)}
-                                                            disabled={cancellingId === upcomingBooking.id}
-                                                            className="px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-60"
-                                                        >
-                                                            {cancellingId === upcomingBooking.id
-                                                                ? <Loader2 size={14} className="animate-spin" />
-                                                                : <><XCircle size={14} /> {t('guestDashboard.cancel')}</>
-                                                            }
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setConfirmCancelId(upcomingBooking.id)}
-                                                        className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-colors"
-                                                    >
-                                                        {t('guestDashboard.cancel')}
-                                                    </button>
-                                                )
-                                            )}
+                            <div className="flex items-center justify-between mt-6">
+                                <div className="flex -space-x-2">
+                                    <div className="size-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">AT</div>
+                                    <div className="size-8 rounded-full border-2 border-white bg-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">JT</div>
+                                </div>
 
+                                <div className="flex gap-2">
+                                    {(['pending', 'approved', 'confirmed', 'payment_pending'].includes(upcomingBooking.status)) && (
+                                        confirmCancelId === upcomingBooking.id ? (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConfirmCancelId(null)}
+                                                    className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-colors"
+                                                >
+                                                    {t('guestDashboard.keep')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCancel(upcomingBooking.id)}
+                                                    disabled={cancellingId === upcomingBooking.id}
+                                                    className="px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-60"
+                                                >
+                                                    {cancellingId === upcomingBooking.id
+                                                        ? <Loader2 size={14} className="animate-spin" />
+                                                        : <><XCircle size={14} /> {t('guestDashboard.cancel')}</>
+                                                    }
+                                                </button>
+                                            </>
+                                        ) : (
                                             <button
                                                 type="button"
-                                                onClick={() => navigate(`/guest/bookings/${upcomingBooking.id}`)}
-                                                className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md"
+                                                onClick={() => setConfirmCancelId(upcomingBooking.id)}
+                                                className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-colors"
                                             >
-                                                View Details
+                                                {t('guestDashboard.cancel')}
                                             </button>
-                                        </div>
-                                    </div>
+                                        )
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/guest/bookings/${upcomingBooking.id}`)}
+                                        className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md"
+                                    >
+                                        View Details
+                                    </button>
                                 </div>
                             </div>
-                        )}
-                    </section>
+                        </div>
+                    </div>
+                )}
+            </section>
 
+            {/* Restaurants & sidebar below */}
+            <div className="grid grid-cols-12 gap-8">
+                <div className="col-span-12 lg:col-span-8 space-y-8">
                     <section>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-black text-slate-900">Curated For You</h2>
@@ -292,6 +294,23 @@ export default function GuestDashboard() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </section>
+
+                    {/* Find Restaurant button */}
+                    <section className="bg-slate-900 rounded-2xl p-6 relative overflow-hidden text-white">
+                        <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-brand-green to-gold" />
+                        <div className="relative z-10">
+                            <h4 className="text-lg font-bold mb-2">{t('guestDashboard.weekendSpecial')}</h4>
+                            <p className="text-sm text-slate-300 mb-4">{t('guestDashboard.promoText')}</p>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/discover')}
+                                className="inline-flex items-center gap-2 text-gold font-bold text-sm hover:gap-3 transition-all"
+                            >
+                                {t('guestDashboard.exploreRestaurants')}
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
                         </div>
                     </section>
                 </div>
@@ -373,22 +392,6 @@ export default function GuestDashboard() {
                                 className="w-full py-3 text-sm font-bold text-slate-500 hover:text-brand-green border-t border-slate-100 transition-colors"
                             >
                                 View History
-                            </button>
-                        </div>
-                    </section>
-
-                    <section className="bg-slate-900 rounded-2xl p-6 relative overflow-hidden text-white">
-                        <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-brand-green to-gold" />
-                        <div className="relative z-10">
-                            <h4 className="text-lg font-bold mb-2">{t('guestDashboard.weekendSpecial')}</h4>
-                            <p className="text-sm text-slate-300 mb-4">{t('guestDashboard.promoText')}</p>
-                            <button
-                                type="button"
-                                onClick={() => navigate('/discover')}
-                                className="inline-flex items-center gap-2 text-gold font-bold text-sm hover:gap-3 transition-all"
-                            >
-                                {t('guestDashboard.exploreRestaurants')}
-                                <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
                     </section>

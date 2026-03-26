@@ -22,7 +22,7 @@ export function PublicHeader({ active = null }: { active?: PublicHeaderActive })
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 bg-brand-cream/90 backdrop-blur-xl border-b border-brand-accent transition-all duration-300">
-            <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div className="w-full px-4 md:px-8 h-20 flex items-center justify-between">
                 <Link to="/" className="flex items-center gap-2 group">
                     <div className="w-9 h-9 bg-brand-green rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-green/20 group-hover:scale-105 transition-transform">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -33,9 +33,8 @@ export function PublicHeader({ active = null }: { active?: PublicHeaderActive })
                 </Link>
 
                 {user ? (
-                    <>
-                        {/* Authenticated navigation */}
-                        <div className="hidden md:flex items-center gap-8">
+                    <div className="flex items-center gap-8">
+                        <nav className="hidden md:flex items-center gap-8">
                             <Link to="/discover" className="text-[#334155] text-[15px] font-bold hover:text-brand-green transition-colors">Explore</Link>
                             {isGuest && (
                                 <>
@@ -47,7 +46,7 @@ export function PublicHeader({ active = null }: { active?: PublicHeaderActive })
                             {isStaff && (
                                 <Link to="/app/dashboard" className="text-[#334155] text-[15px] font-bold hover:text-brand-green transition-colors">Dashboard</Link>
                             )}
-                        </div>
+                        </nav>
 
                         <div className="flex items-center gap-4">
                             <div
@@ -63,10 +62,9 @@ export function PublicHeader({ active = null }: { active?: PublicHeaderActive })
                                 Sign Out
                             </button>
                         </div>
-                    </>
+                    </div>
                 ) : (
-                    <>
-                        {/* Unauthenticated navigation */}
+                    <div className="flex items-center gap-10">
                         <div className="hidden md:flex items-center gap-10">
                             <Link to="/#features" className={linkCls(false)}>Features</Link>
                             <Link to="/pricing" className={linkCls(active === 'pricing')}>Pricing</Link>
@@ -77,7 +75,7 @@ export function PublicHeader({ active = null }: { active?: PublicHeaderActive })
                             <Link to="/login" className="hidden sm:block text-sm font-bold text-slate-700 hover:text-brand-green transition-all px-5 py-2.5 border border-brand-accent rounded-lg hover:bg-brand-accent/30">Login</Link>
                             <Link to="/register" className="bg-gold text-white text-sm font-bold px-5 py-2.5 rounded-lg shadow-lg shadow-gold/20 hover:bg-gold/90 active:scale-[0.98] transition-all">Sign Up</Link>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
         </nav>
