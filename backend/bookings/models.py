@@ -18,6 +18,7 @@ class Booking(models.Model):
     PENDING = 'pending'
     PAYMENT_PENDING = 'payment_pending'
     CONFIRMED = 'confirmed'
+    APPROVED = 'confirmed'  # alias — backward compatibility with tests and CRM
     SEATED = 'seated'
     REJECTED = 'rejected'
     CANCELLED_BY_USER = 'cancelled_by_user'
@@ -305,7 +306,7 @@ class Booking(models.Model):
     def expire_stale_bookings(cls, ttl_minutes: int = 30) -> int:
         """Mark pending bookings older than TTL as expired"""
         cutoff = timezone.now() - timedelta(minutes=ttl_minutes)
-        expired_count, _ = cls.objects.filter(
+        expired_count = cls.objects.filter(
             status=cls.PENDING,
             created_at__lt=cutoff
         ).update(status=cls.EXPIRED)

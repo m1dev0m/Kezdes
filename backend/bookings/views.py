@@ -216,7 +216,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         }
 
         try:
-            BookingService.create_booking(
+            booking = BookingService.create_booking(
                 user=user,
                 restaurant=restaurant,
                 booking_date=date,
@@ -226,6 +226,8 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 preferred_table_id=preferred_table_id,
                 **booking_data
             )
+            # Set the instance on the serializer so it returns the created booking
+            serializer.instance = booking
         except DjangoValidationError as e:
             raise drf_serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else str(e))
 
@@ -314,14 +316,14 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 return api_error("Некорректный table_id.", status.HTTP_400_BAD_REQUEST)
 
-        # Extract booking data
+        # Extract booking data — pop 'status' separately to avoid duplicate kwarg
+        requested_status = serializer.validated_data.get('status', Booking.CONFIRMED)
         booking_data = {
             'user_name': serializer.validated_data.get('user_name'),
             'user_phone': serializer.validated_data.get('user_phone'),
             'event_type': serializer.validated_data.get('event_type'),
             'event_title': serializer.validated_data.get('event_title'),
             'special_requests': serializer.validated_data.get('special_requests'),
-            'status': serializer.validated_data.get('status', Booking.CONFIRMED),
         }
 
         try:
@@ -335,6 +337,10 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 preferred_table_id=preferred_table_id,
                 **booking_data
             )
+            # Apply the requested status (create_booking sets PENDING/PAYMENT_PENDING by default)
+            if booking.status != requested_status and requested_status in (Booking.CONFIRMED, Booking.PENDING):
+                booking.status = requested_status
+                booking.save(update_fields=['status'])
             # Return the created booking data
             response_serializer = AdminBookingSerializer(booking)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
