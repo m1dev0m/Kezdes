@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 
 interface LogoProps {
     className?: string;
-    variant?: 'wordmark' | 'admin' | 'text';
+    variant?: 'wordmark' | 'client' | 'admin' | 'text';
     onClick?: () => void;
 }
 
 export const Logo: React.FC<LogoProps> = ({ className = '', variant = 'wordmark', onClick }) => {
     const isText = variant === 'text';
-    const src = variant === 'admin' ? '/Kezdes_admin_Logo.jpg' : '/Kezdes_client_logo.jpg';
+    const imageVariant = variant === 'wordmark' ? 'client' : variant;
+    const src = imageVariant === 'admin' ? '/Kezdes_admin_Logo.jpg' : '/Kezdes_client_logo.jpg';
+    const alt = imageVariant === 'admin' ? 'Kezdes CRM' : 'Kezdes';
     const [imageOk, setImageOk] = useState(true);
 
     const content = isText || !imageOk ? (
@@ -18,9 +20,11 @@ export const Logo: React.FC<LogoProps> = ({ className = '', variant = 'wordmark'
     ) : (
         <img
             src={src}
-            alt="Kezdes"
+            alt={alt}
             className={`h-7 w-auto object-contain select-none ${className}`}
             draggable={false}
+            loading="eager"
+            decoding="async"
             onError={(e) => {
                 e.preventDefault();
                 setImageOk(false);

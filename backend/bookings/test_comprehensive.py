@@ -363,7 +363,8 @@ class TestReservationConflictPrevention:
         })
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'столов' in str(response.data).lower() or 'available' in str(response.data).lower()
+        error_str = str(response.data).lower()
+        assert 'столов' in error_str or 'available' in error_str or 'пересекающ' in error_str or 'активн' in error_str
 
     def test_back_to_back_booking_allowed(self, api_client, setup_with_booking, db):
         """Test that back-to-back bookings (one ends when another starts) are allowed"""

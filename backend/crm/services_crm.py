@@ -4,6 +4,7 @@ CRM Service - handles customer creation and visit tracking from bookings
 from django.db import transaction
 from crm.models import Customer, Visit
 from bookings.models import Booking
+from crm.services import CRMService as CanonicalCRMService, normalize_phone
 
 
 class CRMService:
@@ -32,19 +33,12 @@ class CRMService:
         if booking.user:
             email = booking.user.email
         
-        customer, created = Customer.objects.get_or_create(
+        customer = CanonicalCRMService.ensure_customer(
             restaurant=restaurant,
-            phone=phone,
-            defaults={
-                'name': name,
-                'email': email,
-            }
+            phone=normalize_phone(phone),
+            name=name,
+            email=email,
         )
-        
-        if not created and name != customer.name:
-            customer.name = name
-            customer.save(update_fields=['name'])
-        
         return customer
 
     @staticmethod
@@ -55,24 +49,17 @@ class CRMService:
         Call this when the booking is marked as completed (guest has visited).
         """
         customer = CRMService.get_or_create_customer_from_booking(booking)
-        
-        visit, created = Visit.objects.get_or_create(
-            customer=customer,
+
+        CanonicalCRMService.record_visit(
+            restaurant=booking.restaurant,
+            phone=customer.phone,
+            name=customer.name,
+            email=customer.email,
             booking=booking,
-            defaults={
-                'spent_amount': booking.budget or 0,
-            }
+            spent_amount=booking.budget or 0,
         )
-        
-        customer.visits_count += 1
-        if booking.budget:
-            customer.total_spent += booking.budget
-            if customer.visits_count > 0:
-                customer.avg_check = customer.total_spent / customer.visits_count
-        customer.last_visit = booking.created_at
-        customer.save(update_fields=['visits_count', 'total_spent', 'avg_check', 'last_visit'])
-        
-        return visit
+
+        return Visit.objects.get(customer=customer, booking=booking)
 
     @staticmethod
     def update_customer_stats(customer: Customer):

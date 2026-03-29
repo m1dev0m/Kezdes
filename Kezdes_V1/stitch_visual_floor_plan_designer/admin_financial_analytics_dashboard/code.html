@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Financial Analytics Dashboard - Kezdes Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0048ff",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#0f1523",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .filled-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800">
+<h1 class="text-primary text-xl font-bold leading-normal">Kezdes Admin</h1>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-normal">Restaurant Management</p>
+</div>
+<nav class="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" href="#">
+<span class="material-symbols-outlined">restaurant_menu</span>
+<span class="text-sm font-medium">Menu</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-sm font-medium">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+<span class="material-symbols-outlined filled-icon">bar_chart</span>
+<span class="text-sm font-medium">Finance</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 p-2">
+<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">account_circle</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold truncate">Alex Morgan</p>
+<p class="text-xs text-slate-500 truncate">General Manager</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-y-auto">
+<!-- Header -->
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 px-8 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<h2 class="text-lg font-bold">Financial Analytics</h2>
+<div class="relative max-w-xs">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="pl-9 pr-4 py-1.5 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/50" placeholder="Search reports..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="size-10 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+</button>
+<button class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-sm">download</span>
+                    Export CSV
+                </button>
+</div>
+</header>
+<!-- Page Body -->
+<div class="p-8 flex flex-col gap-8">
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Revenue</p>
+<span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">payments</span>
+</div>
+<p class="text-2xl font-bold">$128,430.00</p>
+<div class="flex items-center gap-1 mt-2">
+<span class="material-symbols-outlined text-emerald-500 text-sm">trending_up</span>
+<p class="text-xs text-emerald-500 font-bold">+8.2% <span class="text-slate-400 font-normal ml-1">vs last month</span></p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Average Order Value</p>
+<span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">shopping_bag</span>
+</div>
+<p class="text-2xl font-bold">$42.50</p>
+<div class="flex items-center gap-1 mt-2">
+<span class="material-symbols-outlined text-rose-500 text-sm">trending_down</span>
+<p class="text-xs text-rose-500 font-bold">-2.1% <span class="text-slate-400 font-normal ml-1">vs last month</span></p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Monthly Growth</p>
+<span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">show_chart</span>
+</div>
+<p class="text-2xl font-bold">+12.5%</p>
+<div class="flex items-center gap-1 mt-2">
+<span class="material-symbols-outlined text-emerald-500 text-sm">trending_up</span>
+<p class="text-xs text-emerald-500 font-bold">+1.5% <span class="text-slate-400 font-normal ml-1">vs target</span></p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Pending Invoices</p>
+<span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">pending_actions</span>
+</div>
+<p class="text-2xl font-bold">14</p>
+<div class="flex items-center gap-1 mt-2">
+<span class="material-symbols-outlined text-slate-400 text-sm">schedule</span>
+<p class="text-xs text-slate-500 font-bold">$3,240.00 <span class="text-slate-400 font-normal ml-1">due soon</span></p>
+</div>
+</div>
+</div>
+<!-- Revenue vs Expenses Large Chart -->
+<div class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="text-lg font-bold">Revenue vs. Expenses</h3>
+<p class="text-sm text-slate-500">Net profit trend for the last 7 months</p>
+</div>
+<div class="flex gap-2">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-medium">
+<span class="size-2 rounded-full bg-primary"></span> Revenue
+                        </div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-medium">
+<span class="size-2 rounded-full bg-slate-300"></span> Expenses
+                        </div>
+<select class="text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg">
+<option>Last 6 Months</option>
+<option>Last Year</option>
+</select>
+</div>
+</div>
+<div class="relative h-[300px] w-full">
+<!-- Simplified Visual Representation of a Line Chart -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 300">
+<!-- Revenue Line -->
+<path d="M0 250 Q 150 200, 300 230 T 450 150 T 600 180 T 750 100 T 1000 120" fill="none" stroke="#0048ff" stroke-width="3"></path>
+<path d="M0 250 Q 150 200, 300 230 T 450 150 T 600 180 T 750 100 T 1000 120 V300 H0 Z" fill="url(#grad1)"></path>
+<!-- Expenses Line -->
+<path d="M0 270 Q 150 250, 300 260 T 450 220 T 600 240 T 750 200 T 1000 210" fill="none" stroke="#94a3b8" stroke-dasharray="5,5" stroke-width="2"></path>
+<defs>
+<lineargradient id="grad1" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#0048ff;stop-opacity:0.1"></stop>
+<stop offset="100%" style="stop-color:#0048ff;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="flex justify-between mt-4 text-xs font-bold text-slate-400 px-2">
+<span>JAN</span><span>FEB</span><span>MAR</span><span>APR</span><span>MAY</span><span>JUN</span><span>JUL</span>
+</div>
+</div>
+</div>
+<!-- Two Column Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Revenue by Category (Doughnut style representation) -->
+<div class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+<h3 class="text-lg font-bold mb-6">Revenue by Category</h3>
+<div class="flex-1 flex items-center justify-center relative">
+<!-- Pseudo Doughnut -->
+<div class="size-48 rounded-full border-[20px] border-slate-100 dark:border-slate-800 relative flex items-center justify-center">
+<div class="absolute inset-0 rounded-full border-[20px] border-primary border-t-transparent border-l-transparent" style="transform: rotate(45deg);"></div>
+<div class="absolute inset-0 rounded-full border-[20px] border-indigo-400 border-b-transparent border-r-transparent border-t-transparent"></div>
+<div class="text-center">
+<p class="text-2xl font-bold">$84k</p>
+<p class="text-xs text-slate-500">Total Month</p>
+</div>
+</div>
+<div class="ml-12 flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<span class="size-3 rounded-full bg-primary"></span>
+<div>
+<p class="text-sm font-medium">Main Course</p>
+<p class="text-xs text-slate-500">$45,200 (54%)</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="size-3 rounded-full bg-indigo-400"></span>
+<div>
+<p class="text-sm font-medium">Drinks</p>
+<p class="text-xs text-slate-500">$22,100 (26%)</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="size-3 rounded-full bg-slate-300"></span>
+<div>
+<p class="text-sm font-medium">Events/Others</p>
+<p class="text-xs text-slate-500">$16,700 (20%)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Peak Revenue Hours (Bar chart style representation) -->
+<div class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<h3 class="text-lg font-bold mb-6">Peak Revenue Hours</h3>
+<div class="h-48 flex items-end justify-between gap-4 px-2">
+<div class="w-full bg-primary/20 hover:bg-primary rounded-t-lg transition-colors" style="height: 40%;"></div>
+<div class="w-full bg-primary/20 hover:bg-primary rounded-t-lg transition-colors" style="height: 65%;"></div>
+<div class="w-full bg-primary/20 hover:bg-primary rounded-t-lg transition-colors" style="height: 100%;"></div>
+<div class="w-full bg-primary/20 hover:bg-primary rounded-t-lg transition-colors" style="height: 85%;"></div>
+<div class="w-full bg-primary/20 hover:bg-primary rounded-t-lg transition-colors" style="height: 30%;"></div>
+<div class="w-full bg-primary/20 hover:bg-primary rounded-t-lg transition-colors" style="height: 50%;"></div>
+<div class="w-full bg-primary/20 hover:bg-primary rounded-t-lg transition-colors" style="height: 70%;"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-slate-400 px-1">
+<span>12 PM</span><span>2 PM</span><span>4 PM</span><span>6 PM</span><span>8 PM</span><span>10 PM</span><span>12 AM</span>
+</div>
+</div>
+</div>
+<!-- Recent Transactions Table -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4">
+<h3 class="text-lg font-bold">Recent Transactions</h3>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+                            All Dates
+                        </button>
+<button class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+                            Filter
+                        </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+<th class="px-6 py-4">Transaction ID</th>
+<th class="px-6 py-4">Customer</th>
+<th class="px-6 py-4">Status</th>
+<th class="px-6 py-4">Payment Method</th>
+<th class="px-6 py-4">Amount</th>
+<th class="px-6 py-4">Date</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr class="text-sm hover:bg-slate-50 dark:hover:bg-slate-800/30">
+<td class="px-6 py-4 font-mono font-medium">#TRX-9482</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold">JD</div>
+                                        Jane Doe
+                                    </div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">COMPLETED</span>
+</td>
+<td class="px-6 py-4 text-slate-500">Credit Card</td>
+<td class="px-6 py-4 font-bold">$124.50</td>
+<td class="px-6 py-4 text-slate-500">Oct 24, 2023</td>
+</tr>
+<tr class="text-sm hover:bg-slate-50 dark:hover:bg-slate-800/30">
+<td class="px-6 py-4 font-mono font-medium">#TRX-9481</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 text-[10px] font-bold">MS</div>
+                                        Mark Smith
+                                    </div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold">PENDING</span>
+</td>
+<td class="px-6 py-4 text-slate-500">Digital Wallet</td>
+<td class="px-6 py-4 font-bold">$58.00</td>
+<td class="px-6 py-4 text-slate-500">Oct 24, 2023</td>
+</tr>
+<tr class="text-sm hover:bg-slate-50 dark:hover:bg-slate-800/30">
+<td class="px-6 py-4 font-mono font-medium">#TRX-9480</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="size-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 text-[10px] font-bold">RK</div>
+                                        Robert King
+                                    </div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">COMPLETED</span>
+</td>
+<td class="px-6 py-4 text-slate-500">Cash</td>
+<td class="px-6 py-4 font-bold">$210.00</td>
+<td class="px-6 py-4 text-slate-500">Oct 23, 2023</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<p class="text-xs text-slate-500 font-medium">Showing 1-10 of 250 transactions</p>
+<div class="flex gap-1">
+<button class="p-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+<button class="p-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

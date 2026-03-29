@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kezdes Admin - No-show &amp; Blacklist Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#0048ff",
+                "background-light": "#f5f6f8",
+                "background-dark": "#0f1523",
+              },
+              fontFamily: {
+                "display": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-full">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary rounded-lg text-white">
+<span class="material-symbols-outlined">restaurant_menu</span>
+</div>
+<div>
+<h1 class="text-slate-900 dark:text-white text-base font-bold leading-tight">Kezdes Admin</h1>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-normal">Restaurant Mgmt</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto p-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-sm font-medium">Reservations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="text-sm font-medium">Customers</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1">security</span>
+<span class="text-sm font-semibold">Security</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 px-2">
+<div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs" data-alt="User profile avatar placeholder">JD</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">John Doe</p>
+<p class="text-xs text-slate-500 truncate">Manager</p>
+</div>
+<span class="material-symbols-outlined text-slate-400">logout</span>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto flex flex-col">
+<!-- Header -->
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-8 sticky top-0 z-10">
+<div class="flex items-center gap-4">
+<h2 class="text-lg font-bold">No-show &amp; Blacklist Manager</h2>
+<div class="flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-slate-400 text-lg">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-slate-400" placeholder="Search guests..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 dark:border-slate-700 mx-2"></div>
+<button class="bg-primary text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">add_moderator</span>
+                    Add to Blacklist
+                </button>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-8 space-y-8 max-w-7xl mx-auto w-full">
+<!-- Summary Header -->
+<div class="flex flex-col gap-2">
+<p class="text-slate-500 dark:text-slate-400 text-sm">Security Overview</p>
+<h1 class="text-3xl font-black tracking-tight">Protect Your Revenue</h1>
+</div>
+<!-- KPI Widgets -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">No-show Rate %</span>
+<span class="material-symbols-outlined text-primary">analytics</span>
+</div>
+<div class="flex items-end gap-3">
+<h3 class="text-3xl font-bold">4.2%</h3>
+<span class="text-red-500 text-sm font-semibold mb-1">-0.5% vs last month</span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Blocked Customers</span>
+<span class="material-symbols-outlined text-primary">block</span>
+</div>
+<div class="flex items-end gap-3">
+<h3 class="text-3xl font-bold">128</h3>
+<span class="text-emerald-500 text-sm font-semibold mb-1">+12 this week</span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Revenue Lost (Est.)</span>
+<span class="material-symbols-outlined text-primary">monetization_on</span>
+</div>
+<div class="flex items-end gap-3">
+<h3 class="text-3xl font-bold">$12,450</h3>
+<span class="text-emerald-500 text-sm font-semibold mb-1">+$840 recovery potential</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Main Lists -->
+<div class="lg:col-span-2 space-y-8">
+<!-- Recent No-shows -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history</span>
+                                Recent No-shows
+                            </h2>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+<li class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold" data-alt="Customer avatar">MK</div>
+<div>
+<p class="text-sm font-semibold">Mark Thompson</p>
+<p class="text-xs text-slate-500">2 bookings missed • Last: Oct 24, 2023</p>
+</div>
+</div>
+<button class="text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 px-3 py-1.5 rounded text-xs font-bold border border-red-200 dark:border-red-500/20 transition-all uppercase tracking-wider">
+                                        Mark as Blacklisted
+                                    </button>
+</li>
+<li class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold" data-alt="Customer avatar">SL</div>
+<div>
+<p class="text-sm font-semibold">Sarah Loft</p>
+<p class="text-xs text-slate-500">1 booking missed • Last: Oct 23, 2023</p>
+</div>
+</div>
+<button class="text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 px-3 py-1.5 rounded text-xs font-bold border border-red-200 dark:border-red-500/20 transition-all uppercase tracking-wider">
+                                        Mark as Blacklisted
+                                    </button>
+</li>
+</ul>
+</div>
+</section>
+<!-- Blacklist Table -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-red-500">dangerous</span>
+                                Blacklisted Guests
+                            </h2>
+<button class="text-primary text-sm font-semibold hover:underline">View all</button>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+<table class="w-full text-left text-sm">
+<thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
+<tr>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Name</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Reason</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Date Added</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider text-[10px] text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 font-medium flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                            James Miller
+                                        </td>
+<td class="px-6 py-4">Multiple No-shows (4)</td>
+<td class="px-6 py-4 text-slate-500">Sep 12, 2023</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-bold hover:text-primary/70">Unblock</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 font-medium flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                            Angela Davis
+                                        </td>
+<td class="px-6 py-4">Bad Behavior (Refusal to Pay)</td>
+<td class="px-6 py-4 text-slate-500">Aug 29, 2023</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-bold hover:text-primary/70">Unblock</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 font-medium flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                            Robert Chen
+                                        </td>
+<td class="px-6 py-4">Fraudulent Chargeback</td>
+<td class="px-6 py-4 text-slate-500">Aug 15, 2023</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-bold hover:text-primary/70">Unblock</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Settings Sidebar -->
+<div class="space-y-6">
+<section class="bg-primary/5 dark:bg-primary/10 border border-primary/20 p-6 rounded-xl shadow-sm">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 bg-primary text-white flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<h2 class="text-lg font-bold">Risk Alert Panel</h2>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
+                            Configure how Kezdes Admin handles unreliable guests automatically.
+                        </p>
+<div class="space-y-6">
+<div class="flex flex-col gap-3">
+<label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Auto-Flag Threshold</label>
+<div class="flex items-center gap-4 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+<span class="text-sm flex-1">Missed bookings:</span>
+<select class="bg-transparent border-none focus:ring-0 text-sm font-bold text-primary">
+<option>1 booking</option>
+<option selected="">2 bookings</option>
+<option>3 bookings</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Auto-Block Action</label>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-sm">Block after 3 misses</span>
+<button class="w-10 h-5 bg-primary rounded-full relative">
+<div class="absolute right-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
+</button>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm">Require deposit for flagged</span>
+<button class="w-10 h-5 bg-primary rounded-full relative">
+<div class="absolute right-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
+</button>
+</div>
+</div>
+</div>
+<button class="w-full bg-primary text-white font-bold py-3 rounded-lg shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">save</span>
+                                Save Security Policy
+                            </button>
+</div>
+</section>
+<!-- Info Card -->
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl">
+<h4 class="font-bold text-sm mb-2">Did you know?</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Restaurants using Kezdes Security saw a <span class="text-emerald-500 font-bold">22% reduction</span> in average no-shows within the first 60 days of implementation.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+```</body></html>

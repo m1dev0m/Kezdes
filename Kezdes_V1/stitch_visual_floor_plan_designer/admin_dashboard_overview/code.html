@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Dashboard Overview - Kezdes Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0047FF",
+                        "background-light": "#f6f5f8",
+                        "background-dark": "#150f23",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex min-h-screen">
+<!-- Side Navigation -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sticky top-0 h-screen">
+<div class="p-6 flex items-center gap-3">
+<div class="bg-primary rounded-lg p-2 text-white">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<div>
+<h1 class="text-slate-900 dark:text-white font-bold text-lg leading-tight">Kezdes</h1>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Admin Panel</p>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-semibold" href="#">
+<span class="material-symbols-outlined text-[22px]">dashboard</span>
+<span class="text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">calendar_today</span>
+<span class="text-sm font-medium">Bookings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">map</span>
+<span class="text-sm font-medium">Floor Plan</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">restaurant_menu</span>
+<span class="text-sm font-medium">Menu</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">badge</span>
+<span class="text-sm font-medium">Staff</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">payments</span>
+<span class="text-sm font-medium">Finance</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col">
+<!-- Top Header -->
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-8 flex items-center justify-between sticky top-0 z-10">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" placeholder="Search analytics, orders, or customers..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 dark:border-slate-800 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-bold leading-none">James Wilson</p>
+<p class="text-xs text-slate-500 mt-1">General Manager</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-primary/20">
+<img alt="James Wilson" data-alt="Headshot of a male restaurant manager profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTtqNimkB6cdU4dYlEKExEtuuEU0Qx9Hsoatkv6hQKENJjMXAkCW7yb4gLaz3P_q96yHMsgyjSOVazy7JTFlNL3nw-yD7PR1dznx9ivLkLXb17P3X7OmJSDL3MILsEMmXiByeCYg_lFDzodTyWGOg_xeRukYEfm7moCKjhxV88x-4pFuzvuzdj9HjtHbm5ZfJG7q67tq1DOT7wIg8ILOX7AunabzlgsLsAVa9c-UHSMPPVlw3MI0VbHLwlqJicyi0YNOU5qnqpyQ"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-8 flex gap-8">
+<!-- Left Column (Analytics) -->
+<div class="flex-1 space-y-8">
+<!-- KPI Widgets -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<span class="text-xs font-bold text-emerald-500 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full">
+                                    +12.5% <span class="material-symbols-outlined text-xs">trending_up</span>
+</span>
+</div>
+<p class="text-slate-500 text-sm font-medium">Total Revenue</p>
+<h3 class="text-2xl font-bold mt-1">$12,450.00</h3>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-orange-100 rounded-lg text-orange-600">
+<span class="material-symbols-outlined">pending_actions</span>
+</div>
+<span class="text-xs font-bold text-rose-500 flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-full">
+                                    -4.2% <span class="material-symbols-outlined text-xs">trending_down</span>
+</span>
+</div>
+<p class="text-slate-500 text-sm font-medium">New Requests</p>
+<h3 class="text-2xl font-bold mt-1">48</h3>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-blue-100 rounded-lg text-blue-600">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<span class="text-xs font-bold text-emerald-500 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full">
+                                    +2.1% <span class="material-symbols-outlined text-xs">trending_up</span>
+</span>
+</div>
+<p class="text-slate-500 text-sm font-medium">Avg Check</p>
+<h3 class="text-2xl font-bold mt-1">$42.50</h3>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-purple-100 rounded-lg text-purple-600">
+<span class="material-symbols-outlined">table_restaurant</span>
+</div>
+<span class="text-xs font-bold text-emerald-500 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full">
+                                    +5.8% <span class="material-symbols-outlined text-xs">trending_up</span>
+</span>
+</div>
+<p class="text-slate-500 text-sm font-medium">Occupancy</p>
+<h3 class="text-2xl font-bold mt-1">82%</h3>
+</div>
+</div>
+<!-- Revenue Line Chart -->
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h3 class="font-bold text-lg">Revenue Over Time</h3>
+<p class="text-slate-500 text-sm">Comparison of daily sales performance</p>
+</div>
+<select class="bg-slate-50 border-none rounded-lg text-sm font-medium focus:ring-primary/20">
+<option>Last 30 Days</option>
+<option>Last 7 Days</option>
+<option>This Year</option>
+</select>
+</div>
+<div class="h-[280px] w-full relative">
+<!-- SVG Chart Simulation -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 300">
+<defs>
+<lineargradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#0047FF" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#0047FF" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,250 Q100,220 200,240 T400,180 T600,120 T800,150 T1000,80 L1000,300 L0,300 Z" fill="url(#gradient)"></path>
+<path d="M0,250 Q100,220 200,240 T400,180 T600,120 T800,150 T1000,80" fill="none" stroke="#0047FF" stroke-linecap="round" stroke-width="3"></path>
+<!-- Points -->
+<circle cx="200" cy="240" fill="white" r="4" stroke="#0047FF" stroke-width="2"></circle>
+<circle cx="400" cy="180" fill="white" r="4" stroke="#0047FF" stroke-width="2"></circle>
+<circle cx="600" cy="120" fill="white" r="4" stroke="#0047FF" stroke-width="2"></circle>
+<circle cx="800" cy="150" fill="white" r="4" stroke="#0047FF" stroke-width="2"></circle>
+<circle cx="1000" cy="80" fill="white" r="4" stroke="#0047FF" stroke-width="2"></circle>
+</svg>
+<!-- X Axis labels -->
+<div class="flex justify-between mt-4 text-xs text-slate-400 font-medium px-1">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+</div>
+</div>
+</div>
+<!-- Peak Hours Heatmap -->
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h3 class="font-bold text-lg">Peak Hours Heatmap</h3>
+<p class="text-slate-500 text-sm">Density of bookings throughout the week</p>
+</div>
+</div>
+<div class="grid grid-cols-13 gap-1">
+<!-- Time Labels -->
+<div class="flex flex-col gap-1 pr-4 justify-between text-[10px] text-slate-400 font-bold py-1">
+<span>12PM</span><span>4PM</span><span>8PM</span><span>11PM</span>
+</div>
+<div class="flex-1 overflow-x-auto">
+<div class="min-w-[600px] grid grid-cols-7 gap-2">
+<!-- Days Columns -->
+<div class="space-y-2">
+<p class="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">Mon</p>
+<div class="h-8 bg-primary/5 rounded"></div><div class="h-8 bg-primary/10 rounded"></div><div class="h-8 bg-primary/40 rounded"></div><div class="h-8 bg-primary/80 rounded"></div><div class="h-8 bg-primary/20 rounded"></div>
+</div>
+<div class="space-y-2">
+<p class="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">Tue</p>
+<div class="h-8 bg-primary/10 rounded"></div><div class="h-8 bg-primary/20 rounded"></div><div class="h-8 bg-primary/60 rounded"></div><div class="h-8 bg-primary/90 rounded"></div><div class="h-8 bg-primary/30 rounded"></div>
+</div>
+<div class="space-y-2">
+<p class="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">Wed</p>
+<div class="h-8 bg-primary/5 rounded"></div><div class="h-8 bg-primary/30 rounded"></div><div class="h-8 bg-primary/50 rounded"></div><div class="h-8 bg-primary/70 rounded"></div><div class="h-8 bg-primary/10 rounded"></div>
+</div>
+<div class="space-y-2">
+<p class="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">Thu</p>
+<div class="h-8 bg-primary/20 rounded"></div><div class="h-8 bg-primary/40 rounded"></div><div class="h-8 bg-primary/80 rounded"></div><div class="h-8 bg-primary/100 rounded"></div><div class="h-8 bg-primary/40 rounded"></div>
+</div>
+<div class="space-y-2">
+<p class="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">Fri</p>
+<div class="h-8 bg-primary/40 rounded"></div><div class="h-8 bg-primary/70 rounded"></div><div class="h-8 bg-primary/90 rounded"></div><div class="h-8 bg-primary/100 rounded"></div><div class="h-8 bg-primary/80 rounded"></div>
+</div>
+<div class="space-y-2 text-primary font-bold">
+<p class="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">Sat</p>
+<div class="h-8 bg-primary/50 rounded"></div><div class="h-8 bg-primary/90 rounded"></div><div class="h-8 bg-primary/100 rounded"></div><div class="h-8 bg-primary/100 rounded"></div><div class="h-8 bg-primary/90 rounded"></div>
+</div>
+<div class="space-y-2">
+<p class="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">Sun</p>
+<div class="h-8 bg-primary/30 rounded"></div><div class="h-8 bg-primary/60 rounded"></div><div class="h-8 bg-primary/80 rounded"></div><div class="h-8 bg-primary/60 rounded"></div><div class="h-8 bg-primary/20 rounded"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column (Activity Feed) -->
+<div class="w-80 hidden lg:block">
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-full overflow-hidden">
+<div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+<h3 class="font-bold text-base">Real-time Activity</h3>
+<span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-6">
+<!-- Activity Item -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[15px] top-8 bottom-[-24px] w-[2px] bg-slate-100 dark:bg-slate-800"></div>
+<div class="z-10 bg-emerald-100 text-emerald-600 rounded-full h-8 w-8 min-w-[32px] flex items-center justify-center border-4 border-white dark:border-slate-900">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Booking Confirmed</p>
+<p class="text-xs text-slate-500 mt-0.5">Table 12 • 4 Guests • Sarah J.</p>
+<p class="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider">2 mins ago</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="absolute left-[15px] top-8 bottom-[-24px] w-[2px] bg-slate-100 dark:bg-slate-800"></div>
+<div class="z-10 bg-primary/10 text-primary rounded-full h-8 w-8 min-w-[32px] flex items-center justify-center border-4 border-white dark:border-slate-900">
+<span class="material-symbols-outlined text-sm">person_add</span>
+</div>
+<div>
+<p class="text-sm font-semibold">New Request</p>
+<p class="text-xs text-slate-500 mt-0.5">8:30 PM • 2 Guests • Michael R.</p>
+<p class="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider">12 mins ago</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="absolute left-[15px] top-8 bottom-[-24px] w-[2px] bg-slate-100 dark:bg-slate-800"></div>
+<div class="z-10 bg-amber-100 text-amber-600 rounded-full h-8 w-8 min-w-[32px] flex items-center justify-center border-4 border-white dark:border-slate-900">
+<span class="material-symbols-outlined text-sm">edit</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Booking Modified</p>
+<p class="text-xs text-slate-500 mt-0.5">Table 05 • Time moved to 7:45 PM</p>
+<p class="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider">35 mins ago</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="absolute left-[15px] top-8 bottom-[-24px] w-[2px] bg-slate-100 dark:bg-slate-800"></div>
+<div class="z-10 bg-rose-100 text-rose-600 rounded-full h-8 w-8 min-w-[32px] flex items-center justify-center border-4 border-white dark:border-slate-900">
+<span class="material-symbols-outlined text-sm">close</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Booking Cancelled</p>
+<p class="text-xs text-slate-500 mt-0.5">Table 22 • No-show alert</p>
+<p class="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider">1 hr ago</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="z-10 bg-slate-100 text-slate-600 rounded-full h-8 w-8 min-w-[32px] flex items-center justify-center border-4 border-white dark:border-slate-900">
+<span class="material-symbols-outlined text-sm">groups</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Shift Started</p>
+<p class="text-xs text-slate-500 mt-0.5">Evening crew (8 staff) clocked in</p>
+<p class="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider">3 hrs ago</p>
+</div>
+</div>
+</div>
+<div class="p-4 bg-slate-50 dark:bg-slate-800/50">
+<button class="w-full py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
+                                View Full History
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

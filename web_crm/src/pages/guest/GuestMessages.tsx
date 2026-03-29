@@ -206,19 +206,24 @@ export default function GuestMessages() {
     );
 
     return (
-        <div className="flex h-[calc(100vh-220px)] -mt-4 overflow-hidden border border-slate-200 rounded-2xl bg-white">
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8 shrink-0">
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-bold text-brand-green">Messages</h2>
-                        <span className="bg-gold/10 text-gold text-xs font-bold px-2 py-0.5 rounded-full">New</span>
+        <div className="mx-auto max-w-[1280px] px-6 py-8 h-[calc(100vh-140px)] flex flex-col">
+            <main className="flex-1 flex flex-col overflow-hidden border border-slate-200 rounded-3xl bg-white shadow-xl shadow-slate-200/50">
+                <header className="h-20 border-b border-slate-200 bg-white flex items-center justify-between px-8 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#1d4ed8]">
+                            <MessageSquare size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900 leading-none">Сообщения</h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 leading-none">Центр поддержки и чат с ресторанами</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-6">
                         <div className="relative w-64">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
-                                className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-brand-green/20"
-                                placeholder="Search conversations..."
+                                className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1d4ed8]/20"
+                                placeholder="Поиск диалогов..."
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
@@ -227,9 +232,9 @@ export default function GuestMessages() {
                         <div className="flex items-center gap-3">
                             <button type="button" className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-lg" aria-label="Notifications">
                                 <Bell className="w-5 h-5" />
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-gold rounded-full border-2 border-white" />
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-[#1d4ed8] rounded-full border-2 border-white" />
                             </button>
-                            <div className="w-8 h-8 rounded-full bg-brand-green/10 overflow-hidden border border-slate-200 flex items-center justify-center text-brand-green font-bold text-xs">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 overflow-hidden border border-slate-200 flex items-center justify-center text-[#1d4ed8] font-bold text-xs">
                                 {(user?.username?.[0] || 'G').toUpperCase()}
                             </div>
                         </div>
@@ -244,22 +249,22 @@ export default function GuestMessages() {
                                 onClick={() => setActiveTab('recent')}
                                 className={
                                     activeTab === 'recent'
-                                        ? 'flex-1 py-4 text-sm font-bold border-b-2 border-brand-green text-brand-green'
-                                        : 'flex-1 py-4 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors'
+                                        ? 'flex-1 py-4 text-xs font-bold border-b-2 border-[#1d4ed8] text-[#1d4ed8] uppercase tracking-widest'
+                                        : 'flex-1 py-4 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest'
                                 }
                             >
-                                Recent
+                                Последние
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('archived')}
                                 className={
                                     activeTab === 'archived'
-                                        ? 'flex-1 py-4 text-sm font-bold border-b-2 border-brand-green text-brand-green'
-                                        : 'flex-1 py-4 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors'
+                                        ? 'flex-1 py-4 text-xs font-bold border-b-2 border-[#1d4ed8] text-[#1d4ed8] uppercase tracking-widest'
+                                        : 'flex-1 py-4 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest'
                                 }
                             >
-                                Archived
+                                Архив
                             </button>
                         </div>
 
@@ -271,7 +276,7 @@ export default function GuestMessages() {
                             ) : filteredConvs.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
                                     <MessageSquare className="w-8 h-8" />
-                                    <p className="text-xs font-bold">No conversations yet</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest">Нет диалогов</p>
                                 </div>
                             ) : (
                                 <div>
@@ -287,12 +292,12 @@ export default function GuestMessages() {
                                                 onClick={() => setSelectedConv(conv)}
                                                 className={
                                                     isActive
-                                                        ? 'w-full text-left p-4 bg-brand-green/5 border-l-4 border-brand-green flex gap-4 cursor-pointer'
+                                                        ? 'w-full text-left p-4 bg-blue-50 border-l-4 border-[#1d4ed8] flex gap-4 cursor-pointer'
                                                         : 'w-full text-left p-4 hover:bg-slate-50 transition-colors flex gap-4 cursor-pointer border-b border-slate-50'
                                                 }
                                             >
                                                 <div className="relative shrink-0">
-                                                    <div className={`w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center ${isActive ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-700'} font-bold`}>
+                                                    <div className={`w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center ${isActive ? 'bg-[#1d4ed8] text-white' : 'bg-slate-200 text-slate-700'} font-bold`}>
                                                         {conv.title?.[0]?.toUpperCase()}
                                                     </div>
                                                 </div>
@@ -318,21 +323,21 @@ export default function GuestMessages() {
                             <>
                                 <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden flex items-center justify-center font-bold text-brand-green">
+                                        <div className="w-10 h-10 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center font-bold text-[#1d4ed8] border border-blue-100">
                                             {selectedConv.title?.[0]?.toUpperCase()}
                                         </div>
                                         <div>
                                             <h3 className="text-sm font-bold leading-none">{selectedConv.title}</h3>
-                                            <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-2">
+                                            <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-2 font-medium uppercase tracking-wider">
                                                 <span className="w-2 h-2 bg-green-500 rounded-full inline-block" />
-                                                Typical response: 15 mins
+                                                Обычно отвечает за 15 мин
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button"
-                                            className="p-2 text-slate-400 hover:text-brand-green transition-colors"
+                                            className="p-2 text-slate-400 hover:text-[#1d4ed8] transition-colors"
                                             aria-label="Info"
                                         >
                                             <Info className="w-5 h-5" />
@@ -340,7 +345,7 @@ export default function GuestMessages() {
                                         <button
                                             type="button"
                                             onClick={fetchData}
-                                            className="p-2 text-slate-400 hover:text-brand-green transition-colors"
+                                            className="p-2 text-slate-400 hover:text-[#1d4ed8] transition-colors"
                                             aria-label="Refresh"
                                         >
                                             <RefreshCw className={`w-5 h-5 ${loadingConvs ? 'animate-spin' : ''}`} />
@@ -348,10 +353,10 @@ export default function GuestMessages() {
                                         {selectedConv.type === 'booking' && (
                                             <button
                                                 type="button"
-                                                className="px-4 py-2 bg-brand-green text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md"
+                                                className="px-4 py-2 bg-[#1d4ed8] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md uppercase tracking-widest"
                                             >
                                                 <Calendar className="w-4 h-4" />
-                                                Booking
+                                                Бронь
                                             </button>
                                         )}
                                         <button
@@ -365,19 +370,19 @@ export default function GuestMessages() {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
                                     <div className="flex justify-center">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-200/50 px-3 py-1 rounded-full">Today</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white border border-slate-100 px-3 py-1 rounded-full shadow-sm">Сегодня</span>
                                     </div>
 
                                     {loadingMessages && messages.length === 0 ? (
                                         <div className="flex items-center justify-center py-24">
-                                            <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+                                            <Loader2 className="w-8 h-8 text-[#1d4ed8] animate-spin" />
                                         </div>
                                     ) : messages.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center py-24 gap-4 text-slate-400">
                                             <MessageSquare className="w-10 h-10" />
-                                            <p className="text-sm font-bold">No messages yet</p>
+                                            <p className="text-xs font-bold uppercase tracking-widest">Нет сообщений</p>
                                         </div>
                                     ) : (
                                         <AnimatePresence initial={false}>
@@ -390,18 +395,18 @@ export default function GuestMessages() {
                                                         animate={{ opacity: 1, y: 0 }}
                                                         className={isMe ? 'flex flex-row-reverse gap-3 max-w-[80%] ml-auto' : 'flex gap-3 max-w-[80%]'}
                                                     >
-                                                        <div className={`w-8 h-8 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ${isMe ? 'bg-brand-green/20 text-brand-green' : 'bg-slate-200 text-slate-700'}`}>
-                                                            {(isMe ? user?.username?.[0] : msg.sender_name?.[0] || 'R').toUpperCase()}
+                                                        <div className={`w-8 h-8 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ${isMe ? 'bg-blue-100 text-[#1d4ed8]' : 'bg-white border border-slate-200 text-slate-700'}`}>
+                                                            {(isMe ? (user?.username?.[0] || 'G') : (msg.sender_name?.[0] || 'R')).toUpperCase()}
                                                         </div>
                                                         <div className={isMe ? 'space-y-1 text-right' : 'space-y-1'}>
                                                             <div
                                                                 className={
                                                                     isMe
-                                                                        ? 'bg-brand-green text-white p-4 rounded-xl rounded-tr-none shadow-md'
+                                                                        ? 'bg-[#1d4ed8] text-white p-4 rounded-xl rounded-tr-none shadow-md shadow-blue-100'
                                                                         : 'bg-white p-4 rounded-xl rounded-tl-none shadow-sm border border-slate-200'
                                                                 }
                                                             >
-                                                                <p className="text-sm leading-relaxed">{msg.content}</p>
+                                                                <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
                                                             </div>
                                                             <div className={isMe ? 'flex items-center justify-end gap-1 text-[10px] text-slate-400 mr-1' : 'text-[10px] text-slate-400 ml-1'}>
                                                                 <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -421,8 +426,8 @@ export default function GuestMessages() {
                                     <div className="flex items-end gap-3 max-w-5xl mx-auto">
                                         <div className="flex-1 relative">
                                             <input
-                                                className="w-full py-3 px-4 bg-slate-100 border-none rounded-2xl text-sm focus:ring-2 focus:ring-brand-green/20"
-                                                placeholder="Type your message..."
+                                                className="w-full py-3 px-4 bg-slate-100 border-none rounded-2xl text-sm focus:ring-2 focus:ring-[#1d4ed8]/20"
+                                                placeholder="Напишите сообщение..."
                                                 type="text"
                                                 value={newMsg}
                                                 onChange={(e) => setNewMsg(e.target.value)}
@@ -433,19 +438,19 @@ export default function GuestMessages() {
                                             type="button"
                                             onClick={handleSend}
                                             disabled={!newMsg.trim() || sending}
-                                            className="mb-1 p-3 bg-brand-green hover:bg-brand-green/90 disabled:opacity-50 text-white rounded-xl shadow-lg flex items-center justify-center"
+                                            className="mb-1 p-3 bg-[#1d4ed8] hover:bg-[#1e40af] disabled:opacity-50 text-white rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center transition-all active:scale-[0.98]"
                                             aria-label="Send"
                                         >
                                             {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                                         </button>
                                     </div>
-                                    <p className="text-center text-[10px] text-slate-400 mt-2 uppercase tracking-tighter">Enter to send, Shift+Enter for new line</p>
+                                    <p className="text-center text-[10px] text-slate-400 mt-2 uppercase tracking-tighter">Enter — отправить, Shift+Enter — новая строка</p>
                                 </div>
                             </>
                         ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400">
+                            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 bg-slate-50/50">
                                 <MessageSquare className="w-12 h-12" />
-                                <p className="text-sm font-bold">Select a conversation</p>
+                                <p className="text-xs font-bold uppercase tracking-widest">Выберите диалог</p>
                             </div>
                         )}
                     </section>

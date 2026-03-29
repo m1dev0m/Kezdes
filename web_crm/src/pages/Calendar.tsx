@@ -1,26 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    ChevronLeft, ChevronRight, Plus, Search, Users, Clock,
-    MessageSquare, ArrowRight, Calendar, X, CalendarRange
-} from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { useI18n } from '@/i18n';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
-const HOURS = Array.from({ length: 14 }, (_, i) => `${String(i + 9).padStart(2, '0')}:00`);
-const HOUR_HEIGHT = 80; // px per hour
-const START_HOUR = 9;
+const HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`);
+const HOUR_HEIGHT = 100;
+const START_HOUR = 8;
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; badge: string }> = {
-    confirmed: { bg: 'bg-emerald-50/50 dark:bg-emerald-500/5', text: 'text-emerald-700 dark:text-emerald-400', badge: 'bg-emerald-100 dark:bg-emerald-500/10' },
-    approved: { bg: 'bg-emerald-50/50 dark:bg-emerald-500/5', text: 'text-emerald-700 dark:text-emerald-400', badge: 'bg-emerald-100 dark:bg-emerald-500/10' },
-    pending: { bg: 'bg-amber-50/50 dark:bg-amber-500/5', text: 'text-amber-700 dark:text-amber-400', badge: 'bg-amber-100 dark:bg-amber-500/10' },
-    payment_pending: { bg: 'bg-primary/5/50 dark:bg-primary/5', text: 'text-primary dark:text-indigo-400', badge: 'bg-indigo-100 dark:bg-primary/5' },
-    cancelled: { bg: 'bg-slate-50/50 dark:bg-slate-800/40', text: 'text-slate-500 dark:text-slate-400', badge: 'bg-slate-100 dark:bg-slate-700/40' },
+const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; icon: string }> = {
+    confirmed: { bg: 'bg-[#0047FF]/5', text: 'text-[#0047FF]', border: 'border-[#0047FF]/20', icon: 'check_circle' },
+    approved: { bg: 'bg-[#0047FF]/5', text: 'text-[#0047FF]', border: 'border-[#0047FF]/20', icon: 'verified' },
+    pending: { bg: 'bg-amber-500/5', text: 'text-amber-600', border: 'border-amber-500/20', icon: 'pending' },
+    seated: { bg: 'bg-indigo-500/5', text: 'text-indigo-600', border: 'border-indigo-500/20', icon: 'chair_alt' },
+    cancelled: { bg: 'bg-rose-500/5', text: 'text-rose-600', border: 'border-rose-500/20', icon: 'cancel' },
 };
 
 interface CalendarBooking {
@@ -32,7 +27,7 @@ interface CalendarBooking {
     guests?: number;
     comment?: string;
     user_name?: string;
-    status?: keyof typeof STATUS_COLORS | string;
+    status?: string | keyof typeof STATUS_CONFIG;
     table_id?: number | null;
     table_number?: string | null;
 }
@@ -43,17 +38,8 @@ interface CalendarTable {
     seats: number;
 }
 
-function getBookingPosition(booking: CalendarBooking) {
-    const [h, m] = (booking.time || '12:00').split(':').map(Number);
-    const offsetMin = (h - START_HOUR) * 60 + (m || 0);
-    const top = Math.max(0, (offsetMin / 60) * HOUR_HEIGHT);
-    const durationHours = (booking.duration_minutes ? booking.duration_minutes / 60 : (booking.duration_hours || 2));
-    const height = Math.max(40, durationHours * HOUR_HEIGHT - 8);
-    return { top, height };
-}
-
 function formatDate(d: Date) {
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' });
+    return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function addDays(d: Date, n: number) {
@@ -63,453 +49,227 @@ function addDays(d: Date, n: number) {
 }
 
 export default function CalendarPage() {
-    const { t } = useI18n();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [bookings, setBookings] = useState<CalendarBooking[]>([]);
     const [tables, setTables] = useState<CalendarTable[]>([]);
     const [loading, setLoading] = useState(true);
-    const [actionSubmitting, setActionSubmitting] = useState(false);
-    const [viewMode, setViewMode] = useState<string>('timeline');
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedTab, setSelectedTab] = useState('allHalls');
+    const [viewMode, setViewMode] = useState<'timeline' | 'day'>('timeline');
     const [selectedBooking, setSelectedBooking] = useState<CalendarBooking | null>(null);
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const { user } = useAuth();
-
-    useWebSocket({
-        url: `ws/bookings/${user?.restaurant}/`,
-        enabled: !!user?.restaurant,
-        onMessage: (data) => {
-            if (data && data.type === 'booking_update' && data.booking) {
-                setBookings(prev => {
-                    const exists = prev.find(b => b.id === data.booking.id);
-                    if (exists) {
-                        return prev.map(b => b.id === data.booking.id ? { ...b, ...data.booking } : b);
-                    } else {
-                        return [...prev, data.booking];
-                    }
-                });
-            }
-        }
-    });
-
-    const TABS = [
-        { id: 'allHalls', label: t('calendar.allHalls') },
-        { id: 'vip1', label: 'VIP 1' },
-        { id: 'hall1', label: 'Зал 1' },
-        { id: 'veranda', label: 'Веранда' },
-        { id: 'bar', label: 'Бар' },
-    ];
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const handleBookingAction = async (bookingId: number, action: string) => {
-        if (actionSubmitting) return;
-        setActionSubmitting(true);
-        try {
-            await api.post(`/bookings/${bookingId}/${action}/`);
-            toast.success(t('bookings.successAction'));
-            await fetchData();
-        } catch (err: any) {
-            const msg = err.response?.data?.error?.message || err.response?.data?.detail || `Failed to ${action}`;
-            toast.error(msg);
-        } finally {
-            setActionSubmitting(false);
-        }
-    };
-
-    useEffect(() => {
-        if (scrollRef.current && viewMode !== 'timeline') {
-            const now = new Date();
-            const offset = ((now.getHours() - START_HOUR) * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT;
-            scrollRef.current.scrollTop = Math.max(0, offset - 80);
-        }
-    }, [loading, viewMode]);
 
     const fetchData = async () => {
         try {
             setLoading(true);
+            const dStr = currentDate.toISOString().slice(0, 10);
             const [bRes, tRes] = await Promise.all([
-                api.get('/bookings/'),
-                api.get('/restaurants/tables/')
+                api.get(`/bookings/my_restaurant/?date=${dStr}`),
+                api.get('/tables/status/').catch(() => api.get('/tables/'))
             ]);
-            const bData = Array.isArray(bRes.data) ? bRes.data : (bRes.data.results || []);
-            const tData = Array.isArray(tRes.data) ? tRes.data : (tRes.data.results || []);
-            setBookings(bData);
-            setTables(tData);
+
+            setBookings(Array.isArray(bRes.data) ? bRes.data : (bRes.data.results || []));
+            setTables(tRes.data || []);
         } catch (e) {
-            console.error(e);
+            toast.error("Failed to fetch operational schedule");
         } finally {
             setLoading(false);
         }
     };
 
-    const dateStr = currentDate.toISOString().slice(0, 10);
+    useEffect(() => {
+        fetchData();
+    }, [currentDate]);
+
+    useWebSocket({
+        url: `ws/bookings/${user?.restaurant}/`,
+        enabled: !!user?.restaurant,
+        onMessage: (data) => {
+            if (data && data.type === 'booking_update') {
+                fetchData();
+            }
+        }
+    });
 
     const filteredBookings = bookings.filter(b => {
-        const matchDate = b.date === dateStr;
         const matchSearch = !search || (b.user_name || '').toLowerCase().includes(search.toLowerCase());
-        return matchDate && matchSearch;
+        return matchSearch;
     });
 
-    const weekDays = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(currentDate);
-        const day = d.getDay();
-        const monday = addDays(d, -((day + 6) % 7) + i);
-        return monday;
-    });
-
-    const nightNow =
-        currentDate.toDateString() === new Date().toDateString()
-            ? ((new Date().getHours() - START_HOUR) * 60 + new Date().getMinutes()) / 60 * HOUR_HEIGHT
-            : null;
+    const nightNowY = currentDate.toDateString() === new Date().toDateString()
+        ? ((new Date().getHours() - START_HOUR) * 60 + new Date().getMinutes()) / 60 * HOUR_HEIGHT
+        : null;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8rem)] bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-xl shadow-slate-900/5">
-            <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between px-8 py-6 border-b border-slate-100 bg-white gap-6">
+        <div className="max-w-[1600px] mx-auto h-[calc(100vh-10rem)] flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-sm animate-in fade-in duration-700">
+            {/* Header / Workspace Control */}
+            <header className="flex flex-col md:flex-row items-center justify-between px-10 py-6 border-b border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 gap-6 z-30">
                 <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 bg-slate-50 rounded-[18px] flex items-center justify-center border border-slate-100">
-                        <CalendarRange size={22} className="text-primary" />
+                    <div className="size-14 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-center text-[#0047FF]">
+                        <span className="material-symbols-outlined text-[28px]">calendar_month</span>
                     </div>
-                    <div>
-                        <h1 className="text-[14px] font-black text-slate-900 uppercase tracking-[0.2em] italic leading-none">{t('calendar.title')}</h1>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5 opacity-60 italic">{formatDate(currentDate)}</p>
+                    <div className="space-y-1">
+                        <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-widest leading-none">Operation Schedule</h1>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{formatDate(currentDate)}</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:flex-initial flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                    <div className="relative flex items-center">
                         <AnimatePresence>
                             {showSearch && (
-                                <motion.div
+                                <motion.input
                                     initial={{ width: 0, opacity: 0 }}
                                     animate={{ width: 220, opacity: 1 }}
                                     exit={{ width: 0, opacity: 0 }}
-                                    className="overflow-hidden"
-                                >
-                                    <input
-                                        placeholder={t('calendar.guestSearch')}
-                                        value={search}
-                                        onChange={e => setSearch(e.target.value)}
-                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none text-slate-900 focus:border-primary transition-all shadow-inner"
-                                    />
-                                </motion.div>
+                                    placeholder="Find guest record..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    className="h-12 pl-4 pr-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold outline-none ring-2 ring-transparent focus:ring-[#0047FF]/10 transition-all"
+                                />
                             )}
                         </AnimatePresence>
                         <button
-                            onClick={() => setShowSearch(s => !s)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-primary transition-all border border-slate-100 ${showSearch ? 'bg-white border-primary text-primary' : ''}`}
+                            onClick={() => setShowSearch(!showSearch)}
+                            className={`p-3 rounded-xl transition-all ${showSearch ? 'text-[#0047FF] bg-[#0047FF]/5' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                            {showSearch ? <X size={16} /> : <Search size={16} />}
+                            <span className="material-symbols-outlined text-[22px]">{showSearch ? 'close' : 'search'}</span>
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
-                        {[
-                            { id: 'timeline', label: t('calendar.timeline') },
-                            { id: 'day', label: t('calendar.day') },
-                            { id: 'week', label: t('calendar.week') }
-                        ].map(m => (
+                    <div className="flex bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        {['timeline', 'day'].map((mode) => (
                             <button
-                                key={m.id}
-                                onClick={() => setViewMode(m.id)}
-                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.3em] transition-all ${viewMode === m.id ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                key={mode}
+                                onClick={() => setViewMode(mode as any)}
+                                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-700 text-[#0047FF] shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                {m.label}
+                                {mode === 'timeline' ? 'Matrix' : 'Feed'}
                             </button>
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                        <button
-                            onClick={() => setCurrentDate(d => addDays(d, viewMode === 'day' ? -1 : -7))}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-slate-400 hover:text-primary transition-all border border-slate-100 hover:border-primary shadow-sm"
-                        >
-                            <ChevronLeft size={18} />
-                        </button>
-                        <button
-                            onClick={() => setCurrentDate(new Date())}
-                            className="px-4 h-10 text-[10px] font-black uppercase tracking-[0.3em] rounded-xl bg-white text-slate-400 hover:text-primary transition-all border border-slate-100 hover:border-primary shadow-sm"
-                        >
-                            {t('calendar.today')}
-                        </button>
-                        <button
-                            onClick={() => setCurrentDate(d => addDays(d, viewMode === 'day' ? 1 : 7))}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-slate-400 hover:text-primary transition-all border border-slate-100 hover:border-primary shadow-sm"
-                        >
-                            <ChevronRight size={18} />
-                        </button>
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => setCurrentDate(d => addDays(d, -1))} className="p-3 border border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 hover:text-[#0047FF] transition-all"><span className="material-symbols-outlined">chevron_left</span></button>
+                        <button onClick={() => setCurrentDate(new Date())} className="px-6 py-3 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#0047FF] transition-all">Now</button>
+                        <button onClick={() => setCurrentDate(d => addDays(d, 1))} className="p-3 border border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 hover:text-[#0047FF] transition-all"><span className="material-symbols-outlined">chevron_right</span></button>
                     </div>
 
                     <button
-                        onClick={() => navigate('/app/bookings')}
-                        className="flex items-center gap-2 px-6 h-10 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all shadow-lg shadow-primary/10 hover:opacity-90 active:scale-95 border-none"
+                        onClick={() => navigate('/app/bookings/new')}
+                        className="h-14 px-8 bg-[#0047FF] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0039cc] transition-all flex items-center gap-3 shadow-2xl shadow-[#0047FF]/20"
                     >
-                        <Plus size={16} />
-                        {t('calendar.book')}
+                        <span className="material-symbols-outlined text-[20px]">add_circle</span>
+                        Book
                     </button>
                 </div>
-            </div>
+            </header>
 
-            {viewMode === 'week' && (
-                <div className="grid grid-cols-7 border-b border-slate-100 bg-white">
-                    {weekDays.map((d, i) => {
-                        const isToday = d.toDateString() === new Date().toDateString();
-                        const isSelected = d.toDateString() === currentDate.toDateString();
-                        return (
-                            <button
-                                key={i}
-                                onClick={() => { setCurrentDate(d); setViewMode('day'); }}
-                                className={`flex flex-col items-center py-6 transition-all border-r border-slate-50 ${isSelected ? 'bg-slate-50' : 'hover:bg-slate-50/50'} relative group`}
-                            >
-                                <span className={`text-[9px] font-black uppercase tracking-[0.2em] italic ${isSelected ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'}`}>
-                                    {d.toLocaleDateString('ru-RU', { weekday: 'short' })}
-                                </span>
-                                <span className={`text-xl font-black mt-2 w-10 h-10 flex items-center justify-center rounded-xl transition-all italic tracking-tighter ${isToday ? 'bg-primary text-white shadow-lg shadow-primary/10' : 'text-slate-900'}`}>
-                                    {d.getDate()}
-                                </span>
-                                {isSelected && (
-                                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-primary" />
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-
-            <div className="flex gap-4 px-8 py-3 bg-slate-50/50 border-b border-slate-100 overflow-x-auto no-scrollbar backdrop-blur-md">
-                {TABS.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setSelectedTab(tab.id)}
-                        className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all whitespace-nowrap ${selectedTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/10' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            <div className={`flex flex-1 min-h-0 bg-white ${viewMode === 'timeline' ? 'overflow-auto no-scrollbar' : ''}`}>
-                <div ref={scrollRef} className={`flex-1 overflow-y-auto no-scrollbar ${viewMode === 'timeline' ? 'min-w-max' : 'overflow-x-hidden'}`}>
+            {/* Calendar Body */}
+            <div className="flex-1 overflow-hidden relative">
+                <div ref={scrollRef} className="absolute inset-0 overflow-auto no-scrollbar bg-slate-50/20 dark:bg-slate-900/40">
                     {loading ? (
-                        <div className="flex items-center justify-center h-64">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                        <div className="flex flex-col items-center justify-center h-full gap-4">
+                            <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#0047FF]/20 border-t-[#0047FF]"></div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Synchronizing schedule...</span>
                         </div>
                     ) : viewMode === 'timeline' ? (
-                        <div className="flex flex-col relative w-full">
-                            <div className="flex sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-100">
-                                <div className="w-[140px] shrink-0 border-r border-slate-100 p-4 flex items-center justify-center">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">{t('calendar.tables')}</span>
+                        <div className="min-w-max relative bg-white dark:bg-slate-900">
+                            {/* Column Headers (Times) */}
+                            <div className="flex sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
+                                <div className="w-40 py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-black text-[10px] text-slate-400 uppercase tracking-widest bg-slate-50/50 dark:bg-slate-800/30 shrink-0">Table / Sector</div>
+                                {HOURS.map((h, i) => (
+                                    <div key={i} className="w-40 py-5 text-center border-r border-slate-100 dark:border-slate-800 font-black text-[10px] text-slate-400 tabular-nums shrink-0">{h}</div>
+                                ))}
+                            </div>
+
+                            {/* Unassigned row */}
+                            <div className="flex border-b border-slate-100 dark:border-slate-800 h-24 bg-slate-50/40 dark:bg-slate-800/20">
+                                <div className="w-40 px-8 flex flex-col justify-center border-r border-slate-100 dark:border-slate-800 sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[4px_0_10px_rgba(0,0,0,0.02)] shrink-0">
+                                    <span className="font-black text-rose-500 text-[10px] uppercase tracking-[0.2em] italic">Waitlist</span>
                                 </div>
-                                <div className="flex">
-                                    {HOURS.map((h, i) => (
-                                        <div key={i} className="w-32 shrink-0 p-4 border-r border-slate-100 text-center">
-                                            <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest opacity-60 tabular-nums">{h}</span>
-                                        </div>
+                                <div className="flex-1 relative">
+                                    {HOURS.map((_, i) => <div key={i} className="absolute h-full border-r border-slate-100/30 dark:border-slate-800/30" style={{ left: (i + 1) * 160 }} />)}
+                                    {filteredBookings.filter(b => !b.table_id).map(b => (
+                                        <BookingBlock key={b.id} booking={b} onClick={() => setSelectedBooking(b)} />
                                     ))}
                                 </div>
                             </div>
-                            <div className="flex-1 relative">
-                                <div className="flex relative border-b border-slate-50 hover:bg-slate-50/50 transition-colors h-24 group">
-                                    <div className="w-[140px] shrink-0 border-r border-slate-100 bg-white flex flex-col items-center justify-center sticky left-0 z-20 shadow-[1px_0_0_0_rgba(0,0,0,0.02)]">
-                                        <span className="font-black text-slate-900 text-[12px] italic tracking-tight">UNASSIGNED</span>
-                                        <span className="text-[8px] font-black text-slate-400 flex items-center gap-1 uppercase tracking-widest opacity-40 mt-1">
-                                            <Users size={10} /> —
+
+                            {/* Table rows */}
+                            {tables.map(t => (
+                                <div key={t.id} className="flex border-b border-slate-100 dark:border-slate-800 h-24 group">
+                                    <div className="w-40 px-8 flex flex-col justify-center border-r border-slate-100 dark:border-slate-800 sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[4px_0_10px_rgba(0,0,0,0.02)] shrink-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-black text-slate-900 dark:text-white text-lg italic tracking-tighter">#{t.number}</span>
+                                        </div>
+                                        <span className="text-[9px] font-black text-slate-400 flex items-center gap-1.5 uppercase tracking-widest">
+                                            <span className="material-symbols-outlined text-[12px] text-[#0047FF]">group</span> {t.seats} PAX
                                         </span>
                                     </div>
-                                    <div className="flex relative flex-1 p-3">
-                                        {HOURS.map((_, i) => (
-                                            <div key={i} className="w-32 shrink-0 border-r border-slate-50/50 h-full pointer-events-none" />
+                                    <div className="flex-1 relative">
+                                        {HOURS.map((_, i) => <div key={i} className="absolute h-full border-r border-slate-100/30 dark:border-slate-800/30" style={{ left: (i + 1) * 160 }} />)}
+                                        {filteredBookings.filter(b => b.table_id === t.id).map(b => (
+                                            <BookingBlock key={b.id} booking={b} onClick={() => setSelectedBooking(b)} />
                                         ))}
-
-                                        {filteredBookings.filter(b => !b.table_id).map((booking) => {
-                                            const [h, m] = (booking.time || '12:00').split(':').map(Number);
-                                            const offsetMin = (h - START_HOUR) * 60 + (m || 0);
-                                            const left = Math.max(0, (offsetMin / 60) * 128);
-
-                                            const durationHours = (booking.duration_minutes ? booking.duration_minutes / 60 : (booking.duration_hours || 2));
-                                            const width = Math.max(30, durationHours * 128 - 4);
-
-                                            const statusKey = booking.status && booking.status in STATUS_COLORS
-                                                ? (booking.status as keyof typeof STATUS_COLORS)
-                                                : 'pending';
-                                            const colors = STATUS_COLORS[statusKey];
-
-                                            return (
-                                                <motion.div
-                                                    drag={false}
-                                                    key={`booking-unassigned-${booking.id}`}
-                                                    style={{ left, width, top: 12, height: 60 }}
-                                                    className={`absolute rounded-2xl px-5 py-2 cursor-pointer border shadow-sm backdrop-blur-sm transition-all hover:shadow-xl hover:shadow-slate-900/5 z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-primary ring-offset-2' : 'border-slate-100'}`}
-                                                    onClick={() => setSelectedBooking(booking)}
-                                                    whileHover={{ zIndex: 30, scale: 1.02 }}
-                                                >
-                                                    <div className="flex flex-col h-full justify-center">
-                                                        <p className="font-black text-[11px] truncate uppercase tracking-tight italic">
-                                                            {booking.user_name || t('calendar.guest')}
-                                                        </p>
-                                                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-1 truncate">
-                                                            <Clock size={8} /> {booking.time?.slice(0, 5)} • {booking.guests} PAX
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })}
                                     </div>
                                 </div>
-
-                                {tables.filter(_t => selectedTab === 'allHalls' || true).map((table) => (
-                                    <div key={table.id} className="flex relative border-b border-slate-50 hover:bg-slate-50/50 transition-colors h-24 group">
-                                        <div className="w-[140px] shrink-0 border-r border-slate-100 bg-white flex flex-col items-center justify-center sticky left-0 z-20 shadow-[1px_0_0_0_rgba(0,0,0,0.02)]">
-                                            <span className="font-black text-slate-900 text-[15px] italic tracking-tighter">№{table.number}</span>
-                                            <span className="text-[8px] font-black text-slate-400 flex items-center gap-1 uppercase tracking-widest opacity-40 mt-1">
-                                                <Users size={10} /> {table.seats}
-                                            </span>
-                                        </div>
-                                        <div className="flex relative flex-1 p-3">
-                                            {HOURS.map((_, i) => (
-                                                <div key={i} className="w-32 shrink-0 border-r border-slate-50/50 h-full pointer-events-none" />
-                                            ))}
-
-                                            {filteredBookings.filter(b => b.table_id === table.id).map((booking) => {
-                                                const [h, m] = (booking.time || '12:00').split(':').map(Number);
-                                                const offsetMin = (h - START_HOUR) * 60 + (m || 0);
-                                                const left = Math.max(0, (offsetMin / 60) * 128); // 128px per hour
-
-                                                const durationHours = (booking.duration_minutes ? booking.duration_minutes / 60 : (booking.duration_hours || 2));
-                                                const width = Math.max(30, durationHours * 128 - 4);
-
-                                                const statusKey = booking.status && booking.status in STATUS_COLORS
-                                                    ? (booking.status as keyof typeof STATUS_COLORS)
-                                                    : 'pending';
-                                                const colors = STATUS_COLORS[statusKey];
-
-                                                return (
-                                                    <motion.div
-                                                        drag={booking.status === 'approved' || booking.status === 'pending' ? "x" : false}
-                                                        dragConstraints={{ left: 0, right: HOURS.length * 128 - width }}
-                                                        onDragEnd={async (_e, info) => {
-                                                            const minX = 0;
-                                                            const maxX = HOURS.length * 128 - width;
-                                                            const finalX = Math.min(Math.max(minX, left + info.offset.x), maxX);
-
-                                                            const snapMinutes = 15;
-                                                            const rawOffsetMin = (finalX / 128) * 60;
-                                                            const newOffsetMin = Math.round(rawOffsetMin / snapMinutes) * snapMinutes;
-                                                            const newH = String(Math.floor(newOffsetMin / 60) + START_HOUR).padStart(2, '0');
-                                                            const newM = String(newOffsetMin % 60).padStart(2, '0');
-                                                            const newTime = `${newH}:${newM}`;
-
-                                                            if (newTime === (booking.time || '').slice(0, 5)) return;
-
-                                                            try {
-                                                                await api.patch(`/bookings/${booking.id}/reschedule/`, { time: newTime });
-                                                                toast.success(t('bookings.successUpdate') + `: ${newTime}`);
-                                                                fetchData();
-                                                            } catch (err: any) {
-                                                                if (err?.response?.status === 409) {
-                                                                    toast.error(t('bookings.timeSlotLocked', { defaultValue: 'Это время сейчас бронируется другим пользователем. Попробуйте снова.' }));
-                                                                } else {
-                                                                    const msg = err.response?.data?.error?.message || err.response?.data?.detail || 'Error';
-                                                                    toast.error(msg);
-                                                                }
-                                                                // Reset components position by forcing re-render
-                                                                fetchData();
-                                                            }
-                                                        }}
-                                                        key={`booking-${booking.id}`}
-                                                        style={{ left, width, top: 12, height: 60 }}
-                                                        className={`absolute rounded-2xl px-5 py-2 cursor-pointer border shadow-sm backdrop-blur-sm transition-all hover:shadow-xl hover:shadow-slate-900/5 z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-primary ring-offset-2' : 'border-slate-100'}`}
-                                                        onClick={() => setSelectedBooking(booking)}
-                                                        whileHover={{ zIndex: 30, scale: 1.02 }}
-                                                        whileDrag={{ zIndex: 40, scale: 1.05, opacity: 0.9 }}
-                                                    >
-                                                        <div className="flex flex-col h-full justify-center">
-                                                            <p className="font-black text-[11px] truncate uppercase tracking-tight italic">
-                                                                {booking.user_name || t('calendar.guest')}
-                                                            </p>
-                                                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-1 truncate">
-                                                                <Clock size={8} /> {booking.time?.slice(0, 5)} • {booking.guests} PAX
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            ))}
                         </div>
                     ) : (
-                        <div className="flex relative bg-white">
-                            <div className="w-[100px] shrink-0 border-r border-slate-100">
+                        <div className="flex min-h-full bg-white dark:bg-slate-900 relative">
+                            <div className="w-24 shrink-0 border-r border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-800/10">
                                 {HOURS.map((h, i) => (
-                                    <div key={i} style={{ height: HOUR_HEIGHT }} className="relative flex items-center justify-center">
-                                        <span className="text-[10px] font-black text-slate-400 tabular-nums uppercase tracking-widest opacity-60">{h}</span>
+                                    <div key={i} style={{ height: HOUR_HEIGHT }} className="flex items-center justify-center font-black text-[10px] text-slate-400 tabular-nums">
+                                        {h}
                                     </div>
                                 ))}
                             </div>
-
                             <div className="flex-1 relative">
-                                {HOURS.map((_, i) => (
-                                    <div key={i} style={{ top: i * HOUR_HEIGHT }} className="absolute left-0 right-0 border-t border-slate-100 pointer-events-none" />
-                                ))}
-
-                                {nightNow !== null && (
-                                    <div style={{ top: nightNow }} className="absolute left-0 right-0 z-20 pointer-events-none">
-                                        <div className="relative flex items-center">
-                                            <div className="w-3 h-3 rounded-full bg-rose-500 -ml-1.5 shrink-0 shadow-lg shadow-rose-300" />
-                                            <div className="flex-1 h-0.5 bg-rose-500 opacity-60" />
+                                {HOURS.map((_, i) => <div key={i} className="absolute w-full border-t border-slate-100 dark:border-slate-800" style={{ top: i * HOUR_HEIGHT }} />)}
+                                {nightNowY !== null && (
+                                    <div className="absolute w-full z-20 pointer-events-none" style={{ top: nightNowY }}>
+                                        <div className="h-px bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)] flex items-center">
+                                            <div className="size-2.5 rounded-full bg-rose-500 border-2 border-white dark:border-slate-900 -ml-1.5 transition-transform animate-pulse" />
                                         </div>
                                     </div>
                                 )}
-
-                                <div style={{ height: HOURS.length * HOUR_HEIGHT + 40 }} className="relative p-6">
-                                    {filteredBookings.map((booking) => {
-                                        const { top, height } = getBookingPosition(booking);
-                                        const statusKey = booking.status && booking.status in STATUS_COLORS
-                                            ? (booking.status as keyof typeof STATUS_COLORS)
-                                            : 'pending';
-                                        const colors = STATUS_COLORS[statusKey];
-
-                                        const durationMins = booking.duration_minutes || (booking.duration_hours || 2) * 60;
-                                        const [hh, mm] = (booking.time || '12:00').split(':').map(Number);
-                                        const totalStartMins = hh * 60 + (mm || 0);
-                                        const totalEndMins = totalStartMins + durationMins;
-                                        const endH = String(Math.floor(totalEndMins / 60) % 24).padStart(2, '0');
-                                        const endM = String(totalEndMins % 60).padStart(2, '0');
-
-                                        const timeStr = `${(booking.time || '').slice(0, 5)} – ${endH}:${endM}`;
-
+                                <div className="p-6 relative">
+                                    {filteredBookings.map(b => {
+                                        const [h, m] = (b.time || '12:00').split(':').map(Number);
+                                        const top = ((h - START_HOUR) * 60 + (m || 0)) * (HOUR_HEIGHT / 60);
+                                        const height = (b.duration_minutes || 120) * (HOUR_HEIGHT / 60) - 8;
+                                        const status = STATUS_CONFIG[b.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
                                         return (
-                                            <motion.button
-                                                key={booking.id}
-                                                layout
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                style={{ top: top + 24, height: height - 8, left: '2%', width: '96%' }}
-                                                className={`absolute rounded-[2rem] px-8 py-5 text-left border shadow-xl shadow-slate-900/5 backdrop-blur-md transition-all hover:scale-[1.01] hover:shadow-2xl z-10 ${colors.bg} ${colors.text} ${selectedBooking?.id === booking.id ? 'ring-2 ring-primary ring-offset-2' : 'border-slate-100'}`}
-                                                onClick={() => setSelectedBooking(booking)}
+                                            <div
+                                                key={b.id}
+                                                onClick={() => setSelectedBooking(b)}
+                                                className={`absolute left-6 right-6 rounded-[1.5rem] p-6 border shadow-2xl shadow-black/5 cursor-pointer transition-all hover:scale-[1.005] hover:z-20 flex items-start justify-between backdrop-blur-sm ${status.bg} ${status.text} ${status.border}`}
+                                                style={{ top, height }}
                                             >
-                                                <div className="flex justify-between items-start h-full">
-                                                    <div>
-                                                        <p className="font-black text-lg tracking-tight italic">
-                                                            {booking.user_name || t('calendar.guest')}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 mt-2 opacity-60 font-black text-[10px] uppercase tracking-widest">
-                                                            <Users size={12} />
-                                                            <span>{booking.guests} {t('calendar.guestsCount')}</span>
-                                                        </div>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-[18px]">{status.icon}</span>
+                                                        <p className="font-black text-lg tracking-tight leading-none uppercase italic">{b.user_name || 'Walk-in Guest'}</p>
                                                     </div>
-                                                    <span className={`text-[10px] font-black px-4 py-2 rounded-xl italic tracking-widest ${colors.badge}`}>
-                                                        {timeStr}
-                                                    </span>
+                                                    <div className="flex items-center gap-4">
+                                                        <p className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 opacity-70">
+                                                            <span className="material-symbols-outlined text-[14px]">groups</span> {b.guests} PAX
+                                                        </p>
+                                                        {b.table_number && (
+                                                            <p className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 opacity-70">
+                                                                <span className="material-symbols-outlined text-[14px]">table_bar</span> #{b.table_number}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </motion.button>
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <span className="text-xl font-black italic tabular-nums">{b.time?.slice(0, 5)}</span>
+                                                    <span className="px-2 py-0.5 rounded-lg bg-white/40 dark:bg-black/20 text-[9px] font-black uppercase tracking-widest">{b.status}</span>
+                                                </div>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -519,153 +279,107 @@ export default function CalendarPage() {
                 </div>
             </div>
 
+            {/* Detailed Selection Side-Drawer */}
             <AnimatePresence>
                 {selectedBooking && (
                     <>
                         <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[60]"
                             onClick={() => setSelectedBooking(null)}
                         />
-                        <motion.div
-                            initial={{ x: '100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '100%' }}
-                            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                            className="fixed right-0 top-0 bottom-0 w-[420px] bg-white shadow-2xl z-50 flex flex-col border-l border-slate-100"
+                        <motion.aside
+                            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="fixed top-0 right-0 bottom-0 w-full md:w-[450px] bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 z-[70] flex flex-col shadow-[-20px_0_60px_rgba(0,0,0,0.1)]"
                         >
-                            <div className="flex items-center justify-between p-8 border-b border-slate-100">
-                                <h2 className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em] italic">{t('calendar.booking')}</h2>
-                                <button
-                                    onClick={() => setSelectedBooking(null)}
-                                    className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-slate-50 text-slate-400 hover:text-primary transition-all border border-slate-100"
-                                >
-                                    <X size={20} />
-                                </button>
+                            <div className="p-8 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] text-[10px]">Reservation Intelligence</h3>
+                                <button onClick={() => setSelectedBooking(null)} className="material-symbols-outlined text-slate-400 hover:text-[#0047FF] transition-all">close</button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-10 space-y-10 no-scrollbar">
-                                <div className="flex items-center gap-6">
-                                    <div className="w-20 h-20 rounded-[2rem] bg-primary flex items-center justify-center text-white font-black text-3xl italic shadow-xl shadow-primary/10">
-                                        {(selectedBooking.user_name || 'G')[0]}
+                            <div className="flex-1 overflow-y-auto p-10 space-y-12">
+                                <div className="text-center space-y-4">
+                                    <div className="size-24 rounded-[2.5rem] bg-indigo-50 dark:bg-indigo-900/30 text-[#0047FF] flex items-center justify-center font-black text-3xl mx-auto border-4 border-white dark:border-slate-800 shadow-xl">
+                                        {selectedBooking.user_name?.[0] || 'W'}
                                     </div>
-                                    <div>
-                                        <p className="font-black text-3xl text-slate-900 tracking-tighter italic leading-none">{selectedBooking.user_name || t('calendar.guest')}</p>
-                                        <div className="flex items-center gap-2 mt-3">
-                                            <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] italic ${(selectedBooking.status && selectedBooking.status in STATUS_COLORS ? STATUS_COLORS[selectedBooking.status as keyof typeof STATUS_COLORS].bg + ' ' + STATUS_COLORS[selectedBooking.status as keyof typeof STATUS_COLORS].text : 'bg-slate-50 text-slate-400')}`}>
-                                                {selectedBooking.status}
-                                            </span>
-                                        </div>
+                                    <div className="space-y-1">
+                                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">{selectedBooking.user_name || 'Walk-in Guest'}</h2>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Entry UID #{selectedBooking.id}</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    {[
-                                        { icon: Calendar, label: t('calendar.date'), val: selectedBooking.date },
-                                        { icon: Clock, label: t('calendar.time'), val: (selectedBooking.time || '').slice(0, 5) },
-                                        { icon: Users, label: t('calendar.guests'), val: `${selectedBooking.guests} ${t('calendar.guestsCount')}` },
-                                        { icon: Clock, label: t('calendar.duration'), val: `${(selectedBooking.duration_minutes ? selectedBooking.duration_minutes / 60 : (selectedBooking.duration_hours || 2))} ${t('calendar.durationHours')}` },
-                                    ].map(({ icon: Icon, label, val }) => (
-                                        <div key={label} className="bg-slate-50 rounded-[2rem] p-5 border border-slate-100">
-                                            <div className="flex items-center gap-2 text-slate-400 mb-2 opacity-60">
-                                                <Icon size={12} />
-                                                <span className="text-[10px] font-black uppercase tracking-[0.3em]">{label}</span>
-                                            </div>
-                                            <p className="font-black text-slate-900 text-base italic">{val || '—'}</p>
-                                        </div>
-                                    ))}
+                                    <DetailCard label="Entry Time" value={selectedBooking.time?.slice(0, 5)} icon="schedule" />
+                                    <DetailCard label="Size" value={`${selectedBooking.guests} PAX`} icon="groups" />
+                                    <DetailCard label="Station" value={selectedBooking.table_number ? `Unit #${selectedBooking.table_number}` : 'Unassigned'} icon="table_bar" />
+                                    <DetailCard label="Lifecycle" value={selectedBooking.status?.toUpperCase()} icon="sync_saved_locally" />
                                 </div>
 
                                 {selectedBooking.comment && (
-                                    <div className="bg-amber-50/50 rounded-[2rem] p-6 border border-amber-100/50">
-                                        <p className="text-[9px] font-black text-amber-700/60 uppercase tracking-widest mb-2 italic">{t('calendar.comment')}</p>
-                                        <p className="text-sm text-amber-900 font-medium leading-relaxed">{selectedBooking.comment}</p>
+                                    <div className="p-8 bg-amber-500/5 border border-amber-500/10 rounded-3xl space-y-2">
+                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-[16px]">notes</span> Guest Briefing
+                                        </p>
+                                        <p className="text-sm text-amber-900 dark:text-amber-200 font-bold leading-relaxed">{selectedBooking.comment}</p>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="p-8 border-t border-slate-100 space-y-4 bg-slate-50/30">
-                                {selectedBooking.status === 'pending' && (
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <button
-                                            onClick={() => handleBookingAction(selectedBooking.id, 'reject')}
-                                            disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-white text-rose-600 rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm border border-rose-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {t('bookings.reject')}
-                                        </button>
-                                        <button
-                                            onClick={() => handleBookingAction(selectedBooking.id, 'confirm')}
-                                            disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {t('bookings.confirm')}
-                                        </button>
-                                    </div>
-                                )}
-
-                                {selectedBooking.status === 'approved' && (
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <button
-                                            onClick={() => handleBookingAction(selectedBooking.id, 'check_in')}
-                                            disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-white text-emerald-700 rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-emerald-50 transition-all shadow-sm border border-emerald-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {t('bookings.checkIn')}
-                                        </button>
-                                        <button
-                                            onClick={() => handleBookingAction(selectedBooking.id, 'complete')}
-                                            disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {t('bookings.complete')}
-                                        </button>
-                                        <button
-                                            onClick={() => handleBookingAction(selectedBooking.id, 'no_show')}
-                                            disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-white text-slate-700 rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {t('bookings.noShow')}
-                                        </button>
-                                        <button
-                                            onClick={() => handleBookingAction(selectedBooking.id, 'cancel_by_restaurant')}
-                                            disabled={actionSubmitting}
-                                            className="flex items-center justify-center gap-3 px-6 py-4 bg-white text-rose-600 rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm border border-rose-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {t('bookings.cancelByRestaurant')}
-                                        </button>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedBooking(null);
-                                            navigate('/app/messages', { state: { bookingId: selectedBooking.id, guestName: selectedBooking.user_name } });
-                                        }}
-                                        className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10 active:scale-95"
-                                    >
-                                        <MessageSquare size={18} />
-                                        {t('calendar.chat')}
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setSelectedBooking(null);
-                                            navigate('/app/bookings');
-                                        }}
-                                        className="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-primary/10 active:scale-95"
-                                    >
-                                        {t('calendar.open')}
-                                        <ArrowRight size={18} />
-                                    </button>
-                                </div>
+                            <div className="p-8 border-t border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50 flex flex-col gap-4">
+                                <button
+                                    onClick={() => navigate('/app/bookings')}
+                                    className="w-full h-16 bg-[#0047FF] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#0039cc] transition-all shadow-xl shadow-[#0047FF]/20 flex items-center justify-center gap-3"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">edit_note</span>
+                                    Modify Reservation
+                                </button>
+                                <button
+                                    onClick={() => setSelectedBooking(null)}
+                                    className="w-full h-14 border border-slate-100 dark:border-slate-800 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-slate-900 dark:hover:text-white transition-all"
+                                >
+                                    Dismiss Workspace
+                                </button>
                             </div>
-                        </motion.div>
+                        </motion.aside>
                     </>
                 )}
             </AnimatePresence>
+        </div>
+    );
+}
+
+function BookingBlock({ booking, onClick }: { booking: CalendarBooking; onClick: () => void }) {
+    const [h, m] = (booking.time || '12:00').split(':').map(Number);
+    const left = ((h - START_HOUR) * 60 + (m || 0)) * (160 / 60);
+    const width = (booking.duration_minutes || 120) * (160 / 60) - 12;
+    const status = STATUS_CONFIG[booking.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
+
+    return (
+        <div
+            onClick={onClick}
+            className={`absolute top-4 bottom-4 rounded-2xl px-5 py-2 border shadow-sm cursor-pointer transition-all hover:scale-[1.02] hover:z-20 flex flex-col justify-center gap-0.5 group ${status.bg} ${status.text} ${status.border}`}
+            style={{ left, width }}
+        >
+            <div className="flex items-center gap-2 overflow-hidden">
+                <span className="material-symbols-outlined text-[14px] shrink-0">{status.icon}</span>
+                <p className="font-black text-[10px] uppercase tracking-widest truncate">{booking.user_name || 'Walk-in'}</p>
+            </div>
+            <div className="flex items-center gap-3 opacity-60">
+                <p className="text-[9px] font-black flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">groups</span> {booking.guests}</p>
+                <p className="text-[9px] font-black tabular-nums">{booking.time?.slice(0, 5)}</p>
+            </div>
+        </div>
+    );
+}
+
+function DetailCard({ label, value, icon }: { label: string; value?: string | number; icon: string }) {
+    return (
+        <div className="p-6 bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 rounded-3xl group hover:border-[#0047FF] transition-colors">
+            <p className="text-[9px] font-black text-slate-400 group-hover:text-[#0047FF] uppercase tracking-widest mb-2 flex items-center gap-2 transition-colors">
+                <span className="material-symbols-outlined text-[14px]">{icon}</span> {label}
+            </p>
+            <p className="font-black text-slate-900 dark:text-white text-lg tracking-tighter uppercase italic truncate">{value || 'N/A'}</p>
         </div>
     );
 }

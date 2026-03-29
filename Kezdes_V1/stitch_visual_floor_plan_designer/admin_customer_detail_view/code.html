@@ -1,0 +1,273 @@
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d4ef2",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#101522",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Admin Customer Detail View - Kezdes</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-10 py-3">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6">
+<span class="material-symbols-outlined text-3xl">restaurant</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-[-0.015em]">Kezdes Admin</h2>
+</div>
+<label class="flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-slate-500 flex border-none bg-slate-100 dark:bg-slate-800 items-center justify-center pl-4 rounded-l-lg" data-icon="search">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-slate-100 focus:outline-0 focus:ring-0 border-none bg-slate-100 dark:bg-slate-800 placeholder:text-slate-500 px-4 rounded-l-none pl-2 text-base font-normal" placeholder="Search customers..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<nav class="flex items-center gap-6">
+<a class="text-slate-600 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Restaurants</a>
+<a class="text-primary text-sm font-bold" href="#">Customers</a>
+<a class="text-slate-600 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Analytics</a>
+<a class="text-slate-600 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+</nav>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-slate-200 dark:border-slate-700" data-alt="Admin user profile picture avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBJcqinkufIsH8JM-IiI1IosPKR_q1KzAeEcf8OP7oxpBIP_btK2vBA08nAQ2Rx0l94q1KvjrNbXat0JvE8RwV0nriXuTe1lOn5fRgO49rlxKXjKOvV4PWUxu1iBJqhPhcHmr9bAshmHdJYHquKCp-9FLNZrrMTpX0dAsVS02v4MNkKwcsaBdrCD5tw-RnUzqvn2FUhwb5qcNS2VYYVAGOgjAI_KX9GqsaM2YMcyVOl04hU-bCL-JgYClm5ucRTCfT-xmiL4PmJgA");'></div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 px-40 py-8">
+<div class="max-w-[1120px] mx-auto space-y-6">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-2 mb-4">
+<a class="text-primary text-sm font-medium" href="#">Customers</a>
+<span class="material-symbols-outlined text-slate-400 text-sm">chevron_right</span>
+<span class="text-slate-500 text-sm font-medium">Customer Detail</span>
+</div>
+<!-- Profile Header Card -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-800">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<div class="flex gap-6 items-center">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-24 border-4 border-slate-50 dark:border-slate-800" data-alt="Customer portrait photo of John Doe" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD4ROXhfKG4lwM5S20H_5vKEdZC0ctCg7c2h3GgVbyoAnwgn4fJ-pimwV-zX5C1tqzHduqQgw9Uw1AKI924OZdi3CXkE9LXiHQ7AKxbw0lX2XnzngXZ4BE5QBgHnhuPiL9SBP0iRnvY3jjP1CMulyhcsnOW_PlfiBwWHg3_Pp0TsbnDORdxs9nPtSmtgR_W9nuVmvfmpEAhRdVjdqB7comJngSOF49Xp8FVqffWCq8krYbW9G3GmURozX5bKm6nuQhQ5FajfRr8vQ");'></div>
+<div class="space-y-1">
+<div class="flex items-center gap-3">
+<h1 class="text-slate-900 dark:text-slate-100 text-3xl font-bold tracking-tight">John Doe</h1>
+<div class="flex gap-2">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">VIP</span>
+<span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Frequent Guest</span>
+</div>
+</div>
+<div class="flex items-center gap-4 text-slate-500 dark:text-slate-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-lg leading-none">event_repeat</span> 42 Total Visits</span>
+<span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-lg leading-none">calendar_today</span> Member since Jan 2023</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3 min-w-[200px]">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-primary h-11 px-6 text-white text-sm font-bold transition-all hover:bg-primary/90 shadow-md">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+                                    Create Booking
+                                </button>
+<button class="flex items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 h-11 px-6 text-slate-700 dark:text-slate-200 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined text-lg">edit</span>
+                                    Edit Profile
+                                </button>
+</div>
+</div>
+</div>
+<!-- Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Left Column: Summary & Notes -->
+<div class="lg:col-span-1 space-y-6">
+<!-- Profile Summary -->
+<section class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">person</span>
+<h2 class="text-slate-900 dark:text-slate-100 font-bold">Profile Summary</h2>
+</div>
+<div class="p-6 space-y-4">
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Email Address</p>
+<p class="text-slate-900 dark:text-slate-100 font-medium">john.doe@example.com</p>
+</div>
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Phone Number</p>
+<p class="text-slate-900 dark:text-slate-100 font-medium">+1 (555) 123-4567</p>
+</div>
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Last Visit</p>
+<p class="text-slate-900 dark:text-slate-100 font-medium">October 14, 2023</p>
+</div>
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Preferences</p>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs text-slate-600 dark:text-slate-400">Window Seat</span>
+<span class="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs text-slate-600 dark:text-slate-400">Gluten Free</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Manager Comments -->
+<section class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">comment</span>
+<h2 class="text-slate-900 dark:text-slate-100 font-bold">Manager Comments</h2>
+</div>
+<div class="p-6 space-y-4">
+<div class="relative">
+<textarea class="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:ring-primary focus:border-primary p-3" placeholder="Add internal notes about this customer..." rows="4"></textarea>
+</div>
+<button class="w-full rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-2 text-sm transition-colors">
+                                        Save Note
+                                    </button>
+<div class="mt-4 space-y-3">
+<div class="text-sm border-l-2 border-primary/30 pl-3">
+<p class="text-slate-500 dark:text-slate-400 italic">"Always prefers the corner booth for business dinners. Very friendly with staff."</p>
+<p class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Manager Sarah • 2 days ago</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Booking History -->
+<div class="lg:col-span-2">
+<section class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 h-full flex flex-col">
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history</span>
+<h2 class="text-slate-900 dark:text-slate-100 font-bold">Booking History</h2>
+</div>
+<div class="flex gap-2">
+<button class="text-slate-500 hover:text-primary"><span class="material-symbols-outlined">filter_list</span></button>
+<button class="text-slate-500 hover:text-primary"><span class="material-symbols-outlined">download</span></button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto max-h-[600px]">
+<table class="w-full text-left">
+<thead class="sticky top-0 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+<tr>
+<th class="px-6 py-3">Reservation</th>
+<th class="px-6 py-3">Guests</th>
+<th class="px-6 py-3">Location</th>
+<th class="px-6 py-3">Status</th>
+<th class="px-6 py-3">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4">
+<p class="text-slate-900 dark:text-slate-100 font-bold">Oct 24, 2023</p>
+<p class="text-xs text-slate-500">7:30 PM • Dinner</p>
+</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">4 people</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">Main Dining Room</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Completed</span>
+</td>
+<td class="px-6 py-4 text-primary">
+<button class="hover:underline text-sm font-bold">View</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4">
+<p class="text-slate-900 dark:text-slate-100 font-bold">Oct 14, 2023</p>
+<p class="text-xs text-slate-500">1:00 PM • Lunch</p>
+</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">2 people</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">Terrace</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Completed</span>
+</td>
+<td class="px-6 py-4 text-primary">
+<button class="hover:underline text-sm font-bold">View</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4">
+<p class="text-slate-900 dark:text-slate-100 font-bold">Sep 28, 2023</p>
+<p class="text-xs text-slate-500">8:00 PM • Dinner</p>
+</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">6 people</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">Private Suite</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">Cancelled</span>
+</td>
+<td class="px-6 py-4 text-primary">
+<button class="hover:underline text-sm font-bold">View</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4">
+<p class="text-slate-900 dark:text-slate-100 font-bold">Sep 15, 2023</p>
+<p class="text-xs text-slate-500">7:00 PM • Dinner</p>
+</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">2 people</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">Main Dining Room</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Completed</span>
+</td>
+<td class="px-6 py-4 text-primary">
+<button class="hover:underline text-sm font-bold">View</button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4">
+<p class="text-slate-900 dark:text-slate-100 font-bold">Sep 01, 2023</p>
+<p class="text-xs text-slate-500">12:30 PM • Lunch</p>
+</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">3 people</td>
+<td class="px-6 py-4 text-slate-600 dark:text-slate-400">Bar Counter</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Completed</span>
+</td>
+<td class="px-6 py-4 text-primary">
+<button class="hover:underline text-sm font-bold">View</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 text-center">
+<button class="text-primary text-sm font-bold hover:underline">View All 42 Reservations</button>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Footer for Quick Actions Mobile (Optional, hidden on Desktop via padding) -->
+<footer class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+<button class="w-full bg-primary text-white font-bold py-3 rounded-xl shadow-lg">Create Booking</button>
+</footer>
+</div>
+</div>
+
+```</body></html>

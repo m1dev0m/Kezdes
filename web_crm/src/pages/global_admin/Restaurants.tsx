@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Store, ShieldCheck, MoreVertical, Search } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
 export default function Restaurants() {
     const [restaurants, setRestaurants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
 
     useEffect(() => {
         loadRestaurants();
@@ -16,99 +16,114 @@ export default function Restaurants() {
             const res = await api.get('/restaurants/');
             setRestaurants(res.data);
         } catch (error) {
-            toast.error('Failed to load restaurants');
+            toast.error('Tactical map synchronization failed.');
         } finally {
             setLoading(false);
         }
     };
 
+    const filtered = restaurants.filter(r =>
+        r.name.toLowerCase().includes(search.toLowerCase()) ||
+        r.address?.toLowerCase().includes(search.toLowerCase())
+    );
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Restaurants</h1>
-                    <p className="text-slate-500 text-sm mt-1">Manage all registered businesses on the platform.</p>
+        <div className="space-y-12 italic">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+                <div className="space-y-2">
+                    <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-[0.4em] italic leading-none">Global Architecture Hub</p>
+                    <h1 className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic leading-[0.9]">Node <span className="text-[#0047FF]">Inventory</span>.</h1>
                 </div>
 
-                <div className="relative">
-                    <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <div className="relative group w-full md:w-96">
+                    <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0047FF] transition-colors text-[24px]">search</span>
                     <input
                         type="text"
-                        placeholder="Search restaurants..."
-                        className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64 shadow-sm"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Scan for Nodes..."
+                        className="w-full h-16 pl-16 pr-6 bg-white dark:bg-slate-900 border-2 border-transparent focus:border-[#0047FF] rounded-[1.5rem] outline-none transition-all text-[11px] font-black uppercase tracking-widest italic shadow-xl shadow-black/5 placeholder:text-slate-200 dark:placeholder:text-slate-800"
                     />
                 </div>
-            </div>
+            </header>
 
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+            <div className="bg-white dark:bg-slate-900 border border-slate-50 dark:border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl shadow-black/5">
+                <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Restaurant</th>
-                                <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Location</th>
-                                <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Owner ID</th>
-                                <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                            <tr className="bg-slate-50 dark:bg-slate-800/50">
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 border-b border-slate-50 dark:border-slate-800">Node Presence</th>
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 border-b border-slate-50 dark:border-slate-800">Integrity Status</th>
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 border-b border-slate-50 dark:border-slate-800">Coordinates</th>
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 border-b border-slate-50 dark:border-slate-800">Supervisor ID</th>
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 border-b border-slate-50 dark:border-slate-800 text-right">Access</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                             {loading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        <td colSpan={5} className="px-10 py-10 bg-slate-50/50 dark:bg-slate-800/30" />
+                                    </tr>
+                                ))
+                            ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-500">Loading restaurants...</td>
-                                </tr>
-                            ) : restaurants.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-500">
-                                        <div className="flex flex-col items-center">
-                                            <Store className="w-8 h-8 text-slate-300 mb-2" />
-                                            <p>No restaurants found</p>
+                                    <td colSpan={5} className="px-10 py-32 text-center opacity-30">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <span className="material-symbols-outlined text-[64px]">dns</span>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Active Nodes Located</p>
                                         </div>
                                     </td>
                                 </tr>
-                            ) : restaurants.map((restaurant) => (
-                                <tr key={restaurant.id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                            ) : filtered.map((restaurant) => (
+                                <tr key={restaurant.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                                    <td className="px-10 py-8">
+                                        <div className="flex items-center gap-6">
+                                            <div className="size-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden shadow-sm group-hover:scale-110 transition-transform">
                                                 {restaurant.image ? (
-                                                    <img src={restaurant.image} alt="" className="w-full h-full object-cover rounded-lg" />
+                                                    <img src={restaurant.image} alt="" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" />
                                                 ) : (
-                                                    <Store className="w-5 h-5 text-slate-400" />
+                                                    <span className="material-symbols-outlined text-[#0047FF] text-[28px]">token</span>
                                                 )}
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-slate-900">{restaurant.name}</p>
-                                                <p className="text-xs text-slate-500">{restaurant.phone || 'No phone'}</p>
+                                                <p className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none mb-1">{restaurant.name}</p>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">{restaurant.phone || 'COMMS LINK INACTIVE'}</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-1.5">
+                                    <td className="px-10 py-8">
+                                        <div className="flex items-center">
                                             {restaurant.is_verified ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                    <ShieldCheck className="w-3.5 h-3.5" /> Verified
-                                                </span>
+                                                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/10">
+                                                    <span className="material-symbols-outlined text-[14px] font-bold">verified</span>
+                                                    <span className="text-[8px] font-black uppercase tracking-widest italic leading-none">ELITE NODE</span>
+                                                </div>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                                    Unverified
-                                                </span>
+                                                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                    <span className="material-symbols-outlined text-[14px] font-bold">report</span>
+                                                    <span className="text-[8px] font-black uppercase tracking-widest italic leading-none">PENDING VERIF</span>
+                                                </div>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="p-4">
-                                        <p className="text-sm text-slate-600 max-w-[200px] truncate" title={restaurant.address}>
-                                            {restaurant.address}
-                                        </p>
+                                    <td className="px-10 py-8">
+                                        <div className="flex items-center gap-3 max-w-[280px]">
+                                            <span className="material-symbols-outlined text-slate-200 text-[20px]">location_on</span>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-relaxed italic truncate" title={restaurant.address}>
+                                                {restaurant.address}
+                                            </p>
+                                        </div>
                                     </td>
-                                    <td className="p-4">
-                                        <p className="text-sm text-slate-600 font-mono">
-                                            {restaurant.owner || '-'}
-                                        </p>
+                                    <td className="px-10 py-8">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums tracking-widest uppercase italic">{restaurant.owner || '- UNIT-ID UNKNOWN -'}</p>
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest italic leading-none">Core Supervisor</p>
+                                        </div>
                                     </td>
-                                    <td className="p-4">
-                                        <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors tooltip" aria-label="More actions">
-                                            <MoreVertical className="w-5 h-5" />
+                                    <td className="px-10 py-8 text-right">
+                                        <button className="size-12 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-300 hover:text-[#0047FF] hover:border-[#0047FF]/20 transition-all active:scale-95 shadow-sm">
+                                            <span className="material-symbols-outlined text-[20px]">settings_accessibility</span>
                                         </button>
                                     </td>
                                 </tr>

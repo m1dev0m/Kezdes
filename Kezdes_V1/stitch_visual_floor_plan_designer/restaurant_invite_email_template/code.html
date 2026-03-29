@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0047FF",
+                        "background-light": "#f5f5f8",
+                        "background-dark": "#0f0f23",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<div class="px-4 md:px-20 lg:px-40 flex flex-1 justify-center py-10">
+<div class="layout-content-container flex flex-col max-w-[800px] flex-1 bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden border border-slate-200 dark:border-slate-800">
+<!-- Header/Nav -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-100 dark:border-slate-800 px-10 py-6">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-8">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_6_330)">
+<path clip-rule="evenodd" d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" fill="currentColor" fill-rule="evenodd"></path>
+</g>
+<defs>
+<clippath id="clip0_6_330"><rect fill="white" height="48" width="48"></rect></clippath>
+</defs>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-xl font-extrabold leading-tight tracking-tight">Kezdes</h2>
+</div>
+<div class="hidden md:block text-slate-500 text-sm font-medium">Official Verification Notice</div>
+</header>
+<!-- Hero Section -->
+<div class="@container">
+<div class="flex flex-col gap-6 px-10 py-10 @[480px]:gap-8">
+<div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-xl shadow-md border border-slate-100 dark:border-slate-800" data-alt="Modern restaurant management dashboard interface on tablet" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAZT1wblfsVGRi7uvza8ycwtwPclbR0kFwepmGaxk4b9WWcL0rBENOAPAMgaQNfTgR9w6RnCniwR80YJCEWLDrKqdGmwoAo6ES_CfkGSXVP2BUJGKz9YQyZka4ZmO-mEz3GlbZZPKGQYCJynwC0PI16__Gv7I7SucWC0RNC8hUd5E4NdkqEZHBINx9yLwZswWT939wBD_taFQmAKgscz8M1NUoylqNWMFLuowhXOMeFWCo0l75mUNS_pWIYnoJ9UCQEqWTVMEpmDQ");'>
+</div>
+<div class="flex flex-col gap-6 @[480px]:gap-8 text-center max-w-2xl mx-auto">
+<div class="flex flex-col gap-3">
+<div class="inline-flex items-center justify-center gap-2 text-primary font-bold text-sm tracking-wider uppercase">
+<span class="material-symbols-outlined text-base">verified</span>
+                                        Verification Successful
+                                    </div>
+<h1 class="text-slate-900 dark:text-slate-100 text-3xl font-black leading-tight tracking-tight @[480px]:text-4xl">
+                                        Your restaurant has been verified!
+                                    </h1>
+<p class="text-slate-600 dark:text-slate-400 text-base font-normal leading-relaxed">
+                                        Click below to set up your profile and start receiving bookings. Welcome to the Kezdes network of premium dining establishments.
+                                    </p>
+</div>
+<div class="flex justify-center">
+<button class="flex min-w-[240px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-14 px-8 bg-primary text-white text-lg font-bold leading-normal tracking-wide hover:opacity-90 transition-opacity shadow-lg shadow-primary/20">
+<span class="truncate">Complete Your Setup</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Invite Link Section -->
+<div class="px-10 pb-10">
+<div class="p-6 rounded-xl border border-primary/20 bg-primary/5 flex flex-col gap-4">
+<div class="flex flex-col gap-1">
+<h3 class="text-slate-900 dark:text-slate-100 text-base font-bold leading-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">link</span>
+                                    Temporary Invite Link
+                                </h3>
+<p class="text-slate-500 text-sm font-normal mb-2">This link is temporary and will expire in 48 hours for security purposes.</p>
+<div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+<code class="text-primary text-sm font-semibold break-all">https://kezdes.com/invite/auth-ref-78234k-verified-res</code>
+<button class="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-widest hover:text-primary transition-colors">
+                                        Copy Link
+                                        <span class="material-symbols-outlined text-lg">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Account Manager Section -->
+<div class="px-10 py-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+<div class="flex flex-col md:flex-row items-center gap-6">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
+<img alt="Account Manager Profile" class="w-full h-full object-cover" data-alt="Professional portrait of a female account manager" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAv6op_n2kiAqeU6sOYDtJszhYJpNXD_H9ldX6NyMEh2YGD1gcj7qvEpc3uR-tFptavHFIFseMEduo_H1EtwaKj8mW-_orzFFcBMfNpdLqfTrbOFCw6xRxyQG14C4gcgDofDmTL0aWtEfmbApyCuBE4UAsVR5RFbxPkKjMmBvumEEmrM0_CRWuRkPiuM3_2YSzAxQcRMpow7NdvsFVULCe4i2rQBDb5or-RgLors7e5aLlz_Jb_7uooBmEcW5Iij_HGXCw1aBnnQQ"/>
+</div>
+<div class="flex-1 text-center md:text-left">
+<h4 class="text-slate-900 dark:text-slate-100 text-base font-bold">Meet Sarah, your Account Manager</h4>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                                    I'm here to help you optimize your profile and ensure you get the most out of our platform. Have questions? Reply to this email or schedule a quick call.
+                                </p>
+</div>
+<div class="flex gap-2">
+<a class="p-2 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-primary transition-colors" href="mailto:support@kezdes.com">
+<span class="material-symbols-outlined">mail</span>
+</a>
+<a class="p-2 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="px-10 py-10 text-center border-t border-slate-100 dark:border-slate-800">
+<p class="text-slate-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">Powered by Kezdes Restaurant Network</p>
+<div class="flex justify-center gap-6 mb-6">
+<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">public</span></a>
+<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">share_reviews</span></a>
+<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">help</span></a>
+</div>
+<p class="text-slate-400 text-xs">
+                            © 2024 Kezdes Inc. 123 Culinary Way, Suite 400, San Francisco, CA 94103<br/>
+                            You received this email because your restaurant was recently verified on our platform.
+                        </p>
+</footer>
+</div>
+</div>
+</div>
+</div>
+</body></html>

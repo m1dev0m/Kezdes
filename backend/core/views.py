@@ -20,6 +20,7 @@ from .serializers import (
 import random
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
 
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserMeSerializer
@@ -56,11 +57,12 @@ class SendOTPView(APIView):
             email = serializer.validated_data['email']
             code = f"{random.randint(100000, 999999)}"
             
-            # Save or update OTP
+            # Save or update OTP (also refresh created_at for expiry tracking)
             OTPVerification.objects.update_or_create(
                 email=email,
                 defaults={'code': code, 'is_verified': False}
             )
+            OTPVerification.objects.filter(email=email).update(created_at=timezone.now(), is_verified=False, code=code)
             
             # Send Email
             try:
@@ -78,7 +80,15 @@ class SendOTPView(APIView):
                 )
 
             return Response(
-                {"detail": "Код отправлен на ваш email."},
+                {
+                    "detail": "Код отправлен на ваш email.",
+                    **(
+                        {"code": code}
+                        if getattr(settings, "DEBUG", False)
+                        and getattr(settings, "EMAIL_BACKEND", "").endswith("console.EmailBackend")
+                        else {}
+                    ),
+                },
                 status=status.HTTP_200_OK
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -146,6 +156,25 @@ class SetupRestaurantView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class UpdateRoleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        role = request.data.get('role')
+        if role not in ('owner', 'customer'):
+            return Response({"detail": "Invalid role choice."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        profile = request.user.profile
+        profile.role = role
+        profile.save()
+        
+        return Response({
+            "success": True, 
+            "role": role,
+            "message": f"Account type set to {role}"
+        })
 
 
 class HealthLiveView(APIView):

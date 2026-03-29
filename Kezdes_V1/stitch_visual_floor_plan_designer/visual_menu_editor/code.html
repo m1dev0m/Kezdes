@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Visual Menu Editor - Kezdes Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0048ff",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#0f1523",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav {
+            background-color: rgba(0, 72, 255, 0.1);
+            color: #0048ff;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+<div class="p-6 flex items-center gap-3">
+<div class="size-10 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<div>
+<h1 class="text-base font-bold leading-none">Kezdes Admin</h1>
+<p class="text-xs text-slate-500 mt-1">Management Suite</p>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1 mt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">shopping_bag</span>
+<span class="text-sm font-medium">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg active-nav transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">menu_book</span>
+<span class="text-sm font-medium">Menu Editor</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="text-sm font-medium">Staff</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="text-sm font-medium">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 p-2">
+<div class="size-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Admin user profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJxmqVRtIDezAO9qVGQlLOeu2-k1uz1CQMTkUWRaWOZ0kuB98LHBBlL5K7BKEcsQEMOzUL6tm9O6goeIX7068fFM8rUy1Nd3vRwYZErjtxiPXBH85t01oAsqojB1NWM1uj9jArdKwkxhS7Zvgxj_s5AoVbrThwhazovEJQv_ESAwSRBmtMLCH9UrrKj49SM_Q2vNfWJp7xHFO4rW_28bCLzX149MaGqKTjRhVfHNKgZH_bXjPSpxbSmt4mA7UYoY4gjGe4Tci2sQ"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-sm font-medium truncate">Alex Johnson</p>
+<p class="text-xs text-slate-500 truncate">Store Manager</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Top Header -->
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-8 shrink-0">
+<div class="flex items-center gap-4">
+<h2 class="text-xl font-bold">Visual Menu Editor</h2>
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="w-full pl-10 pr-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all" placeholder="Search items..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-lg">create_new_folder</span>
+                        Add Category
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+<span class="material-symbols-outlined text-lg">add</span>
+                        Add New Item
+                    </button>
+</div>
+</header>
+<div class="flex-1 flex overflow-hidden">
+<!-- Category Sidebar (Left) -->
+<div class="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto p-4 shrink-0">
+<div class="mb-4 flex items-center justify-between px-2">
+<span class="text-xs font-bold uppercase tracking-wider text-slate-400">Categories</span>
+<span class="material-symbols-outlined text-slate-400 text-sm cursor-pointer">reorder</span>
+</div>
+<ul class="space-y-1">
+<li>
+<button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-semibold text-sm">
+<span>Appetizers</span>
+<span class="bg-primary/20 px-1.5 py-0.5 rounded text-[10px]">12</span>
+</button>
+</li>
+<li>
+<button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm transition-colors">
+<span>Main Course</span>
+<span class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-500">24</span>
+</button>
+</li>
+<li>
+<button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm transition-colors">
+<span>Desserts</span>
+<span class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-500">8</span>
+</button>
+</li>
+<li>
+<button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm transition-colors">
+<span>Drinks</span>
+<span class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-500">15</span>
+</button>
+</li>
+<li>
+<button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm transition-colors">
+<span>Seasonal Specials</span>
+<span class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-500">5</span>
+</button>
+</li>
+</ul>
+</div>
+<!-- Items Grid (Right) -->
+<div class="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-slate-950">
+<div class="mb-6 flex items-center justify-between">
+<div>
+<h3 class="text-lg font-bold">Appetizers</h3>
+<p class="text-sm text-slate-500">Manage items within this category</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs text-slate-400">Sort by:</span>
+<select class="text-sm border-slate-200 dark:border-slate-800 bg-transparent rounded-lg focus:ring-primary focus:border-primary py-1 pl-2 pr-8">
+<option>Custom Order</option>
+<option>Price: Low to High</option>
+<option>Alphabetical</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Item Card 1 -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all relative">
+<div class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 bg-white rounded-full shadow-lg text-slate-600 hover:text-primary">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</div>
+<div class="absolute top-2 left-2 z-10 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded cursor-grab">
+<span class="material-symbols-outlined text-white text-xs">drag_indicator</span>
+</div>
+<div class="aspect-video w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Plate of golden spring rolls" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVoS4pPERzC_StiJu-nLQ9rE1D-sCt4-HO1kqUpBhL9N7Wc-g9Hkegoen-MnYDMgLZuhI2JWoVS4OB7cnj7TvP5Hy0bLaxrvR5yCgKrc_-n-bZ22fGQCpWMDEEMnhGltxjB9wXem81PUbW_dxspzUy8utIq3fwjJE55VGOi0xT7BZMSQ5MV5U264f6y_AX47x-TIX0rR8eUTunYtsAB7IMwajm5jyc8wWxh5Jv59wJ93yDK6tYrA6K_2vd1bKuJeawnvJuxdaCZA"/>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-sm">Crispy Spring Rolls</h4>
+<span class="text-primary font-bold text-sm">$8.50</span>
+</div>
+<p class="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">Vegetable filling with sweet chili dipping sauce.</p>
+<div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">In Stock</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Item Card 2 -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all relative">
+<div class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 bg-white rounded-full shadow-lg text-slate-600 hover:text-primary">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</div>
+<div class="absolute top-2 left-2 z-10 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded cursor-grab">
+<span class="material-symbols-outlined text-white text-xs">drag_indicator</span>
+</div>
+<div class="aspect-video w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Garlic bread slices on board" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCoxeAjpG-B9Ph1k21X5wZEXQKMSt2aQo83_CwlWnj6OLjRl5ZkEWhArD8B2vmbrQspITzz5w1U4xlPsLn1NxuTzVZBBMLQifyJ3ISwI-FVz8OmN-qBLZbmVA_1KHF6OOMFdmIzzuxR6jGPpWWUpc7m3GgnDIJcld7_rY6sgkRkCsEH2pCU5sqRugOvYrytmYM1gZNywNbX2w1fh9_NS0QWHk8p_eJb1OLWdbyKyy-uCIXRIMSh-VXyDD5wYaCM1ZW52nNZ3vcjA"/>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-sm">Garlic Bread</h4>
+<span class="text-primary font-bold text-sm">$6.00</span>
+</div>
+<p class="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">Toasted baguette with herbs and garlic butter.</p>
+<div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">In Stock</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Item Card 3 (Out of stock variant) -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all relative">
+<div class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 bg-white rounded-full shadow-lg text-slate-600 hover:text-primary">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</div>
+<div class="absolute inset-0 bg-white/40 dark:bg-slate-900/40 backdrop-grayscale z-[5] pointer-events-none"></div>
+<div class="absolute top-2 left-2 z-10 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded cursor-grab">
+<span class="material-symbols-outlined text-white text-xs">drag_indicator</span>
+</div>
+<div class="aspect-video w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Fried calamari rings plate" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3zKzLRmAqYLbk68qjjXeOQ9lDfefmv2-06W2jhJiPziD5oqAgl4bmbs80n6frTxa27ctVDQ86nmATkMKgTZQO7toskrQ-RPuZ-ZeNXt5nlbvf8RzD6k-uOJzI0RRBCjtuHItRErXC_XCynoe02QthRo6QBBHaqJa7S75oh66xF7nU8R_QeTIyuXeNt5jspbVKjxuOunOhK5N0mRFeoE3Q5EgFyG_1xHY5WNpLQav-FbeajRNYst7keB7Ra7DCy1HDmh_9Zo1lHg"/>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-sm text-slate-400">Calamari Rings</h4>
+<span class="text-slate-400 font-bold text-sm">$12.00</span>
+</div>
+<p class="text-xs text-slate-400 mb-4 line-clamp-2 leading-relaxed">Deep-fried squid with tartar sauce.</p>
+<div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Out of Stock</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Item Card 4 -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all relative">
+<div class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 bg-white rounded-full shadow-lg text-slate-600 hover:text-primary">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</div>
+<div class="absolute top-2 left-2 z-10 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded cursor-grab">
+<span class="material-symbols-outlined text-white text-xs">drag_indicator</span>
+</div>
+<div class="aspect-video w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Stuffed mushroom plate" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdnML5f4I-lq4fi0nan12psrQIKmB9zgd2r1SAjyTxebZLJWsg__0YK2nbdFUmcjvCIpO-p3bVK3Adq5CI6CR3beQvhwltgYou6YAOSQWJUt24qfyT5JiuMddQibCLnyPXo5XIugO0v0KRCR2rTHMNlXEi8PvHiHmfACbivSbc9JR55ew1KMLCpSmGaGbURsJCXFUYgEs4tQl9bEoCh30L_R1DvxOd61bfjeJXhlx_K_LOpvZhCbEt11GnaEChtd_DW3iX4zWwPw"/>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-sm">Stuffed Mushrooms</h4>
+<span class="text-primary font-bold text-sm">$9.00</span>
+</div>
+<p class="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">Cream cheese and bacon filling.</p>
+<div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">In Stock</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Add Item Placeholder Card -->
+<div class="group border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-8 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer">
+<div class="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors mb-3">
+<span class="material-symbols-outlined text-2xl">add</span>
+</div>
+<span class="text-sm font-bold text-slate-500 group-hover:text-primary">Add Item</span>
+</div>
+</div>
+<!-- Pagination / Footer Info -->
+<div class="mt-12 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-6">
+<p class="text-xs text-slate-500">Showing 4 of 12 items in Appetizers</p>
+<div class="flex items-center gap-1">
+<button class="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-lg">chevron_left</span>
+</button>
+<button class="px-3 py-1 text-sm font-bold bg-primary text-white rounded">1</button>
+<button class="px-3 py-1 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded">2</button>
+<button class="px-3 py-1 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded">3</button>
+<button class="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-lg">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

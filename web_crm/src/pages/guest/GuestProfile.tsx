@@ -1,206 +1,196 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Save, Camera, LogOut } from 'lucide-react';
 import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
+import {
+  LogOut,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Shield,
+  Lock,
+  Camera,
+  Trash2,
+  Key,
+  ShieldCheck
+} from 'lucide-react';
 
 export default function GuestProfile() {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        username: user?.username || '',
-        email: user?.email || '',
-        phone: (user as any)?.profile?.phone || '',
-    });
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    username: user?.username || '',
+    email: user?.email || '',
+    phone: (user as any)?.profile?.phone || (user as any)?.phone || '',
+    country: (user as any)?.profile?.country || 'Казахстан',
+    city: (user as any)?.profile?.city || 'Алматы',
+  });
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            await api.patch('/auth/me/', formData);
-            toast.success('Profile updated successfully');
-        } catch (err) {
-            toast.error('Failed to update profile');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      await api.patch('/auth/me/', formData);
+      toast.success('Профиль успешно обновлен');
+    } catch {
+      toast.error('Ошибка при обновлении профиля');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-        toast.success('Logged out successfully');
-    };
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    toast.success('Вы успешно вышли из системы');
+  };
 
-    return (
-        <div className="max-w-5xl mx-auto pb-20">
-            <header className="mb-10 flex justify-between items-end">
-                <div>
-                    <h1 className="text-4xl font-black text-brand-green tracking-tight">Profile Settings</h1>
-                    <p className="text-slate-500 mt-2 font-medium">Manage your dining experience and personal preferences</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center gap-3 bg-gold/10 px-4 py-2 rounded-full">
-                        <span className="text-gold font-bold text-sm tracking-wide">GOLD TIER MEMBER</span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 px-5 py-2 rounded-xl border border-rose-200 text-rose-600 font-bold text-sm hover:bg-rose-50 transition-colors"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                    </button>
-                </div>
-            </header>
+  return (
+    <div className="max-w-[800px] mx-auto px-6 py-10 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-            <div className="grid gap-8">
-                <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                    <div className="flex flex-col md:flex-row items-center gap-8">
-                        <div className="relative">
-                            <div className="w-32 h-32 rounded-full object-cover ring-4 ring-gold/20 bg-slate-100 flex items-center justify-center text-3xl font-black text-brand-green">
-                                {formData.username?.charAt(0).toUpperCase()}
-                            </div>
-                            <button
-                                type="button"
-                                className="absolute bottom-0 right-0 bg-brand-green text-white p-2 rounded-full shadow-lg border-4 border-white hover:bg-brand-green/90 transition-colors"
-                                aria-label="Change photo"
-                            >
-                                <Camera className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 text-center md:text-left">
-                            <h2 className="text-2xl font-bold text-brand-green">{formData.username || 'Guest'}</h2>
-                            <p className="text-slate-500">Member since 2026 • {formData.email || '—'}</p>
-                            <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
-                                <button type="button" className="px-6 py-2 bg-brand-green text-white rounded-xl font-bold text-sm hover:opacity-90 transition-opacity">
-                                    Change Photo
-                                </button>
-                                <button type="button" className="px-6 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
-                                    Remove
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <form onSubmit={handleSave} className="space-y-8">
-                    <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                        <div className="flex items-center gap-2 mb-6">
-                            <h2 className="text-xl font-bold text-brand-green uppercase tracking-wider text-sm">Personal Information</h2>
-                        </div>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-600">Full Name</label>
-                                <div className="relative">
-                                    <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        className="w-full pl-10 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
-                                        type="text"
-                                        value={formData.username}
-                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-600">Email Address</label>
-                                <div className="relative">
-                                    <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        className="w-full pl-10 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-600">Phone Number</label>
-                                <div className="relative">
-                                    <Phone className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        className="w-full pl-10 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
-                                        type="tel"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        placeholder="+7 (777) 000-00-00"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-600">Location</label>
-                                <input
-                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-gold/30"
-                                    type="text"
-                                    defaultValue="Manhattan, New York"
-                                />
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                        <div className="flex items-center gap-2 mb-6">
-                            <h2 className="text-xl font-bold text-brand-green uppercase tracking-wider text-sm">Dining Preferences</h2>
-                        </div>
-                        <div className="grid md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <p className="font-bold text-slate-700 text-sm">Dietary Restrictions</p>
-                                <div className="flex flex-wrap gap-2">
-                                    <span className="bg-brand-green/10 text-brand-green px-3 py-1 rounded-full text-xs font-bold border border-brand-green/20">Vegetarian</span>
-                                    <span className="bg-brand-green/10 text-brand-green px-3 py-1 rounded-full text-xs font-bold border border-brand-green/20">Nut Allergy</span>
-                                    <button type="button" className="bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-xs font-bold border border-dashed border-slate-300 hover:border-gold transition-colors">
-                                        + Add New
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <p className="font-bold text-slate-700 text-sm">Preferred Cuisines</p>
-                                <div className="flex flex-wrap gap-2">
-                                    <span className="bg-gold/10 text-gold px-3 py-1 rounded-full text-xs font-bold border border-gold/20">Italian</span>
-                                    <span className="bg-gold/10 text-gold px-3 py-1 rounded-full text-xs font-bold border border-gold/20">Japanese Fusion</span>
-                                    <span className="bg-gold/10 text-gold px-3 py-1 rounded-full text-xs font-bold border border-gold/20">French</span>
-                                    <button type="button" className="bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-xs font-bold border border-dashed border-slate-300 hover:border-gold transition-colors">
-                                        + Add New
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                        <div className="flex items-center gap-2 mb-6">
-                            <h2 className="text-xl font-bold text-brand-green uppercase tracking-wider text-sm">Security & Privacy</h2>
-                        </div>
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-4 bg-slate-50 rounded-xl">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-white rounded-lg shadow-sm">
-                                    <span className="text-slate-400 text-sm font-black">•••</span>
-                                </div>
-                                <div>
-                                    <p className="font-bold text-slate-700">Password</p>
-                                    <p className="text-xs text-slate-500 font-medium">Last updated 3 months ago</p>
-                                </div>
-                            </div>
-                            <button type="button" className="w-full md:w-auto px-6 py-2 border-2 border-brand-green text-brand-green rounded-xl font-bold text-sm hover:bg-brand-green hover:text-white transition-all">
-                                Change Password
-                            </button>
-                        </div>
-                    </section>
-
-                    <div className="flex justify-end gap-4 pb-12">
-                        <button type="button" className="px-8 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors">
-                            Discard Changes
-                        </button>
-                        <Button type="submit" isLoading={loading} className="px-8 py-3 bg-brand-green text-white rounded-xl font-black shadow-lg shadow-brand-green/20 hover:brightness-110 transition-all">
-                            <Save className="w-4 h-4 mr-2" /> Save Changes
-                        </Button>
-                    </div>
-                </form>
-            </div>
+      {/* Page Header */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-black tracking-tighter text-slate-900 leading-none">Настройки профиля</h1>
+          <p className="text-sm font-medium leading-7 text-slate-500 uppercase tracking-wider">Управление персональными данными и безопасностью аккаунта.</p>
         </div>
-    );
+        <button
+          onClick={handleLogout}
+          className="h-12 px-6 rounded-xl border border-rose-100 dark:border-rose-900/30 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 text-xs font-bold uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center gap-2"
+        >
+          <LogOut size={16} />
+          Выйти
+        </button>
+      </header>
+
+      {/* Profile Photo Section */}
+      <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-100 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-col md:flex-row items-center gap-8">
+          <div className="relative group">
+            <div className="size-32 rounded-full border-4 border-white dark:border-slate-800 bg-slate-50 dark:bg-slate-800 shadow-xl overflow-hidden flex items-center justify-center border-blue-50">
+              {(user as any)?.avatar ? (
+                <img src={(user as any).avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl font-black text-[#1d4ed8]">{formData.username?.charAt(0).toUpperCase() || 'G'}</span>
+              )}
+            </div>
+            <button className="absolute bottom-1 right-1 size-10 bg-[#1d4ed8] text-white rounded-full shadow-lg border-2 border-white dark:border-slate-900 flex items-center justify-center hover:scale-110 transition-transform">
+              <Camera size={18} />
+            </button>
+          </div>
+          <div className="flex-1 text-center md:text-left space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-slate-900 uppercase">Фото профиля</h3>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider leading-relaxed">Это изображение будет видно другим пользователям. Рекомендуемый размер 400x400px.</p>
+            </div>
+            <div className="flex justify-center md:justify-start gap-3">
+              <button className="h-10 px-6 bg-[#1d4ed8] text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#1e40af] transition-all">Загрузить</button>
+              <button className="h-10 px-6 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">Удалить</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <form onSubmit={handleSave} className="space-y-8">
+        {/* Personal Details Section */}
+        <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
+          <div className="flex items-center gap-3 text-[#1d4ed8]">
+            <User size={24} />
+            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-[0.1em]">Личная информация</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <InputField
+              label="Полное имя"
+              icon={<User size={18} />}
+              value={formData.username}
+              onChange={(v) => setFormData(p => ({ ...p, username: v }))}
+            />
+            <InputField
+              label="Электронная почта"
+              icon={<Mail size={18} />}
+              type="email"
+              value={formData.email}
+              onChange={(v) => setFormData(p => ({ ...p, email: v }))}
+            />
+            <InputField
+              label="Номер телефона"
+              icon={<Phone size={18} />}
+              type="tel"
+              value={formData.phone}
+              onChange={(v) => setFormData(p => ({ ...p, phone: v }))}
+            />
+            <InputField
+              label="Ваш город"
+              icon={<MapPin size={18} />}
+              value={formData.city}
+              onChange={(v) => setFormData(p => ({ ...p, city: v }))}
+            />
+          </div>
+        </section>
+
+        {/* Security Section */}
+        <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
+          <div className="flex items-center gap-3 text-[#1d4ed8]">
+            <Shield size={24} />
+            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-[0.1em]">Безопасность</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <InputField label="Текущий пароль" icon={<Lock size={18} />} type="password" value="" onChange={() => { }} />
+            <div className="hidden md:block" />
+            <InputField label="Новый пароль" icon={<Key size={18} />} type="password" value="" onChange={() => { }} />
+            <InputField label="Повторите пароль" icon={<ShieldCheck size={18} />} type="password" value="" onChange={() => { }} />
+          </div>
+        </section>
+
+        {/* Action Buttons */}
+        <div className="pt-8 flex flex-col-reverse md:flex-row items-center justify-between gap-6 border-t border-slate-100 dark:border-slate-800">
+          <button type="button" className="group flex items-center gap-2 text-slate-400 hover:text-rose-500 transition-colors">
+            <Trash2 size={18} />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Удалить мой аккаунт</span>
+          </button>
+
+          <div className="flex w-full md:w-auto gap-4">
+            <button
+              type="button"
+              onClick={() => navigate('/guest/dashboard')}
+              className="flex-1 md:px-10 h-14 bg-slate-50 text-slate-500 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-slate-100 transition-all"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 md:px-12 h-14 bg-[#1d4ed8] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-2xl shadow-[#1d4ed8]/20 hover:bg-[#1e40af] hover:-translate-y-0.5 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {loading ? 'Сохранение...' : 'Сохранить изменения'}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function InputField({ label, icon, value, type = 'text', onChange }: { label: string; icon: React.ReactNode; value: string; type?: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-3 group">
+      <label className="text-xs font-semibold text-slate-400 uppercase tracking-[0.15em] pl-1">{label}</label>
+      <div className="relative">
+        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#1d4ed8] transition-colors">
+          {icon}
+        </div>
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full h-14 pl-14 pr-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 focus:border-[#1d4ed8] transition-all text-sm font-bold placeholder:font-medium text-slate-900"
+        />
+      </div>
+    </div>
+  );
 }

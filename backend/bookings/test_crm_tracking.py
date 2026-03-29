@@ -192,3 +192,44 @@ class TestCustomerCreation:
         customer_obj.refresh_from_db()
         assert customer_obj.visits_count == 1
         assert Visit.objects.filter(customer=customer_obj).count() == 1
+
+    def test_completion_matches_existing_customer_by_normalized_phone(self, api_client, setup_restaurant):
+        """Existing guest should be found by normalized phone instead of creating a duplicate."""
+        admin, restaurant = setup_restaurant
+
+        existing_customer = Customer.objects.create(
+            restaurant=restaurant,
+            name='Existing Guest',
+            phone='+77770001122',
+            visits_count=0,
+        )
+
+        api_client.force_authenticate(user=admin)
+        tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        response = api_client.post('/api/v1/bookings/create_manual/', {
+            'restaurant': restaurant.id,
+            'date': tomorrow,
+            'time': '18:00',
+            'guests': 2,
+            'status': 'pending',
+            'user_name': 'Existing Guest',
+            'user_phone': '8 (777) 000-11-22',
+        })
+
+        assert response.status_code == 201, f"Manual booking failed: {response.data}"
+        booking_id = response.data['id']
+
+        complete_res = api_client.post(f'/api/v1/bookings/{booking_id}/complete/')
+        assert complete_res.status_code == 400
+
+        confirm_res = api_client.post(f'/api/v1/bookings/{booking_id}/confirm/')
+        assert confirm_res.status_code in (200, 201)
+
+        complete_res = api_client.post(f'/api/v1/bookings/{booking_id}/complete/')
+        assert complete_res.status_code == 200
+
+        existing_customer.refresh_from_db()
+        assert Customer.objects.filter(restaurant=restaurant, phone='+77770001122').count() == 1
+        assert existing_customer.visits_count == 1
+        assert Visit.objects.filter(customer=existing_customer, booking_id=booking_id).count() == 1

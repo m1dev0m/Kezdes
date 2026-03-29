@@ -11,6 +11,7 @@ class Profile(models.Model):
         ('manager', 'Менеджер'),
         ('host', 'Хостес'),
         ('customer', 'Гость'),
+        ('pending', 'Ожидает выбора роли'),
     ]
     
     # Legacy role mappings for backwards compatibility

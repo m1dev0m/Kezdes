@@ -9,7 +9,7 @@ class NotificationService:
     @staticmethod
     def notify_user(user, title, body, data=None):
         """
-        Sends a notification. Uses Celery if available, otherwise skips silently.
+        Sends a notification. Uses Celery if available; otherwise falls back to sync sending.
         """
         if not user or not user.id:
             return
@@ -21,7 +21,11 @@ class NotificationService:
             from .tasks import send_notification_task
             send_notification_task.delay(user.id, title, body, data)
         except Exception as e:
-            logger.warning(f"Notification failed (Celery not available): {e}")
+            logger.warning(f"Notification async failed; falling back to sync: {e}")
+            try:
+                NotificationService._notify_user_sync(user, title, body, data)
+            except Exception as sync_err:
+                logger.warning(f"Notification sync failed: {sync_err}")
 
     @staticmethod
     def _notify_user_sync(user, title, body, data=None):

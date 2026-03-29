@@ -1,436 +1,254 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-    User,
-    Store,
-    Bell,
-    Shield,
-    CreditCard,
-    Save,
-    Camera,
-    Mail,
-    MapPin,
-    Clock,
-    Lock,
-    Phone,
-    Users,
-    FileText,
-    Hash,
-    Timer,
-    Banknote,
-    Bot,
-    CheckCircle2,
-    XCircle,
-} from 'lucide-react';
+import { Building2, Clock3, Mail, MapPin, Phone, Save, ShieldCheck, Store, Timer } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
-import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { useI18n } from '@/i18n';
+
+interface RestaurantSettings {
+  id: number;
+  name?: string;
+  description?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  photo_url?: string;
+  opening_time?: string;
+  closing_time?: string;
+  total_tables?: number;
+  total_capacity?: number;
+  slot_duration_minutes?: number;
+  deposit_min_guests?: number | null;
+  deposit_amount_per_guest?: number | null;
+  slug?: string;
+  turnover_default_min?: number;
+}
 
 export default function Settings() {
-    const { t } = useI18n();
-    const { user } = useAuth();
-    const [tab, setTab] = useState('restaurant');
-    const [loading, setLoading] = useState(false);
-    interface RestaurantSettings {
-        id: number;
-        name?: string;
-        description?: string;
-        address?: string;
-        phone?: string;
-        email?: string;
-        photo_url?: string;
-        opening_time?: string;
-        closing_time?: string;
-        total_tables?: number;
-        total_capacity?: number;
-        slot_duration_minutes?: number;
-        deposit_min_guests?: number | null;
-        deposit_amount_per_guest?: number | null;
-        bot_token?: string | null;
-        bot_configured?: boolean;
+  const { user } = useAuth();
+  const [tab, setTab] = useState<'business' | 'operational' | 'account'>('business');
+  const [loading, setLoading] = useState(false);
+  const [restaurant, setRestaurant] = useState<RestaurantSettings | null>(null);
+  const [loadingData, setLoadingData] = useState(false);
+
+  const loadRestaurant = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const res = await api.get('/restaurants/me/');
+      setRestaurant(res.data);
+    } catch {
+      toast.error('Failed to load restaurant settings');
+    } finally {
+      setLoadingData(false);
     }
-    const [restaurant, setRestaurant] = useState<RestaurantSettings | null>(null);
-    const [loadingData, setLoadingData] = useState(false);
+  }, []);
 
-    const loadRestaurant = useCallback(async () => {
-        setLoadingData(true);
-        try {
-            const res = await api.get('/restaurants/me/');
-            setRestaurant(res.data);
-        } catch {
-            toast.error(t('settings.failedToLoad'));
-        } finally {
-            setLoadingData(false);
-        }
-    }, [t]);
+  useEffect(() => {
+    void loadRestaurant();
+  }, [loadRestaurant]);
 
-    useEffect(() => {
-        if (tab === 'restaurant') {
-            loadRestaurant();
-        }
-    }, [tab, loadRestaurant]);
+  const handleSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!restaurant) return;
+    setLoading(true);
+    try {
+      await api.patch('/restaurants/me/', {
+        name: restaurant.name,
+        description: restaurant.description,
+        address: restaurant.address,
+        phone: restaurant.phone,
+        email: restaurant.email,
+        opening_time: restaurant.opening_time,
+        closing_time: restaurant.closing_time,
+        total_tables: restaurant.total_tables,
+        total_capacity: restaurant.total_capacity,
+        slot_duration_minutes: restaurant.slot_duration_minutes,
+        deposit_min_guests: restaurant.deposit_min_guests,
+        deposit_amount_per_guest: restaurant.deposit_amount_per_guest,
+        slug: restaurant.slug,
+        turnover_default_min: restaurant.turnover_default_min,
+      });
+      toast.success('Settings saved');
+    } catch {
+      toast.error('Failed to save settings');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            if (tab === 'restaurant' && restaurant) {
-                await api.patch('/restaurants/me/', {
-                    name: restaurant.name,
-                    description: restaurant.description,
-                    address: restaurant.address,
-                    phone: restaurant.phone,
-                    email: restaurant.email,
-                    opening_time: restaurant.opening_time,
-                    closing_time: restaurant.closing_time,
-                    total_tables: restaurant.total_tables,
-                    total_capacity: restaurant.total_capacity,
-                    slot_duration_minutes: restaurant.slot_duration_minutes,
-                    deposit_min_guests: restaurant.deposit_min_guests,
-                    deposit_amount_per_guest: restaurant.deposit_amount_per_guest,
-                });                toast.success(t('settings.restaurantSaved'));
-            } else if (tab === 'profile') {
-                toast.success(t('settings.profileSaved'));
-            }
-        } catch {
-            toast.error(t('settings.failedToSave'));
-        } finally {
-            setLoading(false);
-        }
-    };
+  const update = <K extends keyof RestaurantSettings>(key: K, value: RestaurantSettings[K]) => {
+    setRestaurant((current) => (current ? { ...current, [key]: value } : current));
+  };
 
-    const update = <K extends keyof RestaurantSettings>(key: K, value: RestaurantSettings[K]) => {
-        setRestaurant((r) => (r ? { ...r, [key]: value } : r));
-    };
+  const tabs = [
+    { id: 'business', label: 'Business profile' },
+    { id: 'operational', label: 'Operating rules' },
+    { id: 'account', label: 'Account' },
+  ] as const;
 
-    const tabs = [
-        { id: 'restaurant', label: t('settings.restaurantTitle'), icon: Store },
-        { id: 'telegram',   label: 'Telegram Bot',               icon: Bot },
-        { id: 'profile',    label: t('settings.myProfile'),       icon: User },
-        { id: 'notifications', label: t('settings.notifications'), icon: Bell },
-        { id: 'security',   label: t('settings.security'),        icon: Shield },
-        { id: 'billing',    label: t('settings.billing'),         icon: CreditCard },
-    ];
-
-    const inputCls = "w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm transition-all focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 shadow-sm text-slate-900";
-    const labelCls = "block text-sm font-medium text-slate-700 mb-1.5";
-
+  if (loadingData) {
     return (
-        <div className="space-y-6 pb-12">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t('settings.title')}</h1>
-                <p className="text-sm text-slate-500 mt-1">{t('settings.description')}</p>
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-8">
-                <div className="lg:w-64 shrink-0 space-y-1">
-                    {tabs.map((tItem) => (
-                        <button
-                            key={tItem.id}
-                            onClick={() => setTab(tItem.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-150 active:scale-[0.98] group ${tab === tItem.id
-                                    ? 'bg-slate-100 text-slate-900 font-semibold'
-                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
-                                }`}
-                        >
-                            <tItem.icon size={18} className={tab === tItem.id ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600 transition-colors'} />
-                            {tItem.label}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm p-6 sm:p-10">
-                    <form onSubmit={handleSave} className="space-y-12">
-                        {tab === 'restaurant' && (
-                            loadingData ? (
-                                <Skeleton className="h-64 w-full rounded-xl" />
-                            ) : restaurant ? (
-                                <>
-                                    <div className="flex flex-col md:flex-row items-center gap-8 border-b border-slate-100 pb-10">
-                                        <div className="relative group shrink-0">
-                                            <div className="w-24 h-24 rounded-full bg-slate-50 overflow-hidden border border-slate-200 shadow-sm group-hover:border-slate-300 transition-all flex items-center justify-center">
-                                                {restaurant.photo_url ? (
-                                                    <img src={restaurant.photo_url} className="w-full h-full object-cover" alt="" />
-                                                ) : (
-                                                    <Store size={32} className="text-slate-300" />
-                                                )}
-                                            </div>
-                                            <button type="button" className="absolute bottom-0 right-0 bg-white border border-slate-200 shadow-sm text-slate-600 p-2 rounded-full hover:bg-slate-50 hover:text-slate-900 transition-all active:scale-95">
-                                                <Camera size={16} />
-                                            </button>
-                                        </div>
-                                        <div className="text-center md:text-left">
-                                            <h3 className="text-xl font-bold text-slate-900">{restaurant.name}</h3>
-                                            <p className="text-sm font-medium text-slate-500 mt-1">ID: {restaurant.id}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Section 1 */}
-                                    <div className="space-y-6">
-                                        <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3">
-                                            {t('settings.basicInfo')}
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className={labelCls}>{t('settings.restaurantName')}</label>
-                                                <div className="relative">
-                                                    <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="text" value={restaurant.name || ''} onChange={e => update('name', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className={labelCls}>{t('settings.phoneNumber')}</label>
-                                                <div className="relative">
-                                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="tel" value={restaurant.phone || ''} onChange={e => update('phone', e.target.value)} className={inputCls} placeholder="+7 (777) 123-4567" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className={labelCls}>{t('settings.email')}</label>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="email" value={restaurant.email || ''} onChange={e => update('email', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className={labelCls}>{t('settings.address')}</label>
-                                                <div className="relative">
-                                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="text" value={restaurant.address || ''} onChange={e => update('address', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className={labelCls}>{t('settings.desc')}</label>
-                                                <div className="relative">
-                                                    <FileText className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                                                    <textarea
-                                                        value={restaurant.description || ''}
-                                                        onChange={e => update('description', e.target.value)}
-                                                        rows={4}
-                                                        className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm transition-all focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 shadow-sm text-slate-900 resize-none"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Section 2 */}
-                                    <div className="space-y-6">
-                                        <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3">
-                                            {t('settings.workingHours')}
-                                        </h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                            <div>
-                                                <label className={labelCls}>{t('settings.openingTime')}</label>
-                                                <div className="relative">
-                                                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="time" value={restaurant.opening_time || ''} onChange={e => update('opening_time', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className={labelCls}>{t('settings.closingTime')}</label>
-                                                <div className="relative">
-                                                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="time" value={restaurant.closing_time || ''} onChange={e => update('closing_time', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className={labelCls}>{t('settings.slotDuration')}</label>
-                                                <div className="relative">
-                                                    <Timer className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="number" min={15} max={180} step={15} value={restaurant.slot_duration_minutes || 60} onChange={e => update('slot_duration_minutes', Number(e.target.value))} className={inputCls} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Section 3 */}
-                                    <div className="space-y-6">
-                                        <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3">
-                                            {t('settings.capacity')}
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className={labelCls}>{t('settings.totalTables')}</label>
-                                                <div className="relative">
-                                                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="number" min={1} value={restaurant.total_tables || ''} onChange={e => update('total_tables', Number(e.target.value))} className={inputCls} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className={labelCls}>{t('settings.totalCapacity')}</label>
-                                                <div className="relative">
-                                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="number" min={1} value={restaurant.total_capacity || ''} onChange={e => update('total_capacity', Number(e.target.value))} className={inputCls} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Section 4 */}
-                                    <div className="space-y-6">
-                                        <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3">
-                                            Pre-Payments & Deposits
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className={labelCls}>Min Guests for Deposit (0 = Off)</label>
-                                                <div className="relative">
-                                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="number" min={0} value={restaurant.deposit_min_guests || ''} onChange={e => update('deposit_min_guests', Number(e.target.value) || null)} className={inputCls} placeholder="e.g. 6" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className={labelCls}>Deposit per Guest (KZT)</label>
-                                                <div className="relative">
-                                                    <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                    <input type="number" min={0} step={100} value={restaurant.deposit_amount_per_guest || ''} onChange={e => update('deposit_amount_per_guest', Number(e.target.value) || null)} className={inputCls} placeholder="e.g. 5000" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="py-20 text-center">
-                                    <p className="text-slate-500 font-medium">{t('settings.noData')}</p>
-                                </div>
-                            )
-                        )}
-
-                        {tab === 'telegram' && (
-                            <div className="space-y-8">
-                                <div>
-                                    <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3">
-                                        Telegram Bot
-                                    </h4>
-                                    <p className="text-sm text-slate-500 mt-3 leading-relaxed">
-                                        Подключите своего Telegram-бота, чтобы гости могли бронировать столы прямо в Telegram.
-                                        Каждый ресторан имеет своего бота.
-                                    </p>
-                                </div>
-
-                                {/* Status */}
-                                <div className={`flex items-center gap-3 p-4 rounded-lg border ${restaurant?.bot_configured ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
-                                    {restaurant?.bot_configured
-                                        ? <CheckCircle2 size={20} className="text-green-600 shrink-0" />
-                                        : <XCircle size={20} className="text-slate-400 shrink-0" />
-                                    }
-                                    <div>
-                                        <p className="text-sm font-semibold text-slate-900">
-                                            {restaurant?.bot_configured ? 'Бот подключён' : 'Бот не настроен'}
-                                        </p>
-                                        <p className="text-xs text-slate-500 mt-0.5">
-                                            {restaurant?.bot_configured
-                                                ? 'Гости могут бронировать через вашего Telegram-бота'
-                                                : 'Добавьте токен бота чтобы активировать интеграцию'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Instructions */}
-                                <div className="bg-slate-50 rounded-lg border border-slate-200 p-5 space-y-3">
-                                    <p className="text-sm font-semibold text-slate-700">Как подключить:</p>
-                                    <ol className="text-sm text-slate-600 space-y-2 list-decimal list-inside">
-                                        <li>Откройте <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-xs">@BotFather</span> в Telegram</li>
-                                        <li>Отправьте <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-xs">/newbot</span> и следуйте инструкциям</li>
-                                        <li>Скопируйте токен вида <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-xs">123456:ABC-DEF...</span></li>
-                                        <li>Вставьте токен ниже и нажмите «Сохранить»</li>
-                                    </ol>
-                                </div>
-
-                                {/* Token input */}
-                                <div>
-                                    <label className={labelCls}>Bot Token</label>
-                                    <div className="relative">
-                                        <Bot className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            value={restaurant?.bot_token || ''}
-                                            onChange={e => update('bot_token', e.target.value)}
-                                            className={inputCls}
-                                            placeholder="123456789:AAHgyChjBAtI_l3zw1HKLuip39o5Zwl-tGI"
-                                        />
-                                    </div>
-                                    <p className="text-xs text-slate-400 mt-1.5">
-                                        Токен хранится в зашифрованном виде и не передаётся третьим лицам.
-                                    </p>
-                                </div>
-
-                                <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            if (!restaurant?.bot_token) return;
-                                            setLoading(true);
-                                            try {
-                                                await api.patch('/restaurants/me/', { bot_token: restaurant.bot_token });
-                                                toast.success('Токен сохранён');
-                                                loadRestaurant();
-                                            } catch {
-                                                toast.error('Не удалось сохранить токен');
-                                            } finally {
-                                                setLoading(false);
-                                            }
-                                        }}
-                                        disabled={loading}
-                                        className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm flex items-center gap-2 disabled:opacity-50"
-                                    >
-                                        <Save size={16} /> Сохранить токен
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {tab === 'profile' && (                            <div className="space-y-6">
-                                <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3">
-                                    {t('settings.accountDetails')}
-                                </h4>
-                                <div className="grid grid-cols-1 gap-6 max-w-xl">
-                                    <div>
-                                        <label className={labelCls}>{t('settings.username')}</label>
-                                        <input type="text" value={user?.username || ''} disabled className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm text-slate-500 cursor-not-allowed" />
-                                    </div>
-                                    <div>
-                                        <label className={labelCls}>{t('settings.email')}</label>
-                                        <input type="email" value={user?.email || ''} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm text-slate-900" />
-                                    </div>
-                                    <div>
-                                        <label className={labelCls}>{t('settings.role')}</label>
-                                        <input type="text" value={user?.profile?.role || ''} disabled className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm text-slate-500 cursor-not-allowed" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {['notifications', 'security', 'billing'].includes(tab) && (
-                            <div className="py-24 text-center">
-                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400 mb-4">
-                                    <Lock size={20} />
-                                </div>
-                                <h3 className="text-base font-semibold text-slate-900 mb-1">{t('settings.comingSoon')}</h3>
-                                <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                                    {tab === 'notifications' && t('settings.comingSoonNotif')}
-                                    {tab === 'security' && t('settings.comingSoonSec')}
-                                    {tab === 'billing' && t('settings.comingSoonBill')}
-                                </p>
-                            </div>
-                        )}
-
-                        {(tab === 'restaurant' || tab === 'profile') && (
-                            <div className="pt-8 border-t border-slate-100 flex items-center justify-end gap-3 mt-12">
-                                <Button type="button" variant="secondary" className="px-5 py-2.5 rounded-lg text-sm font-medium border-slate-200" onClick={() => { if (tab === 'restaurant') loadRestaurant(); }}>
-                                    {t('settings.discard')}
-                                </Button>
-                                <Button type="submit" isLoading={loading} className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm flex items-center gap-2">
-                                    <Save size={16} /> {t('settings.saveChanges')}
-                                </Button>
-                            </div>
-                        )}
-                    </form>
-                </div>
-            </div>
-        </div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-[#1d4ed8]" />
+      </div>
     );
+  }
+
+  return (
+    <div className="mx-auto max-w-[1200px] space-y-8 py-8">
+      <header>
+        <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Settings</div>
+        <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900">Настройки ресторана</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+          Основные данные ресторана, часы работы и параметры бронирования. Всё, что влияет на ежедневную работу CRM и публичную страницу.
+        </p>
+      </header>
+
+      <div className="flex flex-wrap gap-3">
+        {tabs.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setTab(item.id)}
+            className={`rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+              tab === item.id ? 'bg-[#1d4ed8] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-6">
+        {tab === 'business' && restaurant ? (
+          <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+            <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
+              <div className="rounded-[24px] border border-slate-200 bg-[#fafaf9] p-6">
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-white border border-slate-200">
+                  {restaurant.photo_url ? (
+                    <img src={restaurant.photo_url} alt={restaurant.name || 'Restaurant'} className="h-full w-full object-cover" />
+                  ) : (
+                    <Store size={32} className="text-slate-400" />
+                  )}
+                </div>
+                <div className="mt-5 text-lg font-bold tracking-tight text-slate-900">{restaurant.name || 'Restaurant'}</div>
+                <div className="mt-2 text-sm leading-6 text-slate-500">Публичная информация, адрес и базовые контактные данные.</div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <Field label="Restaurant name" value={restaurant.name || ''} onChange={(v) => update('name', v)} icon={<Building2 size={18} />} />
+                <Field label="Public slug" value={restaurant.slug || ''} onChange={(v) => update('slug', v.toLowerCase().replace(/[^a-z0-9-]/g, ''))} icon={<Store size={18} />} />
+                <Field label="Email" type="email" value={restaurant.email || ''} onChange={(v) => update('email', v)} icon={<Mail size={18} />} />
+                <Field label="Phone" type="tel" value={restaurant.phone || ''} onChange={(v) => update('phone', v)} icon={<Phone size={18} />} />
+                <div className="md:col-span-2">
+                  <Field label="Address" value={restaurant.address || ''} onChange={(v) => update('address', v)} icon={<MapPin size={18} />} />
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {tab === 'operational' && restaurant ? (
+          <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Field label="Opening time" type="time" value={restaurant.opening_time || ''} onChange={(v) => update('opening_time', v)} icon={<Clock3 size={18} />} />
+              <Field label="Closing time" type="time" value={restaurant.closing_time || ''} onChange={(v) => update('closing_time', v)} icon={<Clock3 size={18} />} />
+              <Field
+                label="Default turnover (min)"
+                type="number"
+                value={String(restaurant.turnover_default_min || 90)}
+                onChange={(v) => update('turnover_default_min', Number(v))}
+                icon={<Timer size={18} />}
+              />
+              <Field
+                label="Slot duration (min)"
+                type="number"
+                value={String(restaurant.slot_duration_minutes || 30)}
+                onChange={(v) => update('slot_duration_minutes', Number(v))}
+                icon={<Timer size={18} />}
+              />
+              <Field
+                label="Min guests for deposit"
+                type="number"
+                value={String(restaurant.deposit_min_guests || 0)}
+                onChange={(v) => update('deposit_min_guests', Number(v) || null)}
+                icon={<ShieldCheck size={18} />}
+              />
+              <Field
+                label="Deposit amount per guest"
+                type="number"
+                value={String(restaurant.deposit_amount_per_guest || 0)}
+                onChange={(v) => update('deposit_amount_per_guest', Number(v) || null)}
+                icon={<ShieldCheck size={18} />}
+              />
+            </div>
+          </section>
+        ) : null}
+
+        {tab === 'account' ? (
+          <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+            <div className="grid gap-6 md:grid-cols-2">
+              <StaticField label="Username" value={user?.username || '—'} />
+              <StaticField label="Email" value={user?.email || '—'} />
+            </div>
+            <div className="mt-6 rounded-2xl bg-[#fafaf9] px-4 py-4 text-sm text-slate-600">
+              Смена пароля и расширенные права доступа пока не вынесены в отдельный self-service экран.
+            </div>
+          </section>
+        ) : null}
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={loading || !restaurant}
+            className="inline-flex items-center gap-2 rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+          >
+            <Save size={16} />
+            {loading ? 'Saving...' : 'Save settings'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  icon,
+  value,
+  type = 'text',
+  onChange,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  value: string;
+  type?: string;
+  onChange: (value: string) => void;
+}) {
+  const id = label.toLowerCase().replace(/\s+/g, '-');
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </label>
+      <div className="relative">
+        <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-14 w-full rounded-2xl border border-slate-200 bg-[#fafaf9] pl-12 pr-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white focus:ring-4 focus:ring-blue-50"
+        />
+      </div>
+    </div>
+  );
+}
+
+function StaticField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-[#fafaf9] px-4 py-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-900">{value}</div>
+    </div>
+  );
 }

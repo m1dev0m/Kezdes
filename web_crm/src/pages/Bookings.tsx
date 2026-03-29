@@ -1,543 +1,742 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, CalendarDays, Plus, MessageSquare, RefreshCw, AlertCircle, Phone, Check, X, Users, Send } from 'lucide-react';
-import api from '@/services/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { useI18n } from '@/i18n/index.tsx';
-import { ManualBookingForm } from '@/components/ManualBookingForm';
-import { useAuth } from '@/modules/auth/logic/AuthContext';
+import api from '@/services/api';
+import {
+  extractResults,
+  getApiErrorMessage,
+  getDateTimeLabel,
+  getLocalDateString,
+  getReservationDateTime,
+  getReservationName,
+  getReservationPhone,
+  getReservationStatusMeta,
+  getTableCapacity,
+  getTableLabel,
+  getTimeLabel,
+  isActiveReservation,
+  type ReservationRecord,
+  type TableRecord,
+} from '@/features/reservations/shared';
 
-// ── Table Seating Modal ────────────────────────────────────────────────────────
-interface TableSeatingModalProps {
-    booking: any;
-    onClose: () => void;
-    onConfirm: (tableId: number) => void;
-}
-
-function TableSeatingModal({ booking, onClose, onConfirm }: TableSeatingModalProps) {
-    const { user } = useAuth();
-    const [tables, setTables] = useState<any[]>([]);
-    const [availableIds, setAvailableIds] = useState<number[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedId, setSelectedId] = useState<number | null>(null);
-
-    useEffect(() => {
-        if (!booking) return;
-        const load = async () => {
-            try {
-                const availRes = await api.get('/bookings/available_tables/', {
-                    params: {
-                        restaurant_id: user?.restaurant,
-                        date: booking.date,
-                        time: booking.time.substring(0, 5)
-                    }
-                });
-                const availableTables = availRes.data.available_tables || [];
-                setTables(availableTables);
-                setAvailableIds(availableTables.map((t: any) => t.id));
-            } catch (err) {
-                toast.error("Ошибка загрузки столов");
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, [booking, user?.restaurant]);
-
-    const filtered = tables.filter(t => availableIds.includes(t.id) && (t.capacity || t.seats) >= booking.guests);
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-                    <div>
-                        <h2 className="font-bold text-slate-900 text-sm">Выберите стол</h2>
-                        <p className="text-xs text-slate-500">Для {booking.user_name} ({booking.guests} персон)</p>
-                    </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-lg">&times;</button>
-                </div>
-                <div className="p-5">
-                    {loading ? (
-                        <div className="flex justify-center p-6"><RefreshCw className="animate-spin text-primary opacity-50" /></div>
-                    ) : filtered.length === 0 ? (
-                        <div className="text-center p-5 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-slate-500 font-medium text-sm">Нет свободных столов на {booking.guests} чел.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
-                            {filtered.map(t => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setSelectedId(t.id)}
-                                    className={`border rounded-lg p-2.5 text-left transition-all duration-150 ${selectedId === t.id ? 'border-primary ring-1 ring-primary bg-primary/5' : 'border-slate-200 hover:border-slate-300'}`}
-                                >
-                                    <div className="font-bold text-sm text-slate-900">{t.name || t.number}</div>
-                                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                                        <Users size={11} /> {t.capacity || t.seats} мест
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-                <div className="px-5 py-3 border-t border-slate-100 flex gap-2 bg-slate-50">
-                    <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Отмена</button>
-                    <button
-                        onClick={() => selectedId && onConfirm(selectedId)}
-                        disabled={!selectedId}
-                        className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-40 transition-colors"
-                    >
-                        Посадить
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ── Source Badge ────────────────────────────────────────────────────────────────
-function SourceBadge({ source }: { source?: string }) {
-    if (source === 'telegram') {
-        return (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-600 text-[10px] font-semibold border border-sky-100">
-                <Send size={9} />TG
-            </span>
-        );
-    }
-    if (source === 'admin') {
-        return (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 text-[10px] font-semibold border border-violet-100">
-                Admin
-            </span>
-        );
-    }
-    if (source === 'phone') {
-        return (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 text-[10px] font-semibold border border-amber-100">
-                <Phone size={9} />Phone
-            </span>
-        );
-    }
-    // web or undefined — show nothing (default)
-    return null;
-}
-
-// ── Main Page ──────────────────────────────────────────────────────────────────
-
-const TABS = [
-    { id: 'requests', label: 'Активные', statuses: ['pending', 'confirmed', 'approved', 'seated'] },
-    { id: 'past', label: 'Прошедшие', statuses: ['completed'] },
-    { id: 'cancelled', label: 'Отмененные', statuses: ['rejected', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'no_show', 'expired'] },
-];
-
-const SOURCE_FILTERS = [
-    { id: 'all', label: 'Все' },
-    { id: 'web', label: 'Web' },
-    { id: 'telegram', label: 'Telegram' },
-    { id: 'admin', label: 'Admin' },
-];
+type FilterMode = 'today' | 'now' | 'upcoming';
 
 export default function Bookings() {
-    const { t } = useI18n();
-    const [bookings, setBookings] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState(TABS[0].id);
-    const [seatingBooking, setSeatingBooking] = useState<any | null>(null);
-    const [sourceFilter, setSourceFilter] = useState('all');
-    const [dateFilter, setDateFilter] = useState('');
-    const [pendingAction, setPendingAction] = useState<string | null>(null); // "bookingId:action"
+  const [searchParams] = useSearchParams();
+  const [reservations, setReservations] = useState<ReservationRecord[]>([]);
+  const [selectedReservationId, setSelectedReservationId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<FilterMode>('today');
+  const [tablePickerReservation, setTablePickerReservation] = useState<ReservationRecord | null>(null);
+  const [availableTables, setAvailableTables] = useState<TableRecord[]>([]);
+  const [tablesLoading, setTablesLoading] = useState(false);
+  const [inFlightId, setInFlightId] = useState<number | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const timeout = setTimeout(() => setDebouncedSearch(search), 200);
-        return () => clearTimeout(timeout);
-    }, [search]);
+  const loadReservations = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const response = await api.get('/bookings/my_restaurant/?ordering=date,time');
+      const nextReservations = extractResults<ReservationRecord>(response.data);
+      setReservations(nextReservations);
+      setPageError(null);
 
-    const loadBookings = useCallback(async () => {
-        setRefreshing(true);
-        try {
-            const params = new URLSearchParams();
-            params.set('ordering', '-date,-time');
-            const res = await api.get(`/bookings/my_restaurant/?${params.toString()}`);
-            setBookings(res.data.results || (Array.isArray(res.data) ? res.data : []));
-            setError(null);
-        } catch {
-            setError("Не удалось загрузить бронирования");
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        loadBookings();
-        const interval = setInterval(loadBookings, 15000);
-        return () => clearInterval(interval);
-    }, [loadBookings]);
-
-    const filteredBookings = useMemo(() => {
-        const tabStatuses = TABS.find(t => t.id === activeTab)?.statuses || [];
-        let list = bookings.filter(b => tabStatuses.includes(b.status));
-
-        // Source filter
-        if (sourceFilter !== 'all') {
-            list = list.filter(b => {
-                const src = b.source || (b.special_requests?.includes('source: telegram') ? 'telegram' : 'web');
-                return src === sourceFilter;
-            });
-        }
-
-        // Date filter
-        if (dateFilter) {
-            list = list.filter(b => b.date === dateFilter);
-        }
-
-        // Search
-        if (debouncedSearch) {
-            const lower = debouncedSearch.toLowerCase();
-            list = list.filter(b =>
-                (b.user_name || '').toLowerCase().includes(lower) ||
-                (b.user_phone || '').includes(lower)
-            );
-        }
-        return list;
-    }, [bookings, activeTab, debouncedSearch, sourceFilter, dateFilter]);
-
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'confirmed':
-            case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-            case 'seated': return 'bg-blue-50 text-blue-700 border-blue-200';
-            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
-            case 'rejected':
-            case 'cancelled':
-            case 'cancelled_by_user':
-            case 'cancelled_by_restaurant': return 'bg-rose-50 text-rose-600 border-rose-200';
-            case 'no_show': return 'bg-slate-100 text-slate-600 border-slate-200';
-            default: return 'bg-slate-50 text-slate-500 border-slate-200';
-        }
-    };
-
-    const getStatusLabel = (status: string) => {
-        const labels: Record<string, string> = {
-            pending: 'Ожидает',
-            confirmed: 'Подтв.',
-            approved: 'Подтв.',
-            seated: 'За столом',
-            completed: 'Завершен',
-            rejected: 'Отклонен',
-            cancelled_by_user: 'Отменен',
-            cancelled_by_restaurant: 'Отменен',
-            no_show: 'Неявка',
-            expired: 'Истекло',
-        };
-        return labels[status] || status;
-    };
-
-    const ACTION_LABELS: Record<string, string> = {
-        confirm: 'Бронь подтверждена',
-        reject: 'Бронь отклонена',
-        seat: 'Гость посажен',
-        complete: 'Бронь завершена',
-        cancel_by_restaurant: 'Бронь отменена',
-    };
-
-    const DESTRUCTIVE_ACTIONS = new Set(['reject', 'cancel_by_restaurant']);
-    const DESTRUCTIVE_CONFIRM: Record<string, string> = {
-        reject: 'Отклонить бронирование?',
-        cancel_by_restaurant: 'Отменить бронирование?',
-    };
-
-    const handleAction = async (bookingId: number, action: string, extraData: any = {}) => {
-        if (DESTRUCTIVE_ACTIONS.has(action)) {
-            if (!window.confirm(DESTRUCTIVE_CONFIRM[action] || 'Вы уверены?')) return;
-        }
-        const key = `${bookingId}:${action}`;
-        setPendingAction(key);
-        try {
-            await api.post(`/bookings/${bookingId}/${action}/`, extraData);
-            toast.success(ACTION_LABELS[action] || `Действие выполнено`);
-            loadBookings();
-        } catch (err: any) {
-            const data = err?.response?.data;
-            const msg = (typeof data?.detail === 'string' ? data.detail : null)
-                || (typeof data?.error === 'string' ? data.error : null)
-                || `Ошибка: ${action}`;
-            toast.error(msg);
-        } finally {
-            setPendingAction(null);
-        }
-    };
-
-    const handleSeatClick = (b: any) => {
-        if (!b.table_number && !b.table) {
-            setSeatingBooking(b);
-        } else {
-            handleAction(b.id, 'seat');
-        }
-    };
-
-    const executeSeating = async (tableId: number) => {
-        const booking = seatingBooking;
-        setSeatingBooking(null);
-        try {
-            await api.post(`/bookings/${booking.id}/reassign_table/`, { table_id: tableId });
-            await api.post(`/bookings/${booking.id}/seat/`);
-            toast.success('Гость посажен');
-            loadBookings();
-        } catch (err: any) {
-            const data = err?.response?.data;
-            const msg = (typeof data?.detail === 'string' ? data.detail : null)
-                || (typeof data?.error === 'string' ? data.error : null)
-                || 'Ошибка посадки гостя';
-            toast.error(msg);
-        }
-    };
-
-    // Derive source for backward compat (old bookings without source field)
-    const getSource = (b: any) => {
-        if (b.source) return b.source;
-        if (b.special_requests?.includes('source: telegram')) return 'telegram';
-        return 'web';
-    };
-
-    // Count helpers
-    const tabCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        TABS.forEach(tab => {
-            counts[tab.id] = bookings.filter(b => tab.statuses.includes(b.status)).length;
+      const paramId = searchParams.get('id');
+      if (paramId) {
+        setSelectedReservationId(Number(paramId));
+      } else {
+        setSelectedReservationId((current) => {
+          if (current && nextReservations.some((reservation) => reservation.id === current)) return current;
+          return nextReservations[0]?.id ?? null;
         });
-        return counts;
-    }, [bookings]);
+      }
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Не удалось загрузить бронирования.');
+      setPageError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [searchParams]);
 
+  useEffect(() => {
+    void loadReservations();
+    const intervalId = window.setInterval(() => {
+      void loadReservations();
+    }, 15000);
+    return () => window.clearInterval(intervalId);
+  }, [loadReservations]);
+
+  const selectedReservation = useMemo(
+    () => reservations.find((reservation) => reservation.id === selectedReservationId) ?? null,
+    [reservations, selectedReservationId],
+  );
+
+  const filteredReservations = useMemo(() => {
+    const today = getLocalDateString();
+    const now = new Date();
+    const searchValue = search.trim().toLowerCase();
+
+    return reservations
+      .filter((reservation) => isActiveReservation(reservation.status))
+      .filter((reservation) => {
+        if (filter === 'today') return reservation.date === today;
+        if (filter === 'upcoming') return getReservationDateTime(reservation.date, reservation.time) >= now;
+
+        const slot = getReservationDateTime(reservation.date, reservation.time);
+        const diffMinutes = (slot.getTime() - now.getTime()) / 60000;
+        return reservation.date === today && diffMinutes >= -60 && diffMinutes <= 60;
+      })
+      .filter((reservation) => {
+        if (!searchValue) return true;
+        return (
+          getReservationName(reservation).toLowerCase().includes(searchValue) ||
+          getReservationPhone(reservation).toLowerCase().includes(searchValue)
+        );
+      });
+  }, [filter, reservations, search]);
+
+  const updateReservationLocally = useCallback(
+    (reservationId: number, updater: (reservation: ReservationRecord) => ReservationRecord) => {
+      setReservations((current) =>
+        current.map((reservation) => (reservation.id === reservationId ? updater(reservation) : reservation)),
+      );
+    },
+    [],
+  );
+
+  const mutateReservation = useCallback(
+    async ({
+      reservation,
+      action,
+      optimisticStatus,
+      payload,
+      successMessage,
+    }: {
+      reservation: ReservationRecord;
+      action: 'confirm' | 'cancel_by_restaurant' | 'complete' | 'seat' | 'no_show';
+      optimisticStatus: string;
+      payload?: Record<string, unknown>;
+      successMessage: string;
+    }) => {
+      if (inFlightId === reservation.id) return;
+
+      const previousReservation = { ...reservation };
+      setInFlightId(reservation.id);
+      updateReservationLocally(reservation.id, (current) => ({
+        ...current,
+        status: optimisticStatus,
+        ...payload,
+      }));
+
+      try {
+        const response = await api.post(`/bookings/${reservation.id}/${action}/`, payload ?? {});
+        const nextReservation = response.data as ReservationRecord;
+        updateReservationLocally(reservation.id, () => nextReservation);
+        toast.success(successMessage);
+      } catch (error) {
+        updateReservationLocally(reservation.id, () => previousReservation);
+        toast.error(getApiErrorMessage(error, 'Действие не выполнено.'));
+      } finally {
+        setInFlightId(null);
+      }
+    },
+    [inFlightId, updateReservationLocally],
+  );
+
+  const handleConfirm = useCallback(
+    async (reservation: ReservationRecord) => {
+      await mutateReservation({
+        reservation,
+        action: 'confirm',
+        optimisticStatus: 'confirmed',
+        successMessage: 'Бронь подтверждена.',
+      });
+    },
+    [mutateReservation],
+  );
+
+  const handleCancel = useCallback(
+    async (reservation: ReservationRecord) => {
+      await mutateReservation({
+        reservation,
+        action: 'cancel_by_restaurant',
+        optimisticStatus: 'cancelled_by_restaurant',
+        successMessage: 'Бронь отменена.',
+      });
+    },
+    [mutateReservation],
+  );
+
+  const handleComplete = useCallback(
+    async (reservation: ReservationRecord) => {
+      await mutateReservation({
+        reservation,
+        action: 'complete',
+        optimisticStatus: 'completed',
+        successMessage: 'Визит завершён.',
+      });
+    },
+    [mutateReservation],
+  );
+
+  const handleNoShow = useCallback(
+    async (reservation: ReservationRecord) => {
+      await mutateReservation({
+        reservation,
+        action: 'no_show',
+        optimisticStatus: 'no_show',
+        successMessage: 'Гость отмечен как no-show.',
+      });
+    },
+    [mutateReservation],
+  );
+
+  const loadTableOptions = useCallback(async (reservation: ReservationRecord) => {
+    setTablesLoading(true);
+    try {
+      const response = await api.get<{ available_tables: TableRecord[] }>('/bookings/available_tables/', {
+        params: {
+          restaurant_id: reservation.restaurant,
+          date: reservation.date,
+          time: getTimeLabel(reservation.time),
+        },
+      });
+
+      setAvailableTables(
+        (response.data.available_tables ?? []).filter((table) => getTableCapacity(table) >= reservation.guests),
+      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Не удалось загрузить доступные столы.'));
+      setAvailableTables([]);
+    } finally {
+      setTablesLoading(false);
+    }
+  }, []);
+
+  const handleSeat = useCallback(
+    async (reservation: ReservationRecord) => {
+      if (reservation.table_id) {
+        await mutateReservation({
+          reservation,
+          action: 'seat',
+          optimisticStatus: 'seated',
+          successMessage: 'Гость посажен.',
+        });
+        return;
+      }
+
+      setTablePickerReservation(reservation);
+      void loadTableOptions(reservation);
+    },
+    [loadTableOptions, mutateReservation],
+  );
+
+  const handleSeatWithTable = useCallback(
+    async (tableId: number) => {
+      if (!tablePickerReservation) return;
+
+      const reservation = tablePickerReservation;
+      const previousReservation = { ...reservation };
+      setInFlightId(reservation.id);
+      updateReservationLocally(reservation.id, (current) => ({
+        ...current,
+        status: 'seated',
+        table_id: tableId,
+      }));
+
+      try {
+        const response = await api.post(`/bookings/${reservation.id}/seat/`, { table_id: tableId });
+        const nextReservation = response.data as ReservationRecord;
+        updateReservationLocally(reservation.id, () => nextReservation);
+        setTablePickerReservation(null);
+        toast.success('Гость посажен.');
+      } catch (error) {
+        updateReservationLocally(reservation.id, () => previousReservation);
+        toast.error(getApiErrorMessage(error, 'Не удалось посадить гостя.'));
+      } finally {
+        setInFlightId(null);
+      }
+    },
+    [tablePickerReservation, updateReservationLocally],
+  );
+
+  if (loading && reservations.length === 0) {
     return (
-        <div className="space-y-4 pb-12">
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('bookings.title', 'Бронирования')}</h1>
-                    <p className="text-sm text-slate-500 mt-0.5">Управление потоком гостей</p>
-                </div>
-                <button
-                    onClick={() => setIsFormOpen(true)}
-                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold shadow-sm hover:bg-primary/90 transition-all duration-150 flex items-center gap-2 active:scale-[0.98]"
-                >
-                    <Plus size={16} /> Новая бронь
-                </button>
-            </header>
-
-            {/* Tabs */}
-            <div className="flex space-x-1 border-b border-slate-200">
-                {TABS.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2.5 text-sm font-semibold flex items-center gap-2 transition-colors duration-150 relative ${activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-800'
-                            }`}
-                    >
-                        {tab.label}
-                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${activeTab === tab.id ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}>
-                            {tabCounts[tab.id] || 0}
-                        </span>
-                        {activeTab === tab.id && (
-                            <motion.div layoutId="book-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                        )}
-                    </button>
-                ))}
-            </div>
-
-            {/* Filters Row */}
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-                <div className="relative group flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors duration-150" size={16} />
-                    <input
-                        type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Поиск по имени или телефону..."
-                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-150 outline-none text-sm"
-                    />
-                </div>
-                <div className="flex gap-2">
-                    <input
-                        type="date"
-                        value={dateFilter}
-                        onChange={e => setDateFilter(e.target.value)}
-                        className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all duration-150"
-                    />
-                    <select
-                        value={sourceFilter}
-                        onChange={e => setSourceFilter(e.target.value)}
-                        className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all duration-150 cursor-pointer"
-                    >
-                        {SOURCE_FILTERS.map(sf => (
-                            <option key={sf.id} value={sf.id}>{sf.label}</option>
-                        ))}
-                    </select>
-                    <button onClick={loadBookings} className="h-9 w-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-primary hover:border-slate-300 transition-all duration-150 shrink-0">
-                        <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-                    </button>
-                </div>
-            </div>
-
-            {/* Content */}
-            {loading && !bookings.length ? (
-                <div className="space-y-2">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="h-14 bg-white rounded-lg animate-pulse border border-slate-200"></div>
-                    ))}
-                </div>
-            ) : error ? (
-                <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-200 flex items-center gap-3">
-                    <AlertCircle size={18} />
-                    <p className="font-semibold text-sm">{error}</p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
-                    {filteredBookings.length === 0 ? (
-                        <div className="p-12 text-center space-y-2">
-                            <CalendarDays size={40} className="mx-auto text-slate-300" />
-                            <p className="text-slate-500 font-medium text-sm">Нет бронирований</p>
-                        </div>
-                    ) : (
-                        <table className="w-full text-left border-collapse min-w-[800px]">
-                            <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50/80">
-                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Гость</th>
-                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Телефон</th>
-                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Пакс</th>
-                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Время</th>
-                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Стол</th>
-                                    <th className="py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                <AnimatePresence mode="popLayout">
-                                    {filteredBookings.map((b) => (
-                                        <motion.tr
-                                            layout
-                                            key={b.id}
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ duration: 0.15 }}
-                                            className="hover:bg-slate-50 transition-colors duration-150 group"
-                                        >
-                                            {/* Guest */}
-                                            <td className="py-2 px-3">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-7 h-7 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-700 font-bold text-xs shrink-0">
-                                                        {b.user_name?.charAt(0).toUpperCase() || 'G'}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="font-semibold text-sm text-slate-900 truncate max-w-[130px]">{b.user_name || 'Guest'}</span>
-                                                            <SourceBadge source={getSource(b)} />
-                                                        </div>
-                                                        <span className={`inline-flex px-1.5 py-px rounded text-[10px] font-semibold border mt-0.5 ${getStatusStyle(b.status)}`}>
-                                                            {getStatusLabel(b.status)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            {/* Phone */}
-                                            <td className="py-2 px-3 text-sm text-slate-600 whitespace-nowrap">
-                                                <span className="flex items-center gap-1"><Phone size={12} className="text-slate-400" /> {b.user_phone || '—'}</span>
-                                            </td>
-                                            {/* Guests */}
-                                            <td className="py-2 px-3 text-sm font-bold text-slate-900">{b.guests}</td>
-                                            {/* Time */}
-                                            <td className="py-2 px-3 whitespace-nowrap">
-                                                <span className="text-sm font-semibold text-slate-900">{b.time?.substring(0, 5)}</span>
-                                                <span className="text-xs text-slate-500 ml-1.5">{new Date(b.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}</span>
-                                            </td>
-                                            {/* Table */}
-                                            <td className="py-2 px-3">
-                                                <div className="flex items-center gap-1.5">
-                                                    {b.table_number || b.table ? (
-                                                        <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-semibold border border-slate-200">T{b.table_number || b.table}</span>
-                                                    ) : <span className="text-slate-400 text-xs">—</span>}
-                                                    {b.special_requests && !b.special_requests.startsWith('source:') && (
-                                                        <button onClick={() => toast(b.special_requests)} className="text-slate-400 hover:text-primary transition-colors duration-150" title="Запрос">
-                                                            <MessageSquare size={13} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            {/* Actions */}
-                                            <td className="py-2 px-3 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    {b.status === 'pending' && (
-                                                        <>
-                                                            <button
-                                                                onClick={() => handleAction(b.id, 'confirm')}
-                                                                disabled={!!pendingAction}
-                                                                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md hover:bg-emerald-100 border border-emerald-200 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50"
-                                                            >
-                                                                {pendingAction === `${b.id}:confirm` ? <RefreshCw size={11} className="animate-spin" /> : <Check size={13} />} Принять
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleAction(b.id, 'reject')}
-                                                                disabled={!!pendingAction}
-                                                                className="flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-600 text-xs font-semibold rounded-md hover:bg-rose-100 border border-rose-200 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50"
-                                                            >
-                                                                {pendingAction === `${b.id}:reject` ? <RefreshCw size={11} className="animate-spin" /> : <X size={13} />} Отклонить
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                    {(b.status === 'confirmed' || b.status === 'approved') && (
-                                                        <>
-                                                            <button
-                                                                onClick={() => handleSeatClick(b)}
-                                                                disabled={!!pendingAction}
-                                                                className="px-3 py-1 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50 flex items-center gap-1"
-                                                            >
-                                                                {pendingAction === `${b.id}:seat` ? <RefreshCw size={11} className="animate-spin" /> : null} Посадить
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleAction(b.id, 'cancel_by_restaurant')}
-                                                                disabled={!!pendingAction}
-                                                                className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md hover:bg-slate-200 border border-slate-200 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50"
-                                                            >
-                                                                {pendingAction === `${b.id}:cancel_by_restaurant` ? <RefreshCw size={11} className="animate-spin inline" /> : null} Отмена
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                    {b.status === 'seated' && (
-                                                        <button
-                                                            onClick={() => handleAction(b.id, 'complete')}
-                                                            disabled={!!pendingAction}
-                                                            className="px-3 py-1 bg-slate-900 text-white text-xs font-semibold rounded-md hover:bg-slate-800 transition-colors duration-150 active:scale-[0.97] disabled:opacity-50 flex items-center gap-1"
-                                                        >
-                                                            {pendingAction === `${b.id}:complete` ? <RefreshCw size={11} className="animate-spin" /> : null} Завершить
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </motion.tr>
-                                    ))}
-                                </AnimatePresence>
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-            )}
-
-            <ManualBookingForm
-                isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                onSuccess={loadBookings}
-            />
-
-            {seatingBooking && (
-                <TableSeatingModal
-                    booking={seatingBooking}
-                    onClose={() => setSeatingBooking(null)}
-                    onConfirm={executeSeating}
-                />
-            )}
-        </div>
+      <div className="flex h-[60vh] items-center justify-center text-sm text-slate-500">
+        Загрузка бронирований...
+      </div>
     );
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Reservations</h1>
+          <p className="mt-2 text-sm text-slate-600">Подтверждение, посадка и завершение брони без перезагрузки страницы.</p>
+        </div>
+        <Link
+          to="/app/bookings/new"
+          aria-label="reservation-new"
+          className="inline-flex items-center gap-2 rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+        >
+          <span className="material-symbols-outlined text-[20px]">add</span>
+          New booking
+        </Link>
+      </div>
+
+      {pageError ? (
+        <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{pageError}</div>
+      ) : null}
+
+      <div className="grid flex-1 grid-cols-12 gap-6 min-h-0">
+        <div className="col-span-12 flex min-h-0 flex-col xl:col-span-8">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    aria-label="reservations-search"
+                    className="h-11 w-64 rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50"
+                    placeholder="Поиск по имени или телефону"
+                    type="text"
+                  />
+                </div>
+
+                <div className="flex rounded-xl bg-slate-200 p-1 gap-1">
+                  {(['today', 'now', 'upcoming'] as const).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setFilter(item)}
+                      aria-label={`reservations-filter-${item}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                        filter === item ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void loadReservations()}
+                aria-label="reservations-refresh"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+              >
+                <span className={`material-symbols-outlined text-[20px] ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
+              </button>
+            </div>
+
+            <div className="min-h-0 overflow-auto custom-scrollbar">
+              <table className="w-full text-left">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <tr>
+                    <th className="p-4">Guest</th>
+                    <th className="p-4">Time</th>
+                    <th className="p-4">Guests</th>
+                    <th className="p-4">Table</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredReservations.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center text-sm text-slate-500">
+                        Подходящих бронирований не найдено.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredReservations.map((reservation) => {
+                      const isBusy = inFlightId === reservation.id;
+
+                      return (
+                        <tr
+                          key={reservation.id}
+                          onClick={() => setSelectedReservationId(reservation.id)}
+                          aria-label={`reservation-row-${reservation.id}`}
+                          className={`cursor-pointer transition hover:bg-slate-50 ${
+                            selectedReservationId === reservation.id ? 'bg-blue-50/60' : ''
+                          }`}
+                        >
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+                                {getReservationName(reservation).charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{getReservationName(reservation)}</p>
+                                <p className="text-xs text-slate-500">{getReservationPhone(reservation)}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 text-sm font-medium text-slate-700">{getTimeLabel(reservation.time)}</td>
+                          <td className="p-4 text-sm text-slate-600">{reservation.guests}</td>
+                          <td className="p-4 text-sm text-slate-600">{getTableLabel(reservation)}</td>
+                          <td className="p-4">
+                            <StatusBadge status={reservation.status} />
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+                              {reservation.status === 'pending' ? (
+                                <ActionIcon
+                                  label={`reservation-confirm-${reservation.id}`}
+                                  title="Confirm"
+                                  tone="emerald"
+                                  disabled={isBusy}
+                                  onClick={() => void handleConfirm(reservation)}
+                                  icon="check"
+                                />
+                              ) : null}
+                              {['approved', 'confirmed'].includes(reservation.status) ? (
+                                <ActionIcon
+                                  label={`reservation-seat-${reservation.id}`}
+                                  title="Seat guest"
+                                  tone="blue"
+                                  disabled={isBusy}
+                                  onClick={() => void handleSeat(reservation)}
+                                  icon="chair"
+                                />
+                              ) : null}
+                              {['pending', 'approved', 'confirmed'].includes(reservation.status) ? (
+                                <ActionIcon
+                                  label={`reservation-cancel-${reservation.id}`}
+                                  title="Cancel"
+                                  tone="rose"
+                                  disabled={isBusy}
+                                  onClick={() => void handleCancel(reservation)}
+                                  icon="close"
+                                />
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-12 min-h-0 xl:col-span-4">
+          {selectedReservation ? (
+            <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-5">
+                <h3 className="text-xl font-semibold text-slate-900">Booking details</h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedReservationId(null)}
+                  aria-label="reservation-close-details"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-white"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="mb-8 border-b border-slate-200 pb-8 text-center">
+                  <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                    <span className="material-symbols-outlined text-4xl">person</span>
+                  </div>
+                  <h4 className="text-xl font-semibold text-slate-900">{getReservationName(selectedReservation)}</h4>
+                  <p className="mt-1 text-sm text-slate-500">{getReservationPhone(selectedReservation)}</p>
+                  <div className="mt-4">
+                    <StatusBadge status={selectedReservation.status} />
+                  </div>
+                </div>
+
+                <div className="space-y-8">
+                  <section>
+                    <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Reservation info</p>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                      <DetailItem label="Date & time" value={getDateTimeLabel(selectedReservation.date, selectedReservation.time)} />
+                      <DetailItem label="Guests" value={`${selectedReservation.guests}`} />
+                      <DetailItem label="Table" value={getTableLabel(selectedReservation)} />
+                      <DetailItem label="Channel" value="Online booking" />
+                    </div>
+                  </section>
+
+                  {selectedReservation.special_requests ? (
+                    <section>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Notes</p>
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
+                        {selectedReservation.special_requests}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {selectedReservation.history && selectedReservation.history.length > 0 ? (
+                    <section>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Timeline</p>
+                      <div className="space-y-4">
+                        {selectedReservation.history.slice(0, 4).map((entry) => (
+                          <div key={entry.id} className="flex gap-3">
+                            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                              <span className="material-symbols-outlined text-[12px] text-slate-500">event_note</span>
+                            </div>
+                            <div>
+                              <p className="text-sm text-slate-700">
+                                <span className="font-medium">{entry.event_type.replaceAll('_', ' ')}</span>
+                                {' · '}
+                                {entry.actor_username || 'System'}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {new Date(entry.changed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 border-t border-slate-200 bg-slate-50 p-6">
+                {['approved', 'confirmed'].includes(selectedReservation.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleNoShow(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-no-show-${selectedReservation.id}`}
+                    className="rounded-xl border border-amber-200 bg-white py-3 text-sm font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-50"
+                  >
+                    No show
+                  </button>
+                ) : null}
+
+                {['pending', 'approved', 'confirmed'].includes(selectedReservation.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleCancel(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-cancel-selected-${selectedReservation.id}`}
+                    className="rounded-xl border border-rose-200 bg-white py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+
+                {selectedReservation.status === 'pending' ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleConfirm(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-confirm-selected-${selectedReservation.id}`}
+                    className="rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Confirm
+                  </button>
+                ) : null}
+
+                {['approved', 'confirmed'].includes(selectedReservation.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSeat(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-seat-selected-${selectedReservation.id}`}
+                    className="rounded-xl bg-[#1d4ed8] py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+                  >
+                    Seat guest
+                  </button>
+                ) : null}
+
+                {selectedReservation.status === 'seated' ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleComplete(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-complete-selected-${selectedReservation.id}`}
+                    className="col-span-2 rounded-xl bg-[#1d4ed8] py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+                  >
+                    Complete service
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
+              <span className="material-symbols-outlined mb-4 text-5xl">touch_app</span>
+              <p className="text-sm">Выберите бронь, чтобы увидеть детали и быстрые действия.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {tablePickerReservation ? (
+        <TablePicker
+          reservation={tablePickerReservation}
+          tables={availableTables}
+          loading={tablesLoading}
+          onClose={() => setTablePickerReservation(null)}
+          onConfirm={(tableId) => void handleSeatWithTable(tableId)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ActionIcon({
+  label,
+  title,
+  tone,
+  disabled,
+  onClick,
+  icon,
+}: {
+  label: string;
+  title: string;
+  tone: 'emerald' | 'blue' | 'rose';
+  disabled: boolean;
+  onClick: () => void;
+  icon: string;
+}) {
+  const toneClass =
+    tone === 'emerald'
+      ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+      : tone === 'blue'
+        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+        : 'bg-rose-100 text-rose-700 hover:bg-rose-200';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`rounded-lg p-2 transition ${toneClass} disabled:opacity-50`}
+      title={title}
+      disabled={disabled}
+    >
+      <span className="material-symbols-outlined text-[18px]">{icon}</span>
+    </button>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const meta = getReservationStatusMeta(status);
+  return (
+    <span
+      aria-label={`reservation-status-${status}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${meta.className}`}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="text-sm font-medium text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function TablePicker({
+  reservation,
+  tables,
+  loading,
+  onClose,
+  onConfirm,
+}: {
+  reservation: ReservationRecord;
+  tables: TableRecord[];
+  loading: boolean;
+  onClose: () => void;
+  onConfirm: (tableId: number) => void;
+}) {
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+
+  return (
+    <div aria-label="table-picker" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-500/30 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Choose a table</h2>
+            <p className="text-sm text-slate-500">
+              {getReservationName(reservation)} · {reservation.guests} guests
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="table-picker-close"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-white"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <div className="max-h-[360px] overflow-y-auto p-6 custom-scrollbar">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-sm text-slate-500">
+              <span className="material-symbols-outlined animate-spin text-4xl text-blue-700">refresh</span>
+              Проверяем доступные столы...
+            </div>
+          ) : tables.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
+              Нет доступных столов для {reservation.guests} гостей на это время.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {tables.map((table) => (
+                <button
+                  key={table.id}
+                  type="button"
+                  aria-label={`table-choice-${table.id}`}
+                  onClick={() => setSelectedTableId(table.id)}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    selectedTableId === table.id
+                      ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-300'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className={`text-lg font-semibold ${selectedTableId === table.id ? 'text-blue-700' : 'text-slate-900'}`}>
+                    {getTableLabel(table)}
+                  </div>
+                  <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {getTableCapacity(table)} seats
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="table-picker-cancel"
+            className="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!selectedTableId}
+            onClick={() => selectedTableId && onConfirm(selectedTableId)}
+            aria-label="table-picker-confirm"
+            className="rounded-xl bg-[#1d4ed8] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+          >
+            Seat guest
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

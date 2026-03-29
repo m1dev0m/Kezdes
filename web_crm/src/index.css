@@ -4,24 +4,26 @@
 
 @layer base {
   :root {
-    --bg-primary: #F9FAFB;
-    --bg-surface: #FFFFFF;
-    --color-primary: #1A3C34;
-    --text-primary: #111827;
-    --text-muted: #4B5563;
-    --success: #10B981;
-    --warning: #F59E0B;
-    --danger: #EF4444;
-    --card-padding: 16px;
-    --gap: 12px;
-    --border-radius: 6px;
+    --bg-primary: #f7f7f5;
+    --bg-surface: #ffffff;
+    --bg-dark: #0f172a;
+    --color-primary: #1d4ed8;
+    --color-primary-soft: rgba(29, 78, 216, 0.05);
+    --text-primary: #0f172a;
+    --text-muted: #64748b;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --card-padding: 24px;
+    --gap: 16px;
+    --border-radius: 1rem;
   }
 
   body {
     @apply antialiased;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
   ::selection {

@@ -1,28 +1,14 @@
-import { Link, useNavigate } from 'react-router-dom';
-import {
-    CheckCircle2,
-    Clock,
-    ListTodo,
-    LogIn,
-    MapPin,
-    Search,
-    User,
-    RefreshCw
-} from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
-import { useI18n } from '@/i18n';
 import { useEffect, useState } from 'react';
 import api from '@/services/api';
-import { Logo } from '@/components/ui/Logo';
+import { motion } from 'framer-motion';
 
 export default function RestaurantPendingApproval() {
-    const { t } = useI18n();
     const { logout, login } = useAuth();
     const navigate = useNavigate();
     const [checking, setChecking] = useState(false);
     const [lastCheck, setLastCheck] = useState<Date | null>(null);
-    const [error, setError] = useState<string | null>(null);
 
     const safeGetToken = (key: string) => {
         try {
@@ -39,13 +25,11 @@ export default function RestaurantPendingApproval() {
     const checkRequestStatus = async () => {
         if (checking) return;
         setChecking(true);
-        setError(null);
         try {
             const res = await api.get('/restaurants/requests/mine/');
             const request = res.data;
 
             if (request.status === 'approved') {
-                // Request approved - refresh user data and redirect
                 const token = safeGetToken('accessToken');
                 const refreshToken = safeGetToken('refreshToken');
                 if (token && refreshToken) {
@@ -54,19 +38,12 @@ export default function RestaurantPendingApproval() {
                 navigate('/app/dashboard');
                 return;
             }
-
             setLastCheck(new Date());
         } catch (err: any) {
             const status = err?.response?.status;
-            if (status === 401) {
-                setError(t('pendingApproval.authRequired'));
-                return;
-            }
             if (status === 404) {
                 navigate('/register?mode=restaurant');
-                return;
             }
-            setError(t('pendingApproval.checkFailed'));
         } finally {
             setChecking(false);
         }
@@ -79,154 +56,110 @@ export default function RestaurantPendingApproval() {
             navigate('/register?mode=restaurant');
             return;
         }
-
-        // Initial check
         checkRequestStatus();
-
-        // Poll every 10 seconds
-        const interval = setInterval(checkRequestStatus, 10000);
-
+        const interval = setInterval(checkRequestStatus, 15000);
         return () => clearInterval(interval);
     }, []);
 
     const steps = [
-        {
-            step: 1,
-            active: true,
-            title: t('pendingApproval.steps.dataValidation.title'),
-            desc: t('pendingApproval.steps.dataValidation.desc')
-        },
-        {
-            step: 2,
-            title: t('pendingApproval.steps.globalApproval.title'),
-            desc: t('pendingApproval.steps.globalApproval.desc')
-        },
-        {
-            step: 3,
-            title: t('pendingApproval.steps.fullAccess.title'),
-            desc: t('pendingApproval.steps.fullAccess.desc')
-        },
+        { id: 1, title: 'Data Validation', desc: 'Verifying business credentials', active: true, icon: 'verified_user' },
+        { id: 2, title: 'Compliance Check', desc: 'Ensuring policy alignment', active: false, icon: 'gavel' },
+        { id: 3, title: 'Final Activation', desc: 'Unlocking CRM dashboard', active: false, icon: 'rocket_launch' },
     ];
 
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100">
-            <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 lg:px-20">
-                <Link to="/" className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                        <CheckCircle2 size={24} />
-                    </div>
-                    <h2 className="text-xl font-black tracking-tight"><Logo /></h2>
-                </Link>
-                <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                    <User size={20} />
+        <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col items-center justify-center p-8 font-display italic selection:bg-[#0047FF]/20">
+            {/* Background Architecture */}
+            <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] opacity-10 pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] bg-[#0047FF]/5 rounded-full blur-[100px] pointer-events-none" />
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-50 dark:border-slate-800 rounded-[3rem] p-12 md:p-20 shadow-2xl relative overflow-hidden text-center z-10"
+            >
+                <div className="absolute top-0 left-0 right-0 h-2 bg-slate-50 dark:bg-slate-800">
+                    <motion.div
+                        initial={{ width: '10%' }}
+                        animate={{ width: '45%' }}
+                        transition={{ duration: 3, repeat: Infinity, repeatType: 'reverse' }}
+                        className="h-full bg-[#0047FF] shadow-lg shadow-[#0047FF]/50"
+                    />
                 </div>
-            </header>
 
-            <main className="flex-1 flex flex-col items-center justify-center px-4 py-20">
-                <div className="max-w-[640px] w-full bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 lg:p-16 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+                <div className="mb-12 space-y-8">
+                    <div className="size-24 bg-[#0047FF]/10 text-[#0047FF] rounded-[2rem] flex items-center justify-center mx-auto shadow-inner relative group">
+                        <span className="material-symbols-outlined text-[48px] font-black animate-pulse">hourglass_top</span>
+                    </div>
 
-                    <div className="flex flex-col items-center text-center mb-12 relative z-10">
-                        <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-500/10 rounded-3xl flex items-center justify-center mb-10 shadow-inner">
-                            <CheckCircle2 size={48} className="text-emerald-500" />
-                        </div>
-
-                        <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest mb-6 border border-amber-100 dark:border-amber-800">
-                            <Clock size={12} className="mr-2" />
-                            {t('pendingApproval.status')}
-                        </div>
-
-                        <h1 className="text-4xl lg:text-5xl font-black tracking-tighter mb-6 text-slate-900 dark:text-white">{t('pendingApproval.title')}</h1>
-                        <p className="text-slate-500 dark:text-slate-400 text-lg font-medium leading-relaxed">
-                            {t('pendingApproval.subtitle')}
+                    <div className="space-y-4">
+                        <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-[0.4em] leading-none">Security Clearance Pending</p>
+                        <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic leading-[0.9]">Identity <span className="text-[#0047FF]">Under Review</span>.</h1>
+                        <p className="text-slate-400 text-sm font-medium italic leading-relaxed max-w-sm mx-auto">
+                            Our architecture team is currently validating your node integration. Expect synchronization within 2-4 hours.
                         </p>
                     </div>
+                </div>
 
-                    {error && (
-                        <div className="mb-8 rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-rose-700 dark:border-rose-900/40 dark:bg-rose-900/10 dark:text-rose-300 relative z-10">
-                            <p className="text-sm font-bold">{error}</p>
-                            <div className="mt-3 flex flex-wrap gap-3">
-                                <Button
-                                    onClick={checkRequestStatus}
-                                    disabled={checking}
-                                    className="rounded-2xl px-5 h-10"
-                                >
-                                    {checking ? t('pendingApproval.checking') : t('pendingApproval.checkNow')}
-                                </Button>
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => navigate('/login')}
-                                    className="rounded-2xl px-5 h-10"
-                                >
-                                    {t('pendingApproval.goToLogin')}
-                                </Button>
-                            </div>
-                        </div>
-                    )}
+                <div className="space-y-6 py-10 border-t border-slate-50 dark:border-slate-800">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="h-px flex-1 bg-slate-50 dark:bg-slate-800" />
+                        <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-300 italic">Validation Pipeline</h3>
+                        <div className="h-px flex-1 bg-slate-50 dark:bg-slate-800" />
+                    </div>
 
-                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] p-8 lg:p-10 mb-12 border border-slate-100 dark:border-slate-800 relative z-10">
-                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-8 flex items-center gap-3">
-                            <ListTodo size={14} className="text-primary" />
-                            {t('pendingApproval.process')}
-                        </h3>
-
-                        <div className="space-y-10">
-                            {steps.map(({ step, active, title, desc }) => (
-                                <div key={step} className="flex gap-6">
-                                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shadow-sm ${active ? 'bg-primary text-white' : 'bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600'}`}>
-                                        {step}
-                                    </div>
-                                    <div>
-                                        <p className={`font-black tracking-tight ${active ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-600'}`}>{title}</p>
-                                        <p className="text-sm text-slate-500 dark:text-slate-500 font-medium mt-1">{desc}</p>
-                                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {steps.map(step => (
+                            <div key={step.id} className={`p-6 rounded-[1.5rem] border transition-all ${step.active
+                                ? 'bg-white dark:bg-slate-800 border-[#0047FF] shadow-2xl shadow-[#0047FF]/10 ring-2 ring-[#0047FF]/5'
+                                : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800 opacity-40'}`}>
+                                <div className="flex justify-between items-start mb-4">
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${step.active ? 'text-[#0047FF]' : 'text-slate-300'}`}>0{step.id}</span>
+                                    {step.active && <span className="material-symbols-outlined text-[16px] text-[#0047FF] animate-spin">sync</span>}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-slate-50 dark:border-slate-800 relative z-10">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('pendingApproval.approximateTime')}</span>
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">{t('pendingApproval.workingHours')}</span>
-                            {lastCheck && (
-                                <span className="text-xs text-slate-400 mt-1">
-                                    {t('pendingApproval.lastCheck')}: {lastCheck.toLocaleTimeString()}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex gap-3">
-                            <Button
-                                onClick={checkRequestStatus}
-                                disabled={checking}
-                                className="rounded-2xl px-6 h-12 flex items-center gap-2"
-                            >
-                                <RefreshCw size={18} className={checking ? 'animate-spin' : ''} />
-                                {checking ? t('pendingApproval.checking') : t('pendingApproval.checkNow')}
-                            </Button>
-                            <Button onClick={logout} className="rounded-2xl px-8 h-12 flex items-center gap-2 shadow-xl shadow-primary/20">
-                                <LogIn size={18} className="rotate-180" />
-                                {t('pendingApproval.logoutAndCheckLater')}
-                            </Button>
-                        </div>
+                                <span className={`material-symbols-outlined text-[24px] mb-3 block ${step.active ? 'text-[#0047FF]' : 'text-slate-300'}`}>{step.icon}</span>
+                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter italic mb-1 leading-none">{step.title}</p>
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-normal mb-0">{step.desc}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                <div className="mt-16 flex flex-wrap justify-center gap-12 opacity-50">
-                    <div className="flex flex-col items-center gap-2">
-                        <MapPin className="text-slate-300 dark:text-slate-700" size={32} />
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{t('pendingApproval.gpsVerified')}</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                        <Search className="text-slate-300 dark:text-slate-700" size={32} />
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{t('pendingApproval.profileFound')}</span>
-                    </div>
+                <div className="mt-12 flex flex-col sm:flex-row gap-4 pt-10 border-t border-slate-50 dark:border-slate-800">
+                    <button
+                        onClick={checkRequestStatus}
+                        disabled={checking}
+                        className="flex-1 h-16 bg-slate-950 dark:bg-slate-800 text-white px-8 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl shadow-black/20 transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50 italic"
+                    >
+                        {checking ? <span className="material-symbols-outlined animate-spin text-[18px]">sync</span> : <span className="material-symbols-outlined text-[18px]">refresh</span>}
+                        {checking ? 'Syncing...' : 'Handshake Now'}
+                    </button>
+                    <button
+                        onClick={logout}
+                        className="flex-1 h-16 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-rose-600 hover:bg-rose-500/5 px-8 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-4 transition-all italic"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
+                        Terminate
+                    </button>
                 </div>
-            </main>
 
-            <footer className="py-10 text-center text-slate-400 dark:text-slate-700 text-[10px] font-bold uppercase tracking-widest">
-                {t('pendingApproval.footer')}
-            </footer>
+                {lastCheck && (
+                    <p className="mt-8 text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] italic">
+                        Last system handshake: {lastCheck.toLocaleTimeString()}
+                    </p>
+                )}
+            </motion.div>
+
+            <div className="mt-16 flex items-center gap-12 opacity-30">
+                <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[16px] font-black">lock</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest italic">Encrypted Stream</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[16px] font-black">verified</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest italic">Identity Linked</span>
+                </div>
+            </div>
         </div>
     );
 }

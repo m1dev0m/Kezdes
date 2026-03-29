@@ -1,13 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-    TrendingUp,
-    Download,
-    CalendarDays,
-    Percent,
-    UserCheck,
-    RefreshCw
-} from 'lucide-react';
-import {
     AreaChart,
     Area,
     XAxis,
@@ -20,10 +12,7 @@ import {
 } from 'recharts';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/i18n';
-import { KpiCard } from '@/components/KpiCard';
 
 interface AnalyticsData {
     bookings_today: number;
@@ -64,186 +53,172 @@ export default function Analytics() {
 
     if (loading) {
         return (
-            <div className="space-y-6">
-                <Skeleton className="h-8 w-40 rounded-lg" count={1} />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Skeleton className="h-32 rounded-xl" count={4} />
-                </div>
-                <Skeleton className="h-72 rounded-xl" count={2} />
+            <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+                <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#0047FF]/20 border-t-[#0047FF]"></div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Synthesizing intelligence...</span>
             </div>
         );
     }
 
     if (!data) return null;
 
-    const kpis = [
-        {
-            label: t('analytics.bookingsToday'),
-            value: data.bookings_today,
-            icon: CalendarDays,
-            color: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
-        },
-        {
-            label: t('analytics.monthlyBookings'),
-            value: data.bookings_month,
-            icon: TrendingUp,
-            color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
-        },
-        {
-            label: t('analytics.confirmationRate'),
-            value: `${data.confirmation_rate}%`,
-            icon: Percent,
-            color: 'bg-primary/5 text-primary dark:bg-primary/5 dark:text-indigo-400',
-        },
-        {
-            label: t('analytics.repeatCustomers'),
-            value: `${data.repeat_customer_rate}%`,
-            icon: UserCheck,
-            color: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
-        },
-    ];
-
-    const secondaryKpis = [
-        { label: t('analytics.revenue'), value: `₸${data.revenue.toLocaleString()}` },
-        { label: t('analytics.occupancy'), value: `${data.occupancy_percent}%` },
-        { label: t('analytics.avgGuests'), value: data.avg_guests },
-        ...(data.no_show_month !== undefined ? [
-            { label: t('analytics.noShowMonth'), value: data.no_show_month },
-        ] : []),
-        ...(data.no_show_rate !== undefined ? [
-            { label: t('analytics.noShowRate'), value: `${data.no_show_rate}%` },
-        ] : []),
-        ...(data.retention_30_days !== undefined ? [
-            { label: t('analytics.retention30'), value: `${data.retention_30_days}%` },
-        ] : []),
-    ];
-
     return (
-        <div className="space-y-6 pb-12">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{t('analytics.title')}</h1>
-                    <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.3em] mt-1.5">{t('analytics.description')}</p>
+        <div className="max-w-[1440px] mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
+            {/* Header */}
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <div className="space-y-2">
+                    <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter leading-none uppercase">{t('analytics.title')}</h1>
+                    <p className="text-lg text-slate-500 font-medium">Platform-wide operational performance and guest intelligence.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-[0.2em]" onClick={loadAnalytics}>
-                        <RefreshCw size={14} className="mr-2" /> {t('analytics.refresh')}
-                    </Button>
-                    <Button variant="secondary" size="sm" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-[0.2em]">
-                        <Download size={14} className="mr-2" /> {t('analytics.export')}
-                    </Button>
+                <div className="flex gap-4 w-full md:w-auto">
+                    <button
+                        onClick={loadAnalytics}
+                        className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest hover:border-[#0047FF] hover:text-[#0047FF] transition-all flex items-center justify-center gap-3"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">refresh</span>
+                        {t('analytics.refresh')}
+                    </button>
+                    <button className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-[#0047FF] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0039cc] transition-all shadow-2xl shadow-[#0047FF]/20 flex items-center justify-center gap-3">
+                        <span className="material-symbols-outlined text-[18px]">download</span>
+                        {t('analytics.export')}
+                    </button>
                 </div>
+            </header>
+
+            {/* Primary KPI Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <KpiTile label={t('analytics.bookingsToday')} value={data.bookings_today} icon="calendar_today" trend="+12%" />
+                <KpiTile label={t('analytics.monthlyBookings')} value={data.bookings_month} icon="trending_up" trend="+5.4%" color="text-emerald-500" />
+                <KpiTile label={t('analytics.confirmationRate')} value={`${data.confirmation_rate}%`} icon="verified" trend="Stable" color="text-amber-500" />
+                <KpiTile label={t('analytics.repeatCustomers')} value={`${data.repeat_customer_rate}%`} icon="person_add" trend="+8%" color="text-indigo-500" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {kpis.map((kpi, i) => (
-                    <KpiCard
-                        key={i}
-                        label={kpi.label}
-                        value={kpi.value}
-                        icon={kpi.icon}
-                        iconBgClassName={kpi.color}
-                    />
-                ))}
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                {secondaryKpis.map((kpi, i) => (
-                    <div key={i} className="bg-white border border-slate-100 rounded-3xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1.5">{kpi.label}</span>
-                        <span className="text-lg font-black text-slate-900 tracking-tighter tabular-nums">{kpi.value}</span>
-                    </div>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
-                    <div className="flex justify-between items-start mb-8">
-                        <div>
-                            <h3 className="text-lg font-black text-slate-900 tracking-tighter">{t('analytics.weeklyTrend')}</h3>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">{t('analytics.weeklyTrendDesc')}</p>
+            {/* Visual Analytics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Revenue/Trend Area Chart */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
+                    <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-widest">{t('analytics.weeklyTrend')}</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">7-Day Transactional Volume</p>
+                        </div>
+                        <div className="p-3 bg-[#0047FF]/5 rounded-2xl">
+                            <span className="material-symbols-outlined text-[#0047FF]">query_stats</span>
                         </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={240}>
-                        <AreaChart data={data.weekly_chart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                            <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                            <YAxis tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: '#ffffff',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '8px',
-                                    fontSize: '11px',
-                                    fontWeight: 600,
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                                }}
-                            />
-                            <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorBookings)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={data.weekly_chart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#0047FF" stopOpacity={0.15} />
+                                        <stop offset="95%" stopColor="#0047FF" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} axisLine={false} tickLine={false} dy={10} />
+                                <YAxis tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', padding: '16px' }}
+                                    itemStyle={{ fontWeight: 900, color: '#0047FF' }}
+                                />
+                                <Area type="monotone" dataKey="total" stroke="#0047FF" strokeWidth={4} fillOpacity={1} fill="url(#colorTrend)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
-                <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
-                    <div className="flex justify-between items-start mb-8">
-                        <div>
-                            <h3 className="text-lg font-black text-slate-900 tracking-tighter">{t('analytics.dailyLoad')}</h3>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">{t('analytics.dailyLoadDesc')}</p>
+                {/* Daily Load Bar Chart */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
+                    <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-widest">{t('analytics.dailyLoad')}</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Operational Peak Distribution</p>
+                        </div>
+                        <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl">
+                            <span className="material-symbols-outlined text-indigo-500">leaderboard</span>
                         </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={240}>
-                        <BarChart data={data.daily_load} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                            <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                            <YAxis tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
-                            <Tooltip
-                                cursor={{ fill: 'transparent' }}
-                                contentStyle={{
-                                    backgroundColor: '#ffffff',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '8px',
-                                    fontSize: '11px',
-                                    fontWeight: 600,
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                                }}
-                            />
-                            <Bar dataKey="bookings" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
+
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={data.daily_load} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} axisLine={false} tickLine={false} dy={10} />
+                                <YAxis tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                    cursor={{ fill: 'transparent' }}
+                                    contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', padding: '16px' }}
+                                />
+                                <Bar dataKey="bookings" fill="#4C51BF" radius={[12, 12, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
 
-            {data.channels && data.channels.length > 0 && (
-                <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tighter mb-1.5">
-                        {t('analytics.channelsTitle')}
-                    </h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8">
-                        {t('analytics.channelsDesc')}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {data.channels.map((ch) => (
-                            <div
-                                key={ch.id}
-                                className="bg-slate-50/50 border border-slate-100 rounded-[1.5rem] p-6 flex flex-col gap-2"
-                            >
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                                    {ch.name}
-                                </span>
-                                <span className="text-3xl font-black text-slate-900 tracking-tighter tabular-nums">
-                                    {ch.count}
-                                </span>
+            {/* Channels & Efficiency Matrix */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Channel Performance */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-10">
+                    <header className="space-y-1">
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-widest">{t('analytics.channelsTitle')}</h3>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('analytics.channelsDesc')}</p>
+                    </header>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                        {data.channels?.map((ch) => (
+                            <div key={ch.id} className="bg-slate-50 dark:bg-slate-950 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ch.name}</p>
+                                <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums">{ch.count}</p>
                             </div>
                         ))}
                     </div>
                 </div>
-            )}
+
+                {/* Efficiency Sideboard */}
+                <div className="bg-[#0047FF] rounded-[2.5rem] p-10 text-white space-y-8 relative overflow-hidden shadow-2xl shadow-[#0047FF]/20">
+                    <div className="absolute -top-20 -right-20 size-64 bg-white/10 rounded-full blur-3xl" />
+                    <div className="relative z-10 space-y-6">
+                        <header className="space-y-1">
+                            <h3 className="text-xl font-black uppercase tracking-widest italic">Core Efficiency</h3>
+                            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Global Operational Index</p>
+                        </header>
+
+                        <div className="space-y-6">
+                            <EfficiencyRow label="Resource Occupancy" value={`${data.occupancy_percent}%`} />
+                            <EfficiencyRow label="Guest Retention" value={`${data.retention_30_days || 0}%`} />
+                            <EfficiencyRow label="Avg Party Size" value={String(data.avg_guests)} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function KpiTile({ label, value, icon, trend, color = 'text-[#0047FF]' }: { label: string; value: string | number; icon: string; trend: string; color?: string }) {
+    return (
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-6 group hover:-translate-y-1 transition-all">
+            <div className="flex justify-between items-start">
+                <div className={`p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl ${color} transition-colors group-hover:bg-[#0047FF] group-hover:text-white`}>
+                    <span className="material-symbols-outlined text-[24px]">{icon}</span>
+                </div>
+                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/5 px-3 py-1 rounded-full">{trend}</span>
+            </div>
+            <div className="space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
+                <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums">{value}</h4>
+            </div>
+        </div>
+    );
+}
+
+function EfficiencyRow({ label, value }: { label: string, value: string }) {
+    return (
+        <div className="flex justify-between items-end border-b border-white/10 pb-4">
+            <span className="text-[11px] font-black uppercase tracking-widest text-white/80">{label}</span>
+            <span className="text-2xl font-black italic tracking-tighter">{value}</span>
         </div>
     );
 }

@@ -7,6 +7,19 @@ class Restaurant(models.Model):
         ('manual', 'Manual'),
     ]
     name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=100, unique=True, null=True, blank=True)
+    turnover_default_min = models.PositiveIntegerField(default=85)
+    # Amenities
+    has_namazhana = models.BooleanField(default=False)
+    has_parking = models.BooleanField(default=False)
+    has_kids_zone = models.BooleanField(default=False)
+    has_wifi = models.BooleanField(default=False)
+    has_terrace = models.BooleanField(default=False)
+    # Service options
+    deposit_required = models.BooleanField(default=False)
+    birthday_service_available = models.BooleanField(default=False)
+    wheelchair_accessible = models.BooleanField(default=False)
+    max_party_size = models.PositiveIntegerField(null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     address = models.CharField(max_length=500)
     latitude = models.FloatField(null=True, blank=True)
@@ -134,6 +147,21 @@ class RestaurantRequest(models.Model):
         ]
     def __str__(self):
         return f"{self.name} - {self.status}"
+
+class Zone(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='zones')
+    name = models.CharField(max_length=100)
+    order = models.PositiveIntegerField(default=0)
+    grid_cols = models.PositiveIntegerField(default=8)
+    grid_rows = models.PositiveIntegerField(default=6)
+
+    class Meta:
+        ordering = ['order']
+        unique_together = ['restaurant', 'name']
+
+    def __str__(self):
+        return f"{self.name} - {self.restaurant.name}"
+
 class Table(models.Model):
     TABLE_TYPE_CHOICES = [
         ('rectangle', 'Прямоугольный'),
@@ -152,6 +180,7 @@ class Table(models.Model):
         Restaurant, on_delete=models.CASCADE, related_name='tables',
         null=False,
     )
+    zone = models.ForeignKey('Zone', on_delete=models.SET_NULL, null=True, blank=True, related_name='tables')
     # Primary fields — used everywhere in code and tests
     number = models.CharField(max_length=50, help_text="Table label, e.g. '1', 'A1', 'VIP-1'")
     seats = models.PositiveIntegerField(help_text="Max guests (1–20)")
@@ -161,6 +190,10 @@ class Table(models.Model):
 
     is_active = models.BooleanField(default=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='free')
+    grid_x = models.PositiveIntegerField(default=0)
+    grid_y = models.PositiveIntegerField(default=0)
+    grid_w = models.PositiveIntegerField(default=1)
+    grid_h = models.PositiveIntegerField(default=1)
     x = models.FloatField(null=True, blank=True, default=None)
     y = models.FloatField(null=True, blank=True, default=None)
     width = models.FloatField(default=60.0)
@@ -214,6 +247,19 @@ class Table(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+class Shift(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='shifts')
+    name = models.CharField(max_length=100)
+    starts_at = models.TimeField()
+    ends_at = models.TimeField()
+    days_of_week = models.JSONField(default=list)
+
+    class Meta:
+        ordering = ['starts_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.starts_at} - {self.ends_at})"
+
 class Availability(models.Model):
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='availabilities')
     date = models.DateField()
@@ -248,9 +294,13 @@ def update_restaurant_rating(sender, instance, **kwargs):
 
 from django.core.mail import send_mail
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=RestaurantRequest)
 def send_restaurant_request_emails(sender, instance, created, **kwargs):
+    update_fields = kwargs.get("update_fields")
     if created:
         # Notify Global Admin about a new restaurant request
         subject = f"Новая заявка на регистрацию ресторана: {instance.name}"
@@ -269,17 +319,22 @@ def send_restaurant_request_emails(sender, instance, created, **kwargs):
                 message=message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[settings.GLOBAL_ADMIN_EMAIL],
-                fail_silently=True,
+                fail_silently=False,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to email global admin about new restaurant request {instance.id}: {e}")
 
     # If it's not newly created, check if status changed to approved
     # Wait, we need the old state to be 100% accurate, but for MVP checking if it's approved is sufficient
     # Alternatively we can just check if instance.status == 'approved'.
     # A complete solution would check if it just changed to approved, but this is simple.
     
-    if not created and instance.status == 'approved':
+    if (
+        not created
+        and instance.status == 'approved'
+        and update_fields is not None
+        and 'status' in update_fields
+    ):
         # Send confirmation email to restaurant owner
         subject = f"Ваша заявка одобрена: {instance.name}"
         message = (
@@ -294,7 +349,7 @@ def send_restaurant_request_emails(sender, instance, created, **kwargs):
                 message=message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[instance.email],
-                fail_silently=True,
+                fail_silently=False,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to email owner about approval for restaurant request {instance.id}: {e}")

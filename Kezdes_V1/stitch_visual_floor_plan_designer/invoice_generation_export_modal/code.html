@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#0048ff",
+                "background-light": "#f5f6f8",
+                "background-dark": "#0f1523",
+              },
+              fontFamily: {
+                "display": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+      </script>
+<title>Generate Invoice - Kezdes Admin</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Dashboard Background (Dimmed) -->
+<div class="relative flex h-screen w-full flex-col overflow-hidden opacity-40 grayscale pointer-events-none">
+<div class="layout-container flex h-full grow flex-col">
+<header class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-10 py-3 bg-white dark:bg-slate-900">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary text-3xl">restaurant_menu</span>
+<h2 class="text-lg font-bold">Kezdes Admin</h2>
+</div>
+</div>
+</header>
+<main class="px-10 py-8 flex-1">
+<div class="h-8 w-48 bg-slate-300 dark:bg-slate-700 rounded mb-6"></div>
+<div class="grid grid-cols-3 gap-6">
+<div class="h-32 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"></div>
+<div class="h-32 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"></div>
+<div class="h-32 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"></div>
+</div>
+</main>
+</div>
+</div>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+<!-- Modal Container -->
+<div class="bg-white dark:bg-slate-900 w-full max-w-6xl h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+<!-- Modal Header -->
+<div class="flex items-center justify-between px-8 py-5 border-b border-slate-200 dark:border-slate-800">
+<div>
+<h1 class="text-xl font-bold tracking-tight">Generate New Invoice</h1>
+<p class="text-sm text-slate-500 dark:text-slate-400">Configure details and preview the final document</p>
+</div>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Modal Content (Split Layout) -->
+<div class="flex flex-1 overflow-hidden">
+<!-- Left Column: Invoice Details (Form) -->
+<div class="w-1/2 overflow-y-auto p-8 border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-6">Invoice Details</h3>
+<div class="space-y-6">
+<!-- Bill To & Reference -->
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">Bill To</label>
+<select class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary">
+<option>The Golden Grill</option>
+<option>Pasta Palace</option>
+<option>Ocean Breeze Seafood</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">Invoice Number</label>
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary" type="text" value="INV-2023-0812"/>
+</div>
+</div>
+<!-- Dates -->
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">Issue Date</label>
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary" type="date" value="2023-10-24"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">Due Date</label>
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary" type="date" value="2023-11-07"/>
+</div>
+</div>
+<!-- Line Items -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<label class="text-sm font-medium">Line Items</label>
+<button class="text-primary text-xs font-bold flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-sm">add</span> Add Item
+                                </button>
+</div>
+<div class="space-y-3">
+<!-- Item 1 -->
+<div class="flex gap-3 items-end">
+<div class="flex-1 flex flex-col gap-1">
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary" placeholder="Description" type="text" value="Monthly Subscription - Pro"/>
+</div>
+<div class="w-20 flex flex-col gap-1">
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary text-center" type="number" value="1"/>
+</div>
+<div class="w-28 flex flex-col gap-1">
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary" type="text" value="$299.00"/>
+</div>
+<button class="mb-1 p-2 text-slate-400 hover:text-red-500">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+<!-- Item 2 -->
+<div class="flex gap-3 items-end">
+<div class="flex-1 flex flex-col gap-1">
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary" placeholder="Description" type="text" value="SMS Marketing Add-on"/>
+</div>
+<div class="w-20 flex flex-col gap-1">
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary text-center" type="number" value="500"/>
+</div>
+<div class="w-28 flex flex-col gap-1">
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-primary focus:ring-primary" type="text" value="$0.10"/>
+</div>
+<button class="mb-1 p-2 text-slate-400 hover:text-red-500">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Summary -->
+<div class="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">Subtotal</span>
+<span>$349.00</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">Tax (0%)</span>
+<span>$0.00</span>
+</div>
+<div class="flex justify-between font-bold text-lg pt-2 border-t border-slate-100 dark:border-slate-800">
+<span>Total Due</span>
+<span class="text-primary">$349.00</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Live PDF Preview -->
+<div class="w-1/2 bg-slate-200 dark:bg-slate-950 p-8 flex flex-col items-center overflow-y-auto">
+<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-6 self-start">Live Preview</h3>
+<!-- PDF Document Mockup -->
+<div class="bg-white text-slate-900 w-full max-w-[500px] aspect-[1/1.4] shadow-xl p-10 flex flex-col text-[11px] leading-tight">
+<!-- Document Header -->
+<div class="flex justify-between items-start mb-10">
+<div class="flex items-center gap-2">
+<div class="p-1 bg-primary rounded">
+<span class="material-symbols-outlined text-white text-lg">restaurant_menu</span>
+</div>
+<span class="text-sm font-black uppercase">Kezdes Admin</span>
+</div>
+<div class="text-right">
+<h2 class="text-2xl font-light text-slate-300 uppercase tracking-widest mb-2">Invoice</h2>
+<p class="font-bold">#INV-2023-0812</p>
+<p class="text-slate-500">October 24, 2023</p>
+</div>
+</div>
+<div class="flex justify-between mb-10">
+<div>
+<p class="uppercase text-slate-400 font-bold mb-1 tracking-tighter">From</p>
+<p class="font-bold">Kezdes Management Inc.</p>
+<p class="text-slate-500">123 Tech Avenue<br/>San Francisco, CA 94107</p>
+</div>
+<div class="text-right">
+<p class="uppercase text-slate-400 font-bold mb-1 tracking-tighter">Bill To</p>
+<p class="font-bold">The Golden Grill</p>
+<p class="text-slate-500">456 Gourmet Way<br/>Los Angeles, CA 90001</p>
+</div>
+</div>
+<!-- Table -->
+<table class="w-full mb-10">
+<thead>
+<tr class="border-b-2 border-slate-900">
+<th class="text-left py-2 uppercase">Description</th>
+<th class="text-center py-2 uppercase">Qty</th>
+<th class="text-right py-2 uppercase">Price</th>
+<th class="text-right py-2 uppercase">Amount</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100">
+<tr>
+<td class="py-3 font-medium">Monthly Subscription - Pro</td>
+<td class="text-center py-3 text-slate-500">1</td>
+<td class="text-right py-3 text-slate-500">$299.00</td>
+<td class="text-right py-3 font-bold">$299.00</td>
+</tr>
+<tr>
+<td class="py-3 font-medium">SMS Marketing Add-on</td>
+<td class="text-center py-3 text-slate-500">500</td>
+<td class="text-right py-3 text-slate-500">$0.10</td>
+<td class="text-right py-3 font-bold">$50.00</td>
+</tr>
+</tbody>
+</table>
+<!-- Totals -->
+<div class="mt-auto flex justify-end">
+<div class="w-40 space-y-2">
+<div class="flex justify-between">
+<span class="text-slate-500 uppercase">Subtotal</span>
+<span>$349.00</span>
+</div>
+<div class="flex justify-between">
+<span class="text-slate-500 uppercase">Tax (0%)</span>
+<span>$0.00</span>
+</div>
+<div class="flex justify-between pt-2 border-t border-slate-900 font-black text-sm">
+<span class="uppercase">Total Due</span>
+<span>$349.00</span>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="mt-10 pt-6 border-t border-slate-100 text-[9px] text-slate-400">
+<p>Payment is due within 14 days. Thank you for your business!</p>
+<p class="mt-1">support@kezdes.admin • www.kezdes-admin.com</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Footer (Actions) -->
+<div class="px-8 py-5 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900">
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-lg">save</span>
+                        Save Draft
+                    </button>
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-lg">mail</span>
+                        Email to Client
+                    </button>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">
+                        Cancel
+                    </button>
+<button class="flex items-center gap-2 bg-primary hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-lg">download</span>
+                        Download PDF
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

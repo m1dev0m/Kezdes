@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kezdes - My Bookings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --primary-color: #0047FF;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#0047FF",
+                        "background-light": "#FAFBFF",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.75rem",
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="bg-background-light font-display text-slate-900 min-h-screen">
+<header class="bg-white border-b border-slate-100 sticky top-0 z-50">
+<div class="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="bg-primary p-2 rounded-xl">
+<span class="material-symbols-outlined text-white text-2xl filled">restaurant</span>
+</div>
+<span class="font-bold text-2xl tracking-tight text-slate-900">Kezdes</span>
+</div>
+<nav class="hidden md:flex items-center gap-10">
+<a class="text-slate-500 hover:text-primary transition-colors font-medium text-sm" href="#">Discover</a>
+<a class="text-slate-500 hover:text-primary transition-colors font-medium text-sm" href="#">Offers</a>
+<div class="h-10 w-10 rounded-full bg-slate-100 border-2 border-white ring-1 ring-slate-100 overflow-hidden cursor-pointer">
+<img alt="User profile avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8Clxm0-eTyXeecqod3bGxkftvLQWSQE6seWK4mV_NxPolsNL_TY0oqjsKtpE_k3aIvX-5gz_J-vS_lkaLFKZJLrojBSEXsIUCML_ZU1xSe4GZJhRwS8QxFuDrPuZVQ8ZdT5w0FJnoVlycN1Gcf9jNihXBuVaT55M3QK7pwZIG-GWfgCCzopJCRyUDmf9MkyNIXdnQKF2VO_Gi4SdHlOD_ESwIeRIj5ydIRmaDAgfuJAL5iSeqaB7jXUIVOaP86oZQnYRTqpaE1A"/>
+</div>
+</nav>
+</div>
+</header>
+<main class="max-w-4xl mx-auto px-6 py-12">
+<div class="mb-12">
+<h1 class="text-3xl font-bold text-slate-900 mb-2">My Bookings</h1>
+<p class="text-slate-500">Manage your upcoming reservations and view past dining experiences.</p>
+</div>
+<section class="mb-16">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">event_upcoming</span>
+<h2 class="text-lg font-bold text-slate-900">Upcoming Reservations</h2>
+<span class="ml-2 bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">2 Active</span>
+</div>
+<div class="space-y-4">
+<div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-5">
+<img alt="Restaurant image" class="w-20 h-20 rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2hbTI0KFscKk_cGsin4BNQCdIwYGQ0wKHRZvfon1BK5tFNSIrWd8zXmGF4SsjNdb6iz24P2gIQlnqPjBao4dw54WEqEBSyxSiFai3C-oHOWYIM-b0S5tbz-C8YqebMuZEy8riUR6Jzeyfk2qalhhgqSqlXzGdR1q8BOnVhCwaVT0TsTzF3qBlJykNMAxm5cJFQ3pV3FgdhYpEEV6TI8YHcjIzPTyBHYlZUef0GHKchZAsBwwHyUs47g8Jy4FyXRIzSVxvuwzkpQ"/>
+<div>
+<h3 class="text-xl font-bold text-slate-900 mb-2">La Bohème Bistro</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<div class="flex items-center gap-1.5 text-sm text-slate-600">
+<span class="material-symbols-outlined text-primary text-lg">calendar_today</span>
+<span>Sat, Nov 25, 2023</span>
+</div>
+<div class="flex items-center gap-1.5 text-sm text-slate-600">
+<span class="material-symbols-outlined text-primary text-lg">schedule</span>
+<span>19:30</span>
+</div>
+<div class="flex items-center gap-1.5 text-sm text-slate-600">
+<span class="material-symbols-outlined text-primary text-lg">group</span>
+<span>2 People</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex-1 md:flex-none px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
+<button class="flex-1 md:flex-none px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-primary/20">View Details</button>
+</div>
+</div>
+</div>
+<div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-5">
+<div class="w-20 h-20 rounded-xl bg-slate-50 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-300 text-3xl">restaurant</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-slate-900 mb-2">The Golden Grill</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<div class="flex items-center gap-1.5 text-sm text-slate-600">
+<span class="material-symbols-outlined text-primary text-lg">calendar_today</span>
+<span>Fri, Dec 01, 2023</span>
+</div>
+<div class="flex items-center gap-1.5 text-sm text-slate-600">
+<span class="material-symbols-outlined text-primary text-lg">schedule</span>
+<span>20:00</span>
+</div>
+<div class="flex items-center gap-1.5 text-sm text-slate-600">
+<span class="material-symbols-outlined text-primary text-lg">group</span>
+<span>4 People</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex-1 md:flex-none px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
+<button class="flex-1 md:flex-none px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-primary/20">View Details</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-slate-400">history</span>
+<h2 class="text-lg font-bold text-slate-900">Past Visits</h2>
+</div>
+<div class="space-y-4">
+<div class="bg-white/60 border border-slate-100 rounded-2xl p-6 opacity-80 grayscale-[0.2]">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-5">
+<img alt="Past restaurant image" class="w-16 h-16 rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtzVRMDxVCOuPcRRbmAy4lVSsHGopEemHNWV9r13_D4Z1rv0fhB13aaJYUCnJx8Q09t6tJmYdri9J30c9tZ5P5RVP51wXZeSc1vvQbnI1gvw_K89GkBx-ArXapOxPWlzyPM47Qt1-9d9r9DVFLEm7a0Dl17zleFuxCWKv8Bq84hoeoSPpGYvXUgLBbmPIMwIzAtXVSpJGdzs6H1BEg10UQJCoe6t0xgWfXUYyJ22kKkRy7kab7aM463p0JRZj8iM8w5Bvj0JdMxw"/>
+<div>
+<h3 class="text-lg font-bold text-slate-700 mb-1">Harbor Seafood Co.</h3>
+<div class="flex items-center gap-4 text-xs text-slate-500">
+<span>Oct 12, 2023</span>
+<span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+<span>2 People</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex-1 md:flex-none px-5 py-2 rounded-lg border border-primary/20 text-primary text-xs font-bold hover:bg-primary/5 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base">edit_note</span>
+                                Write a Review
+                            </button>
+<button class="flex-1 md:flex-none px-5 py-2 rounded-lg text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors">Rebook</button>
+</div>
+</div>
+</div>
+<div class="bg-white/60 border border-slate-100 rounded-2xl p-6 opacity-80 grayscale-[0.2]">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-5">
+<img alt="Past restaurant image" class="w-16 h-16 rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAno7UEwstIytN33noKxiCBa9QW0hX8fkchylmeno4UGVPcjYcPkXGoJDJ9Du7wrrgjAoxHkl93AlR2C5Bci6vqJPL7hZeVLrYXlFWBS-SAYgU0hz89vBfae_kUBDdqtE5Ncq_nJyaM43bMmkmcFbEHOoWfi0r-9DLBqDQuqYs4B1a3IY4jxuYcYF9wd6QxXAVagK_ugqZj2T5SrA25w5crgYHKKygQX4PRDkpbndXXfLDqVJSqtJszFozbqSvN3SZaXmsS51xS1Q"/>
+<div>
+<h3 class="text-lg font-bold text-slate-700 mb-1">Mamma's Kitchen</h3>
+<div class="flex items-center gap-4 text-xs text-slate-500">
+<span>Sep 28, 2023</span>
+<span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+<span>6 People</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-0.5 bg-primary/5 px-3 py-1.5 rounded-lg">
+<span class="material-symbols-outlined text-primary text-sm filled">star</span>
+<span class="text-xs font-bold text-primary ml-1">Reviewed</span>
+</div>
+<button class="flex-1 md:flex-none px-5 py-2 rounded-lg text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors">Rebook</button>
+</div>
+</div>
+</div>
+<div class="bg-white/60 border border-slate-100 rounded-2xl p-6 opacity-80 grayscale-[0.2]">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-5">
+<img alt="Past restaurant image" class="w-16 h-16 rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfJGoRiO_XKnRjfZ3EaofcIF7rz-1Aj8xRMfyH7z8RftjuVSh-pRCz5o3TScr1mf1kkK-E9Q56iEOha8O54DjoKT7Xn8xRPhuc5e6p5Ja5jYIpeLoV6lAhdAruUVcvxS35VUVyCu2wnSdAFEOn2FCB_ERO7gaJrpU646r8FAvsY4fFIw2AXntEw9m_ZSr95YlYsztgPugFYJa1qaoFb7Us2CVf-9Z9cK1V9lmJrAuasqi7or3FQd-sLxxPIpBfowAcABukzsX3uw"/>
+<div>
+<h3 class="text-lg font-bold text-slate-700 mb-1">Zen Sushi Bar</h3>
+<div class="flex items-center gap-4 text-xs text-slate-500">
+<span>Aug 15, 2023</span>
+<span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+<span>2 People</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex-1 md:flex-none px-5 py-2 rounded-lg border border-primary/20 text-primary text-xs font-bold hover:bg-primary/5 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base">edit_note</span>
+                                Write a Review
+                            </button>
+<button class="flex-1 md:flex-none px-5 py-2 rounded-lg text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors">Rebook</button>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full mt-8 py-4 text-slate-400 font-medium text-sm hover:text-primary transition-colors border border-dashed border-slate-200 rounded-2xl">
+                Load more past visits
+            </button>
+</section>
+</main>
+<footer class="mt-20 border-t border-slate-100 bg-white py-12">
+<div class="max-w-6xl mx-auto px-6">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="bg-primary p-1 rounded-md">
+<span class="material-symbols-outlined text-white text-sm filled">restaurant</span>
+</div>
+<span class="font-bold text-lg tracking-tight">Kezdes</span>
+</div>
+<div class="flex gap-8 text-sm text-slate-500 font-medium">
+<a class="hover:text-primary transition-colors" href="#">About Us</a>
+<a class="hover:text-primary transition-colors" href="#">Support</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+</div>
+<p class="text-slate-400 text-xs">© 2023 Kezdes Dining. All rights reserved.</p>
+</div>
+</div>
+</footer>
+
+</body></html>

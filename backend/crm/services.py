@@ -64,37 +64,33 @@ class CRMService:
         Normalizes phone numbers for consistent matching within the same restaurant.
         """
         normalized_phone = normalize_phone(phone)
+        if not normalized_phone:
+            return None
+
         with transaction.atomic():
-            customer, created = Customer.objects.get_or_create(
+            customer = CRMService.ensure_customer(
                 restaurant=restaurant,
                 phone=normalized_phone,
-                defaults={
-                    'name': name or 'Guest',
-                    'email': email,
-                }
+                name=name,
+                email=email,
             )
 
-            customer.visits_count += 1
-            customer.last_visit = timezone.now()
-
-            if spent_amount > 0:
-                customer.total_spent += spent_amount
-                if customer.visits_count > 0:
-                    customer.avg_check = customer.total_spent / customer.visits_count
-
-            if name and (customer.name == 'Guest' or not customer.name):
-                customer.name = name
-
-            if email and not customer.email:
-                customer.email = email
-
-            customer.save()
-
-            Visit.objects.create(
+            visit, created = Visit.objects.get_or_create(
                 customer=customer,
                 booking=booking,
-                spent_amount=spent_amount
+                defaults={
+                    'spent_amount': spent_amount or 0,
+                },
             )
+
+            if not created and spent_amount is not None and visit.spent_amount != spent_amount:
+                visit.spent_amount = spent_amount
+                visit.save(update_fields=['spent_amount'])
+
+            customer.recalculate_stats()
+            if customer.last_visit is None:
+                customer.last_visit = timezone.now()
+                customer.save(update_fields=['last_visit'])
 
             return customer
 

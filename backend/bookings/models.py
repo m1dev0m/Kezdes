@@ -133,6 +133,16 @@ class Booking(models.Model):
         choices=STATUS_CHOICES,
         default=PENDING
     )
+    
+    SOURCE_CHOICES = [
+        ('web', 'Web'),
+        ('telegram', 'Telegram'),
+        ('phone', 'Phone'),
+        ('admin', 'Admin'),
+        ('walk_in', 'Walk-in'),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='web')
+    shift = models.ForeignKey('restaurants.Shift', on_delete=models.SET_NULL, null=True, blank=True)
 
     # Financial fields
     deposit_required = models.DecimalField(
@@ -370,6 +380,21 @@ class ReservationHistory(models.Model):
         blank=True,
         related_name='booking_events_to',
     )
+    
+    ACTION_CHOICES = [
+        ('created', 'Created'),
+        ('confirmed', 'Confirmed'),
+        ('seated', 'Seated'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+        ('no_show', 'No Show'),
+        ('table_assigned', 'Table Assigned'),
+        ('notes_updated', 'Notes Updated'),
+    ]
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES, default='status_change')
+    actor_label = models.CharField(max_length=100, blank=True)
+    payload = models.JSONField(null=True, blank=True)
+    
     changed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

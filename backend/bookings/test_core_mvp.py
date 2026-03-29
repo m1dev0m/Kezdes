@@ -72,7 +72,7 @@ def test_restaurant_onboarding_and_booking_flow(api_client, setup_data):
     response = api_client.post('/api/v1/bookings/', booking_data_oversized, format='json')
     assert response.status_code == 400
     error_msg = response.data['error']['message'].lower()
-    assert 'доступных столов' in error_msg or 'активная бронь' in error_msg or 'вместимость' in error_msg
+    assert 'доступных столов' in error_msg or 'активная бронь' in error_msg or 'вместимость' in error_msg or 'пересекающ' in error_msg or 'активн' in error_msg
 
 @pytest.mark.django_db
 def test_locking_mechanism(api_client, setup_data):

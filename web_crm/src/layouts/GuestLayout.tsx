@@ -1,98 +1,97 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
-import { useState } from 'react';
 import { Logo } from '@/components/ui/Logo';
 
+const NAV_ITEMS = [
+  { path: '/restaurants', label: 'Поиск', icon: 'explore' },
+  { path: '/guest/dashboard', label: 'Мои брони', icon: 'calendar_month' },
+  { path: '/guest/messages', label: 'Сообщения', icon: 'chat_bubble' },
+  { path: '/guest/favorites', label: 'Избранное', icon: 'favorite' },
+  { path: '/guest/profile', label: 'Профиль', icon: 'person' },
+];
+
 export default function GuestLayout() {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const [menuOpen, setMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    const navItems = [
-        { path: '/discover', label: 'Discover' },
-        { path: '/guest/dashboard', label: 'My Bookings' },
-        { path: '/guest/messages', label: 'Messages' },
-        { path: '/guest/favorites', label: 'Favorites' },
-        { path: '/guest/profile', label: 'Profile' },
-    ];
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
-    const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  return (
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0F0F23] font-inter text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-100/50">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#0F0F23]/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-6 py-4 sm:px-8">
+          <div className="flex items-center gap-10">
+            <Link to="/" className="flex items-center gap-2 group transition-transform active:scale-95">
+              <Logo className="h-8 sm:h-9" />
+            </Link>
 
-    return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-50 font-sans text-slate-900 transition-colors duration-200">
-            {/* GLOBAL GUEST HEADER - MATCHING SNAPSHOT */}
-            <header className="flex items-center justify-between whitespace-nowrap bg-white px-4 md:px-8 py-4 shadow-sm sticky top-0 z-50">
-                <Link to="/" className="flex items-center">
-                    <Logo className="h-6" />
+            <nav className="hidden lg:flex items-center gap-2">
+              {NAV_ITEMS.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${isActive(item.path)
+                    ? 'bg-blue-50 text-[#1d4ed8]'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }`}
+                >
+                  <span className={`material-symbols-outlined text-[20px] ${isActive(item.path) ? 'fill-1' : ''}`}>{item.icon}</span>
+                  {item.label}
                 </Link>
-                <div className="flex items-center gap-8">
-                    <nav className="hidden md:flex items-center gap-6">
-                        <Link to="/search" className="text-[#334155] text-[15px] font-bold hover:text-primary transition-colors">Explore</Link>
-                        <Link to="/guest/dashboard" className="text-[#334155] text-[15px] font-bold hover:text-primary transition-colors">My Bookings</Link>
-                        <Link to="/guest/profile" className="text-[#334155] text-[15px] font-bold hover:text-primary transition-colors">Profile</Link>
-                    </nav>
-                    <div
-                        className="size-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-[#0f172a] font-bold text-lg shadow-sm cursor-pointer hover:bg-slate-50 transition-colors"
-                        onClick={() => navigate('/guest/profile')}
-                    >
-                        {user?.username?.charAt(0).toUpperCase() || 'M'}
-                    </div>
+              ))}
+            </nav>
+          </div>
 
-                    <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 text-slate-700">
-                        <span className="material-symbols-outlined">{menuOpen ? 'close' : 'menu'}</span>
-                    </button>
-                </div>
-            </header>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-2 mr-2">
+              <button className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <span className="material-symbols-outlined text-[22px]">notifications</span>
+              </button>
+              <button className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <span className="material-symbols-outlined text-[22px]">search</span>
+              </button>
+            </div>
 
-            {menuOpen && (
-                <div className="fixed inset-0 z-[90] bg-brand-cream pt-20 px-6 md:hidden">
-                    <nav className="flex flex-col gap-8 mt-8">
-                        {navItems.map(item => (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                onClick={() => setMenuOpen(false)}
-                                className={`text-2xl font-bold tracking-tight ${isActive(item.path) ? 'text-brand-green' : 'text-slate-900'}`}
-                            >
-                                {item.label}
-                            </Link>
-                        ))}
-                        <button
-                            onClick={handleLogout}
-                            className="text-2xl font-bold text-rose-600 tracking-tight pt-8 border-t border-brand-accent text-left"
-                        >
-                            Sign Out
-                        </button>
-                    </nav>
-                </div>
-            )}
-
-            <main className="flex-1 w-full flex justify-center py-10">
-                <div className="flex flex-col w-full max-w-[1024px] px-4 md:px-8">
-                    <Outlet />
-                </div>
-            </main>
-
-            <footer className="border-t border-brand-accent py-8 px-6 md:px-20">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-                    <p className="text-slate-400 text-sm flex items-center gap-2">
-                        <span>© 2026</span>
-                        <span className="inline-flex items-center"><Logo className="h-4" /></span>
-                        <span>Restaurant Management. All rights reserved.</span>
-                    </p>
-                    <div className="flex gap-6">
-                        <button className="text-slate-400 hover:text-brand-green text-sm transition-colors">Privacy Policy</button>
-                        <button className="text-slate-400 hover:text-brand-green text-sm transition-colors">Terms of Service</button>
-                        <button className="text-slate-400 hover:text-brand-green text-sm transition-colors">Help Center</button>
-                    </div>
-                </div>
-            </footer>
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
+              <div className="flex flex-col text-right hidden md:block">
+                <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{user?.username || 'Guest'}</span>
+                <button onClick={handleLogout} className="text-[10px] font-semibold text-[#1d4ed8] hover:underline mt-0.5">Выйти</button>
+              </div>
+              <div className="size-10 rounded-xl overflow-hidden border-2 border-blue-100 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                {(user as any)?.avatar ? (
+                  <img src={(user as any).avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-[#1d4ed8]">{user?.username?.charAt(0).toUpperCase() || 'U'}</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-    );
+      </header>
+
+      <main className="w-full transition-all duration-300">
+        <Outlet />
+      </main>
+
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F0F23] py-12 px-6">
+        <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-2">
+            <Logo className="h-7" />
+          </div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">© 2026 Almaty, Kazakhstan • Premium Dining Ecosystem</p>
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Условия</a>
+            <a href="#" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Приватность</a>
+            <a href="#" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Помощь</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
 }

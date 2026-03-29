@@ -1,283 +1,557 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Logo } from '@/components/ui/Logo';
-import { Search as SearchIcon, MapPin, ChevronDown, Star, SlidersHorizontal, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import api from '@/services/api';
+import {
+  ArrowRight,
+  Clock3,
+  MapPin,
+  Search as SearchIcon,
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useI18n } from '@/i18n';
+import api from '@/services/api';
 
 interface Restaurant {
-    id: number;
-    name: string;
-    description: string;
-    address: string;
-    photo_url: string;
-    rating: number;
-    latitude: number;
-    longitude: number;
+  id: number;
+  name: string;
+  description?: string | null;
+  address?: string | null;
+  image_url?: string | null;
+  photo_url?: string | null;
+  rating?: number | null;
+  opening_time?: string | null;
+  closing_time?: string | null;
 }
 
-const CITIES = [
-    { value: '', label: 'Все', coords: [48.0196, 66.9237] },
-    { value: 'Алматы', label: 'Алматы', coords: [43.238949, 76.889709] },
-    { value: 'Астана', label: 'Астана', coords: [51.169392, 71.449074] },
-];
+const TAGS = ['Все', 'Итальянская', 'Японская', 'Стейкхаус', 'Грузинская', 'Бистро'] as const;
+const SORT_OPTIONS = [
+  { value: 'recommended', label: 'Рекомендуемые' },
+  { value: 'rating_desc', label: 'По рейтингу' },
+  { value: 'name_asc', label: 'По названию' },
+] as const;
+
+type SortMode = (typeof SORT_OPTIONS)[number]['value'];
 
 export default function Search() {
-    const { t } = useI18n();
-    const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [cityFilter, setCityFilter] = useState('');
-    const [showCityDropdown, setShowCityDropdown] = useState(false);
-    const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<(typeof TAGS)[number]>('Все');
+  const [sortMode, setSortMode] = useState<SortMode>('recommended');
 
-    const fetchRestaurants = useCallback(async (search = searchQuery, city = cityFilter) => {
-        setLoading(true);
-        try {
-            const params: Record<string, string> = {};
-            if (search) params.search = search;
-            if (city) params.city = city;
-            const res = await api.get('/restaurants/', { params });
-            setRestaurants(res.data.results ?? res.data);
-        } catch {
-            toast.error(t('errors.fetchFailed'));
-        } finally {
-            setLoading(false);
-        }
-    }, [cityFilter, searchQuery, t]);
-
-    const debouncedSearch = useCallback((query: string) => {
-        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-        searchTimeoutRef.current = setTimeout(() => fetchRestaurants(query, cityFilter), 300);
-    }, [fetchRestaurants, cityFilter]);
-
-    const handleSearchChange = (value: string) => {
-        setSearchQuery(value);
-        debouncedSearch(value);
+  useEffect(() => {
+    const loadRestaurants = async () => {
+      try {
+        const response = await api.get('/restaurants/');
+        setRestaurants(response.data.results ?? response.data);
+      } catch {
+        toast.error('Не удалось загрузить список заведений.');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const handleCityChange = (city: string) => {
-        setCityFilter(city);
-        setShowCityDropdown(false);
-        fetchRestaurants(searchQuery, city);
-    };
+    void loadRestaurants();
+  }, []);
 
-    useEffect(() => {
-        fetchRestaurants();
-        return () => {
-            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-        };
-    }, []);
+  const counts = useMemo(() => {
+    return TAGS.reduce<Record<string, number>>((acc, tag) => {
+      if (tag === 'Все') {
+        acc[tag] = restaurants.length;
+        return acc;
+      }
+      acc[tag] = restaurants.filter((restaurant) => matchesCuisine(restaurant, tag)).length;
+      return acc;
+    }, {});
+  }, [restaurants]);
 
-    const filteredRestaurants = useMemo(() => {
-        if (!searchQuery) return restaurants;
-        const query = searchQuery.toLowerCase();
-        return restaurants.filter(r => r.name.toLowerCase().includes(query) || r.address.toLowerCase().includes(query));
-    }, [restaurants, searchQuery]);
-    const selectedCity = CITIES.find(c => c.value === cityFilter) || CITIES[0];
+  const visibleRestaurants = useMemo(() => {
+    const value = query.trim().toLowerCase();
+    let results = restaurants;
 
-    const filters = [
-        { key: 'all', label: 'All Venues' },
-        { key: 'michelin', label: 'Michelin Star' },
-        { key: 'romantic', label: 'Romantic' },
-        { key: 'new', label: 'New Openings' },
-        { key: 'rooftop', label: 'Rooftop' },
-        { key: 'price', label: 'Price: $$$$' },
-    ] as const;
-    const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]['key']>('all');
+    if (value) {
+      results = results.filter((restaurant) => getSearchText(restaurant).includes(value));
+    }
 
-    return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden font-display text-slate-900">
-            <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
-                <section className="mb-12">
-                    <div className="flex flex-col gap-2 mb-8">
-                        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Discover Excellence</h1>
-                        <p className="text-slate-600 text-lg">Curated dining experiences for the discerning palate.</p>
-                    </div>
+    if (activeFilter !== 'Все') {
+      results = results.filter((restaurant) => matchesCuisine(restaurant, activeFilter));
+    }
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 p-2 bg-white rounded-2xl shadow-xl shadow-brand-green/5 border border-slate-200">
-                        <div className="lg:col-span-5 flex items-center px-4 py-2 gap-3 border-b lg:border-b-0 lg:border-r border-slate-100">
-                            <SearchIcon className="w-5 h-5 text-brand-green" />
-                            <input
-                                className="w-full bg-transparent border-none focus:ring-0 text-slate-900 placeholder:text-slate-400"
-                                placeholder="Search restaurants, cuisines..."
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
-                            />
-                        </div>
+    const sorted = [...results];
 
-                        <div className="lg:col-span-4 flex items-center px-4 py-2 gap-3 border-b lg:border-b-0 lg:border-r border-slate-100">
-                            <MapPin className="w-5 h-5 text-slate-400" />
-                            <div className="relative w-full">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCityDropdown(!showCityDropdown)}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-slate-900 placeholder:text-slate-400 flex items-center justify-between gap-4 py-2"
-                                >
-                                    <span className={selectedCity.value ? 'text-slate-900' : 'text-slate-400'}>
-                                        {selectedCity.value ? selectedCity.label : 'Location'}
-                                    </span>
-                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showCityDropdown ? 'rotate-180' : ''}`} />
-                                </button>
+    if (sortMode === 'rating_desc') {
+      sorted.sort((a, b) => getRating(b) - getRating(a) || a.name.localeCompare(b.name, 'ru'));
+    } else if (sortMode === 'name_asc') {
+      sorted.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    }
 
-                                <AnimatePresence>
-                                    {showCityDropdown && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 5 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 5 }}
-                                            className="absolute top-full left-0 right-0 mt-3 bg-white border border-slate-200 shadow-xl z-[100] rounded-xl overflow-hidden"
-                                        >
-                                            {CITIES.map((city) => (
-                                                <button
-                                                    key={city.value}
-                                                    type="button"
-                                                    onClick={() => handleCityChange(city.value)}
-                                                    className={`w-full px-5 py-3 text-left text-sm font-medium hover:bg-slate-50 transition-colors flex items-center gap-3 ${cityFilter === city.value ? 'text-slate-900 bg-slate-50' : 'text-slate-600'}`}
-                                                >
-                                                    <MapPin size={14} className={cityFilter === city.value ? 'text-brand-green' : 'text-transparent'} />
-                                                    {city.label}
-                                                </button>
-                                            ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
+    return sorted;
+  }, [restaurants, query, activeFilter, sortMode]);
 
-                        <div className="lg:col-span-3 flex items-center px-4 py-2 gap-3">
-                            <button
-                                type="button"
-                                className="w-full bg-brand-green text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"
-                            >
-                                <SlidersHorizontal className="w-4 h-4" />
-                                Search
-                            </button>
-                        </div>
-                    </div>
-                </section>
+  const featuredRestaurant = visibleRestaurants[0] ?? null;
+  const remainingRestaurants = visibleRestaurants.slice(1);
+  const hasFilters = Boolean(query.trim()) || activeFilter !== 'Все' || sortMode !== 'recommended';
 
-                <section className="flex gap-3 pb-8 overflow-x-auto">
-                    {filters.map((f) => (
-                        <button
-                            key={f.key}
-                            type="button"
-                            onClick={() => setActiveFilter(f.key)}
-                            className={
-                                f.key === activeFilter
-                                    ? 'flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-brand-green text-white px-6 font-medium shadow-lg shadow-brand-green/20'
-                                    : 'flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white border border-slate-200 px-6 font-medium hover:border-brand-green hover:text-brand-green transition-colors'
-                            }
-                        >
-                            {f.label}
-                            {f.key === 'price' && <ChevronDown className="w-4 h-4" />}
-                        </button>
-                    ))}
-                </section>
+  const resultTitle = (() => {
+    if (query.trim()) return `Поиск: ${query.trim()}`;
+    if (activeFilter !== 'Все') return activeFilter;
+    return 'Все заведения';
+  })();
 
-                <section className="mb-16">
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-bold text-slate-900">Featured Collections</h2>
-                        <Link to="/discover" className="text-brand-green font-semibold flex items-center gap-1 hover:underline">
-                            View all
-                            <ArrowRight className="w-4 h-4" />
-                        </Link>
-                    </div>
+  return (
+    <div className="min-h-[calc(100vh-80px)] bg-[#f6f7f9] font-inter text-slate-900">
+      <div className="mx-auto max-w-[1380px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <section className="overflow-hidden rounded-[36px] border border-slate-200 bg-white shadow-[0_30px_80px_-52px_rgba(15,23,42,0.22)]">
+          <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="border-b border-slate-200 px-6 py-8 sm:px-8 lg:border-b-0 lg:border-r lg:px-10 lg:py-10">
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+                <Sparkles size={14} />
+                Curated dining
+              </div>
 
-                    {loading ? (
-                        <div className="py-24 text-center">
-                            <div className="w-8 h-8 mx-auto border-2 border-slate-200 border-t-brand-green rounded-full animate-spin" />
-                        </div>
-                    ) : filteredRestaurants.length === 0 ? (
-                        <div className="py-24 text-center">
-                            <p className="text-slate-500">Ничего не найдено</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            <AnimatePresence mode="popLayout">
-                                {filteredRestaurants.map((rest, i) => (
-                                    <motion.div
-                                        key={rest.id}
-                                        layout
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ delay: i * 0.03, duration: 0.35 }}
-                                        className="group flex flex-col bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300"
-                                    >
-                                        <div className="relative h-64 overflow-hidden">
-                                            <img
-                                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                alt={rest.name}
-                                                src={rest.photo_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1400'}
-                                            />
-                                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand-green flex items-center gap-1">
-                                                <Star className="w-4 h-4 fill-brand-green text-brand-green" />
-                                                {rest.rating ? Number(rest.rating).toFixed(1) : 'NEW'}
-                                            </div>
-                                        </div>
+              <h1 className="mt-5 max-w-2xl text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-[3.65rem] lg:leading-[1.02]">
+                Выбор заведений с более ясной подачей и быстрым бронированием
+              </h1>
 
-                                        <div className="p-6">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-slate-900 group-hover:text-brand-green transition-colors">
-                                                        {rest.name}
-                                                    </h3>
-                                                    <p className="text-slate-500 text-sm">{selectedCity.value || 'Premium'} • {rest.address}</p>
-                                                </div>
-                                            </div>
-                                            <p className="text-slate-600 text-sm mb-4 line-clamp-2">{rest.description || ''}</p>
-                                            <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                                <span className="text-slate-900 font-bold">$$$</span>
-                                                <Link
-                                                    to={`/restaurant/${rest.id}`}
-                                                    className="text-brand-green text-sm font-bold flex items-center gap-1 hover:translate-x-1 transition-transform"
-                                                >
-                                                    Reserve Table
-                                                    <ArrowRight className="w-4 h-4" />
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </div>
-                    )}
-                </section>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base sm:leading-8">
+                Подборка ресторанов без ощущения бесконечной сетки. Сначала лучший кандидат, затем живая лента карточек с
+                разной плотностью, заметным CTA и быстрым сравнением по фото, адресу и времени работы.
+              </p>
 
-                <section className="rounded-3xl overflow-hidden relative h-[400px] bg-slate-200 border border-slate-200">
-                    <img
-                        alt="Stylized map showing premium restaurant locations"
-                        className="absolute inset-0 w-full h-full object-cover opacity-70 grayscale-[0.5]"
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUxuWfwDn_QEoy-v1FO-NNljioyiD06gryqLJXGZmZwsdmXrbmVA6Yu03QKnyurL0gED5viLesRLOiwrf8VL67rPwSwGUsjsA8z-NSytlvTkvk6Q0qpMPbhjyTxoH1SiYNW3T0C0bjAoDb-cWJYdi8GAPRRjPA1Llo8J6E1r3_bcA2ViGNRnOZVN4M7lKtffQ3h3WQuK57y8-CDDB5dK86JdBmnEHgfOFNVH9uAV08xmCGeLoZt3iqHDy-1cbFnGKCo2DzssHV2SjU"
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                <StatTile label="Результатов" value={visibleRestaurants.length.toString()} />
+                <StatTile label="Кухня" value={activeFilter} />
+                <StatTile
+                  label="Сортировка"
+                  value={SORT_OPTIONS.find((item) => item.value === sortMode)?.label ?? 'Рекомендуемые'}
+                />
+              </div>
+
+              <div className="mt-8 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_240px]">
+                  <div className="relative">
+                    <SearchIcon className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      aria-label="restaurants-search"
+                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white focus:ring-4 focus:ring-blue-50"
+                      placeholder="Название, адрес или кухня..."
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#121d1a]/80 to-transparent" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-                        <MapPin className="w-12 h-12 text-brand-green mb-4" />
-                        <h2 className="text-3xl font-extrabold text-white mb-4">Explore by Location</h2>
-                        <p className="text-slate-200 max-w-md mb-8">Find the perfect table in your favorite neighborhood with our interactive map view.</p>
-                        <Link
-                            to="/discover/map"
-                            className="bg-white text-brand-green px-8 py-3 rounded-full font-bold hover:bg-brand-green hover:text-white transition-all shadow-xl"
-                        >
-                            Open Interactive Map
-                        </Link>
-                    </div>
-                </section>
+                  </div>
 
-                <footer className="mt-16 border-t border-slate-200 pt-10 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-3 text-brand-green">
-                        <Logo className="h-6" />
-                    </div>
-                    <p className="text-slate-400 text-xs">© 2024 Kezdes Dining Group. All rights reserved.</p>
-                    <div className="flex gap-6">
-                        <span className="text-slate-400 text-xs flex items-center gap-1 italic">Always Fresh. Always Premium.</span>
-                    </div>
-                </footer>
-            </main>
+                  <label className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-600">
+                    <SlidersHorizontal size={18} className="text-slate-400" />
+                    <span className="sr-only">Сортировка</span>
+                    <select
+                      value={sortMode}
+                      onChange={(event) => setSortMode(event.target.value as SortMode)}
+                      className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none"
+                    >
+                      {SORT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {TAGS.map((tag) => (
+                    <FilterChip
+                      key={tag}
+                      active={activeFilter === tag}
+                      label={tag}
+                      count={counts[tag] ?? 0}
+                      onClick={() => setActiveFilter(tag)}
+                    />
+                  ))}
+
+                  {hasFilters ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery('');
+                        setActiveFilter('Все');
+                        setSortMode('recommended');
+                      }}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      Сбросить
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#f8fafc] p-4 sm:p-5 lg:p-6">
+              {featuredRestaurant ? (
+                <FeaturedRestaurantCard restaurant={featuredRestaurant} />
+              ) : (
+                <EmptyPreview />
+              )}
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="xl:sticky xl:top-6 xl:self-start">
+            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_-46px_rgba(15,23,42,0.18)]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Срез выдачи</div>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900">{resultTitle}</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                В приоритете лучший ресторан сверху. Ниже карточки идут в более живом ритме, чтобы быстрее сканировать выдачу.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <InfoRow label="Найдено" value={visibleRestaurants.length.toString()} />
+                <InfoRow label="Активный фильтр" value={activeFilter} />
+                <InfoRow
+                  label="Сортировка"
+                  value={SORT_OPTIONS.find((item) => item.value === sortMode)?.label ?? 'Рекомендуемые'}
+                />
+              </div>
+
+              <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Почему так легче читать</div>
+                <div className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
+                  <p>Крупное главное предложение убирает конкуренцию между всеми карточками сразу.</p>
+                  <p>Остальные рестораны разбиты на карточки разного масштаба, а CTA читается раньше вторичного текста.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <section>
+            {loading ? (
+              <div className="grid gap-4 md:grid-cols-6">
+                <div className="min-h-[420px] animate-pulse rounded-[32px] border border-slate-200 bg-white md:col-span-6" />
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className={`animate-pulse rounded-[28px] border border-slate-200 bg-white ${
+                      index === 0 ? 'h-[420px] md:col-span-4' : index === 1 ? 'h-[420px] md:col-span-2' : 'h-[360px] md:col-span-3'
+                    }`}
+                  />
+                ))}
+              </div>
+            ) : visibleRestaurants.length === 0 ? (
+              <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-[0_20px_60px_-44px_rgba(15,23,42,0.16)] sm:p-12">
+                <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                  <SearchIcon size={24} />
+                </div>
+                <div className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">Ничего не найдено</div>
+                <div className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">
+                  Попробуйте изменить поисковый запрос, переключить кухню или сбросить фильтры.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    setActiveFilter('Все');
+                    setSortMode('recommended');
+                  }}
+                  className="mt-7 inline-flex items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-[#1e40af]"
+                >
+                  Сбросить поиск
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-6">
+                {remainingRestaurants.length === 0 ? (
+                  <CompactLeadCard restaurant={featuredRestaurant!} className="md:col-span-6" />
+                ) : (
+                  remainingRestaurants.map((restaurant, index) => (
+                    <RestaurantCard
+                      key={restaurant.id}
+                      restaurant={restaurant}
+                      variant={getCardVariant(index)}
+                      className={getCardSpan(index)}
+                    />
+                  ))
+                )}
+              </div>
+            )}
+          </section>
         </div>
-    );
+      </div>
+    </div>
+  );
+}
+
+function FeaturedRestaurantCard({ restaurant }: { restaurant: Restaurant }) {
+  const label = getCuisineLabel(restaurant);
+  const rating = getRating(restaurant).toFixed(1);
+
+  return (
+    <article className="overflow-hidden rounded-[32px] border border-slate-200 bg-white">
+      <Link to={`/restaurant/${restaurant.id}`} className="group block h-full">
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="relative order-2 px-6 py-6 sm:px-7 sm:py-7 lg:order-1 lg:flex lg:flex-col lg:justify-between lg:px-8 lg:py-8">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <BadgeChip solid>Лучший выбор</BadgeChip>
+                <BadgeChip>{label}</BadgeChip>
+                <BadgeChip>{rating} / 5</BadgeChip>
+              </div>
+
+              <h3 className="mt-5 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{restaurant.name}</h3>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600 sm:text-base sm:leading-8">
+                {restaurant.description ||
+                  'Ресторан с аккуратной атмосферой, быстрой бронью и понятной подачей основных деталей ещё до перехода в карточку.'}
+              </p>
+            </div>
+
+            <div className="mt-8 space-y-3">
+              <InfoPill icon={<MapPin size={15} />} value={restaurant.address || 'Адрес не указан'} />
+              <InfoPill icon={<Clock3 size={15} />} value={getHoursLabel(restaurant)} />
+            </div>
+
+            <div className="mt-8 flex items-center justify-between gap-4 border-t border-slate-200 pt-5">
+              <div className="text-sm text-slate-500">
+                Откройте карточку ресторана, чтобы посмотреть детали и перейти к бронированию.
+              </div>
+              <div className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition group-hover:bg-[#1e40af]">
+                Book now
+                <ArrowRight size={16} />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative order-1 aspect-[4/3] overflow-hidden border-b border-slate-200 bg-slate-100 lg:order-2 lg:aspect-auto lg:border-b-0 lg:border-l">
+            <img
+              src={getRestaurantImage(restaurant, 'featured')}
+              alt={restaurant.name}
+              className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+            />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/10 to-transparent" />
+          </div>
+        </div>
+      </Link>
+    </article>
+  );
+}
+
+function CompactLeadCard({ restaurant, className = '' }: { restaurant: Restaurant; className?: string }) {
+  return (
+    <RestaurantCard restaurant={restaurant} variant="wide" className={className} />
+  );
+}
+
+function RestaurantCard({
+  restaurant,
+  variant,
+  className = '',
+}: {
+  restaurant: Restaurant;
+  variant: 'wide' | 'tall' | 'compact';
+  className?: string;
+}) {
+  const label = getCuisineLabel(restaurant);
+  const rating = getRating(restaurant).toFixed(1);
+  const isWide = variant === 'wide';
+  const isTall = variant === 'tall';
+
+  return (
+    <article
+      className={`group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.16)] transition hover:-translate-y-1 hover:shadow-[0_24px_60px_-40px_rgba(15,23,42,0.22)] ${className}`}
+    >
+      <Link to={`/restaurant/${restaurant.id}`} className={`block h-full ${isWide ? 'md:h-[100%]' : ''}`}>
+        <div className={isWide ? 'grid h-full md:grid-cols-[1.05fr_0.95fr]' : ''}>
+          <div className={`relative overflow-hidden ${isWide ? 'aspect-[4/3] md:aspect-auto md:h-full' : isTall ? 'aspect-[3/4]' : 'aspect-[4/3]'}`}>
+            <img
+              src={getRestaurantImage(restaurant, 'card')}
+              alt={restaurant.name}
+              className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/28 via-transparent to-transparent opacity-80" />
+            <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+              <BadgeChip solid>{label}</BadgeChip>
+            </div>
+            <div className="absolute bottom-4 right-4 rounded-2xl bg-white/95 px-3 py-2 text-sm font-semibold text-slate-900 shadow-lg">
+              <span className="inline-flex items-center gap-1">
+                <Star size={14} className="fill-amber-400 text-amber-400" />
+                {rating}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex h-full flex-col p-5">
+            <div className="flex-1">
+              <h3 className="text-2xl font-semibold tracking-tight text-slate-900">{restaurant.name}</h3>
+
+              <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+                <MapPin size={14} className="shrink-0" />
+                <span className="truncate">{restaurant.address || 'Адрес не указан'}</span>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+                <Clock3 size={14} className="shrink-0" />
+                <span>{getHoursLabel(restaurant)}</span>
+              </div>
+
+              <p className={`mt-4 text-sm leading-7 text-slate-600 ${isWide ? 'line-clamp-4' : 'line-clamp-3'}`}>
+                {restaurant.description ||
+                  'Краткое описание заведения, которое помогает быстрее понять атмосферу, сервис и формат визита.'}
+              </p>
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Открыть карточку</div>
+              <div className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700 transition group-hover:bg-blue-100">
+                Book
+                <ArrowRight size={14} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    </article>
+  );
+}
+
+function FilterChip({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-widest transition ${
+        active
+          ? 'border-blue-200 bg-blue-50 text-blue-700'
+          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+      }`}
+    >
+      <span>{label}</span>
+      <span className={`rounded-full px-2 py-0.5 text-[10px] ${active ? 'bg-white text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function BadgeChip({
+  children,
+  solid = false,
+}: {
+  children: ReactNode;
+  solid?: boolean;
+}) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+        solid ? 'bg-white text-slate-700 border border-slate-200' : 'bg-slate-100 text-slate-600'
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="mt-2 text-sm font-semibold tracking-tight text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="max-w-[65%] truncate text-sm font-semibold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function InfoPill({ icon, value }: { icon: ReactNode; value: string }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <span className="text-slate-400">{icon}</span>
+      <span className="truncate">{value}</span>
+    </div>
+  );
+}
+
+function EmptyPreview() {
+  return (
+    <div className="flex h-full min-h-[360px] items-center justify-center rounded-[32px] border border-slate-200 bg-white px-8 py-10">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+          <Sparkles size={24} />
+        </div>
+        <div className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">Главный ресторан появится здесь</div>
+        <p className="mt-3 text-sm leading-7 text-slate-600">После загрузки списка первый результат будет показан в крупном блоке справа.</p>
+      </div>
+    </div>
+  );
+}
+
+function getSearchText(restaurant: Restaurant): string {
+  return `${restaurant.name} ${restaurant.address ?? ''} ${restaurant.description ?? ''}`.toLowerCase();
+}
+
+function getRestaurantImage(restaurant: Restaurant, variant: 'featured' | 'card'): string {
+  const image = restaurant.photo_url || restaurant.image_url;
+  if (image) return image;
+
+  return variant === 'featured'
+    ? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1400&auto=format&fit=crop&q=80'
+    : 'https://images.unsplash.com/photo-1555992336-03a23c7b20f9?w=1200&auto=format&fit=crop&q=80';
+}
+
+function matchesCuisine(restaurant: Restaurant, filter: string): boolean {
+  const text = getSearchText(restaurant);
+  const cuisine = getCuisineLabel(restaurant).toLowerCase();
+  return cuisine.includes(filter.toLowerCase()) || text.includes(filter.toLowerCase());
+}
+
+function getCuisineLabel(restaurant: Restaurant): string {
+  const text = getSearchText(restaurant);
+
+  if (text.includes('pizza') || text.includes('pasta') || text.includes('ital')) return 'Итальянская';
+  if (text.includes('sushi') || text.includes('ramen') || text.includes('japan')) return 'Японская';
+  if (text.includes('steak') || text.includes('grill') || text.includes('meat')) return 'Стейкхаус';
+  if (text.includes('georg') || text.includes('khinkal') || text.includes('wine')) return 'Грузинская';
+  if (text.includes('bistro') || text.includes('cafe')) return 'Бистро';
+
+  return 'Авторская';
+}
+
+function getRating(restaurant: Restaurant): number {
+  const rating = Number(restaurant.rating ?? 4.8);
+  if (Number.isNaN(rating)) return 4.8;
+  return Math.min(5, Math.max(0, rating));
+}
+
+function getHoursLabel(restaurant: Restaurant): string {
+  const opening = restaurant.opening_time?.slice(0, 5) || '10:00';
+  const closing = restaurant.closing_time?.slice(0, 5) || '23:00';
+  return `${opening} - ${closing}`;
+}
+
+function getCardVariant(index: number): 'wide' | 'tall' | 'compact' {
+  if (index === 0) return 'wide';
+  if (index % 4 === 1) return 'tall';
+  return 'compact';
+}
+
+function getCardSpan(index: number): string {
+  if (index === 0) return 'md:col-span-6';
+  if (index % 4 === 1) return 'md:col-span-2';
+  if (index % 4 === 2) return 'md:col-span-4';
+  return 'md:col-span-3';
 }

@@ -42,8 +42,14 @@ const safeStorage = {
     },
 };
 
+function getDefaultApiBaseUrl() {
+    if (typeof window === 'undefined') return 'http://localhost:8000/api/v1';
+    const host = window.location.hostname || 'localhost';
+    return `http://${host}:8000/api/v1`;
+}
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
+    baseURL: import.meta.env.VITE_API_URL || getDefaultApiBaseUrl(),
     headers: {
         'Content-Type': 'application/json',
     },
@@ -85,7 +91,8 @@ api.interceptors.response.use(
                 const refreshToken = safeStorage.getItem('refreshToken');
                 if (!refreshToken) throw new Error('No refresh token');
 
-                const res = await axios.post(`${api.defaults.baseURL}/auth/login/refresh/`, { refresh: refreshToken });
+                const baseURL = (api.defaults.baseURL || '').replace(/\/$/, '');
+                const res = await axios.post(`${baseURL}/auth/login/refresh/`, { refresh: refreshToken });
 
                 safeStorage.setItem('accessToken', res.data.access);
                 if (res.data.refresh) {

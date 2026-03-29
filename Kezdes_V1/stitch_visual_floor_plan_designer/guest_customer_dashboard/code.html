@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0047FF",
+                        "background-light": "#f6f5f8",
+                        "background-dark": "#150f23",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Guest Customer Dashboard - Kezdes</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 transition-colors duration-200">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Navigation Bar -->
+<header class="flex items-center justify-between border-b border-primary/10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-20 py-4 sticky top-0 z-50">
+<div class="flex items-center gap-10">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold tracking-tight">Kezdes</h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-semibold transition-colors" href="#">Discover</a>
+<a class="text-primary text-sm font-semibold border-b-2 border-primary pb-1" href="#">My Bookings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+<input class="w-64 pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" placeholder="Find a restaurant..." type="text"/>
+</div>
+<button class="flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full bg-primary/10 border-2 border-primary/20 overflow-hidden">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="Portrait of a smiling male customer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW-9fT4bfDt69vq_CxrloWcCYw1u6rQ_wEgkmzk2rDYaM9I5LVr61PA2cv0o8Tsp5LaSEN-CVEcVB1EHL6R9mUtA1IV1BMliQ292EWbjh9FswB7irKPJR0qiWv0QCWf5dKS7QEwBkHgW5fObqFJqg_Gx1ulJ72x0J8oTmV6Rdh0MEuWbj56DWgPdp72Q6JcLppQNlIRTN1nlM9bojEuLsPpt4anh1pw-inHRekMLgxASBqUYBO1a9wOubWgDOyhtfMb31hZvUQjQ"/>
+</div>
+</div>
+</header>
+<main class="flex-1 px-6 md:px-20 py-10 max-w-7xl mx-auto w-full">
+<!-- Welcome Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div class="space-y-2">
+<h1 class="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Welcome back, Alex</h1>
+<p class="text-slate-500 dark:text-slate-400 text-lg">You have 2 upcoming reservations for this week.</p>
+</div>
+<button class="bg-primary text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/30 transition-all">
+<span class="material-symbols-outlined">add</span>
+                        New Booking
+                    </button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left & Middle Column (Main Content) -->
+<div class="lg:col-span-2 space-y-10">
+<!-- Active Bookings -->
+<section>
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                    Active Bookings
+                                    <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
+</h2>
+<a class="text-primary text-sm font-semibold hover:underline" href="#">View All</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card 1 -->
+<div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="size-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Modern restaurant interior branding" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuvq9cZVryPw98Ha_xXrLsehMzQO2aJiZ5K5v_qsidevq9-W7vd8_EoB4B6q9Fd5aM3Z4RjyPcunWneWmR8Ve2sPABLxUGbpkEUesiqm5WTAUpyMHnUylLY1JKXoIr_Iu_EuLV2AjMz_oOi1Qrg-ns6ZJX7G4_rNBZeHnLd8EU8rMkz65DW-R45JwiinN0VQ1efFSl1bvmmgytMXRXKs9w5wKALyFTJR1yJ5ihFN6806jcVC7L5LGD00kQK85MjncqVVD5q_97mg"/>
+</div>
+<span class="px-3 py-1 rounded-full bg-green-100 text-green-600 text-[10px] font-bold uppercase tracking-wider">Confirmed</span>
+</div>
+<h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">The Golden Truffle</h3>
+<div class="mt-4 space-y-2">
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-primary text-lg">calendar_today</span>
+                                            Friday, Oct 24
+                                        </div>
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-primary text-lg">schedule</span>
+                                            19:30 PM
+                                        </div>
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-primary text-lg">group</span>
+                                            4 Guests
+                                        </div>
+</div>
+<div class="mt-6 flex gap-2">
+<button class="flex-1 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Edit</button>
+<button class="flex-1 py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm hover:bg-primary/20 transition-colors">Details</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="size-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Sushi restaurant logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDw_0PG1w3I7JyOzIPNKMNdZ-8v13PaswHrEFP5eQiC4AXpWIMDyHBMhNh61eGXdgCnVmRf20Ub_pyABUhCEVUrFfdtqAFwrmsrpqEoEDkpVOsSh-HE6mFJK-c0GljJgTJ2iaMIcEoo2omcYLjPziUqfePzDzWkl7kq4Wmz3jf0rt6X1spV7H9cGzq0mYoZU6CePPvSH5Zhz2m7eV20k_5mTH78IzOgAxowPz4Oj4bNzAagQ6oBGVGtc7B8iUyFK55opw14fjKVuQ"/>
+</div>
+<span class="px-3 py-1 rounded-full bg-amber-100 text-amber-600 text-[10px] font-bold uppercase tracking-wider">Pending</span>
+</div>
+<h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Sakura Zen Garden</h3>
+<div class="mt-4 space-y-2">
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-primary text-lg">calendar_today</span>
+                                            Sunday, Oct 26
+                                        </div>
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-primary text-lg">schedule</span>
+                                            13:00 PM
+                                        </div>
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-primary text-lg">group</span>
+                                            2 Guests
+                                        </div>
+</div>
+<div class="mt-6 flex gap-2">
+<button class="flex-1 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Edit</button>
+<button class="flex-1 py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm hover:bg-primary/20 transition-colors">Details</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Visit History -->
+<section>
+<h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6">Visit History</h2>
+<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+<div class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- History Item 1 -->
+<div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">restaurant_menu</span>
+</div>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-slate-100">The Bistro Hub</h4>
+<div class="flex items-center gap-2 mt-1">
+<div class="flex text-amber-400 text-xs">
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm">star</span>
+</div>
+<span class="text-xs text-slate-400">Oct 12, 2023</span>
+</div>
+</div>
+</div>
+<button class="bg-primary/5 text-primary text-sm font-bold px-4 py-2 rounded-lg hover:bg-primary hover:text-white transition-all">
+                                            Book Again
+                                        </button>
+</div>
+<!-- History Item 2 -->
+<div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">liquor</span>
+</div>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-slate-100">Neon Night Lounge</h4>
+<div class="flex items-center gap-2 mt-1">
+<div class="flex text-amber-400 text-xs">
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+</div>
+<span class="text-xs text-slate-400">Sep 28, 2023</span>
+</div>
+</div>
+</div>
+<button class="bg-primary/5 text-primary text-sm font-bold px-4 py-2 rounded-lg hover:bg-primary hover:text-white transition-all">
+                                            Book Again
+                                        </button>
+</div>
+<!-- History Item 3 -->
+<div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">ramen_dining</span>
+</div>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-slate-100">Oishii Street Food</h4>
+<div class="flex items-center gap-2 mt-1">
+<div class="flex text-amber-400 text-xs">
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400">star</span>
+<span class="material-symbols-outlined !text-sm fill-amber-400 text-slate-300">star</span>
+<span class="material-symbols-outlined !text-sm text-slate-300">star</span>
+</div>
+<span class="text-xs text-slate-400">Aug 15, 2023</span>
+</div>
+</div>
+</div>
+<button class="bg-primary/5 text-primary text-sm font-bold px-4 py-2 rounded-lg hover:bg-primary hover:text-white transition-all">
+                                            Book Again
+                                        </button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column (Sidebar Widgets) -->
+<div class="space-y-8">
+<!-- Loyalty Status Widget -->
+<div class="bg-primary rounded-3xl p-6 text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
+<!-- Background Pattern Decor -->
+<div class="absolute -right-10 -bottom-10 size-40 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-center mb-6">
+<span class="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">Member Since 2022</span>
+<span class="material-symbols-outlined">stars</span>
+</div>
+<p class="text-primary-100 text-sm font-medium">Your Current Level</p>
+<h3 class="text-3xl font-black mt-1 mb-8 tracking-tight">Gold Member</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<div>
+<p class="text-xs opacity-80 mb-1">Total Points</p>
+<p class="text-2xl font-bold">12,450 <span class="text-sm font-normal opacity-70">pts</span></p>
+</div>
+<div class="text-right">
+<p class="text-xs opacity-80 mb-1">To Next Tier</p>
+<p class="text-lg font-bold">2,550</p>
+</div>
+</div>
+<div class="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-white rounded-full" style="width: 75%;"></div>
+</div>
+</div>
+<button class="w-full mt-8 bg-white text-primary font-bold py-3 rounded-xl hover:bg-slate-100 transition-colors">
+                                    Redeem Rewards
+                                </button>
+</div>
+</div>
+<!-- Mini Map Widget -->
+<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+<h4 class="text-sm font-bold mb-3 text-slate-900 dark:text-slate-100">Nearby Popular Places</h4>
+<div class="h-40 w-full rounded-xl bg-slate-200 dark:bg-slate-800 relative overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center" data-location="Budapest" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAtuBOvyLt_k9RcYNGZQiz0Nak8dahvmHuxLTOcU20Ud9qYOZhknsFWPv4QfJborcDQyc5CmKLD3zeADhwT_pDMMT_HXqx451Mj6JjnZzjj-CU2KxkrjHzd6Yfl8u5pIaScsGdT0Z-GUTRJpksAaDNyPLNeHVapQlIwQ33lr7CR0il6k5hYOClHsnleU5pHG22ixBZR-o_XVB2dJ5B5tnU8iJ9o9fFkaC4cWUea-MUJAxu8OCJC64r_O5ESmUJha-X74DdrZm0M2A');"></div>
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary animate-bounce">
+<span class="material-symbols-outlined !text-4xl fill-primary">location_on</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-3">
+<div class="size-10 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">map</span>
+</div>
+<p class="text-xs text-slate-500 leading-tight">Showing 15 available restaurants near your location in Budapest.</p>
+</div>
+</div>
+<!-- Promotion Card -->
+<div class="bg-slate-900 rounded-2xl p-6 relative overflow-hidden text-white">
+<div class="absolute inset-0 opacity-20 bg-gradient-to-br from-primary to-purple-600"></div>
+<div class="relative z-10">
+<h4 class="text-lg font-bold mb-2">Weekend Special</h4>
+<p class="text-sm text-slate-300 mb-4">Book a table for 4+ people and get a complimentary bottle of wine.</p>
+<a class="inline-flex items-center text-primary font-bold text-sm hover:gap-2 transition-all" href="#">
+                                    Explore Restaurants
+                                    <span class="material-symbols-outlined text-base ml-1">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Small -->
+<footer class="border-t border-slate-100 dark:border-slate-800 py-8 px-6 md:px-20 mt-10">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+<p class="text-slate-400 text-sm">© 2024 Kezdes Restaurant Management. All rights reserved.</p>
+<div class="flex gap-6">
+<a class="text-slate-400 hover:text-primary text-sm transition-colors" href="#">Privacy Policy</a>
+<a class="text-slate-400 hover:text-primary text-sm transition-colors" href="#">Terms of Service</a>
+<a class="text-slate-400 hover:text-primary text-sm transition-colors" href="#">Help Center</a>
+</div>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

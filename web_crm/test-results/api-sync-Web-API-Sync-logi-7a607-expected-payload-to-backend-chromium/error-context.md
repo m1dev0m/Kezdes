@@ -1,0 +1,68 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - link "Kezdes" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img "Kezdes" [ref=e8]
+      - generic [ref=e9]:
+        - generic [ref=e10]: Admin access
+        - heading "Операционная панель ресторана без лишнего шума" [level=1] [ref=e11]
+        - paragraph [ref=e12]: "Вход для команды ресторана: бронирования, посадка гостей, столы, статусы и CRM в одном рабочем контуре."
+    - generic [ref=e13]:
+      - generic [ref=e15]:
+        - img [ref=e17]
+        - generic [ref=e20]:
+          - generic [ref=e21]: Единая смена
+          - generic [ref=e22]: Брони, столы и гостевые статусы без переключений между системами.
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]: Сегодня
+            - generic [ref=e27]: 24 брони
+          - generic [ref=e28]: Live
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: Подтверждено
+            - generic [ref=e32]: "12"
+          - generic [ref=e33]:
+            - generic [ref=e34]: Посажено
+            - generic [ref=e35]: "7"
+          - generic [ref=e36]:
+            - generic [ref=e37]: Свободно
+            - generic [ref=e38]: "9"
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - generic [ref=e43]: Login
+      - heading "Вход в рабочее пространство" [level=2] [ref=e44]
+      - paragraph [ref=e45]: Используйте данные вашей команды, чтобы открыть административную панель ресторана.
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - text: Username
+        - generic [ref=e48]:
+          - generic:
+            - img
+          - textbox "Username" [ref=e49]:
+            - /placeholder: manager_alma
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - generic [ref=e52]: Password
+          - button "Forgot password" [ref=e53] [cursor=pointer]
+        - generic [ref=e54]:
+          - generic:
+            - img
+          - textbox "Password" [ref=e55]:
+            - /placeholder: ••••••••
+          - button [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+      - button "Login" [ref=e60] [cursor=pointer]:
+        - generic [ref=e61]: Login
+        - img [ref=e62]
+    - generic [ref=e64]: Вход для владельцев, администраторов, менеджеров зала и хостов.
+    - generic [ref=e65]:
+      - text: Нет аккаунта?
+      - link "Зарегистрировать ресторан" [ref=e66] [cursor=pointer]:
+        - /url: /register
+```

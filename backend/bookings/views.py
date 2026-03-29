@@ -20,12 +20,18 @@ from .waitlist_serializers import WaitlistEntrySerializer
 from .models import Booking, WaitlistEntry
 from restaurants.models import Table, Restaurant
 from .services import WaitlistService, BookingService
+from .engine import StatusMachine
 from core.notifications import NotificationService
 from core.viewsets import OptionalPaginationMixin
 
 class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+        return super().get_permissions()
 
     @staticmethod
     def _normalize_statuses(raw_statuses):
@@ -228,6 +234,26 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             )
             # Set the instance on the serializer so it returns the created booking
             serializer.instance = booking
+            
+            # Auto-send Direct Message to User on success
+            if user and restaurant.owner:
+                from chat.models import Conversation, Message
+                try:
+                    conv, _ = Conversation.objects.get_or_create(
+                        restaurant=restaurant,
+                        guest=user
+                    )
+                    Message.objects.create(
+                        booking=booking,
+                        restaurant=restaurant,
+                        conversation=conv,
+                        sender=restaurant.owner,
+                        content=f"Ваша заявка на бронирование ({date} в {time_val}, {guests} чел.) успешно создана! Ожидайте подтверждения.",
+                        is_read=False,
+                    )
+                except Exception as ex:
+                    logger.error(f"Failed to auto-send DM for booking {booking.id}: {ex}")
+
         except DjangoValidationError as e:
             raise drf_serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else str(e))
 
@@ -257,10 +283,10 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         try:
             if is_restaurant_staff and not is_owner:
                 # Restaurant admin is cancelling
-                booking.transition_to(Booking.CANCELLED_BY_RESTAURANT, actor=request.user)
+                StatusMachine.transition(booking, Booking.CANCELLED_BY_RESTAURANT, actor=request.user)
             else:
                 # User is cancelling their own booking
-                booking.transition_to(Booking.CANCELLED_BY_USER, actor=request.user)
+                StatusMachine.transition(booking, Booking.CANCELLED_BY_USER, actor=request.user)
                 if booking.restaurant.owner:
                     NotificationService.notify_user(
                         booking.restaurant.owner,
@@ -369,6 +395,16 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if status_param:
             statuses = self._normalize_statuses(status_param.split(','))
             qs = qs.filter(status__in=statuses)
+
+        source_param = request.query_params.get('source')
+        if source_param:
+            # Handle multiple comma-separated sources if needed
+            sources = source_param.split(',')
+            qs = qs.filter(source__in=sources)
+
+        shift_param = request.query_params.get('shift')
+        if shift_param:
+            qs = qs.filter(shift_id=shift_param)
 
         date_param = request.query_params.get('date')
         if date_param:
@@ -485,7 +521,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             booking.save(update_fields=['is_checked_in', 'check_in_time'])
             # Transition to SEATED so status is consistent
             try:
-                booking.transition_to(Booking.SEATED, actor=request.user)
+                StatusMachine.transition(booking, Booking.SEATED, actor=request.user)
             except Exception:
                 pass  # already seated or transition not allowed — keep is_checked_in flag
 
@@ -632,7 +668,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
         try:
-            booking.transition_to(Booking.CANCELLED_BY_RESTAURANT, actor=request.user)
+            StatusMachine.transition(booking, Booking.CANCELLED_BY_RESTAURANT, actor=request.user)
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
@@ -655,7 +691,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 return api_error("Указанный стол не найден.", status.HTTP_400_BAD_REQUEST)
 
         try:
-            booking.transition_to(Booking.SEATED, actor=request.user)
+            StatusMachine.transition(booking, Booking.SEATED, actor=request.user)
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
@@ -667,7 +703,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
         try:
             with transaction.atomic():
-                booking.transition_to(Booking.COMPLETED, actor=request.user)
+                StatusMachine.transition(booking, Booking.COMPLETED, actor=request.user)
                 from crm.services import CRMService
                 
                 customer_phone = booking.user_phone
@@ -694,7 +730,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
         try:
-            booking.transition_to(Booking.NO_SHOW, actor=request.user)
+            StatusMachine.transition(booking, Booking.NO_SHOW, actor=request.user)
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
@@ -817,6 +853,45 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return Response({"slots": slots})
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def suggestions(self, request):
+        from restaurants.models import Restaurant
+        from .services import BookingService
+        
+        restaurant_id = request.query_params.get('restaurant_id')
+        date_str = request.query_params.get('date')
+        guests_raw = request.query_params.get('party_size', 2)
+        preferred_time = request.query_params.get('preferred_time')
+        
+        if not restaurant_id or not date_str:
+            return api_error("restaurant_id and date are required.", status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            guests = int(guests_raw)
+            restaurant = Restaurant.objects.get(id=restaurant_id)
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (Restaurant.DoesNotExist, ValueError):
+            return api_error("Invalid parameters.", status.HTTP_400_BAD_REQUEST)
+            
+        duration = getattr(restaurant, 'turnover_default_min', 85)
+        slots = BookingService.get_available_slots(restaurant, date_obj, guests, duration)
+        
+        suggestions = []
+        for slot in slots:
+            label = "ok"
+            if preferred_time:
+                try:
+                    pt = datetime.strptime(preferred_time, '%H:%M').time()
+                    slot_t = datetime.strptime(slot, '%H:%M').time()
+                    diff = abs((datetime.combine(date_obj, pt) - datetime.combine(date_obj, slot_t)).total_seconds() / 60)
+                    if diff <= 30:
+                        label = "best"
+                except ValueError:
+                    pass
+            suggestions.append({"time": slot, "label": label})
+            
+        return Response(suggestions)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def available_tables(self, request):
         """
         Public endpoint to get available tables for a specific time slot.
@@ -875,7 +950,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if booking.user != request.user:
             return Response({"detail": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
         try:
-            booking.transition_to(Booking.CANCELLED_BY_USER, actor=request.user)
+            StatusMachine.transition(booking, Booking.CANCELLED_BY_USER, actor=request.user)
             if booking.restaurant.owner:
                 NotificationService.notify_user(
                     booking.restaurant.owner,
@@ -998,5 +1073,80 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                     {"detail": "Не удалось создать бронирование."},
                     status=status.HTTP_409_CONFLICT,
                 )
+        finally:
+            BookingService.release_booking_lock(entry.restaurant_id, entry.date, entry.time, duration_minutes=duration)
+
+class WaitlistViewSet(viewsets.ModelViewSet):
+    serializer_class = WaitlistEntrySerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        qs = WaitlistEntry.objects.all()
+        restaurant_id = self.request.query_params.get('restaurant_id')
+        if restaurant_id:
+            qs = qs.filter(restaurant_id=restaurant_id)
+        
+        user = self.request.user
+        if not user.is_authenticated:
+            return WaitlistEntry.objects.none()
+            
+        from core.utils import get_user_restaurant
+        user_restaurant = get_user_restaurant(user)
+        
+        if getattr(user.profile, 'role', '') != 'global_admin':
+             if user_restaurant:
+                  from django.db.models import Q
+                  qs = qs.filter(Q(restaurant=user_restaurant) | Q(user=user))
+             else:
+                  qs = qs.filter(user=user)
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)
+
+    @action(detail=True, methods=['post'], url_path='convert-to-reservation', permission_classes=[permissions.IsAuthenticated])
+    def convert_to_reservation(self, request, pk=None):
+        from .services import BookingService
+        entry = self.get_object()
+        
+        user = self.request.user
+        from core.utils import get_user_restaurant
+        user_restaurant = get_user_restaurant(user)
+        if getattr(user.profile, 'role', '') != 'global_admin' and user_restaurant != entry.restaurant:
+            return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+            
+        duration = getattr(entry.restaurant, 'turnover_default_min', 85)
+        
+        if not BookingService.acquire_booking_lock(entry.restaurant_id, entry.date, entry.time, duration_minutes=duration):
+            return api_error("Это время сейчас бронируется другим пользователем.", status.HTTP_409_CONFLICT)
+            
+        try:
+            with transaction.atomic():
+                tables = BookingService.find_best_tables(
+                    entry.restaurant, entry.date, entry.time, entry.guests, duration_minutes=duration
+                )
+                if not tables:
+                    return api_error("К сожалению, нет доступных столов.", status.HTTP_409_CONFLICT)
+
+                booking = Booking.objects.create(
+                    user=entry.user,
+                    restaurant=entry.restaurant,
+                    date=entry.date,
+                    time=entry.time,
+                    guests=entry.guests,
+                    duration_minutes=duration,
+                    status=Booking.CONFIRMED,
+                    table=tables[0],
+                )
+                booking.tables.set(tables)
+
+                entry.status = WaitlistEntry.SEATED
+                entry.promoted_booking = booking
+                entry.save()
+
+                return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return api_error("Не удалось создать бронирование.", status.HTTP_409_CONFLICT)
         finally:
             BookingService.release_booking_lock(entry.restaurant_id, entry.date, entry.time, duration_minutes=duration)

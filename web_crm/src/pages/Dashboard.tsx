@@ -1,176 +1,323 @@
-import { useState, useEffect, useCallback } from 'react';
-import api from '@/services/api';
-import { useI18n } from '@/i18n/index.tsx';
-import { motion } from 'framer-motion';
-import { CalendarDays, CheckCircle, Armchair, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowRight, CalendarClock, CheckCircle2, DoorClosed, RefreshCw } from 'lucide-react';
+import api from '@/services/api';
+import { extractResults, getApiErrorMessage, getLocalDateString, getReservationStatusMeta } from '@/features/reservations/shared';
+
+type DashboardBooking = {
+  id: number;
+  date: string;
+  time?: string;
+  user_name?: string | null;
+  guests: number;
+  table_number?: string | null;
+  status: string;
+};
+
+type DashboardTable = {
+  id: number;
+  status?: string;
+  is_active?: boolean;
+};
 
 export default function Dashboard() {
-    const { t } = useI18n();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [bookings, setBookings] = useState<any[]>([]);
-    const [stats, setStats] = useState({ total: 0, confirmed: 0, seated: 0 });
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [bookings, setBookings] = useState<DashboardBooking[]>([]);
+  const [tables, setTables] = useState<DashboardTable[]>([]);
 
-    const fetchData = useCallback(async () => {
-        try {
-            const today = new Date().toISOString().split('T')[0];
-            const res = await api.get(`/bookings/my_restaurant/?date=${today}`);
-            const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
-            setBookings(data);
+  const fetchData = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const today = getLocalDateString();
+      const [bookingsResponse, tablesResponse] = await Promise.all([
+        api.get(`/bookings/my_restaurant/?date=${today}&ordering=time`),
+        api.get('/tables/status/').catch(() => api.get('/tables/')),
+      ]);
 
-            const confirmed = data.filter((b: any) => ['confirmed', 'approved', 'seated'].includes(b.status)).length;
-            const seated = data.filter((b: any) => b.status === 'seated').length;
-            setStats({ total: data.length, confirmed, seated });
-            setError(null);
-        } catch {
-            setError("Не удалось загрузить данные");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+      setBookings(extractResults<DashboardBooking>(bookingsResponse.data));
+      setTables(extractResults<DashboardTable>(tablesResponse.data));
+      setError(null);
+    } catch (loadError) {
+      setError(getApiErrorMessage(loadError, 'Не удалось загрузить данные дашборда.'));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 15000);
-        return () => clearInterval(interval);
-    }, [fetchData]);
+  useEffect(() => {
+    void fetchData();
+    const interval = window.setInterval(() => {
+      void fetchData();
+    }, 15000);
+    return () => window.clearInterval(interval);
+  }, [fetchData]);
 
-    return (
-        <div className="space-y-6 pb-12">
-            <header className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.title')}</h1>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Операции на сегодня</p>
-                </div>
-                <button
-                    onClick={() => { setLoading(true); fetchData(); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95 text-slate-700 shadow-sm"
-                >
-                    <RefreshCw size={16} className={loading ? "animate-spin text-slate-900" : "text-slate-400"} />
-                    <span className={loading ? "text-slate-900" : ""}>Обновить</span>
-                </button>
-            </header>
+  const stats = useMemo(() => {
+    const today = getLocalDateString();
+    const now = new Date();
 
-            {loading && !bookings.length ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="h-32 bg-white rounded-xl animate-pulse border border-slate-200 shadow-sm"></div>
-                    ))}
-                    <div className="md:col-span-3 h-96 bg-white rounded-xl animate-pulse border border-slate-200 shadow-sm"></div>
-                </div>
-            ) : error ? (
-                <div className="p-6 bg-rose-50 text-rose-600 rounded-xl border border-rose-200 flex items-center gap-4 shadow-sm">
-                    <AlertCircle size={24} />
-                    <p className="font-semibold">{error}</p>
-                </div>
-            ) : (
-                <div className="space-y-6">
-                    {/* Counters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="p-6 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-between"
-                        >
-                            <div>
-                                <p className="text-slate-500 text-sm font-medium mb-1">Всего броней</p>
-                                <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-600">
-                                <CalendarDays size={24} />
-                            </div>
-                        </motion.div>
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2, delay: 0.05 }}
-                            className="p-6 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-between"
-                        >
-                            <div>
-                                <p className="text-slate-500 text-sm font-medium mb-1">Подтверждено</p>
-                                <p className="text-3xl font-bold text-emerald-600">{stats.confirmed}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-                                <CheckCircle size={24} />
-                            </div>
-                        </motion.div>
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2, delay: 0.1 }}
-                            className="p-6 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-between"
-                        >
-                            <div>
-                                <p className="text-slate-500 text-sm font-medium mb-1">За столом</p>
-                                <p className="text-3xl font-bold text-[#0F172A]">{stats.seated}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-[#F1F5F9] rounded-2xl flex items-center justify-center text-[#0F172A]">
-                                <Armchair size={24} />
-                            </div>
-                        </motion.div>
-                    </div>
-
-                    {/* Today's Bookings */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.99 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.2, delay: 0.15 }}
-                        className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
-                    >
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Расписание на сегодня</h2>
-                            <p className="text-sm font-medium text-slate-500">{bookings.length} бронирований</p>
-                        </div>
-                        <div className="divide-y divide-slate-100">
-                            {bookings.length === 0 ? (
-                                <div className="p-20 text-center space-y-4">
-                                    <CalendarDays size={48} className="mx-auto text-slate-300" />
-                                    <p className="text-slate-500 font-semibold text-sm">Бронирований на сегодня нет</p>
-                                </div>
-                            ) : (
-                                bookings.map((b, i) => (
-                                    <motion.div
-                                        key={b.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ duration: 0.2, delay: i * 0.03 }}
-                                        className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer"
-                                        onClick={() => navigate('/app/bookings')}
-                                    >
-                                        <div className="flex items-center gap-5">
-                                            <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-lg group-hover:bg-slate-900 group-hover:text-white transition-all duration-300">
-                                                {b.user_name?.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-900 text-base tracking-tight">{b.user_name}</h4>
-                                                <p className="text-sm text-slate-500 font-medium mt-0.5">
-                                                    {b.time?.substring(0, 5)} • {b.guests} PAX {b.table_number && `• Table ${b.table_number}`}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-6">
-                                            <div className={`px-4 py-1.5 rounded-full text-xs font-semibold border ${['confirmed', 'approved'].includes(b.status)
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                    b.status === 'seated'
-                                                        ? 'bg-[#F1F5F9] text-[#0F172A] border-[#E2E8F0]' :
-                                                        b.status === 'pending'
-                                                            ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                            'bg-slate-50 text-slate-500 border-slate-200'
-                                                }`}>
-                                                {b.status === 'approved' ? 'Confirmed' : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
-                                            </div>
-                                            <ChevronRight size={20} className="text-slate-300 group-hover:text-slate-600 transition-all translate-x-0 group-hover:translate-x-1" />
-                                        </div>
-                                    </motion.div>
-                                ))
-                            )}
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-        </div>
+    const activeToday = bookings.filter(
+      (booking) => booking.date === today && !['cancelled', 'rejected', 'completed', 'no_show'].includes(booking.status),
     );
+
+    const upcoming = activeToday.filter((booking) => {
+      if (!booking.time) return false;
+      const [hours, minutes] = booking.time.split(':').map(Number);
+      const slot = new Date();
+      slot.setHours(hours, minutes, 0, 0);
+      const diffMinutes = (slot.getTime() - now.getTime()) / 60000;
+      return diffMinutes > 0 && diffMinutes <= 120;
+    });
+
+    const freeTables = tables.filter((table) => table.status === 'free' && table.is_active !== false).length;
+
+    return {
+      todayReservations: activeToday.length,
+      upcoming,
+      freeTables,
+      activeToday,
+    };
+  }, [bookings, tables]);
+
+  if (loading && bookings.length === 0) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-[#1d4ed8]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Dashboard</div>
+          <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900">Операционная картина на сегодня</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+            Быстрый обзор текущих бронирований, ближайших гостей и доступных столов без перехода между разделами.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void fetchData()}
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          Refresh
+        </button>
+      </div>
+
+      {error ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <StatCard
+          icon={<CalendarClock size={18} />}
+          label="Сегодня бронирований"
+          value={String(stats.todayReservations)}
+          description="Активные брони на текущий день"
+          tone="bg-blue-50 text-[#1d4ed8]"
+        />
+        <StatCard
+          icon={<CheckCircle2 size={18} />}
+          label="Ближайшие 2 часа"
+          value={String(stats.upcoming.length)}
+          description="Гости, которые скоро придут"
+          tone="bg-amber-50 text-amber-600"
+        />
+        <StatCard
+          icon={<DoorClosed size={18} />}
+          label="Свободные столы"
+          value={String(stats.freeTables)}
+          description="Активные столы со статусом free"
+          tone="bg-emerald-50 text-emerald-600"
+        />
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <section className="rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <div>
+              <div className="text-lg font-bold tracking-tight text-slate-900">Сегодняшние бронирования</div>
+              <div className="mt-1 text-sm text-slate-500">Список заявок текущего дня</div>
+            </div>
+            <button
+              onClick={() => navigate('/app/bookings')}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#1d4ed8]"
+            >
+              All reservations
+              <ArrowRight size={16} />
+            </button>
+          </div>
+
+          {stats.activeToday.length === 0 ? (
+            <EmptyState
+              title="На сегодня пока нет бронирований"
+              description="Создайте первую бронь вручную или дождитесь новых заявок с публичной страницы."
+              actionLabel="Create reservation"
+              onAction={() => navigate('/app/bookings/new')}
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="border-b border-slate-200 bg-[#fafaf9] text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  <tr>
+                    <th className="px-6 py-4">Time</th>
+                    <th className="px-6 py-4">Guest</th>
+                    <th className="px-6 py-4">Guests</th>
+                    <th className="px-6 py-4">Table</th>
+                    <th className="px-6 py-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {stats.activeToday.slice(0, 8).map((booking) => (
+                    <tr
+                      key={booking.id}
+                    className="cursor-pointer transition hover:bg-[#fafaf9]"
+                      onClick={() => navigate(`/app/bookings?id=${booking.id}`)}
+                    >
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-900">{booking.time?.slice(0, 5) || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-700">{booking.user_name || 'Guest'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{booking.guests}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{booking.table_number ? `Table ${booking.table_number}` : '—'}</td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={booking.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <div className="space-y-6">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+            <div className="text-lg font-bold tracking-tight text-slate-900">Ближайшие гости</div>
+            <div className="mt-1 text-sm text-slate-500">Заявки на ближайшие два часа</div>
+            <div className="mt-5 space-y-3">
+              {stats.upcoming.length === 0 ? (
+                <div className="rounded-2xl bg-[#fafaf9] px-4 py-5 text-sm text-slate-500">В ближайшие два часа новых гостей нет.</div>
+              ) : (
+                stats.upcoming.map((booking) => (
+                  <div key={booking.id} className="rounded-2xl bg-[#fafaf9] px-4 py-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{booking.user_name || 'Guest'}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {booking.time?.slice(0, 5) || '—'} · {booking.guests} guests
+                        </div>
+                      </div>
+                      <StatusBadge status={booking.status} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+            <div className="text-lg font-bold tracking-tight text-slate-900">Первый запуск</div>
+            <div className="mt-1 text-sm text-slate-500">Быстрые шаги, если ресторан только запускается</div>
+            <div className="mt-5 space-y-3">
+              <QuickAction
+                title="Проверить столы"
+                description={stats.freeTables > 0 ? 'Столы уже созданы, можно продолжать работу.' : 'Сначала создайте хотя бы один стол.'}
+                actionLabel={stats.freeTables > 0 ? 'Open tables' : 'Create tables'}
+                onAction={() => navigate('/app/tables')}
+              />
+              <QuickAction
+                title="Создать бронь"
+                description="Если тестируете продукт, создайте первую бронь вручную и проверьте flow."
+                actionLabel="New reservation"
+                onAction={() => navigate('/app/bookings/new')}
+              />
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  description,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  description: string;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+      <div className={`inline-flex rounded-2xl p-3 ${tone}`}>{icon}</div>
+      <div className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+      <div className="mt-2 text-4xl font-black tracking-tight text-slate-900">{value}</div>
+      <div className="mt-2 text-sm text-slate-500">{description}</div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const meta = getReservationStatusMeta(status);
+
+  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>;
+}
+
+function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="px-6 py-14 text-center">
+      <div className="mx-auto max-w-md">
+        <div className="text-xl font-bold tracking-tight text-slate-900">{title}</div>
+        <div className="mt-3 text-sm leading-7 text-slate-600">{description}</div>
+        <button
+          type="button"
+          onClick={onAction}
+          className="mt-6 inline-flex items-center justify-center rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+        >
+          {actionLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QuickAction({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="rounded-2xl bg-[#fafaf9] px-4 py-4">
+      <div className="text-sm font-semibold text-slate-900">{title}</div>
+      <div className="mt-1 text-sm leading-6 text-slate-500">{description}</div>
+      <button type="button" onClick={onAction} className="mt-3 text-sm font-semibold text-[#1d4ed8]">
+        {actionLabel}
+      </button>
+    </div>
+  );
 }

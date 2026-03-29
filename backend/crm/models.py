@@ -23,6 +23,15 @@ class Customer(models.Model):
         blank=True,
         help_text="Comma-separated tags like VIP, influencer, family, etc.",
     )
+    FLAG_CHOICES = [
+        ('vip', 'VIP'),
+        ('problem', 'Problem'),
+        ('new', 'New'),
+        ('regular', 'Regular'),
+    ]
+    flag = models.CharField(max_length=20, choices=FLAG_CHOICES, default='new', blank=True)
+    no_show_count = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True, null=True)
 
     class Meta:
         unique_together = ['restaurant', 'phone']

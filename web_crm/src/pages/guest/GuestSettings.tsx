@@ -1,200 +1,187 @@
 import { useState } from 'react';
-import { Moon, Sun, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/modules/auth/logic/AuthContext';
 
 export default function GuestSettings() {
+    const { user } = useAuth();
     const [notifications, setNotifications] = useState({
         email: true,
         sms: true,
         bookingReminders: true,
         promotions: false
     });
-    const [darkMode, setDarkMode] = useState(false);
+    const [profile, setProfile] = useState({
+        firstName: '',
+        lastName: '',
+        bio: '',
+        language: 'ru',
+        cuisine: ['Европейская', 'Азиатская']
+    });
     const [loading, setLoading] = useState(false);
 
     const handleSave = async () => {
         setLoading(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            toast.success('Settings saved successfully');
+            await new Promise(resolve => setTimeout(resolve, 800));
+            toast.success('Настройки успешно обновлены');
         } catch (err) {
-            toast.error('Failed to save settings');
+            toast.error('Не удалось обновить настройки');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="space-y-8 pb-12 max-w-4xl mx-auto">
-            <div className="mb-10">
-                <h2 className="text-4xl font-black text-brand-green tracking-tight">Settings</h2>
-                <p className="text-slate-500 mt-2">Manage your premium dining experience and account preferences.</p>
-            </div>
+        <div className="mx-auto max-w-[1280px] px-6 py-8 space-y-12 pb-24">
+            {/* Header */}
+            <header className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-xl">
+                    <div className="text-sm font-semibold uppercase tracking-[0.16em] text-[#1d4ed8]">Управление аккаунтом</div>
+                    <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 leading-none">Настройки профиля</h1>
+                    <p className="mt-4 text-sm font-medium leading-7 text-slate-600">
+                        Персонализируйте свой опыт посещения ресторанов, управляйте уведомлениями и безопасностью вашего аккаунта.
+                    </p>
+                </div>
+            </header>
 
-            <div className="space-y-8">
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <h3 className="text-xl font-bold text-brand-green">Account Settings</h3>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100">
-                        <div className="p-6 flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Email Address</span>
-                                <span className="text-lg font-medium">example@email.com</span>
+            <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
+                <div className="space-y-12">
+                    {/* Personal Info */}
+                    <section className="space-y-6">
+                        <div className="flex items-center gap-3">
+                            <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700">
+                                <span className="material-symbols-outlined text-[20px]">person</span>
                             </div>
-                            <button type="button" className="px-4 py-2 text-sm font-bold text-brand-green border border-brand-green/20 rounded-lg hover:bg-brand-green/5 transition-colors">Update</button>
-                        </div>
-                        <div className="p-6 flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Phone Number</span>
-                                <span className="text-lg font-medium">+7 (777) 000-00-00</span>
-                            </div>
-                            <button type="button" className="px-4 py-2 text-sm font-bold text-brand-green border border-brand-green/20 rounded-lg hover:bg-brand-green/5 transition-colors">Update</button>
-                        </div>
-                        <div className="p-6 flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Language Preference</span>
-                                <span className="text-lg font-medium">English (United Kingdom)</span>
-                            </div>
-                            <button type="button" className="px-4 py-2 text-sm font-bold text-brand-green border border-brand-green/20 rounded-lg hover:bg-brand-green/5 transition-colors">Change</button>
-                        </div>
-                    </div>
-                </section>
-
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <h3 className="text-xl font-bold text-brand-green">Notifications</h3>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="border-b border-slate-100">
-                                <tr>
-                                    <th className="p-6 text-sm font-semibold text-slate-500 uppercase">Alert Type</th>
-                                    <th className="p-6 text-sm font-semibold text-slate-500 uppercase text-center">Email</th>
-                                    <th className="p-6 text-sm font-semibold text-slate-500 uppercase text-center">Push</th>
-                                    <th className="p-6 text-sm font-semibold text-slate-500 uppercase text-center">SMS</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {[
-                                    { key: 'bookingReminders', label: 'Booking Reminders' },
-                                    { key: 'promotions', label: 'Special Offers' },
-                                    { key: 'email', label: 'Chat Messages' },
-                                ].map((row) => (
-                                    <tr key={row.key}>
-                                        <td className="p-6 font-medium">{row.label}</td>
-                                        <td className="p-6 text-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={!!notifications[row.key as keyof typeof notifications]}
-                                                onChange={() => setNotifications(prev => ({ ...prev, [row.key]: !prev[row.key as keyof typeof prev] }))}
-                                                className="w-5 h-5 rounded text-brand-green border-slate-300 focus:ring-brand-green"
-                                            />
-                                        </td>
-                                        <td className="p-6 text-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={!!notifications[row.key as keyof typeof notifications]}
-                                                onChange={() => setNotifications(prev => ({ ...prev, [row.key]: !prev[row.key as keyof typeof prev] }))}
-                                                className="w-5 h-5 rounded text-brand-green border-slate-300 focus:ring-brand-green"
-                                            />
-                                        </td>
-                                        <td className="p-6 text-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={!!notifications[row.key as keyof typeof notifications]}
-                                                onChange={() => setNotifications(prev => ({ ...prev, [row.key]: !prev[row.key as keyof typeof prev] }))}
-                                                className="w-5 h-5 rounded text-brand-green border-slate-300 focus:ring-brand-green"
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <h3 className="text-xl font-bold text-brand-green">Privacy & Security</h3>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100">
-                        <div className="p-6 flex items-center justify-between">
-                            <div>
-                                <p className="font-bold">Data Sharing</p>
-                                <p className="text-sm text-slate-500">Allow Kezdes to share booking history with partners for rewards.</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setNotifications(prev => ({ ...prev, promotions: !prev.promotions }))}
-                                className={`w-14 h-8 rounded-full transition-colors relative ${notifications.promotions ? 'bg-brand-green' : 'bg-slate-200'}`}
-                            >
-                                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${notifications.promotions ? 'translate-x-7' : 'translate-x-1'}`} />
-                            </button>
+                            <h2 className="text-lg font-bold text-slate-900">Личные данные</h2>
                         </div>
 
-                        <div className="p-6 flex items-center justify-between">
-                            <div>
-                                <p className="font-bold text-rose-600">Delete Account</p>
-                                <p className="text-sm text-slate-500">Permanently remove all your data and booking history.</p>
-                            </div>
-                            <button type="button" className="px-4 py-2 text-sm font-bold text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors">Delete</button>
-                        </div>
-                    </div>
-                </section>
-
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <h3 className="text-xl font-bold text-brand-green">App Preferences</h3>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100">
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-3">
-                                <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider">Default Currency</label>
-                                <select className="w-full bg-slate-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-brand-green transition-all">
-                                    <option>USD - United States Dollar</option>
-                                    <option>EUR - Euro</option>
-                                    <option>GBP - British Pound</option>
-                                    <option>KZT - Kazakhstani Tenge</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-3">
-                                <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider">Appearance</label>
-                                <div className="flex p-1 bg-slate-100 rounded-xl">
-                                    <button
-                                        type="button"
-                                        onClick={() => setDarkMode(false)}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-bold ${!darkMode ? 'bg-white shadow-sm text-brand-green' : 'text-slate-400'}`}
-                                    >
-                                        <Sun className="w-4 h-4" />
-                                        Light
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setDarkMode(true)}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-bold ${darkMode ? 'bg-white shadow-sm text-brand-green' : 'text-slate-400'}`}
-                                    >
-                                        <Moon className="w-4 h-4" />
-                                        Dark
-                                    </button>
+                        <div className="grid gap-6 rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+                            <div className="grid gap-6 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Имя</label>
+                                    <input
+                                        type="text"
+                                        value={profile.firstName}
+                                        onChange={(e) => setProfile(p => ({ ...p, firstName: e.target.value }))}
+                                        placeholder="Александр"
+                                        className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold focus:border-[#1d4ed8] focus:bg-white focus:outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Фамилия</label>
+                                    <input
+                                        type="text"
+                                        value={profile.lastName}
+                                        onChange={(e) => setProfile(p => ({ ...p, lastName: e.target.value }))}
+                                        placeholder="Казахстан"
+                                        className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold focus:border-[#1d4ed8] focus:bg-white focus:outline-none transition-all"
+                                    />
                                 </div>
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">О себе</label>
+                                <textarea
+                                    rows={3}
+                                    value={profile.bio}
+                                    onChange={(e) => setProfile(p => ({ ...p, bio: e.target.value }))}
+                                    placeholder="Расскажите о своих гастрономических предпочтениях..."
+                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold focus:border-[#1d4ed8] focus:bg-white focus:outline-none transition-all resize-none"
+                                />
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                <div className="mt-12 flex justify-end gap-4 border-t border-slate-200 pt-8">
-                    <button type="button" className="px-8 py-3 text-sm font-bold text-slate-600 hover:text-brand-green transition-colors">Discard Changes</button>
-                    <Button onClick={handleSave} isLoading={loading} className="px-8 py-3 text-sm font-bold text-white bg-brand-green rounded-xl shadow-lg hover:brightness-110 transition-all">
-                        <Save className="w-4 h-4 mr-2" /> Save Preferences
-                    </Button>
+                    {/* Verification */}
+                    <section className="space-y-6">
+                        <div className="flex items-center gap-3">
+                            <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700">
+                                <span className="material-symbols-outlined text-[20px]">verified_user</span>
+                            </div>
+                            <h2 className="text-lg font-bold text-slate-900">Безопасность и связь</h2>
+                        </div>
+
+                        <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm overflow-hidden">
+                            <div className="p-6 flex items-center justify-between border-b border-slate-100">
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</p>
+                                    <p className="text-sm font-bold text-slate-900 mt-1">{user?.email}</p>
+                                </div>
+                                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest">Подтверждено</span>
+                            </div>
+                            <div className="p-6 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Телефон</p>
+                                    <p className="text-sm font-bold text-slate-900 mt-1">{(user as any)?.phone || 'Не привязан'}</p>
+                                </div>
+                                <button className="text-xs font-bold text-[#1d4ed8] uppercase tracking-widest hover:underline">Добавить</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div className="space-y-10">
+                    <section className="space-y-5">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Уведомления</h3>
+                        <div className="space-y-4 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                            {[
+                                { key: 'bookingReminders', label: 'Бронирования', desc: 'Напоминания о визитах' },
+                                { key: 'promotions', label: 'Акции', desc: 'Скидки и спецпредложения' },
+                                { key: 'email', label: 'Сообщения', desc: 'Прямая связь с заведением' },
+                            ].map((item) => (
+                                <div key={item.key} className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-900 leading-none">{item.label}</div>
+                                        <div className="text-[10px] text-slate-500 mt-1.5 font-medium">{item.desc}</div>
+                                    </div>
+                                    <Switch
+                                        checked={notifications[item.key as keyof typeof notifications]}
+                                        onChange={() => setNotifications(prev => ({ ...prev, [item.key]: !prev[item.key as keyof typeof prev] }))}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <section className="space-y-5">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Язык интерфейса</h3>
+                        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                            <select
+                                value={profile.language}
+                                onChange={(e) => setProfile(p => ({ ...p, language: e.target.value }))}
+                                className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold focus:border-[#1d4ed8] focus:bg-white outline-none"
+                            >
+                                <option value="ru">Русский (RU)</option>
+                                <option value="kz">Қазақша (KZ)</option>
+                                <option value="en">English (US)</option>
+                            </select>
+                        </div>
+                    </section>
+
+                    <button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="w-full h-14 bg-[#1d4ed8] text-white rounded-2xl font-bold transition-all hover:bg-[#1e40af] shadow-2xl shadow-blue-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
+                    >
+                        {loading ? <span className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[20px]">save</span>}
+                        {loading ? 'Сохранение...' : 'Сохранить изменения'}
+                    </button>
+
+                    <div className="pt-4 text-center">
+                        <button className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] hover:text-rose-700 transition-colors">Удалить аккаунт</button>
+                    </div>
                 </div>
             </div>
         </div>
+    );
+}
+
+function Switch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+    return (
+        <button
+            onClick={onChange}
+            className={`w-12 h-6 rounded-full transition-all relative inline-block ${checked ? 'bg-[#1d4ed8] shadow-[0_0_8px_rgba(29,78,216,0.3)]' : 'bg-slate-200 dark:bg-slate-800'}`}
+        >
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${checked ? 'translate-x-[26px]' : 'translate-x-[2px]'}`} />
+        </button>
     );
 }

@@ -2,9 +2,23 @@ from rest_framework import viewsets, permissions, decorators, response
 from django.db.models import Q
 from rest_framework import status
 
-from .models import Message
-from .serializers import MessageSerializer
+from .models import Message, Conversation
+from .serializers import MessageSerializer, ConversationSerializer
 
+
+class ConversationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ConversationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        # Restaurant side: see all conversations for their restaurant
+        # Guest side: see all conversations for them
+        return Conversation.objects.filter(
+            Q(restaurant__owner=user) | 
+            Q(restaurant__staff__user=user) |
+            Q(guest=user)
+        ).select_related('restaurant', 'guest').distinct().order_by('-updated_at')
 
 class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer

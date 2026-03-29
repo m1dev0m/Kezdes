@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Advanced Analytics Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#0d4ef2",
+                "background-light": "#f5f6f8",
+                "background-dark": "#101522",
+              },
+              fontFamily: {
+                "display": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .filled-icon { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+<div class="p-6">
+<div class="flex items-center gap-3">
+<div class="bg-primary rounded-lg p-2 text-white">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-slate-900 dark:text-white text-base font-bold leading-none">Kezdes Admin</h1>
+<p class="text-slate-500 text-xs font-normal">Restaurant Management</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-sm font-medium">Bookings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">restaurant_menu</span>
+<span class="text-sm font-medium">Menu</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="text-sm font-medium">Staff</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-lg" href="#">
+<span class="material-symbols-outlined filled-icon">bar_chart</span>
+<span class="text-sm font-bold">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 px-2 py-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+<div class="size-8 rounded-full bg-slate-300 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Professional male restaurant manager avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkMVtwjVXTkeDW8OuphbFoJKUnxEb3EdDP2nI2mPYgvUtBpuNgL2WeMDyqcGJw1KOUwMnCK4bTrwMTJ8QOdmwIv8UXei8PGwb90xQARg2O7FnoFK2zcA695d1fNLRsMpC_vB6j4JomJvbKluBB553dzr-tAnLvcS2Rg1KZFoBy1xBg-DpoRSD7b-zd7AfRLj6yKm5MDpVWylzb8-AT-z46XETgQeVnK8I2UkCTeyLuwpPBJhYcjWw0iqot55jIgl0SgXbioF7s3g"/>
+</div>
+<div class="flex flex-col">
+<p class="text-sm font-bold leading-tight">Alex Rivera</p>
+<p class="text-[10px] text-slate-500 uppercase tracking-wider font-bold">General Manager</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-y-auto">
+<!-- Header -->
+<header class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-8 py-4">
+<div class="flex items-center gap-4">
+<h2 class="text-slate-900 dark:text-white text-xl font-bold">Advanced Analytics</h2>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="pl-10 pr-4 py-2 text-sm bg-slate-100 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary w-64" placeholder="Search analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+</button>
+<div class="h-8 w-px bg-slate-200 dark:border-slate-800 mx-2"></div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm">
+<span class="material-symbols-outlined text-sm">download</span>
+                    Export Data
+                </button>
+</div>
+</header>
+<!-- Analytics Body -->
+<div class="p-8 space-y-8">
+<div class="flex flex-col gap-2">
+<h3 class="text-3xl font-black text-slate-900 dark:text-white">Performance Overview</h3>
+<p class="text-slate-500 max-w-2xl">Visual insight into your restaurant's daily operations, guest behavior, and booking efficiency over the last 90 days.</p>
+</div>
+<!-- Stats Bar -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Total Bookings</p>
+<div class="flex items-end justify-between mt-2">
+<h4 class="text-3xl font-bold text-slate-900 dark:text-white">1,284</h4>
+<span class="text-emerald-500 text-sm font-bold flex items-center bg-emerald-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs mr-1">arrow_upward</span>12.5%
+                        </span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Avg Occupancy</p>
+<div class="flex items-end justify-between mt-2">
+<h4 class="text-3xl font-bold text-slate-900 dark:text-white">78%</h4>
+<span class="text-rose-500 text-sm font-bold flex items-center bg-rose-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs mr-1">arrow_downward</span>2.1%
+                        </span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<p class="text-sm font-medium text-slate-500 uppercase tracking-wider">No-show Rate</p>
+<div class="flex items-end justify-between mt-2">
+<h4 class="text-3xl font-bold text-slate-900 dark:text-white">4.2%</h4>
+<span class="text-emerald-500 text-sm font-bold flex items-center bg-emerald-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs mr-1">arrow_downward</span>0.5%
+                        </span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Customer Growth</p>
+<div class="flex items-end justify-between mt-2">
+<h4 class="text-3xl font-bold text-slate-900 dark:text-white">320</h4>
+<span class="text-emerald-500 text-sm font-bold flex items-center bg-emerald-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs mr-1">arrow_upward</span>8.4%
+                        </span>
+</div>
+</div>
+</div>
+<!-- Charts Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-8">
+<!-- 1) Line Chart: Bookings by Day -->
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between mb-6">
+<h5 class="font-bold text-slate-900 dark:text-white">Bookings by Day</h5>
+<select class="bg-slate-100 dark:bg-slate-800 border-none text-xs rounded-lg py-1 px-3">
+<option>Last 30 Days</option>
+<option>Last 7 Days</option>
+</select>
+</div>
+<div class="h-64 flex items-end gap-2 w-full relative">
+<!-- Simulated Line Chart with SVG -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+<path d="M0,35 Q5,25 10,28 T20,15 T30,22 T40,10 T50,18 T60,5 T70,12 T80,8 T90,20 T100,15" fill="none" stroke="#0d4ef2" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+<path d="M0,35 Q5,25 10,28 T20,15 T30,22 T40,10 T50,18 T60,5 T70,12 T80,8 T90,20 T100,15 L100,40 L0,40 Z" fill="url(#gradient)" opacity="0.1"></path>
+<defs>
+<lineargradient id="gradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#0d4ef2"></stop>
+<stop offset="100%" stop-color="#0d4ef2" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<!-- Labels -->
+<div class="absolute bottom-0 left-0 w-full flex justify-between px-1 text-[10px] text-slate-400 mt-2">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+</div>
+</div>
+</div>
+<!-- 2) Heatmap: Occupancy by Time -->
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between mb-6">
+<h5 class="font-bold text-slate-900 dark:text-white">Occupancy by Time</h5>
+<div class="flex gap-2">
+<div class="flex items-center gap-1">
+<div class="size-2 rounded-sm bg-primary/20"></div>
+<span class="text-[10px] text-slate-500">Low</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="size-2 rounded-sm bg-primary"></div>
+<span class="text-[10px] text-slate-500">High</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-7 gap-2">
+<!-- Columns for days, rows for hours -->
+<!-- Header for days -->
+<div class="text-[10px] text-slate-400 text-center">M</div>
+<div class="text-[10px] text-slate-400 text-center">T</div>
+<div class="text-[10px] text-slate-400 text-center">W</div>
+<div class="text-[10px] text-slate-400 text-center">T</div>
+<div class="text-[10px] text-slate-400 text-center">F</div>
+<div class="text-[10px] text-slate-400 text-center">S</div>
+<div class="text-[10px] text-slate-400 text-center">S</div>
+<!-- Heatmap Boxes -->
+<div class="aspect-square bg-primary/20 rounded-sm"></div>
+<div class="aspect-square bg-primary/10 rounded-sm"></div>
+<div class="aspect-square bg-primary/30 rounded-sm"></div>
+<div class="aspect-square bg-primary/40 rounded-sm"></div>
+<div class="aspect-square bg-primary/60 rounded-sm"></div>
+<div class="aspect-square bg-primary/90 rounded-sm"></div>
+<div class="aspect-square bg-primary/80 rounded-sm"></div>
+<div class="aspect-square bg-primary/10 rounded-sm"></div>
+<div class="aspect-square bg-primary/20 rounded-sm"></div>
+<div class="aspect-square bg-primary/50 rounded-sm"></div>
+<div class="aspect-square bg-primary/70 rounded-sm"></div>
+<div class="aspect-square bg-primary/100 rounded-sm"></div>
+<div class="aspect-square bg-primary/80 rounded-sm"></div>
+<div class="aspect-square bg-primary/70 rounded-sm"></div>
+<div class="aspect-square bg-primary/30 rounded-sm"></div>
+<div class="aspect-square bg-primary/40 rounded-sm"></div>
+<div class="aspect-square bg-primary/20 rounded-sm"></div>
+<div class="aspect-square bg-primary/60 rounded-sm"></div>
+<div class="aspect-square bg-primary/70 rounded-sm"></div>
+<div class="aspect-square bg-primary/50 rounded-sm"></div>
+<div class="aspect-square bg-primary/40 rounded-sm"></div>
+<div class="aspect-square bg-primary/50 rounded-sm"></div>
+<div class="aspect-square bg-primary/60 rounded-sm"></div>
+<div class="aspect-square bg-primary/80 rounded-sm"></div>
+<div class="aspect-square bg-primary/90 rounded-sm"></div>
+<div class="aspect-square bg-primary/100 rounded-sm"></div>
+<div class="aspect-square bg-primary/90 rounded-sm"></div>
+<div class="aspect-square bg-primary/80 rounded-sm"></div>
+<div class="aspect-square bg-primary/10 rounded-sm"></div>
+<div class="aspect-square bg-primary/20 rounded-sm"></div>
+<div class="aspect-square bg-primary/10 rounded-sm"></div>
+<div class="aspect-square bg-primary/30 rounded-sm"></div>
+<div class="aspect-square bg-primary/40 rounded-sm"></div>
+<div class="aspect-square bg-primary/60 rounded-sm"></div>
+<div class="aspect-square bg-primary/50 rounded-sm"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] text-slate-400">
+<span>12:00</span><span>15:00</span><span>18:00</span><span>21:00</span><span>00:00</span>
+</div>
+</div>
+<!-- 3) Bar Chart: No-show Dynamics -->
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between mb-6">
+<h5 class="font-bold text-slate-900 dark:text-white">No-show Dynamics</h5>
+<p class="text-[10px] text-slate-500 font-medium">L3M TREND</p>
+</div>
+<div class="h-64 flex items-end justify-around gap-4 px-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+<!-- Dec Bars -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-full bg-primary/20 rounded-t-lg h-32 relative group">
+<div class="w-full bg-primary rounded-t-lg h-8 absolute bottom-0 transition-all group-hover:h-12"></div>
+</div>
+<span class="text-xs text-slate-500 mt-2">Dec</span>
+</div>
+<!-- Jan Bars -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-full bg-primary/20 rounded-t-lg h-24 relative group">
+<div class="w-full bg-primary rounded-t-lg h-6 absolute bottom-0 transition-all group-hover:h-10"></div>
+</div>
+<span class="text-xs text-slate-500 mt-2">Jan</span>
+</div>
+<!-- Feb Bars -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-full bg-primary/20 rounded-t-lg h-28 relative group">
+<div class="w-full bg-primary rounded-t-lg h-4 absolute bottom-0 transition-all group-hover:h-8"></div>
+</div>
+<span class="text-xs text-slate-500 mt-2">Feb</span>
+</div>
+</div>
+<div class="flex justify-center gap-6 mt-4">
+<div class="flex items-center gap-2">
+<div class="size-3 rounded-full bg-primary/20"></div>
+<span class="text-[10px] text-slate-500 font-medium">Cancellations</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="size-3 rounded-full bg-primary"></div>
+<span class="text-[10px] text-slate-500 font-medium">No-shows</span>
+</div>
+</div>
+</div>
+<!-- 4) Pie Chart: Returning vs New Customers -->
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between mb-6">
+<h5 class="font-bold text-slate-900 dark:text-white">Customer Breakdown</h5>
+</div>
+<div class="flex flex-col md:flex-row items-center justify-center gap-8 h-64">
+<div class="relative size-44">
+<!-- Simulated Pie Chart using Conic Gradient -->
+<div class="size-full rounded-full border-[18px] border-primary/20" style="background: conic-gradient(#0d4ef2 0% 68%, transparent 68% 100%);"></div>
+<div class="absolute inset-0 flex items-center justify-center flex-col">
+<p class="text-2xl font-black text-slate-900 dark:text-white">1.2k</p>
+<p class="text-[10px] text-slate-500 font-bold uppercase">Total</p>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="size-4 rounded-full bg-primary"></div>
+<div class="flex flex-col">
+<span class="text-sm font-bold">68% Returning</span>
+<span class="text-xs text-slate-500">Loyal guests (816)</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="size-4 rounded-full bg-primary/20"></div>
+<div class="flex flex-col">
+<span class="text-sm font-bold">32% New</span>
+<span class="text-xs text-slate-500">First-time visits (384)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

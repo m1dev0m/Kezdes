@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Menu Setup | Kezdes Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --primary: #0047FF;
+        }
+        .category-active {
+            border-left: 4px solid var(--primary);
+            background-color: rgba(0, 71, 255, 0.05);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0047FF",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-screen w-full flex-col overflow-hidden">
+<header class="flex shrink-0 items-center justify-between border-b border-solid border-slate-200 dark:border-slate-800 px-10 py-4 bg-white dark:bg-slate-900">
+<div class="flex items-center gap-4">
+<div class="size-8 text-primary">
+<svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">Kezdes</h2>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-slate-500 text-sm">Onboarding Wizard</span>
+<div class="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col overflow-hidden">
+<div class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-10 py-4 shrink-0">
+<div class="max-w-5xl mx-auto flex items-center justify-between">
+<div class="flex gap-12">
+<div class="flex items-center gap-3 opacity-60">
+<span class="size-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">1</span>
+<span class="text-sm font-semibold">Basic Info</span>
+</div>
+<div class="flex items-center gap-3 opacity-60">
+<span class="size-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">2</span>
+<span class="text-sm font-semibold text-slate-900 dark:text-white">Floor Plan</span>
+</div>
+<div class="flex items-center gap-3 border-b-2 border-primary pb-1">
+<span class="size-6 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white">3</span>
+<span class="text-sm font-bold text-slate-900 dark:text-white">Menu Setup</span>
+</div>
+<div class="flex items-center gap-3 opacity-40">
+<span class="size-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">4</span>
+<span class="text-sm font-semibold">Review &amp; Launch</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right">
+<p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Progress</p>
+<p class="text-sm font-bold text-primary">75% Complete</p>
+</div>
+<div class="w-24 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-3/4"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-1 flex overflow-hidden">
+<aside class="w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+<div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<h3 class="text-xs font-bold uppercase tracking-widest text-slate-400">Categories</h3>
+<button class="p-1 text-primary hover:bg-primary/10 rounded">
+<span class="material-symbols-outlined text-xl">add_circle</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto">
+<nav class="p-2 space-y-1">
+<div class="category-active group flex items-center justify-between p-3 rounded-r-lg cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl">restaurant</span>
+<span class="text-sm font-bold text-slate-900 dark:text-white">Main Courses</span>
+</div>
+<span class="text-xs font-medium text-slate-400 group-hover:text-slate-600">12</span>
+</div>
+<div class="group flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400 text-xl">local_pizza</span>
+<span class="text-sm font-semibold text-slate-600 dark:text-slate-400">Appetizers</span>
+</div>
+<span class="text-xs font-medium text-slate-400">8</span>
+</div>
+<div class="group flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400 text-xl">local_bar</span>
+<span class="text-sm font-semibold text-slate-600 dark:text-slate-400">Drinks</span>
+</div>
+<span class="text-xs font-medium text-slate-400">15</span>
+</div>
+<div class="group flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400 text-xl">icecream</span>
+<span class="text-sm font-semibold text-slate-600 dark:text-slate-400">Desserts</span>
+</div>
+<span class="text-xs font-medium text-slate-400">5</span>
+</div>
+</nav>
+</div>
+<div class="p-6 border-t border-slate-100 dark:border-slate-800">
+<button class="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-primary hover:border-primary transition-all group">
+<span class="material-symbols-outlined text-sm">upload_file</span>
+<span class="text-xs font-bold">Import CSV/Excel</span>
+</button>
+</div>
+</aside>
+<section class="flex-1 bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden">
+<header class="p-8 pb-0 flex items-center justify-between">
+<div>
+<h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">Main Courses</h2>
+<p class="text-sm text-slate-500 mt-1">Manage items for your primary dining service.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+                            Filter
+                        </button>
+<button class="bg-primary text-white px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-700 shadow-lg shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-lg">add</span>
+                            Add New Item
+                        </button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto p-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
+<div class="aspect-video bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-slate-300 text-4xl">image</span>
+<div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 bg-white rounded-full shadow-sm text-slate-400 hover:text-primary">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<div class="flex items-start justify-between mb-2">
+<h4 class="font-bold text-slate-900 dark:text-white">Grilled Salmon Steak</h4>
+<span class="font-extrabold text-primary">$24.50</span>
+</div>
+<p class="text-xs text-slate-500 leading-relaxed mb-4 line-clamp-2">Fresh Atlantic salmon grilled with lemon butter sauce, served with seasonal vegetables and mashed potatoes.</p>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
+<div class="flex gap-1">
+<span class="px-2 py-0.5 bg-green-50 text-[10px] font-bold text-green-600 rounded">Available</span>
+</div>
+<button class="text-slate-400 hover:text-red-500">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
+<div class="aspect-video bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-slate-300 text-4xl">image</span>
+<div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 bg-white rounded-full shadow-sm text-slate-400 hover:text-primary">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<div class="flex items-start justify-between mb-2">
+<h4 class="font-bold text-slate-900 dark:text-white">Truffle Mushroom Risotto</h4>
+<span class="font-extrabold text-primary">$18.00</span>
+</div>
+<p class="text-xs text-slate-500 leading-relaxed mb-4 line-clamp-2">Creamy arborio rice infused with black truffle oil, wild mushrooms, and topped with parmesan shavings.</p>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
+<div class="flex gap-1">
+<span class="px-2 py-0.5 bg-green-50 text-[10px] font-bold text-green-600 rounded">Available</span>
+</div>
+<button class="text-slate-400 hover:text-red-500">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
+<div class="aspect-video bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-slate-300 text-4xl">image</span>
+<div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 bg-white rounded-full shadow-sm text-slate-400 hover:text-primary">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<div class="flex items-start justify-between mb-2">
+<h4 class="font-bold text-slate-900 dark:text-white">Wagyu Beef Burger</h4>
+<span class="font-extrabold text-primary">$22.00</span>
+</div>
+<p class="text-xs text-slate-500 leading-relaxed mb-4 line-clamp-2">Premium Wagyu beef patty, caramelized onions, Swiss cheese, and brioche bun with truffle mayo.</p>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
+<div class="flex gap-1">
+<span class="px-2 py-0.5 bg-orange-50 text-[10px] font-bold text-orange-600 rounded">Low Stock</span>
+</div>
+<button class="text-slate-400 hover:text-red-500">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</div>
+</div>
+<button class="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl flex flex-col items-center justify-center gap-3 p-8 hover:border-primary hover:bg-primary/5 transition-all text-slate-400 hover:text-primary min-h-[300px]">
+<span class="material-symbols-outlined text-4xl">add_circle</span>
+<span class="text-sm font-bold">Add Another Item</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<footer class="shrink-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-10 py-4 flex items-center justify-between">
+<button class="px-6 py-2.5 rounded-lg font-bold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">arrow_back</span>
+            Back to Floor Plan
+        </button>
+<div class="flex items-center gap-4">
+<button class="px-6 py-2.5 rounded-lg font-bold text-slate-500 hover:text-slate-700 transition-colors">Save Draft</button>
+<button class="px-8 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-blue-700 shadow-lg shadow-primary/20 transition-all flex items-center gap-2">
+                Next: Review &amp; Launch
+                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</footer>
+</div>
+
+</body></html>

@@ -15,7 +15,21 @@ def _load_env_file():
     env_file_path = os.path.join(BASE_DIR, '.env')
     _debug = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
     if os.path.exists(env_file_path):
+        # Read repo-local .env, then force DEBUG from that file to win over
+        # any ambient DEBUG env var (some environments set DEBUG=release).
         environ.Env.read_env(env_file_path)
+        try:
+            with open(env_file_path, 'r', encoding='utf-8') as fh:
+                for raw_line in fh:
+                    line = raw_line.strip()
+                    if not line or line.startswith('#') or '=' not in line:
+                        continue
+                    key, value = line.split('=', 1)
+                    if key.strip() == 'DEBUG':
+                        os.environ['DEBUG'] = value.strip().strip('"').strip("'")
+                        break
+        except OSError:
+            pass
     elif not _debug:
         raise ValueError('.env file is required when DEBUG=False')
 
@@ -241,3 +255,7 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@kezdes.kz')
 
 GLOBAL_ADMIN_EMAIL = env('GLOBAL_ADMIN_EMAIL', default='admin@kezdes.kz')
+
+# OTP settings
+REQUIRE_EMAIL_OTP = env('REQUIRE_EMAIL_OTP', default='False' if DEBUG else 'True').lower() == 'true'
+OTP_EXPIRE_MINUTES = int(env('OTP_EXPIRE_MINUTES', default=10))

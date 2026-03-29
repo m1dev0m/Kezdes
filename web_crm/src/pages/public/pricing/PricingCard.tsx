@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
 import type { PricingPlan, PricingBadgeVariant } from './pricingPlans';
 
 function formatNumber(value: number) {
@@ -17,14 +16,14 @@ function getSavingsPercent(price: number, oldPrice?: number) {
 
 function badgeClass(variant: PricingBadgeVariant = 'neutral') {
     if (variant === 'primary') {
-        return 'bg-primary text-white shadow-sm shadow-primary/20';
+        return 'bg-[#0047FF] text-white shadow-2xl shadow-[#0047FF]/25';
     }
 
     if (variant === 'success') {
-        return 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20';
+        return 'bg-emerald-500 text-white shadow-2xl shadow-emerald-500/25';
     }
 
-    return 'bg-slate-900 text-white shadow-sm shadow-slate-900/10';
+    return 'bg-slate-950 text-white shadow-2xl shadow-black/10';
 }
 
 export function PricingCard({
@@ -38,25 +37,25 @@ export function PricingCard({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08, duration: 0.5 }}
+            transition={{ delay: index * 0.1, duration: 0.6 }}
             className={
-                `relative flex h-full flex-col rounded-[2rem] border bg-white p-8 sm:p-10 transition-all duration-300 ` +
+                `relative flex h-full flex-col rounded-[3rem] border bg-white dark:bg-slate-900 p-10 sm:p-12 transition-all duration-500 group ` +
                 (plan.highlight
-                    ? 'border-primary/20 shadow-2xl shadow-primary/10 ring-1 ring-primary/10'
-                    : 'border-slate-100 shadow-lg shadow-slate-900/5 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10 hover:border-slate-200')
+                    ? 'border-[#0047FF]/20 shadow-2xl shadow-[#0047FF]/10 ring-4 ring-[#0047FF]/5'
+                    : 'border-slate-50 dark:border-slate-800 shadow-xl shadow-black/5 hover:-translate-y-2 hover:shadow-2xl hover:shadow-black/10 hover:border-[#0047FF]/20')
             }
         >
-            <div className="absolute inset-x-0 top-0 h-24 rounded-t-[2rem] bg-gradient-to-b from-slate-50 to-transparent pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-32 rounded-t-[3rem] bg-gradient-to-b from-slate-50 dark:from-slate-800 to-transparent pointer-events-none opacity-50" />
 
             <div className="relative">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
                     {plan.badges?.map((badge) => (
                         <span
                             key={`${plan.id}-${badge.label}`}
                             className={
-                                'inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ' +
+                                'inline-flex items-center rounded-xl px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] italic ' +
                                 badgeClass(badge.variant)
                             }
                         >
@@ -65,69 +64,63 @@ export function PricingCard({
                     ))}
 
                     {savingsPercent !== null && (
-                        <span className="inline-flex items-center rounded-full bg-primary/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
-                            Экономия {savingsPercent}%
+                        <span className="inline-flex items-center rounded-xl bg-[#0047FF]/5 px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-[#0047FF] border border-[#0047FF]/10 italic">
+                            SAVE {savingsPercent}%
                         </span>
                     )}
                 </div>
 
-                <div className="mt-6">
-                    <h3 className="text-sm font-black tracking-[0.25em] text-slate-900">{plan.name}</h3>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">{plan.tagline}</p>
+                <div className="mt-10">
+                    <h3 className="text-[11px] font-black tracking-[0.3em] text-[#0047FF] uppercase italic">{plan.name}</h3>
+                    <p className="mt-2 text-lg font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">{plan.tagline}</p>
 
-                    <div className="mt-6 flex items-end gap-3">
+                    <div className="mt-10 flex items-end gap-3">
                         <div className="flex items-baseline gap-1">
-                            <span className="text-4xl sm:text-5xl font-black tracking-tighter text-slate-900">
+                            <span className="text-6xl font-black tracking-tighter text-slate-950 dark:text-white italic tabular-nums leading-none">
                                 {formatNumber(plan.price)}
                             </span>
-                            <span className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900">{plan.currencySymbol}</span>
+                            <span className="text-2xl font-black tracking-tighter text-[#0047FF] uppercase italic">{plan.currencySymbol}</span>
                         </div>
 
-                        <span className="pb-1 text-xs font-bold uppercase tracking-widest text-slate-400">{plan.periodLabel}</span>
+                        <span className="pb-1 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">{plan.periodLabel}</span>
                     </div>
 
                     {plan.oldPrice ? (
-                        <div className="mt-3 flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-400 line-through">
+                        <div className="mt-4 flex items-center gap-3">
+                            <span className="text-lg font-black text-slate-300 dark:text-slate-600 line-through italic tabular-nums">
                                 {formatNumber(plan.oldPrice)}{plan.currencySymbol}
                             </span>
-                            <span className="text-xs font-black uppercase tracking-widest text-emerald-600">
-                                СКИДКА
+                            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 italic">
+                                LIMITED OFFER
                             </span>
                         </div>
                     ) : null}
-
-                    {plan.marketingLine ? (
-                        <p className="mt-3 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
-                            {plan.marketingLine}
-                        </p>
-                    ) : null}
                 </div>
 
-                <div className="mt-8 space-y-4">
+                <div className="mt-12 space-y-6">
                     {plan.features.map((feature) => (
-                        <div key={`${plan.id}-${feature}`} className="flex items-start gap-3">
+                        <div key={`${plan.id}-${feature}`} className="flex items-start gap-5 group/feature">
                             <span
                                 className={
-                                    'mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ' +
-                                    (plan.highlight ? 'bg-primary/5 text-primary' : 'bg-slate-50 text-slate-500')
+                                    'mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-xl transition-colors ' +
+                                    (plan.highlight ? 'bg-[#0047FF]/10 text-[#0047FF]' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover/feature:bg-[#0047FF]/10 group-hover/feature:text-[#0047FF]')
                                 }
                             >
-                                <Check size={14} strokeWidth={3} />
+                                <span className="material-symbols-outlined text-[16px] font-bold">check</span>
                             </span>
-                            <span className="text-sm font-semibold text-slate-700">{feature}</span>
+                            <span className="text-sm font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest group-hover/feature:text-slate-900 dark:group-hover/feature:text-white transition-colors">{feature}</span>
                         </div>
                     ))}
                 </div>
 
-                <div className="mt-10">
+                <div className="mt-12">
                     <Link
                         to={plan.cta.to}
                         className={
-                            'group inline-flex w-full items-center justify-center rounded-2xl px-6 py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-[0.99] ' +
+                            'group inline-flex w-full h-16 items-center justify-center rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] transition-all active:scale-[0.98] italic ' +
                             (plan.highlight
-                                ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20 hover:shadow-2xl hover:shadow-brand-dark/25'
-                                : 'bg-slate-50 text-slate-900 shadow-lg shadow-slate-900/5 hover:bg-slate-100')
+                                ? 'bg-[#0047FF] text-white shadow-2xl shadow-[#0047FF]/20 hover:bg-[#0039cc] hover:shadow-[#0047FF]/30'
+                                : 'bg-slate-950 dark:bg-slate-800 text-white shadow-xl shadow-black/10 hover:bg-black dark:hover:bg-slate-700')
                         }
                     >
                         {plan.cta.label}

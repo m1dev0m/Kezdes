@@ -19,12 +19,18 @@ interface User {
     restaurant_verified?: boolean;
     restaurant_setup_required?: boolean;
     profile?: UserProfile;
+    owned_restaurant?: {
+        id: number;
+        name: string;
+        description: string;
+        address: string;
+    } | null;
 }
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (access: string, refresh: string) => void;
+    login: (access: string, refresh: string) => Promise<void>;
     logout: () => void;
 }
 

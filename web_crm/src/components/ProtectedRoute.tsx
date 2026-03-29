@@ -7,7 +7,7 @@ export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) =>
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+            <div className="min-h-screen flex items-center justify-center bg-white">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
@@ -18,7 +18,8 @@ export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) =>
     }
 
     const role = user.role;
-    const isRestaurantStaff = ['owner', 'restaurant_admin', 'restaurant_owner', 'restaurant_staff', 'manager', 'hostess'].includes(role);
+    // Only real backend roles that belong to restaurant staff (excludes worker — worker has no restaurant_verified requirement)
+    const isRestaurantStaff = ['owner', 'manager', 'host'].includes(role);
 
     if (isRestaurantStaff && !user.restaurant_verified) {
         if (location.pathname.startsWith('/register-restaurant') || location.pathname.startsWith('/setup-restaurant')) {
@@ -37,7 +38,7 @@ export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) =>
         if (isRestaurantStaff || role === 'worker') {
             return <Navigate to="/app/dashboard" replace />;
         }
-        if (role === 'organizer' || role === 'customer') {
+        if (role === 'customer') {
             return <Navigate to="/guest/dashboard" replace />;
         }
         return <Navigate to="/login" replace />;

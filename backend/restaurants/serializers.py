@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import Restaurant, Availability, Review, RestaurantRequest, Table
+from .models import Restaurant, Availability, Review, RestaurantRequest, Table, Zone, Shift
+
+class ZoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Zone
+        fields = '__all__'
+
+class ShiftSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shift
+        fields = '__all__'
 
 
 class RestaurantRequestSerializer(serializers.ModelSerializer):
@@ -73,6 +83,7 @@ class TableSerializer(serializers.ModelSerializer):
             'table_type', 'status',
             'is_active', 'active',
             'created_at',
+            'zone', 'grid_x', 'grid_y', 'grid_w', 'grid_h'
         ]
         read_only_fields = ['restaurant', 'status', 'created_at']
 
@@ -89,7 +100,7 @@ class TableAPISerializer(serializers.ModelSerializer):
     class Meta:
         model = Table
         fields = ["id", "name", "capacity", "number", "seats", "x", "y", "status",
-                  "is_active", "table_type"]
+                  "is_active", "table_type", "zone", "grid_x", "grid_y", "grid_w", "grid_h"]
         read_only_fields = ["id", "x", "y", "status"]
 
     def get_status(self, obj):
@@ -110,15 +121,22 @@ class TableAPISerializer(serializers.ModelSerializer):
         if "restaurant" in attrs:
             raise serializers.ValidationError({"restaurant": "Changing restaurant is not allowed."})
 
-        # Accept legacy keys
+        # Accept legacy keys: map number→name, seats→capacity
         if "name" not in attrs and "number" in attrs:
-            attrs["name"] = attrs["number"]
+            attrs["name"] = attrs.pop("number")
         if "capacity" not in attrs and "seats" in attrs:
-            attrs["capacity"] = attrs["seats"]
+            attrs["capacity"] = attrs.pop("seats")
+
+        # On create, name and capacity are mandatory
+        if self.instance is None:
+            if "name" not in attrs or attrs.get("name") is None:
+                raise serializers.ValidationError({"name": "This field is required."})
+            if "capacity" not in attrs or attrs.get("capacity") is None:
+                raise serializers.ValidationError({"capacity": "This field is required."})
 
         name = attrs.get("name")
         if name is not None and not str(name).strip():
-            raise serializers.ValidationError({"name": "name is required."})
+            raise serializers.ValidationError({"name": "name cannot be blank."})
 
         capacity = attrs.get("capacity")
         if capacity is not None:
@@ -126,11 +144,27 @@ class TableAPISerializer(serializers.ModelSerializer):
                 capacity_int = int(capacity)
             except (TypeError, ValueError):
                 raise serializers.ValidationError({"capacity": "capacity must be an integer."})
-            if capacity_int <= 0:
-                raise serializers.ValidationError({"capacity": "capacity must be > 0"})
+            if capacity_int < 1:
+                raise serializers.ValidationError({"capacity": "capacity must be >= 1"})
             if capacity_int > Table.CAPACITY_MAX:
                 raise serializers.ValidationError({"capacity": f"capacity must be <= {Table.CAPACITY_MAX}"})
             attrs["capacity"] = capacity_int
+
+        # Check duplicate table name within restaurant
+        if name:
+            request = self.context.get('request')
+            restaurant = None
+            if request and hasattr(request, 'user'):
+                user = request.user
+                restaurant = getattr(user, 'owned_restaurant', None)
+                if not restaurant and hasattr(user, 'profile'):
+                    restaurant = getattr(user.profile, 'restaurant', None)
+            if restaurant:
+                qs = Table.objects.filter(restaurant=restaurant, number=str(name).strip())
+                if self.instance:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    raise serializers.ValidationError({"name": "Table with this name already exists in your restaurant."})
 
         return attrs
 
@@ -140,12 +174,18 @@ class TableAPISerializer(serializers.ModelSerializer):
         capacity = validated_data["capacity"]
         is_active = validated_data.get("is_active", True)
         table_type = validated_data.get("table_type", "rectangle")
+        zone = validated_data.get("zone")
         return Table.objects.create(
             restaurant=restaurant,
             number=name,
             seats=capacity,
             is_active=is_active,
             table_type=table_type,
+            zone=zone,
+            grid_x=validated_data.get("grid_x", 0),
+            grid_y=validated_data.get("grid_y", 0),
+            grid_w=validated_data.get("grid_w", 1),
+            grid_h=validated_data.get("grid_h", 1),
         )
 
     def update(self, instance, validated_data):
@@ -157,6 +197,16 @@ class TableAPISerializer(serializers.ModelSerializer):
             instance.is_active = validated_data["is_active"]
         if "table_type" in validated_data:
             instance.table_type = validated_data["table_type"]
+        if "zone" in validated_data:
+            instance.zone = validated_data["zone"]
+        if "grid_x" in validated_data:
+            instance.grid_x = validated_data["grid_x"]
+        if "grid_y" in validated_data:
+            instance.grid_y = validated_data["grid_y"]
+        if "grid_w" in validated_data:
+            instance.grid_w = validated_data["grid_w"]
+        if "grid_h" in validated_data:
+            instance.grid_h = validated_data["grid_h"]
         instance.save()
         return instance
 class AvailabilitySerializer(serializers.ModelSerializer):
@@ -184,6 +234,9 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'capacity', 'average_price', 'rating', 'price_level', 'plan', 'views_count', 'availabilities',
             'reviews', 'tables', 'floor', 'entrance', 'extra_address_info', 'city', 'status',
             'deposit_min_guests', 'deposit_amount_per_guest',
+            'slug', 'turnover_default_min', 'has_namazhana', 'has_parking', 'has_kids_zone',
+            'has_wifi', 'has_terrace', 'deposit_required', 'birthday_service_available',
+            'wheelchair_accessible', 'max_party_size',
         ]
         read_only_fields = ['views_count', 'rating']
 

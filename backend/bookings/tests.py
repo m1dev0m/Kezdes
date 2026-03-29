@@ -528,16 +528,18 @@ class BookingAPITests(TestCase):
         self.assertIn(b1.id, ids2)
         self.assertNotIn(b2.id, ids2)
 
-    def test_unauthenticated_cannot_create(self):
-        """Unauthenticated users cannot create bookings."""
+    def test_unauthenticated_can_create(self):
+        """Unauthenticated users can create public bookings."""
         self.client.force_authenticate(user=None)
         res = self.client.post("/api/v1/bookings/", {
             "restaurant": self.restaurant.id,
             "date": str(_tomorrow()),
             "time": "19:00",
             "guests": 2,
+            "user_name": "Guest",
+            "user_phone": "+77000000000",
         }, format="json")
-        self.assertIn(res.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
 
 @override_settings(

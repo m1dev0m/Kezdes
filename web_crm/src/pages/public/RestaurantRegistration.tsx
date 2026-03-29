@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Logo } from '@/components/ui/Logo';
 
 export default function RestaurantRegistration() {
     const navigate = useNavigate();
+    const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -36,14 +38,29 @@ export default function RestaurantRegistration() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const nextStep = () => {
+        if (step === 1 && (!formData.name || !formData.city)) {
+            setError('Node identification required.');
+            return;
+        }
+        if (step === 2 && (!formData.email || !formData.phone)) {
+            setError('Communication protocol required.');
+            return;
+        }
+        setError('');
+        setStep(step + 1);
+    };
+
+    const prevStep = () => setStep(step - 1);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!agreed) {
-            setError('You must agree to the Terms of Service.');
+            setError('SLA acceptance required.');
             return;
         }
-        if (!formData.name || !formData.email || !formData.phone || !formData.city || !formData.password) {
-            setError('Please fill in all fields.');
+        if (!formData.password) {
+            setError('Access key required.');
             return;
         }
 
@@ -64,179 +81,192 @@ export default function RestaurantRegistration() {
                 const ok1 = safeSetToken('accessToken', access);
                 const ok2 = safeSetToken('refreshToken', refresh);
                 if (!ok1 || !ok2) {
-                    const msg = 'Could not save login session on this device/browser. Please disable private mode or try another browser.';
-                    toast.error(msg);
-                    setError(msg);
+                    toast.error('Local buffer synchronization failed.');
                     return;
                 }
             } else {
-                const msg = 'Registration succeeded but session tokens were not returned. Please try logging in.';
-                toast.error(msg);
-                setError(msg);
+                toast.error('Authentication handshake failed.');
                 return;
             }
             navigate('/pending-approval');
         } catch (err: any) {
-            toast.error(err.response?.data?.detail || err.message || 'An error occurred during registration.');
-            setError(err.response?.data?.detail || err.message || 'An error occurred during registration.');
+            toast.error(err.response?.data?.detail || err.message || 'Transmission error.');
+            setError(err.response?.data?.detail || err.message || 'Transmission error.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="flex min-h-screen w-full flex-col lg:flex-row font-sans">
-            <div className="flex w-full flex-col bg-white dark:bg-slate-900 lg:w-1/2 p-8 md:p-16 lg:p-24 justify-center">
-                <div className="max-w-md w-full mx-auto">
-                    <div className="mb-10 flex items-center gap-2">
-                        <Link to="/" className="flex items-center gap-2">
-                            <div className="bg-primary p-2 rounded-lg">
-                                <span className="material-symbols-outlined text-white text-2xl">restaurant_menu</span>
-                            </div>
-                            <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white"><Logo /> Admin</span>
-                        </Link>
+        <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col font-display selection:bg-[#0047FF]/20 italic">
+            <header className="h-24 px-10 md:px-20 flex items-center justify-between shrink-0 border-b border-slate-50 dark:border-slate-900 shadow-sm relative z-20">
+                <Link to="/" className="flex items-center gap-4 group">
+                    <div>
+                        <Logo className="h-8" />
+                        <p className="text-[9px] font-black text-[#0047FF] uppercase tracking-[0.3em] leading-none mt-1">Onboarding</p>
                     </div>
+                </Link>
+                <Link to="/login" className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic hover:text-[#0047FF] transition-colors">SignIn_Node</Link>
+            </header>
 
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Create Your Account</h1>
-                        <p className="text-slate-500 dark:text-slate-400">Join thousands of professional restaurateurs managing their business with Kezdes.</p>
-                    </div>
+            <main className="flex-1 flex flex-col lg:flex-row items-center relative overflow-hidden">
+                {/* Decorative background grid */}
+                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] opacity-10 pointer-events-none" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[800px] bg-[#0047FF]/5 rounded-full blur-[120px] pointer-events-none" />
 
-                    {error && (
-                        <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm">
-                            {error}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Restaurant Name</label>
-                            <div className="relative">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">store</span>
-                                <input name="name" value={formData.name} onChange={handleChange} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none" placeholder="The Golden Grille" type="text" />
+                <div className="w-full lg:w-1/2 p-10 md:p-24 relative z-10 flex flex-col justify-center">
+                    <div className="max-w-xl mx-auto w-full space-y-12">
+                        <section className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
+                                <span className="text-[9px] font-black text-[#0047FF] uppercase tracking-[0.4em] italic leading-none">Initialization: Phase 0{step}</span>
+                                <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
                             </div>
-                        </div>
+                            <h1 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic leading-[0.85]">Join the <span className="text-[#0047FF]">Network</span>.</h1>
+                            <p className="text-slate-400 text-lg md:text-xl font-medium italic leading-relaxed">Systemizing restaurant operations with elite precision and world-class architecture.</p>
+                        </section>
 
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Business Email</label>
-                            <div className="relative">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">mail</span>
-                                <input name="email" value={formData.email} onChange={handleChange} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none" placeholder="manager@restaurant.com" type="email" />
-                            </div>
-                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            <AnimatePresence mode="wait">
+                                {step === 1 && (
+                                    <motion.div
+                                        key="step1"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="space-y-6"
+                                    >
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-widest italic leading-none mb-3 px-1">Node Identity</p>
+                                            <div className="relative group">
+                                                <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0047FF] transition-colors text-[24px]">storefront</span>
+                                                <input name="name" value={formData.name} onChange={handleChange} className="w-full h-20 pl-16 pr-6 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-[#0047FF] rounded-[1.5rem] outline-none transition-all text-[11px] font-black uppercase tracking-widest italic placeholder:text-slate-200 dark:placeholder:text-slate-800" placeholder="Brand Nom-De-Guerre" type="text" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-widest italic leading-none mb-3 px-1">Geographic Coordinates</p>
+                                            <div className="relative group">
+                                                <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0047FF] transition-colors text-[24px]">location_on</span>
+                                                <input name="city" value={formData.city} onChange={handleChange} className="w-full h-20 pl-16 pr-6 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-[#0047FF] rounded-[1.5rem] outline-none transition-all text-[11px] font-black uppercase tracking-widest italic placeholder:text-slate-200 dark:placeholder:text-slate-800" placeholder="Primary Sector (City)" type="text" />
+                                            </div>
+                                        </div>
+                                        <button type="button" onClick={nextStep} className="w-full h-20 bg-slate-950 text-white text-[11px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] shadow-2xl shadow-black/20 hover:bg-black active:scale-95 transition-all italic flex items-center justify-center gap-4">
+                                            Next Sequence <span className="material-symbols-outlined font-black">arrow_forward</span>
+                                        </button>
+                                    </motion.div>
+                                )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Phone Number</label>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">call</span>
-                                    <input name="phone" value={formData.phone} onChange={handleChange} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none" placeholder="+1 (555) 000-0000" type="tel" />
-                                </div>
-                            </div>
+                                {step === 2 && (
+                                    <motion.div
+                                        key="step2"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="space-y-6"
+                                    >
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-widest italic leading-none mb-3 px-1">Communication Link</p>
+                                            <div className="relative group">
+                                                <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0047FF] transition-colors text-[24px]">alternate_email</span>
+                                                <input name="email" value={formData.email} onChange={handleChange} className="w-full h-20 pl-16 pr-6 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-[#0047FF] rounded-[1.5rem] outline-none transition-all text-[11px] font-black uppercase tracking-widest italic placeholder:text-slate-200 dark:placeholder:text-slate-800" placeholder="Operational Email" type="email" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-widest italic leading-none mb-3 px-1">Signal Protocol</p>
+                                            <div className="relative group">
+                                                <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0047FF] transition-colors text-[24px]">phone_enabled</span>
+                                                <input name="phone" value={formData.phone} onChange={handleChange} className="w-full h-20 pl-16 pr-6 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-[#0047FF] rounded-[1.5rem] outline-none transition-all text-[11px] font-black uppercase tracking-widest italic placeholder:text-slate-200 dark:placeholder:text-slate-800" placeholder="Emergency Comms" type="tel" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button type="button" onClick={prevStep} className="h-20 bg-slate-50 dark:bg-slate-900 text-slate-400 text-[11px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] hover:text-[#0047FF] transition-all italic flex items-center justify-center gap-4">
+                                                <span className="material-symbols-outlined font-black">arrow_back</span> Back
+                                            </button>
+                                            <button type="button" onClick={nextStep} className="h-20 bg-slate-950 text-white text-[11px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] shadow-2xl shadow-black/20 hover:bg-black active:scale-95 transition-all italic flex items-center justify-center gap-4">
+                                                Security <span className="material-symbols-outlined font-black">shield</span>
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">City</label>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">location_on</span>
-                                    <input name="city" value={formData.city} onChange={handleChange} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none" placeholder="New York" type="text" />
-                                </div>
-                            </div>
-                        </div>
+                                {step === 3 && (
+                                    <motion.div
+                                        key="step3"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="space-y-8"
+                                    >
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-widest italic leading-none mb-3 px-1">Secured Access Key</p>
+                                            <div className="relative group">
+                                                <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0047FF] transition-colors text-[24px]">key</span>
+                                                <input name="password" value={formData.password} onChange={handleChange} className="w-full h-20 pl-16 pr-6 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-[#0047FF] rounded-[1.5rem] outline-none transition-all text-[11px] font-black uppercase tracking-widest italic placeholder:text-slate-200 dark:placeholder:text-slate-800" placeholder="••••••••••••" type="password" />
+                                            </div>
+                                        </div>
 
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Password</label>
-                            <div className="relative">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock</span>
-                                <input name="password" value={formData.password} onChange={handleChange} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none" placeholder="••••••••" type="password" />
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">Must be at least 8 characters long.</p>
-                        </div>
+                                        <div className="p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 space-y-4">
+                                            <div className="flex items-start gap-4 cursor-pointer group" onClick={() => setAgreed(!agreed)}>
+                                                <div className={`size-6 rounded-lg border-2 flex items-center justify-center transition-all ${agreed ? 'bg-[#0047FF] border-[#0047FF]' : 'border-slate-200 group-hover:border-[#0047FF]'}`}>
+                                                    {agreed && <span className="material-symbols-outlined text-white text-[16px] font-black">check</span>}
+                                                </div>
+                                                <p className="text-[10px] font-black text-slate-500 hover:text-slate-700 dark:hover:text-white uppercase tracking-widest italic flex-1 transition-colors">
+                                                    I acknowledge the Kezdes Network <span className="text-[#0047FF] underline underline-offset-4">Protocols</span> and <span className="text-[#0047FF] underline underline-offset-4">SLA</span>.
+                                                </p>
+                                            </div>
+                                        </div>
 
-                        <div className="flex items-start gap-2 py-2">
-                            <input checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-1 rounded border-slate-300 text-primary focus:ring-primary" id="terms" type="checkbox" />
-                            <label className="text-sm text-slate-600 dark:text-slate-400" htmlFor="terms">
-                                By creating an account, I agree to the <a className="text-primary hover:underline" href="#">Terms of Service</a> and <a className="text-primary hover:underline" href="#">Privacy Policy</a>.
-                            </label>
-                        </div>
+                                        <div className="grid grid-cols-[1fr,2fr] gap-4">
+                                            <button type="button" onClick={prevStep} className="h-20 bg-slate-50 dark:bg-slate-900 text-slate-400 text-[11px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] hover:text-[#0047FF] transition-all italic flex items-center justify-center">
+                                                <span className="material-symbols-outlined font-black">arrow_back</span>
+                                            </button>
+                                            <button disabled={loading} type="submit" className="h-20 bg-[#0047FF] text-white text-[11px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] shadow-2xl shadow-[#0047FF]/20 hover:bg-[#0039cc] active:scale-95 transition-all italic flex items-center justify-center gap-4">
+                                                {loading ? <span className="material-symbols-outlined animate-spin font-black">sync</span> : <span className="material-symbols-outlined font-black">rocket_launch</span>}
+                                                Broadcast Identity
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
-                        <button disabled={loading} className="w-full bg-primary hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70" type="submit">
-                            <span>{loading ? 'Submitting...' : 'Create Account'}</span>
-                            <span className="material-symbols-outlined text-xl">arrow_forward</span>
-                        </button>
-                    </form>
-
-                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
-                        <p className="text-slate-600 dark:text-slate-400">Already have an account? <Link to="/login" className="text-primary font-bold hover:underline">Log in</Link></p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="hidden lg:flex w-1/2 bg-primary relative overflow-hidden items-center justify-center p-24">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-black/10 rounded-full -ml-48 -mb-48 blur-3xl"></div>
-
-                <div className="relative z-10 text-white max-w-lg text-center lg:text-left">
-                    <div className="mb-12 inline-flex items-center gap-4 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
-                        <span className="material-symbols-outlined text-white">verified</span>
-                        <span className="text-sm font-medium">Trusted by 5,000+ Restaurants</span>
-                    </div>
-
-                    <h2 className="text-5xl font-black leading-tight mb-6">
-                        Streamline your <br />
-                        <span className="text-blue-200">restaurant operations.</span>
-                    </h2>
-
-                    <p className="text-blue-100 text-xl leading-relaxed mb-10">
-                        From inventory management to staff scheduling, Kezdes Admin gives you the tools to scale your business with confidence and precision.
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white/20 p-2 rounded-lg">
-                                <span className="material-symbols-outlined">analytics</span>
-                            </div>
-                            <span className="font-medium">Deep Analytics</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white/20 p-2 rounded-lg">
-                                <span className="material-symbols-outlined">inventory_2</span>
-                            </div>
-                            <span className="font-medium">Stock Control</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white/20 p-2 rounded-lg">
-                                <span className="material-symbols-outlined">groups</span>
-                            </div>
-                            <span className="font-medium">Staff Management</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white/20 p-2 rounded-lg">
-                                <span className="material-symbols-outlined">payments</span>
-                            </div>
-                            <span className="font-medium">Quick Payouts</span>
-                        </div>
-                    </div>
-
-                    <div className="mt-16 flex justify-center lg:justify-start">
-                        <div className="h-64 w-full bg-blue-800/40 rounded-xl border border-white/10 backdrop-blur-sm overflow-hidden p-4 shadow-2xl">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="h-4 w-3/4 bg-white/10 rounded"></div>
-                                <div className="h-4 w-full bg-white/10 rounded"></div>
-                                <div className="h-20 w-full bg-white/5 rounded-lg flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-white/20 text-4xl">bar_chart</span>
-                                </div>
-                            </div>
-                        </div>
+                            {error && (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 rounded-2xl bg-rose-500/10 text-rose-600 text-[9px] font-black uppercase tracking-[0.3em] text-center border border-rose-500/20 italic">
+                                    Transmission Error: {error}
+                                </motion.div>
+                            )}
+                        </form>
                     </div>
                 </div>
 
-                <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
-            </div>
+                <div className="hidden lg:block w-1/2 h-[calc(100vh-6rem)] p-20 relative">
+                    <div className="h-full w-full bg-slate-950 rounded-[4rem] border border-slate-900 shadow-2xl overflow-hidden relative group">
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80')] bg-cover bg-center grayscale opacity-20 group-hover:scale-110 transition-transform duration-[2s]" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+
+                        <div className="absolute bottom-20 left-20 right-20 space-y-10 relative z-10">
+                            <div className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20">
+                                <span className="material-symbols-outlined text-[#0047FF] font-black">verified</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white italic">Operational Alpha Deployment</span>
+                            </div>
+                            <h2 className="text-5xl font-black text-white italic uppercase tracking-tighter leading-[0.85]">Evolve your <br />Space into a <br /><span className="text-[#0047FF]">Precision</span> Machine.</h2>
+                            <p className="text-white/40 text-lg font-medium italic leading-relaxed max-w-sm">
+                                Join the elite network of restaurateurs who demand architecture over ad-hoc management.
+                            </p>
+
+                            <div className="flex -space-x-4">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="size-14 rounded-2xl border-4 border-slate-950 bg-slate-800 overflow-hidden shadow-xl">
+                                        <img src={`https://i.pravatar.cc/150?u=${i}`} alt="" className="w-full h-full object-cover grayscale" />
+                                    </div>
+                                ))}
+                                <div className="size-14 rounded-2xl border-4 border-slate-950 bg-slate-900 flex items-center justify-center text-[10px] font-black text-white italic">
+                                    +5K
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }

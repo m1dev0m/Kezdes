@@ -6,6 +6,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from .models import Profile, PushToken, OTPVerification
 from contractors.models import Contractor
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -52,7 +55,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     username = serializers.CharField(required=True, allow_blank=False)
     email = serializers.EmailField(required=True, allow_blank=False)
     password = serializers.CharField(write_only=True, required=True, allow_blank=False)
-    role = serializers.CharField(write_only=True, required=False, default='customer')
+    role = serializers.CharField(write_only=True, required=False, default='pending')
     first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
     phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
     name = serializers.CharField(write_only=True, required=False)
@@ -87,6 +90,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        email = attrs.get('email')
         password = attrs.get('password')
         password2 = attrs.get('password2')
         if not password:
@@ -110,6 +114,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             'restaurant_admin': 'owner',
             'organizer': 'customer',
             'customer': 'customer',
+            'pending': 'pending',
         }
         normalized_role = role_aliases.get(role, role)
         allowed_roles = {r[0] for r in Profile.ROLE_CHOICES}
@@ -121,16 +126,27 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"role": "Invalid role."})
         attrs['role'] = normalized_role
         
-        # Email OTP Verification — temporarily disabled
-        # otp_code = attrs.get('otp_code')
-        # otp_record = OTPVerification.objects.filter(email=email).order_by('-created_at').first()
-        # if not otp_record or otp_record.code != otp_code:
-        #     raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
+        # Email OTP Verification
+        if getattr(settings, "REQUIRE_EMAIL_OTP", False):
+            otp_code = (attrs.get('otp_code') or '').strip()
+            if not otp_code:
+                raise serializers.ValidationError({"otp_code": "OTP code is required."})
+
+            otp_record = OTPVerification.objects.filter(email=email).first()
+            if not otp_record:
+                raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
+
+            expires_minutes = int(getattr(settings, "OTP_EXPIRE_MINUTES", 10))
+            if otp_record.created_at < (timezone.now() - timedelta(minutes=expires_minutes)):
+                raise serializers.ValidationError({"otp_code": "OTP code expired. Request a new one."})
+
+            if otp_record.code != otp_code:
+                raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
 
         return attrs
 
     def create(self, validated_data):
-        otp_code = validated_data.pop('otp_code', None)
+        validated_data.pop('otp_code', None)
         role = validated_data.pop('role', 'customer')
         phone = validated_data.pop('phone', '')
         first_name = validated_data.pop('first_name', '')
@@ -197,42 +213,51 @@ class SendOTPSerializer(serializers.Serializer):
 
 class SetupRestaurantSerializer(serializers.Serializer):
     restaurant_name = serializers.CharField(max_length=255)
-    city = serializers.CharField(max_length=255)
+    city = serializers.CharField(max_length=255, required=False, allow_blank=True)
     address = serializers.CharField(max_length=500)
-    phone = serializers.CharField(max_length=50)
+    phone = serializers.CharField(max_length=50, required=False, allow_blank=True)
     owner_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    instagram = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    description = serializers.CharField(required=False, allow_blank=True)
+    lat = serializers.FloatField(required=True)
+    lng = serializers.FloatField(required=True)
 
     def create(self, validated_data):
-        from restaurants.models import Restaurant, RestaurantRequest
-
+        from restaurants.models import Restaurant
         user = self.context["request"].user
 
-        if hasattr(user, "profile") and user.profile.restaurant and user.profile.restaurant.is_verified:
-            raise serializers.ValidationError({"detail": "Restaurant is already approved for this account."})
-        if Restaurant.objects.filter(owner=user, is_verified=True).exists():
-            raise serializers.ValidationError({"detail": "Restaurant is already approved for this account."})
+        if hasattr(user, "profile") and user.profile.restaurant:
+            raise serializers.ValidationError({"detail": "У вас уже есть ресторан."})
+        if Restaurant.objects.filter(owner=user).exists():
+            raise serializers.ValidationError({"detail": "У вас уже есть ресторан."})
 
-        pending = RestaurantRequest.objects.filter(owner=user, status='pending').order_by('-created_at').first()
-        payload = {
-            "name": validated_data["restaurant_name"],
-            "owner_name": validated_data.get("owner_name") or user.first_name or user.username,
-            "city": validated_data["city"],
-            "address": validated_data["address"],
-            "phone": validated_data["phone"],
-            "email": user.email,
-            "instagram": validated_data.get("instagram", ""),
-            "admin_username": user.username,
-            "owner": user,
-        }
+        # Directly create Restaurant since Step 2 is instant approval
+        restaurant = Restaurant.objects.create(
+            name=validated_data["restaurant_name"],
+            address=validated_data["address"],
+            city=validated_data.get("city", "Алматы"),
+            latitude=validated_data["lat"],
+            longitude=validated_data["lng"],
+            phone=validated_data.get("phone", ""),
+            description=validated_data.get("description", ""),
+            is_claimed=True,
+            is_verified=True,
+            owner=user,
+            source='manual'
+        )
 
-        if pending:
-            for key, val in payload.items():
-                setattr(pending, key, val)
-            pending.save()
-            return pending
+        if hasattr(user, "profile"):
+            user.profile.role = "owner"
+            user.profile.restaurant = restaurant
+            user.profile.save()
 
-        return RestaurantRequest.objects.create(**payload, status='pending')
+        # Seed initial tables layout for convenience if wanted (optional)
+        from restaurants.utils import generate_default_table_map
+        try:
+            generate_default_table_map(restaurant)
+        except Exception:
+            pass
+
+        return restaurant
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         login_input = attrs.get("username")

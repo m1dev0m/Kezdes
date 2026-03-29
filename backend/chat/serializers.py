@@ -1,5 +1,26 @@
 from rest_framework import serializers
-from .models import Message
+from .models import Message, Conversation
+
+class ConversationSerializer(serializers.ModelSerializer):
+    guest_name = serializers.ReadOnlyField(source='guest.username')
+    restaurant_name = serializers.ReadOnlyField(source='restaurant.name')
+    last_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = ['id', 'restaurant', 'restaurant_name', 'guest', 'guest_name', 'last_message', 'updated_at']
+
+    def get_last_message(self, obj):
+        last = obj.messages.order_by('-timestamp').first()
+        if last:
+            return {
+                'content': last.content,
+                'timestamp': last.timestamp,
+                'sender': last.sender_id,
+                'is_read': last.is_read
+            }
+        return None
+
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.ReadOnlyField(source='sender.username')

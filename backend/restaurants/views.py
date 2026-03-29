@@ -24,7 +24,7 @@ from orders.models import MenuCategory, MenuItem
 from orders.serializers import PublicMenuCategorySerializer, PublicMenuItemSerializer
 from core.responses import api_error
 
-from .models import Availability, Restaurant, RestaurantRequest, Review, Table
+from .models import Availability, Restaurant, RestaurantRequest, Review, Table, Zone, Shift
 from .serializers import (
     AvailabilitySerializer,
     RestaurantRequestSerializer,
@@ -33,6 +33,8 @@ from .serializers import (
     StaffSerializer,
     TableAPISerializer,
     TableSerializer,
+    ZoneSerializer,
+    ShiftSerializer,
 )
 
 
@@ -127,6 +129,15 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
         serializer = self.get_serializer(restaurant)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path=r'by-slug/(?P<slug>[-\w]+)', permission_classes=[permissions.AllowAny])
+    def by_slug(self, request, slug=None):
+        try:
+            restaurant = Restaurant.objects.prefetch_related("operating_hours").get(slug=slug)
+            serializer = self.get_serializer(restaurant)
+            return Response(serializer.data)
+        except Restaurant.DoesNotExist:
+            return api_error("Restaurant not found.", status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated], url_path="favorites")
     def favorites(self, request):
@@ -395,10 +406,13 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         if not restaurant:
             return Table.objects.none()
 
-        qs = Table.objects.select_related("restaurant").filter(restaurant=restaurant)
+        qs = Table.objects.select_related("restaurant", "zone").filter(restaurant=restaurant)
         active = self.request.query_params.get('active')
         if active is not None:
             qs = qs.filter(is_active=active.lower() in ('true', '1', 'yes'))
+        zone_id = self.request.query_params.get('zone_id')
+        if zone_id:
+            qs = qs.filter(zone_id=zone_id)
         return qs
 
     def get_permissions(self):
@@ -413,11 +427,38 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         serializer.save(restaurant=restaurant)
 
     def update(self, request, *args, **kwargs):
-        # 'restaurant' is read_only in serializer — no need to strip it
+        table = self.get_object()
+        self._check_ownership(table)
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
+        table = self.get_object()
+        self._check_ownership(table)
         return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        table = self.get_object()
+        self._check_ownership(table)
+
+        active_bookings = Booking.objects.filter(
+            table=table,
+            status__in=Booking.ACTIVE_STATUSES,
+        ).exists()
+        if active_bookings:
+            return api_error(
+                "Cannot delete table with active bookings. "
+                "Cancel or complete bookings first.",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        return super().destroy(request, *args, **kwargs)
+
+    def _check_ownership(self, table):
+        """Verify the table belongs to the current user's restaurant."""
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(self.request.user)
+        if restaurant is None or table.restaurant_id != restaurant.id:
+            raise PermissionDenied("This table does not belong to your restaurant.")
 
     @action(detail=False, methods=["get"])
     def status(self, request):
@@ -571,3 +612,64 @@ class ReviewViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Only restaurant staff can reply to reviews."}, status=status.HTTP_403_FORBIDDEN)
             
         return super().partial_update(request, *args, **kwargs)
+
+class ZoneViewSet(viewsets.ModelViewSet):
+    serializer_class = ZoneSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        qs = Zone.objects.all()
+        restaurant_id = self.request.query_params.get('restaurant_id')
+        if restaurant_id:
+            qs = qs.filter(restaurant_id=restaurant_id)
+        else:
+            user = self.request.user
+            if user.is_authenticated:
+                from core.utils import get_user_restaurant
+                restaurant = get_user_restaurant(user)
+                if restaurant:
+                    qs = qs.filter(restaurant=restaurant)
+                else:
+                    qs = Zone.objects.none()
+            else:
+                 qs = Zone.objects.none()
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            raise PermissionDenied("You don't have a restaurant to attach zones to.")
+        serializer.save(restaurant=restaurant)
+
+class ShiftViewSet(viewsets.ModelViewSet):
+    serializer_class = ShiftSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        qs = Shift.objects.all()
+        restaurant_id = self.request.query_params.get('restaurant_id')
+        if restaurant_id:
+            qs = qs.filter(restaurant_id=restaurant_id)
+        else:
+            user = self.request.user
+            if user.is_authenticated:
+                from core.utils import get_user_restaurant
+                restaurant = get_user_restaurant(user)
+                if restaurant:
+                    qs = qs.filter(restaurant=restaurant)
+                else:
+                    qs = Shift.objects.none()
+            else:
+                 qs = Shift.objects.none()
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            raise PermissionDenied("You don't have a restaurant to attach shifts to.")
+        serializer.save(restaurant=restaurant)
+
