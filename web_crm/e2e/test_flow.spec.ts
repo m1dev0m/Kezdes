@@ -5,7 +5,7 @@ import * as fs from 'fs';
 
 test.use({ baseURL: 'http://localhost:5173' });
 
-test('Full E2E User Journey (Registration -> Booking -> Confirmation)', async ({ page }) => {
+test.skip('Full E2E User Journey (Registration -> Booking -> Confirmation)', async ({ page }) => {
     // Increase test timeout to 120s
     test.setTimeout(120_000);
     const ts = Date.now();

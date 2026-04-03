@@ -21,16 +21,19 @@ from .serializers import (
 
 
 from core.viewsets import TenantModelViewSet, OptionalPaginationMixin
+from core.permissions import HasRestaurantFeature
 
 class AdminMenuCategoryViewSet(TenantModelViewSet):
     queryset = MenuCategory.objects.all()
     serializer_class = MenuCategorySerializer
-    permission_classes = [IsRestaurantAdmin]
+    permission_classes = [IsRestaurantAdmin, HasRestaurantFeature]
+    required_feature = "menu_basic"
 
 class AdminMenuItemViewSet(TenantModelViewSet):
     queryset = MenuItem.objects.all().select_related("category", "restaurant")
     serializer_class = MenuItemSerializer
-    permission_classes = [IsRestaurantAdmin]
+    permission_classes = [IsRestaurantAdmin, HasRestaurantFeature]
+    required_feature = "menu_basic"
 
 
 
@@ -45,6 +48,12 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def _has_staff_order_access(self, user) -> bool:
+        if not hasattr(user, 'profile') or user.profile.role not in ('owner', 'manager', 'host'):
+            return False
+        restaurant = user.profile.restaurant
+        return bool(restaurant and restaurant.has_feature('orders_basic'))
+
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Order.objects.none()
@@ -53,7 +62,7 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             return Order.objects.none()
             
         # Support both customer view and staff view
-        if hasattr(user, 'profile') and user.profile.role in ('owner', 'manager', 'host'):
+        if self._has_staff_order_access(user):
             return Order.objects.filter(
                 restaurant=user.profile.restaurant
             ).select_related("restaurant", "reservation", "user").prefetch_related("items__menu_item").order_by("-created_at")
@@ -78,6 +87,11 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         
         if not restaurant:
             return Response({"detail": "No restaurant associated with this user."}, status=status.HTTP_404_NOT_FOUND)
+        if not restaurant.has_feature('orders_basic'):
+            return Response(
+                {"detail": "Orders are unavailable without Plus or Pro subscription."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
             
         queryset = Order.objects.filter(restaurant=restaurant).select_related("user").prefetch_related("items__menu_item").order_by("-created_at")
         

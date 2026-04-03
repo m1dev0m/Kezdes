@@ -4,17 +4,19 @@ import string
 
 from django.contrib.auth.models import User
 from django.db import models, transaction
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Case, IntegerField, Prefetch, Value, When
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from bookings.models import Booking
 from core.permissions import (
+    CanManageTables,
+    HasRestaurantFeature,
     IsGlobalAdmin,
     IsRestaurantOrGlobalAdmin,
     IsRestaurantStaff,
@@ -27,8 +29,11 @@ from core.responses import api_error
 from .models import Availability, Restaurant, RestaurantRequest, Review, Table, Zone, Shift
 from .serializers import (
     AvailabilitySerializer,
+    RestaurantAuditLogSerializer,
+    RestaurantInvoiceSerializer,
     RestaurantRequestSerializer,
     RestaurantSerializer,
+    RestaurantSubscriptionSerializer,
     ReviewSerializer,
     StaffSerializer,
     TableAPISerializer,
@@ -36,13 +41,18 @@ from .serializers import (
     ZoneSerializer,
     ShiftSerializer,
 )
+from .audit import log_restaurant_event
 
 
 from core.viewsets import OptionalPaginationMixin, TenantModelViewSet
 
 
 class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
-    queryset = Restaurant.objects.select_related("owner").prefetch_related("operating_hours")
+    queryset = Restaurant.objects.select_related("owner").prefetch_related(
+        "operating_hours",
+        "tables",
+        Prefetch("reviews", queryset=Review.objects.select_related("user")),
+    )
     serializer_class = RestaurantSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter]
@@ -54,7 +64,11 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
-        queryset = Restaurant.objects.select_related("owner").prefetch_related("operating_hours")
+        queryset = Restaurant.objects.select_related("owner").prefetch_related(
+            "operating_hours",
+            "tables",
+            Prefetch("reviews", queryset=Review.objects.select_related("user")),
+        )
         user = self.request.user
 
         if self.action == "list":
@@ -63,8 +77,8 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             if my_restaurants_only and user.is_authenticated:
                 queryset = queryset.filter(owner=user)
             else:
-                # Public discovery: showing all active restaurants for MVP
-                pass
+                # Public discovery should never expose restaurants that still 403 on detail/book flows.
+                queryset = queryset.filter(is_verified=True)
 
         city = self.request.query_params.get("city")
         if city:
@@ -130,10 +144,62 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(restaurant)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def subscription(self, request):
+        from core.utils import get_user_restaurant
+
+        restaurant = get_user_restaurant(request.user)
+        if not restaurant:
+            return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
+        restaurant = (
+            Restaurant.objects.select_related("owner")
+            .prefetch_related("invoices")
+            .get(pk=restaurant.pk)
+        )
+        serializer = RestaurantSubscriptionSerializer(restaurant)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated], url_path="subscription/audit")
+    def subscription_audit(self, request):
+        from core.utils import get_user_restaurant
+
+        restaurant = get_user_restaurant(request.user)
+        if not restaurant:
+            return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
+        logs = restaurant.audit_logs.select_related("actor")[:25]
+        return Response(RestaurantAuditLogSerializer(logs, many=True).data)
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated], url_path="subscription/invoices")
+    def subscription_invoices(self, request):
+        from core.utils import get_user_restaurant
+
+        restaurant = get_user_restaurant(request.user)
+        if not restaurant:
+            return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
+        invoices = restaurant.invoices.all()[:25]
+        return Response(RestaurantInvoiceSerializer(invoices, many=True).data)
+
     @action(detail=False, methods=["get"], url_path=r'by-slug/(?P<slug>[-\w]+)', permission_classes=[permissions.AllowAny])
     def by_slug(self, request, slug=None):
         try:
-            restaurant = Restaurant.objects.prefetch_related("operating_hours").get(slug=slug)
+            restaurant = (
+                Restaurant.objects.select_related("owner")
+                .prefetch_related(
+                    "operating_hours",
+                    "tables",
+                    Prefetch("reviews", queryset=Review.objects.select_related("user")),
+                )
+                .get(slug=slug)
+            )
+            if not restaurant.is_verified:
+                is_owner = request.user.is_authenticated and restaurant.owner == request.user
+                is_global_admin = (
+                    request.user.is_authenticated
+                    and getattr(request.user, "profile", None)
+                    and request.user.profile.role == "global_admin"
+                )
+                if not is_owner and not is_global_admin:
+                    return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
             serializer = self.get_serializer(restaurant)
             return Response(serializer.data)
         except Restaurant.DoesNotExist:
@@ -395,6 +461,8 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
     queryset = Table.objects.select_related('restaurant').all()
     serializer_class = TableAPISerializer
+    permission_classes = [CanManageTables, HasRestaurantFeature]
+    required_feature = "table_map"
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['name', 'capacity', 'created_at']
     ordering = ['name']
@@ -415,16 +483,33 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
             qs = qs.filter(zone_id=zone_id)
         return qs
 
-    def get_permissions(self):
-        return [IsRestaurantStaff()]
-
     def perform_create(self, serializer):
         user = self.request.user
         from core.utils import get_user_restaurant
         restaurant = get_user_restaurant(user)
         if not restaurant:
             raise PermissionDenied("You don't have a restaurant to attach tables to.")
-        serializer.save(restaurant=restaurant)
+        allowed, message = restaurant.can_add_resource('tables')
+        if not allowed:
+            log_restaurant_event(
+                restaurant,
+                actor=user,
+                event_type='plan_limit_blocked',
+                target_type='table',
+                summary=message or 'Table limit reached.',
+                payload={'resource': 'tables'},
+            )
+            raise ValidationError({"detail": message})
+        table = serializer.save(restaurant=restaurant)
+        log_restaurant_event(
+            restaurant,
+            actor=user,
+            event_type='table_created',
+            target_type='table',
+            target_id=table.id,
+            summary=f"Создан стол {table.number}.",
+            payload={'table_id': table.id, 'name': table.number},
+        )
 
     def update(self, request, *args, **kwargs):
         table = self.get_object()
@@ -441,9 +526,9 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         self._check_ownership(table)
 
         active_bookings = Booking.objects.filter(
-            table=table,
             status__in=Booking.ACTIVE_STATUSES,
-        ).exists()
+            restaurant=table.restaurant,
+        ).filter(models.Q(table=table) | models.Q(tables=table)).exists()
         if active_bookings:
             return api_error(
                 "Cannot delete table with active bookings. "
@@ -451,6 +536,15 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
                 status.HTTP_400_BAD_REQUEST,
             )
 
+        log_restaurant_event(
+            table.restaurant,
+            actor=request.user,
+            event_type='table_deleted',
+            target_type='table',
+            target_id=table.id,
+            summary=f"Удалён стол {table.number}.",
+            payload={'table_id': table.id, 'name': table.number},
+        )
         return super().destroy(request, *args, **kwargs)
 
     def _check_ownership(self, table):
@@ -521,9 +615,9 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
             response_data.append(row)
         return Response(response_data)
 
-    @action(detail=True, methods=["patch"], permission_classes=[IsRestaurantStaff])
+    @action(detail=True, methods=["patch"])
     def update_status(self, request, pk=None):
-        """Allow host+ to change table status (free/occupied/reserved)."""
+        """Allow manager+ to change table status (free/occupied/reserved/cleaning)."""
         table = self.get_object()
         new_status = request.data.get("status")
         valid_statuses = [s[0] for s in Table.STATUS_CHOICES]
@@ -539,7 +633,8 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
 
 class StaffViewSet(viewsets.ModelViewSet):
     serializer_class = StaffSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasRestaurantFeature]
+    required_feature = "staff_basic"
 
     def get_queryset(self):
         user = self.request.user
@@ -558,9 +653,29 @@ class StaffViewSet(viewsets.ModelViewSet):
         restaurant = get_user_restaurant(user)
         if not restaurant:
             raise PermissionDenied("You don't have a restaurant to attach staff to.")
+        allowed, message = restaurant.can_add_resource('staff')
+        if not allowed:
+            log_restaurant_event(
+                restaurant,
+                actor=user,
+                event_type='plan_limit_blocked',
+                target_type='staff',
+                summary=message or 'Staff limit reached.',
+                payload={'resource': 'staff'},
+            )
+            raise ValidationError({"detail": message})
         staff_user = serializer.save()
         staff_user.profile.restaurant = restaurant
         staff_user.profile.save()
+        log_restaurant_event(
+            restaurant,
+            actor=user,
+            event_type='staff_created',
+            target_type='staff',
+            target_id=staff_user.id,
+            summary=f"Добавлен сотрудник {staff_user.username}.",
+            payload={'role': staff_user.profile.role},
+        )
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
@@ -585,12 +700,31 @@ class ReviewViewSet(viewsets.ModelViewSet):
             restaurant_id = self.request.data.get('restaurant')
             
         restaurant = Restaurant.objects.get(id=restaurant_id)
-        
+
         booking_id = self.request.data.get('booking_id')
         booking = None
         if booking_id:
-            booking = Booking.objects.filter(id=booking_id, user=self.request.user).first()
-            
+            booking = Booking.objects.filter(
+                id=booking_id,
+                user=self.request.user,
+                restaurant=restaurant,
+                status=Booking.COMPLETED,
+            ).first()
+            if not booking:
+                raise PermissionDenied("Review can only be attached to your completed reservation.")
+        else:
+            booking = (
+                Booking.objects.filter(
+                    user=self.request.user,
+                    restaurant=restaurant,
+                    status=Booking.COMPLETED,
+                )
+                .order_by('-date', '-time')
+                .first()
+            )
+            if not booking:
+                raise PermissionDenied("Only guests with a completed visit can leave a review.")
+
         serializer.save(
             user=self.request.user, 
             restaurant=restaurant,
@@ -616,6 +750,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class ZoneViewSet(viewsets.ModelViewSet):
     serializer_class = ZoneSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    required_feature = "zones"
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticatedOrReadOnly()]
+        return [permissions.IsAuthenticated(), HasRestaurantFeature()]
 
     def get_queryset(self):
         qs = Zone.objects.all()
@@ -641,11 +781,37 @@ class ZoneViewSet(viewsets.ModelViewSet):
         restaurant = get_user_restaurant(user)
         if not restaurant:
             raise PermissionDenied("You don't have a restaurant to attach zones to.")
-        serializer.save(restaurant=restaurant)
+        allowed, message = restaurant.can_add_resource('zones')
+        if not allowed:
+            log_restaurant_event(
+                restaurant,
+                actor=user,
+                event_type='plan_limit_blocked',
+                target_type='zone',
+                summary=message or 'Zone limit reached.',
+                payload={'resource': 'zones'},
+            )
+            raise ValidationError({"detail": message})
+        zone = serializer.save(restaurant=restaurant)
+        log_restaurant_event(
+            restaurant,
+            actor=user,
+            event_type='zone_created',
+            target_type='zone',
+            target_id=zone.id,
+            summary=f"Создана зона {zone.name}.",
+            payload={'zone_id': zone.id},
+        )
 
 class ShiftViewSet(viewsets.ModelViewSet):
     serializer_class = ShiftSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    required_feature = "shifts"
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticatedOrReadOnly()]
+        return [permissions.IsAuthenticated(), HasRestaurantFeature()]
 
     def get_queryset(self):
         qs = Shift.objects.all()
@@ -672,4 +838,3 @@ class ShiftViewSet(viewsets.ModelViewSet):
         if not restaurant:
             raise PermissionDenied("You don't have a restaurant to attach shifts to.")
         serializer.save(restaurant=restaurant)
-

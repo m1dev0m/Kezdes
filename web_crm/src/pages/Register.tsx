@@ -15,10 +15,24 @@ import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { Logo } from '@/components/ui/Logo';
 
+const REGISTRATION_FLOW = [
+  { step: '01', title: 'Данные', description: 'Имя, email и телефон.' },
+  { step: '02', title: 'Код', description: 'Подтверждение email.' },
+  { step: '03', title: 'Доступ', description: 'Выбор роли и вход.' },
+] as const;
+
+const REGISTRATION_HINTS = [
+  'Выбор между личным и бизнес кабинетом',
+  'Мгновенный доступ к бронированиям',
+  'Персонализированный опыт управления',
+];
+
 export default function Register() {
   const [loading, setLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [debugOtpCode, setDebugOtpCode] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -31,11 +45,15 @@ export default function Register() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [step, setStep] = useState(1); // 1 = details, 2 = otp
+  const [step, setStep] = useState(1);
+  const isOtpStep = step === 2;
 
   const setField = (key: keyof typeof formData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((current) => ({ ...current, [key]: event.target.value }));
   };
+
+  const normalizedEmail = formData.email.trim().toLowerCase();
+  const isOtpCooldownActive = otpCooldown > 0 && otpEmail === normalizedEmail && normalizedEmail.length > 0;
 
   useEffect(() => {
     if (otpCooldown <= 0) return;
@@ -46,32 +64,33 @@ export default function Register() {
   }, [otpCooldown]);
 
   const canSendOtp = useMemo(() => {
-    const email = (formData.email || '').trim();
-    if (!email) return false;
+    if (!normalizedEmail) return false;
     if (otpSending) return false;
-    if (otpCooldown > 0) return false;
+    if (isOtpCooldownActive) return false;
     return true;
-  }, [formData.email, otpCooldown, otpSending]);
+  }, [isOtpCooldownActive, normalizedEmail, otpSending]);
 
   const sendOtp = async () => {
-    const email = (formData.email || '').trim();
+    const email = normalizedEmail;
     if (!email) {
       toast.error('Введите email, чтобы получить код');
+      return;
+    }
+    if (isOtpCooldownActive) {
+      toast.error(`Подождите ${otpCooldown} сек, прежде чем запрашивать новый код`);
       return;
     }
 
     setOtpSending(true);
     try {
       const res = await api.post('/auth/send-otp/', { email });
-      toast.success(res.data?.detail || 'Код подтвержден на email');
+      setDebugOtpCode(typeof res.data?.code === 'string' ? res.data.code : '');
+      toast.success(res.data?.detail || 'Код отправлен на email');
+      setOtpEmail(email);
       setOtpCooldown(60);
-      setStep(2); // Jump to step 2 if we are sending OTP
+      setStep(2);
     } catch (error: any) {
-      const message =
-        error?.response?.data?.detail ||
-        error?.response?.data?.email?.[0] ||
-        'Не удалось отправить код';
-      toast.error(message);
+      toast.error(getApiErrorMessage(error?.response?.data, 'Не удалось отправить код'));
     } finally {
       setOtpSending(false);
     }
@@ -79,7 +98,13 @@ export default function Register() {
 
   const handleInitialSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!formData.username || !formData.email || !formData.password) {
+    if (
+      !formData.username.trim() ||
+      !normalizedEmail ||
+      !formData.phone.trim() ||
+      !formData.password.trim() ||
+      !formData.password2.trim()
+    ) {
       toast.error('Заполните все обязательные поля');
       return;
     }
@@ -87,12 +112,16 @@ export default function Register() {
       toast.error('Пароли не совпадают');
       return;
     }
-    sendOtp();
+    if (isOtpCooldownActive) {
+      toast.error(`Подождите ${otpCooldown} сек, прежде чем запрашивать новый код`);
+      return;
+    }
+    void sendOtp();
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!formData.otp_code) {
+    if (!formData.otp_code.trim()) {
       toast.error('Введите код подтверждения');
       return;
     }
@@ -100,11 +129,16 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/register/', {
-        ...formData,
+        username: formData.username.trim(),
+        email: normalizedEmail,
+        password: formData.password,
+        password2: formData.password2,
+        phone: formData.phone.trim(),
+        otp_code: formData.otp_code.trim(),
       });
 
       const loginResponse = await api.post('/auth/login/', {
-        username: formData.username,
+        username: formData.username.trim(),
         password: formData.password,
       });
 
@@ -112,7 +146,7 @@ export default function Register() {
       toast.success('Добро пожаловать в Kezdes');
       navigate('/role-selection');
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || error.response?.data?.otp_code?.[0] || 'Ошибка регистрации');
+      toast.error(getApiErrorMessage(error?.response?.data, 'Ошибка регистрации'));
     } finally {
       setLoading(false);
     }
@@ -136,9 +170,9 @@ export default function Register() {
             </div>
 
             <div className="mt-10 grid max-w-xl gap-3 sm:grid-cols-3">
-              <FlowCard step="01" title="Данные" description="Имя, email и телефон." />
-              <FlowCard step="02" title="Код" description="Подтверждение email." />
-              <FlowCard step="03" title="Доступ" description="Выбор роли и вход." />
+              {REGISTRATION_FLOW.map((item) => (
+                <FlowCard key={item.step} step={item.step} title={item.title} description={item.description} />
+              ))}
             </div>
           </div>
 
@@ -146,11 +180,7 @@ export default function Register() {
             <div className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.35)]">
               <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Что дальше?</div>
               <div className="mt-5 space-y-4">
-                {[
-                  'Выбор между личным и бизнес кабинетом',
-                  'Мгновенный доступ к бронированиям',
-                  'Персонализированный опыт управления'
-                ].map((item) => (
+                {REGISTRATION_HINTS.map((item) => (
                   <div key={item} className="flex items-start gap-3">
                     <div className="mt-0.5 text-[#1d4ed8]">
                       <CheckCircle2 size={18} />
@@ -171,24 +201,24 @@ export default function Register() {
 
             <div className="mt-8 rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.35)] sm:p-10 lg:p-8 transition-all duration-500">
               <div className="max-w-md">
-                <h2 className="text-4xl font-black tracking-tight text-slate-900">{step === 1 ? 'Регистрация' : 'Подтверждение'}</h2>
+                <h2 className="text-4xl font-black tracking-tight text-slate-900">{isOtpStep ? 'Подтверждение' : 'Регистрация'}</h2>
                 <p className="mt-4 text-sm font-medium leading-7 text-slate-500 uppercase tracking-wider">
-                  {step === 1 ? 'Заполните данные ниже, чтобы создать аккаунт.' : `Мы отправили код на ${formData.email}`}
+                  {isOtpStep ? `Мы отправили код на ${formData.email}` : 'Заполните данные ниже, чтобы создать аккаунт.'}
                 </p>
               </div>
 
-              {step === 1 ? (
+              {!isOtpStep ? (
                 <form className="mt-10 space-y-6" onSubmit={handleInitialSubmit}>
                   <div className="grid gap-6 md:grid-cols-2">
                     <Field
-                      label="Username"
+                      label="Логин"
                       icon={<UserRound size={18} />}
                       placeholder="manager_admin"
                       value={formData.username}
                       onChange={setField('username')}
                     />
                     <Field
-                      label="Email"
+                      label="Электронная почта"
                       icon={<Mail size={18} />}
                       type="email"
                       placeholder="name@example.com"
@@ -198,7 +228,7 @@ export default function Register() {
                   </div>
 
                   <Field
-                    label="Phone number"
+                    label="Телефон"
                     icon={<Phone size={18} />}
                     type="tel"
                     placeholder="+7 700 000 00 00"
@@ -208,7 +238,7 @@ export default function Register() {
 
                   <div className="grid gap-6 md:grid-cols-2">
                     <Field
-                      label="Password"
+                      label="Пароль"
                       icon={<LockKeyhole size={18} />}
                       type="password"
                       placeholder="••••••••"
@@ -216,7 +246,7 @@ export default function Register() {
                       onChange={setField('password')}
                     />
                     <Field
-                      label="Confirm password"
+                      label="Подтвердите пароль"
                       icon={<LockKeyhole size={18} />}
                       type="password"
                       placeholder="••••••••"
@@ -227,16 +257,30 @@ export default function Register() {
 
                   <button
                     type="submit"
-                    disabled={otpSending}
+                    disabled={
+                      otpSending ||
+                      !formData.username.trim() ||
+                      !normalizedEmail ||
+                      !formData.phone.trim() ||
+                      !formData.password.trim() ||
+                      !formData.password2.trim() ||
+                      isOtpCooldownActive
+                    }
                     className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] text-sm font-semibold text-white shadow-[0_14px_30px_-16px_rgba(29,78,216,0.65)] transition hover:bg-[#1e40af] disabled:opacity-50"
                   >
-                    <span>{otpSending ? 'Отправка кода...' : 'Зарегистрироваться'}</span>
+                    <span>{otpSending ? 'Отправка кода...' : 'Отправить код'}</span>
                     <ArrowRight size={18} className={otpSending ? 'animate-pulse' : ''} />
                   </button>
                 </form>
               ) : (
                 <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
-                  <FieldWithAction
+                  {debugOtpCode ? (
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                      Dev OTP code: <span className="font-bold tracking-[0.2em]">{debugOtpCode}</span>
+                    </div>
+                  ) : null}
+
+                  <Field
                     label="Код подтверждения"
                     icon={<KeyRound size={18} />}
                     placeholder="123456"
@@ -257,10 +301,17 @@ export default function Register() {
                   <div className="flex flex-col gap-4">
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || !formData.otp_code.trim()}
                       className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] text-sm font-semibold text-white shadow-[0_14px_30px_-16px_rgba(29,78,216,0.65)] transition hover:bg-[#1e40af] disabled:opacity-50"
                     >
-                      {loading ? <Loader2 size={18} className="animate-spin" /> : <span>Подтвердить и войти</span>}
+                      {loading ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          <span>Проверяем код...</span>
+                        </>
+                      ) : (
+                        <span>Подтвердить и войти</span>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -274,9 +325,9 @@ export default function Register() {
               )}
 
               <div className="mt-8 border-t border-slate-200 pt-6 text-sm text-slate-600 text-center">
-                Already have an account?
+                Уже есть аккаунт?
                 <Link to="/login" className="ml-1 font-bold text-[#1d4ed8] hover:underline">
-                  Sign in
+                  Войти
                 </Link>
               </div>
             </div>
@@ -294,39 +345,6 @@ function Field({
   placeholder,
   value,
   onChange,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  type?: string;
-  placeholder: string;
-  value: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</label>
-      <div className="relative">
-        <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>
-        <input
-          className="h-14 w-full rounded-2xl border border-slate-200 bg-[#f9fafc] pl-12 pr-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={onChange}
-          required
-        />
-      </div>
-    </div>
-  );
-}
-
-function FieldWithAction({
-  label,
-  icon,
-  type = 'text',
-  placeholder,
-  value,
-  onChange,
   action,
 }: {
   label: string;
@@ -335,7 +353,7 @@ function FieldWithAction({
   placeholder: string;
   value: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  action: React.ReactNode;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="space-y-2">
@@ -343,14 +361,14 @@ function FieldWithAction({
       <div className="relative">
         <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>
         <input
-          className="h-14 w-full rounded-2xl border border-slate-200 bg-[#f9fafc] pl-12 pr-36 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+          className={`h-14 w-full rounded-2xl border border-slate-200 bg-[#f9fafc] pl-12 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white ${action ? 'pr-36' : 'pr-4'}`}
           type={type}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
           required
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">{action}</div>
+        {action ? <div className="absolute right-3 top-1/2 -translate-y-1/2">{action}</div> : null}
       </div>
     </div>
   );
@@ -364,4 +382,34 @@ function FlowCard({ step, title, description }: { step: string; title: string; d
       <p className="mt-2 text-xs leading-5 text-slate-500">{description}</p>
     </div>
   );
+}
+
+function getApiErrorMessage(responseData: unknown, fallback: string) {
+  if (!responseData || typeof responseData !== 'object') return fallback;
+
+  const data = responseData as Record<string, unknown>;
+  const detail = data.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+
+  const prioritizedKeys = ['otp_code', 'password2', 'password', 'username', 'email', 'phone', 'role'];
+  for (const key of prioritizedKeys) {
+    const value = data[key];
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
+      return value[0];
+    }
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  for (const value of Object.values(data)) {
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
+      return value[0];
+    }
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return fallback;
 }

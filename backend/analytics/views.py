@@ -28,6 +28,11 @@ class DashboardAnalyticsView(APIView):
 
         if not restaurant:
             return api_error("No associated restaurant.", 403)
+        if not restaurant.has_feature('analytics_basic'):
+            return api_error(
+                "Analytics is unavailable for restaurants without Plus or Pro subscription.",
+                403,
+            )
 
         today = timezone.now().date()
         tomorrow = today + timedelta(days=1)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -14,29 +14,39 @@ export default function EventsScreen() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const loadBookings = async () => {
-        if (!user?.access) return;
+    const loadBookings = useCallback(async () => {
+        if (!user?.access) {
+            setBookings([]);
+            setLoading(false);
+            setRefreshing(false);
+            setError(null);
+            return;
+        }
         try {
+            setError(null);
             const data = await fetchBookings(user.access);
-            setBookings(data.results || data);
+            setBookings(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to load bookings:', error);
+            setBookings([]);
+            setError('Не удалось загрузить бронирования. Проверьте подключение и попробуйте снова.');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [user?.access]);
 
     useFocusEffect(
-        React.useCallback(() => {
-            loadBookings();
-        }, [user])
+        useCallback(() => {
+            void loadBookings();
+        }, [loadBookings])
     );
 
     const onRefresh = () => {
         setRefreshing(true);
-        loadBookings();
+        void loadBookings();
     };
 
     const getStatusStyle = (status: string) => {
@@ -86,16 +96,35 @@ export default function EventsScreen() {
         <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerTitle}>События</Text>
-                    <Text style={styles.headerSubtitle}>Управляйте вашими планами</Text>
+                    <Text style={styles.headerTitle}>Бронирования</Text>
+                    <Text style={styles.headerSubtitle}>Управляйте вашими визитами</Text>
                 </View>
                 <TouchableOpacity
                     style={styles.createButton}
-                    onPress={() => router.push('/events/type')}
+                    onPress={() => router.push('/results')}
                 >
                     <Ionicons name="add" size={24} color="#fff" />
                 </TouchableOpacity>
             </View>
+
+            {error ? (
+                <View style={styles.errorBar}>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={() => void loadBookings()}>
+                        <Text style={styles.retryText}>Повторить</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
+
+            {!user?.access ? (
+                <View style={styles.emptyAccess}>
+                    <Text style={styles.emptyAccessTitle}>Войдите, чтобы видеть свои бронирования</Text>
+                    <Text style={styles.emptyAccessSubtitle}>После входа здесь появится история визитов, статусы и быстрый доступ к подтверждению.</Text>
+                    <TouchableOpacity style={styles.accessBtn} onPress={() => router.push('/onboarding')}>
+                        <Text style={styles.accessBtnText}>Перейти к входу</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
 
             <FlatList
                 contentContainerStyle={styles.list}
@@ -108,12 +137,23 @@ export default function EventsScreen() {
                         <TouchableOpacity
                             style={styles.card}
                             activeOpacity={0.7}
-                            onPress={() => router.push({ pathname: '/timeline', params: { id: item.id } })}
+                    onPress={() => router.push({
+                        pathname: '/booking/confirmation',
+                        params: {
+                            bookingId: String(item.id),
+                            restaurantName: item.restaurant_name || 'Ресторан',
+                            date: item.date,
+                            time: item.time,
+                            guests: String(item.guests || 2),
+                            eventTitle: item.restaurant_name || '',
+                            payAtRestaurant: item.pay_at_restaurant ? 'true' : 'false',
+                        },
+                    })}
                         >
                             <View style={styles.cardHeader}>
                                 <View style={styles.restaurantInfo}>
                                     <Text style={styles.restaurantName}>{item.restaurant_name}</Text>
-                                    <Text style={styles.eventType}>Встреча</Text>
+                    <Text style={styles.eventType}>Бронь</Text>
                                 </View>
                                 <View style={getStatusStyle(item.status)}>
                                     <Text style={getStatusTextStyle(item.status)}>{getStatusTextRussian(item.status)}</Text>
@@ -167,14 +207,16 @@ export default function EventsScreen() {
                     );
                 }}
                 ListEmptyComponent={
-                    <EmptyState
-                        title="У вас пока нет событий"
-                        description="Создайте первое событие, чтобы начать планирование."
-                        iconName="calendar-clear-outline"
-                        iconType="Ionicons"
-                        buttonText="Создать событие"
-                        onPress={() => router.push('/events/type')}
-                    />
+                    !error && user?.access ? (
+                        <EmptyState
+                            title="У вас пока нет бронирований"
+                            description="Найдите ресторан и создайте первую бронь."
+                            iconName="calendar-clear-outline"
+                            iconType="Ionicons"
+                            buttonText="Найти ресторан"
+                            onPress={() => router.push('/results')}
+                        />
+                    ) : null
                 }
             />
         </SafeAreaView>
@@ -207,6 +249,54 @@ const styles = StyleSheet.create({
         color: '#64748b',
         marginTop: 2,
     },
+    errorBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginHorizontal: 16,
+        marginTop: 16,
+        padding: 14,
+        borderRadius: 24,
+        backgroundColor: '#fef2f2',
+        borderWidth: 1,
+        borderColor: '#fecaca',
+    },
+    errorText: {
+        flex: 1,
+        color: '#b91c1c',
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    retryBtn: {
+        borderRadius: 16,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#fecaca',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    retryText: { color: '#b91c1c', fontSize: 12, fontWeight: '700' },
+    emptyAccess: {
+        marginHorizontal: 16,
+        marginTop: 16,
+        padding: 18,
+        borderRadius: 28,
+        backgroundColor: '#eff6ff',
+        borderWidth: 1,
+        borderColor: '#dbeafe',
+    },
+    emptyAccessTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+    emptyAccessSubtitle: { marginTop: 6, fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
+    accessBtn: {
+        marginTop: 12,
+        alignSelf: 'flex-start',
+        borderRadius: 18,
+        backgroundColor: colors.primary,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+    accessBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
     createButton: {
         width: 48,
         height: 48,

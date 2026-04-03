@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
+import { useAuth } from '@/modules/auth/logic/AuthContext';
 import {
   extractResults,
   getApiErrorMessage,
@@ -41,6 +42,11 @@ function validateForm(form: TableFormState): FormErrors {
 }
 
 export default function Tables() {
+  const { user } = useAuth();
+  const role = user?.role ?? '';
+  const canManage = role === 'owner' || role === 'manager' || role === 'global_admin';
+  const canDelete = role === 'owner' || role === 'global_admin';
+
   const [tables, setTables] = useState<ManagedTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,6 +125,7 @@ export default function Tables() {
 
   const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canManage) return;
 
     const errors = validateForm(createForm);
     setCreateErrors(errors);
@@ -148,6 +155,7 @@ export default function Tables() {
   const handleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedTableId) return;
+    if (!canManage) return;
 
     const errors = validateForm(editForm);
     setEditErrors(errors);
@@ -189,6 +197,7 @@ export default function Tables() {
 
   const handleDelete = async () => {
     if (!selectedTableId || !selectedTable) return;
+    if (!canDelete) return;
 
     if (!deleteArmed) {
       setDeleteArmed(true);
@@ -269,6 +278,7 @@ export default function Tables() {
               }}
               placeholder="Table 1"
               error={createErrors.name}
+              disabled={!canManage}
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -284,6 +294,7 @@ export default function Tables() {
                   if (createErrors.capacity) setCreateErrors((current) => ({ ...current, capacity: undefined }));
                 }}
                 error={createErrors.capacity}
+                disabled={!canManage}
               />
               <SelectField
                 label="Форма"
@@ -299,6 +310,7 @@ export default function Tables() {
                   { value: 'rectangle', label: 'Rectangle' },
                   { value: 'circle', label: 'Round' },
                 ]}
+                disabled={!canManage}
               />
             </div>
 
@@ -307,16 +319,23 @@ export default function Tables() {
               description="Если выключить, стол останется в системе, но не будет доступен для текущей работы."
               checked={createForm.is_active}
               onChange={() => setCreateForm((current) => ({ ...current, is_active: !current.is_active }))}
+              disabled={!canManage}
             />
 
             <button
               type="submit"
-              disabled={savingCreate}
+              disabled={savingCreate || !canManage}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
               {savingCreate ? 'Создание...' : tables.length === 0 ? 'Create first table' : 'Add table'}
             </button>
+
+            {!canManage ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Доступ только для просмотра. Для изменений нужна роль manager или owner.
+              </div>
+            ) : null}
           </form>
         </section>
 
@@ -376,16 +395,17 @@ export default function Tables() {
                       <p className="mt-1 text-sm text-slate-500">Параметры применяются сразу после сохранения.</p>
                     </div>
 
-                    <Field
-                      label="Название"
-                      value={editForm.name}
-                      onChange={(value) => {
-                        setEditForm((current) => ({ ...current, name: value }));
-                        if (editErrors.name) setEditErrors((current) => ({ ...current, name: undefined }));
-                      }}
-                      placeholder="Table 1"
-                      error={editErrors.name}
-                    />
+                      <Field
+                        label="Название"
+                        value={editForm.name}
+                        onChange={(value) => {
+                          setEditForm((current) => ({ ...current, name: value }));
+                          if (editErrors.name) setEditErrors((current) => ({ ...current, name: undefined }));
+                        }}
+                        placeholder="Table 1"
+                        error={editErrors.name}
+                        disabled={!canManage}
+                      />
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field
@@ -400,6 +420,7 @@ export default function Tables() {
                           if (editErrors.capacity) setEditErrors((current) => ({ ...current, capacity: undefined }));
                         }}
                         error={editErrors.capacity}
+                        disabled={!canManage}
                       />
                       <SelectField
                         label="Форма"
@@ -415,6 +436,7 @@ export default function Tables() {
                           { value: 'rectangle', label: 'Rectangle' },
                           { value: 'circle', label: 'Round' },
                         ]}
+                        disabled={!canManage}
                       />
                     </div>
 
@@ -423,6 +445,7 @@ export default function Tables() {
                       description="Отключите стол, если его нельзя использовать прямо сейчас."
                       checked={editForm.is_active}
                       onChange={() => setEditForm((current) => ({ ...current, is_active: !current.is_active }))}
+                      disabled={!canManage}
                     />
 
                     {deleteArmed ? (
@@ -434,23 +457,25 @@ export default function Tables() {
                     <div className="flex flex-wrap gap-3 pt-2">
                       <button
                         type="submit"
-                        disabled={savingEdit}
+                        disabled={savingEdit || !canManage}
                         className="inline-flex items-center justify-center rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
                       >
                         {savingEdit ? 'Сохранение...' : 'Save changes'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete()}
-                        disabled={savingEdit}
-                        className={`inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:opacity-50 ${
-                          deleteArmed
-                            ? 'border-rose-300 bg-rose-50 text-rose-700'
-                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        Delete table
-                      </button>
+                      {canDelete ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete()}
+                          disabled={savingEdit}
+                          className={`inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:opacity-50 ${
+                            deleteArmed
+                              ? 'border-rose-300 bg-rose-50 text-rose-700'
+                              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          Delete table
+                        </button>
+                      ) : null}
                     </div>
                   </form>
                 ) : (
@@ -483,6 +508,7 @@ function Field({
   placeholder = '',
   type = 'text',
   error,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -490,6 +516,7 @@ function Field({
   placeholder?: string;
   type?: string;
   error?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block space-y-2">
@@ -499,6 +526,7 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         className={`h-12 w-full rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none transition ${
           error ? 'border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-50' : 'border-slate-200 focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50'
         }`}
@@ -513,11 +541,13 @@ function SelectField({
   value,
   onChange,
   options,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
+  disabled?: boolean;
 }) {
   return (
     <label className="block space-y-2">
@@ -525,7 +555,8 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50"
+        disabled={disabled}
+        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -542,11 +573,13 @@ function ToggleField({
   description,
   checked,
   onChange,
+  disabled = false,
 }: {
   label: string;
   description: string;
   checked: boolean;
   onChange: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -557,8 +590,9 @@ function ToggleField({
       <button
         type="button"
         onClick={onChange}
+        disabled={disabled}
         aria-label={`table-active-${checked ? 'on' : 'off'}`}
-        className={`relative mt-1 h-6 w-11 rounded-full transition ${checked ? 'bg-[#1d4ed8]' : 'bg-slate-300'}`}
+        className={`relative mt-1 h-6 w-11 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${checked ? 'bg-[#1d4ed8]' : 'bg-slate-300'}`}
       >
         <span
           className={`absolute top-0.5 size-5 rounded-full bg-white transition ${

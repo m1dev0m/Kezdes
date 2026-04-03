@@ -40,11 +40,17 @@ class CanManageTables(permissions.BasePermission):
     Permission to manage tables.
     Owner/GlobalAdmin: can create, edit, delete tables.
     Manager: can create, edit tables (no delete).
-    Host: can view/assign tables via endpoints (read-level access).
+    Host: read-only access (list/retrieve/status).
     """
     def has_permission(self, request, view):
         p = _get_profile(request.user)
-        return bool(p and (p.is_owner or p.is_manager or p.is_global_admin or (p.is_host and view.action in ['list', 'retrieve'])))
+        if not p:
+            return False
+        if p.is_global_admin or p.is_owner or p.is_manager:
+            return True
+        if p.is_host and view.action in ['list', 'retrieve', 'status']:
+            return True
+        return False
 
     def has_object_permission(self, request, view, obj):
         p = _get_profile(request.user)
@@ -52,7 +58,7 @@ class CanManageTables(permissions.BasePermission):
             return False
         if view.action == 'destroy':
             return p.is_owner or p.is_global_admin
-        if view.action in ['update', 'partial_update']:
+        if view.action in ['update', 'partial_update', 'update_status']:
             return p.is_owner or p.is_manager or p.is_global_admin
         # Default read access for all staff
         return p.is_staff_member or p.is_global_admin
@@ -94,4 +100,34 @@ class IsRestaurantStaff(permissions.BasePermission):
         from core.utils import get_user_restaurant
         if p.is_staff_member and get_user_restaurant(request.user) is not None:
             return True
+        return False
+
+
+class HasRestaurantFeature(permissions.BasePermission):
+    """
+    Validates that the user's restaurant subscription includes the requested feature.
+    Set `required_feature` on the view.
+    """
+    message = "Эта функция недоступна без подходящей подписки."
+
+    def has_permission(self, request, view):
+        p = _get_profile(request.user)
+        if not p:
+            return False
+        if p.is_global_admin:
+            return True
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(request.user)
+        if restaurant is None:
+            self.message = "No associated restaurant."
+            return False
+        feature = getattr(view, 'required_feature', None)
+        if not feature:
+            return True
+        if restaurant.has_feature(feature):
+            return True
+        self.message = (
+            f"Тариф ресторана '{restaurant.get_plan_display()}' не включает функцию '{feature}'. "
+            "Переключите подписку на Plus или Pro в Django admin."
+        )
         return False

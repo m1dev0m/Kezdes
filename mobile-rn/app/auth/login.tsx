@@ -1,34 +1,47 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
 
-import { useRouter, Link } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useRouter, Link, useLocalSearchParams } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
-import { useAuth } from '../../lib/auth-context';
+import { consumePendingPostAuthRoute, getAuthErrorMessage, getPostAuthRoute, sanitizeRedirectTarget, useAuth } from '../../lib/auth-context';
 import { Logo } from '../../components/ui/Logo';
 
 export default function LoginScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
     const { login } = useAuth();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [pendingRedirectTo] = useState(() => sanitizeRedirectTarget(consumePendingPostAuthRoute()));
+    const redirectTo = sanitizeRedirectTarget(typeof params.redirectTo === 'string' ? params.redirectTo : '');
+
+    const handleForgotPassword = () => {
+        Alert.alert(
+            'Сброс пароля',
+            'Автоматическое восстановление пароля пока не подключено. Используйте аккаунт с известным паролем или зарегистрируйтесь заново на тот же email.',
+        );
+    };
 
     const handleLogin = async () => {
         if (isSubmitting) return;
-        if (!username || !password) {
+        const normalizedLogin = username.trim();
+        if (!normalizedLogin || !password) {
             Alert.alert('Ошибка', 'Введите логин и пароль');
             return;
         }
 
         try {
             setIsSubmitting(true);
-            await login({ username, password });
+            const nextUser = await login({ username: normalizedLogin, password });
+            const nextRoute = (redirectTo || pendingRedirectTo || getPostAuthRoute(nextUser)) as Parameters<typeof router.replace>[0];
+            router.replace(nextRoute);
         } catch (error) {
-            const msg = error instanceof Error && error.message ? error.message : 'Не удалось войти';
+            const msg = getAuthErrorMessage(error, 'Не удалось войти');
             Alert.alert('Ошибка', msg);
         } finally {
             setIsSubmitting(false);
@@ -54,7 +67,7 @@ export default function LoginScreen() {
                     <View style={styles.tabActive}>
                         <Text style={styles.tabTextActive}>Вход</Text>
                     </View>
-                    <Link href="/auth/register" asChild>
+                    <Link href={redirectTo ? ({ pathname: '/auth/register', params: { redirectTo } } as const) : '/auth/register'} asChild>
                         <TouchableOpacity style={styles.tabInactive} activeOpacity={0.7}>
                             <Text style={styles.tabTextInactive}>Регистрация</Text>
                         </TouchableOpacity>
@@ -87,11 +100,9 @@ export default function LoginScreen() {
                         <View style={styles.inputWrapper}>
                             <View style={styles.passwordLabelRow}>
                                 <Text style={styles.label}>Пароль</Text>
-                                <Link href="/auth/forgot-password" asChild>
-                                    <TouchableOpacity activeOpacity={0.7} disabled={isSubmitting}>
+                                    <TouchableOpacity activeOpacity={0.7} disabled={isSubmitting} onPress={handleForgotPassword}>
                                         <Text style={styles.forgotText}>Забыли пароль?</Text>
                                     </TouchableOpacity>
-                                </Link>
                             </View>
 
                             <View style={styles.inputIconContainer}>
@@ -123,22 +134,11 @@ export default function LoginScreen() {
                             )}
                         </TouchableOpacity>
 
-                        <View style={styles.dividerRow}>
-                            <View style={styles.divider} />
-                            <Text style={styles.dividerText}>ИЛИ ВОЙТИ ЧЕРЕЗ</Text>
-                            <View style={styles.divider} />
-                        </View>
-
-                        <View style={styles.socialGrid}>
-                            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
-                                <Image source={require('../../assets/images/google_logo.jpg')} style={styles.socialLogo} />
-                                <Text style={styles.socialBtnText}>Google</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
-                                <Ionicons name="logo-apple" size={20} color={colors.text} />
-                                <Text style={styles.socialBtnText}>Apple</Text>
-                            </TouchableOpacity>
+                        <View style={styles.helperCard}>
+                            <Text style={styles.helperCardTitle}>Рабочий способ входа сейчас</Text>
+                            <Text style={styles.helperCardText}>
+                                Вход доступен по логину или email и паролю. Социальные кнопки скрыты, чтобы не оставлять мёртвые CTA.
+                            </Text>
                         </View>
 
                     </View>
@@ -284,17 +284,46 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: colors.primary,
     },
+    helperCard: {
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: '#f8fafc',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        gap: 6,
+    },
+    helperCardTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    helperCardText: {
+        fontSize: 13,
+        lineHeight: 20,
+        color: colors.textSecondary,
+    },
     loginButton: {
         backgroundColor: colors.primary,
         paddingVertical: 16,
         borderRadius: 40,
         alignItems: 'center',
         marginTop: 4,
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 4px 10px rgba(29, 78, 216, 0.22)',
+            },
+            default: {},
+        }),
     },
     loginButtonDisabled: {
         opacity: 0.7,

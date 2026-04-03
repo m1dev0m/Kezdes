@@ -353,6 +353,49 @@ class BookingAPITests(TestCase):
         booking = Booking.objects.get(id=booking_id)
         self.assertEqual(booking.status, Booking.CANCELLED_BY_USER)
 
+    def test_public_booking_lookup_and_cancel_by_token(self):
+        """Public token should allow lookup and self-service cancellation without auth."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+        booking = Booking.objects.get(id=booking_id)
+
+        self.client.force_authenticate(user=None)
+        lookup_res = self.client.get(f"/api/v1/bookings/public/{booking.public_token}/")
+        self.assertEqual(lookup_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(lookup_res.data["public_token"], booking.public_token)
+        self.assertEqual(lookup_res.data["restaurant_name"], self.restaurant.name)
+        self.assertIn("rebook_payload", lookup_res.data)
+        self.assertEqual(lookup_res.data["rebook_payload"]["restaurant_id"], self.restaurant.id)
+        self.assertFalse(lookup_res.data["can_review"])
+
+        cancel_res = self.client.delete(f"/api/v1/bookings/public/{booking.public_token}/")
+        self.assertEqual(cancel_res.status_code, status.HTTP_200_OK)
+
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, Booking.CANCELLED_BY_USER)
+
+    def test_completed_booking_exposes_review_and_rebook_context(self):
+        """Completed bookings must expose review eligibility and repeat-booking payload."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+        booking = Booking.objects.get(id=booking_id)
+        booking.status = Booking.COMPLETED
+        booking.save(update_fields=["status"])
+
+        self.client.force_authenticate(user=self.customer)
+        detail = self.client.get(f"/api/v1/bookings/{booking_id}/")
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertTrue(detail.data["can_review"])
+        self.assertIn("rebook_payload", detail.data)
+        self.assertEqual(detail.data["rebook_payload"]["booking_id"], booking_id)
+        self.assertEqual(detail.data["rebook_payload"]["restaurant_id"], self.restaurant.id)
+        self.assertEqual(detail.data["rebook_payload"]["guests"], 2)
+
+        public_detail = self.client.get(f"/api/v1/bookings/public/{booking.public_token}/")
+        self.assertEqual(public_detail.status_code, status.HTTP_200_OK)
+        self.assertTrue(public_detail.data["can_review"])
+        self.assertEqual(public_detail.data["rebook_payload"]["booking_id"], booking_id)
+
     def test_double_confirm_fails(self):
         """Confirming an already confirmed booking should fail."""
         res = self._create_booking()
@@ -621,3 +664,201 @@ class OnboardingFlowTests(TestCase):
         result, error = RestaurantService.approve_request(req.id)
         self.assertIsNone(result)
         self.assertIn("already", error)
+
+
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+    CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
+)
+class BookingSerializerContractTests(TestCase):
+    """
+    Tests that verify the API response contract matches what the frontend expects.
+    Specifically: status field values, user_name/user_phone, table_number.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.owner = User.objects.create_user("owner_sc", "owner_sc@test.com", "pass1234")
+        self.customer = User.objects.create_user("customer_sc", "customer_sc@test.com", "pass1234")
+        self.owner.profile.role = "owner"
+        self.owner.profile.save()
+        self.customer.profile.role = "customer"
+        self.customer.profile.save()
+
+        self.restaurant = Restaurant.objects.create(
+            name="Contract Test Restaurant",
+            address="Test Address",
+            latitude=43.0,
+            longitude=76.0,
+            is_verified=True,
+            owner=self.owner,
+            capacity=50,
+        )
+        self.owner.profile.restaurant = self.restaurant
+        self.owner.profile.save()
+
+        self.table = Table.objects.create(
+            restaurant=self.restaurant, number="T1", seats=4, is_active=True,
+        )
+
+    def _create_booking(self, user=None, **overrides):
+        user = user or self.customer
+        self.client.force_authenticate(user=user)
+        data = {
+            "restaurant": self.restaurant.id,
+            "date": str(_tomorrow()),
+            "time": "19:00",
+            "guests": 2,
+            "user_name": "Test Guest",
+            "user_phone": "+77001112233",
+        }
+        data.update(overrides)
+        return self.client.post("/api/v1/bookings/", data, format="json")
+
+    def test_cancelled_by_user_status_not_collapsed(self):
+        """cancelled_by_user must be returned as-is, not collapsed to 'cancelled'."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        # Confirm then cancel by user
+        self.client.force_authenticate(user=self.owner)
+        self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+
+        self.client.force_authenticate(user=self.customer)
+        self.client.delete(f"/api/v1/bookings/{booking_id}/")
+
+        # Fetch via my_restaurant
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.get("/api/v1/bookings/my_restaurant/")
+        data = res.data if isinstance(res.data, list) else res.data.get("results", [])
+        booking_data = next(b for b in data if b["id"] == booking_id)
+        self.assertEqual(booking_data["status"], "cancelled_by_user")
+
+    def test_cancelled_by_restaurant_status_not_collapsed(self):
+        """cancelled_by_restaurant must be returned as-is, not collapsed to 'cancelled'."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.client.post(f"/api/v1/bookings/{booking_id}/cancel_by_restaurant/")
+
+        res = self.client.get("/api/v1/bookings/my_restaurant/")
+        data = res.data if isinstance(res.data, list) else res.data.get("results", [])
+        booking_data = next(b for b in data if b["id"] == booking_id)
+        self.assertEqual(booking_data["status"], "cancelled_by_restaurant")
+
+    def test_confirmed_status_serialized_as_confirmed(self):
+        """Confirmed booking must return status='confirmed'."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        confirm_res = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.assertEqual(confirm_res.data["status"], "confirmed")
+
+    def test_table_number_in_response(self):
+        """Booking response must include table_number field."""
+        res = self._create_booking()
+        self.assertIn("table_number", res.data)
+
+    def test_user_name_and_phone_in_response(self):
+        """Booking response must include user_name and user_phone."""
+        res = self._create_booking()
+        self.assertIn("user_name", res.data)
+        self.assertIn("user_phone", res.data)
+
+    def test_normalize_statuses_approved_alias(self):
+        """?status=approved filter must return confirmed bookings."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+
+        res = self.client.get("/api/v1/bookings/my_restaurant/?status=approved")
+        data = res.data if isinstance(res.data, list) else res.data.get("results", [])
+        ids = {b["id"] for b in data}
+        self.assertIn(booking_id, ids)
+
+    def test_my_restaurant_returns_correct_shape(self):
+        """my_restaurant must return bookings with all required frontend fields."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.get("/api/v1/bookings/my_restaurant/")
+        data = res.data if isinstance(res.data, list) else res.data.get("results", [])
+        self.assertGreater(len(data), 0)
+        booking = data[0]
+        for field in ("id", "user_name", "user_phone", "status", "date", "time", "guests", "table_number"):
+            self.assertIn(field, booking, f"Missing field: {field}")
+
+
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+    CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
+)
+class BookingContractReliabilityTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.owner = User.objects.create_user("owner_rel", "owner_rel@test.com", "pass1234")
+        self.owner.profile.role = "owner"
+        self.owner.profile.save()
+
+        self.customer = User.objects.create_user("customer_rel", "customer_rel@test.com", "pass1234")
+        self.customer.profile.role = "customer"
+        self.customer.profile.save()
+
+        self.restaurant = Restaurant.objects.create(
+            name="Reliability Restaurant",
+            address="Ops Street 10",
+            latitude=43.24,
+            longitude=76.92,
+            owner=self.owner,
+            is_claimed=True,
+            is_verified=True,
+            capacity=40,
+        )
+        self.owner.profile.restaurant = self.restaurant
+        self.owner.profile.save()
+
+        Table.objects.create(restaurant=self.restaurant, number="R1", seats=4, is_active=True)
+
+    def test_create_manual_requires_explicit_guest_contact(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(
+            "/api/v1/bookings/create_manual/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "time": "18:30",
+                "guests": 2,
+                # no user_name/user_phone
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        errors = response.data.get("errors", {})
+        self.assertIn("user_name", errors)
+        self.assertIn("user_phone", errors)
+
+    def test_available_slots_returns_stable_shape(self):
+        self.client.force_authenticate(user=self.customer)
+        response = self.client.get(
+            "/api/v1/bookings/available_slots/",
+            {
+                "restaurant_id": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "guests": 2,
+                "duration_minutes": 90,
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("slots", response.data)
+        self.assertIn("available_slots", response.data)
+        self.assertIn("unavailable_slots", response.data)
+        self.assertIn("meta", response.data)
+        self.assertEqual(response.data["slots"], response.data["available_slots"])
+        self.assertEqual(response.data["meta"]["restaurant_id"], self.restaurant.id)
+        self.assertEqual(response.data["meta"]["guests"], 2)

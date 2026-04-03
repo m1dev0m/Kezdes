@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
-import { createRestaurant, updateMyRestaurant, fetchMyRestaurant, createRestaurantApplication } from '../../lib/api';
+import { updateMyRestaurant, fetchMyRestaurant, createRestaurantApplication } from '../../lib/api';
 
 export default function RestaurantSetupScreen() {
     const router = useRouter();
@@ -29,19 +29,21 @@ export default function RestaurantSetupScreen() {
 
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
     const [isSearchingAddress, setIsSearchingAddress] = useState(false);
-    const searchTimeout = useRef<any>(null);
+    const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    React.useEffect(() => {
-        if (params.edit === 'true') {
-            setIsEdit(true);
-            loadData();
-        }
+    useEffect(() => {
+        setIsEdit(params.edit === 'true');
     }, [params.edit]);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
+        const access = user?.access;
+        if (!access) {
+            return;
+        }
+
         setIsLoading(true);
         try {
-            const data = await fetchMyRestaurant(user.access);
+            const data = await fetchMyRestaurant(access);
             setName(data.name);
             setAddress(data.address);
             setCapacity(data.capacity?.toString() || '');
@@ -59,7 +61,23 @@ export default function RestaurantSetupScreen() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [user?.access]);
+
+    useEffect(() => {
+        if (!isEdit || !user?.access) {
+            return;
+        }
+
+        loadData();
+    }, [isEdit, loadData, user?.access]);
+
+    useEffect(() => {
+        return () => {
+            if (searchTimeout.current) {
+                clearTimeout(searchTimeout.current);
+            }
+        };
+    }, []);
 
     const search2GIS = async (query: string) => {
         if (!query || query.length < 3) {
@@ -95,6 +113,11 @@ export default function RestaurantSetupScreen() {
     };
 
     const handleSave = async () => {
+        const access = user?.access;
+        if (!access) {
+            return;
+        }
+
         if (!name || !address || !capacity || !averagePrice) {
             Alert.alert('Ошибка', 'Пожалуйста, заполните основные поля (название, адрес, вместимость, средний чек)');
             return;
@@ -117,7 +140,7 @@ export default function RestaurantSetupScreen() {
             };
 
             if (isEdit) {
-                await updateMyRestaurant(data, user.access);
+                await updateMyRestaurant(data, access);
                 setJustSaved(true);
                 setTimeout(() => setJustSaved(false), 1200);
             } else {
@@ -128,7 +151,7 @@ export default function RestaurantSetupScreen() {
                         address,
                         phone,
                     },
-                    user.access
+                    access
                 );
                 Alert.alert(
                     'Заявка отправлена',
@@ -161,13 +184,13 @@ export default function RestaurantSetupScreen() {
 
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.hero}>
-                    <MaterialIcons name="restaurant" size={64} color={colors.primary} />
+                    <MaterialIcons name="restaurant" size={64} color="#4300FF" />
                     <Text style={styles.heroTitle}>Добро пожаловать!</Text>
                     <Text style={styles.heroSubtitle}>Давайте добавим ваше заведение в Kezdes</Text>
                 </View>
 
                 {isLoading ? (
-                    <ActivityIndicator size="large" color={colors.primary} />
+                    <ActivityIndicator size="large" color="#4300FF" />
                 ) : (
                     <View style={styles.form}>
                         <View style={styles.inputGroup}>
@@ -186,16 +209,16 @@ export default function RestaurantSetupScreen() {
                                 style={styles.input}
                                 placeholder="Напр. пр. Абая 44"
                                 value={address}
-                                onChangeText={(text) => {
-                                    setAddress(text);
-                                    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-                                    searchTimeout.current = setTimeout(() => {
-                                        search2GIS(text);
-                                    }, 500);
-                                }}
-                            />
+                                    onChangeText={(text) => {
+                                        setAddress(text);
+                                        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+                                        searchTimeout.current = setTimeout(() => {
+                                            search2GIS(text);
+                                        }, 500);
+                                    }}
+                                />
                             {isSearchingAddress && (
-                                <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 8, alignSelf: 'flex-start', marginLeft: 16 }} />
+                                <ActivityIndicator size="small" color="#4300FF" style={{ marginTop: 8, alignSelf: 'flex-start', marginLeft: 16 }} />
                             )}
                             {!isSearchingAddress && addressSuggestions.length > 0 && (
                                 <View style={styles.suggestions}>
@@ -299,7 +322,7 @@ export default function RestaurantSetupScreen() {
                                 style={styles.manageTablesBtn}
                                 onPress={() => router.push('/admin/tables')}
                             >
-                                <MaterialCommunityIcons name="table-furniture" size={24} color={colors.primary} />
+                                <MaterialCommunityIcons name="table-furniture" size={24} color="#4300FF" />
                                 <View style={{ flex: 1, marginLeft: 12 }}>
                                     <Text style={styles.manageTablesTitle}>Управление столами</Text>
                                     <Text style={styles.manageTablesSub}>Добавьте или измените схему столов</Text>
@@ -351,7 +374,7 @@ const styles = StyleSheet.create({
     bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, gap: 12 },
     savedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#ecfdf5' },
     savedText: { fontSize: 12, fontWeight: '700', color: '#16a34a' },
-    submitBtn: { flex: 1, backgroundColor: colors.primary, paddingVertical: 18, borderRadius: 32, alignItems: 'center' },
+    submitBtn: { flex: 1, backgroundColor: '#4300FF', paddingVertical: 18, borderRadius: 32, alignItems: 'center' },
     submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
     suggestions: { backgroundColor: colors.surface, borderRadius: 32, borderWidth: 1, borderColor: colors.border, marginTop: 4, overflow: 'hidden' },
     suggestionItem: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border },

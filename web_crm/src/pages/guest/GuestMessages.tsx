@@ -7,7 +7,7 @@ import {
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 interface Message {
     id: number;
@@ -51,6 +51,9 @@ export default function GuestMessages() {
     const [activeTab, setActiveTab] = useState<'recent' | 'archived'>('recent');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const archivedStatuses = new Set(['completed', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'rejected', 'no_show']);
+    const [conversationError, setConversationError] = useState<string | null>(null);
+    const [messageError, setMessageError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -75,14 +78,23 @@ export default function GuestMessages() {
 
     const fetchData = async () => {
         try {
+            setConversationError(null);
             setLoadingConvs(true);
-            const [msgRes, bookRes] = await Promise.all([
+            const [msgRes, bookRes] = await Promise.allSettled([
                 api.get('/chat/messages/'),
                 api.get('/bookings/')
             ]);
 
-            const allMessages: Message[] = Array.isArray(msgRes.data) ? msgRes.data : (msgRes.data.results || []);
-            const allBookings = Array.isArray(bookRes.data) ? bookRes.data : (bookRes.data.results || []);
+            const allMessages = msgRes.status === 'fulfilled'
+                ? (Array.isArray(msgRes.value.data) ? msgRes.value.data : (msgRes.value.data.results || []))
+                : [];
+            const allBookings = bookRes.status === 'fulfilled'
+                ? (Array.isArray(bookRes.value.data) ? bookRes.value.data : (bookRes.value.data.results || []))
+                : [];
+
+            if (msgRes.status === 'rejected' && bookRes.status === 'rejected') {
+                throw new Error('Не удалось загрузить диалоги');
+            }
 
             // Group into conversations
             const convMap = new Map<string, Conversation>();
@@ -144,8 +156,13 @@ export default function GuestMessages() {
                     if (c) setSelectedConv(c);
                 }
             }
+
+            if (msgRes.status === 'rejected' || bookRes.status === 'rejected') {
+                setConversationError('Часть переписок не загрузилась. Обновите страницу или повторите попытку.');
+            }
         } catch (error) {
             console.error('Failed to fetch data', error);
+            setConversationError('Не удалось загрузить диалоги. Проверьте подключение и попробуйте снова.');
         } finally {
             setLoadingConvs(false);
         }
@@ -153,6 +170,7 @@ export default function GuestMessages() {
 
     const fetchMessages = async (conv: Conversation) => {
         try {
+            setMessageError(null);
             setLoadingMessages(true);
             const params = conv.type === 'booking' ? `booking=${conv.targetId}` : `restaurant=${conv.targetId}`;
             const res = await api.get(`/chat/messages/?${params}`);
@@ -160,6 +178,7 @@ export default function GuestMessages() {
             setMessages(data);
         } catch (error) {
             console.error(error);
+            setMessageError('Не удалось загрузить сообщения в этом диалоге.');
         } finally {
             setLoadingMessages(false);
         }
@@ -201,12 +220,16 @@ export default function GuestMessages() {
         }
     };
 
-    const filteredConvs = conversations.filter(c =>
-        !search || c.title.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredConvs = conversations.filter((c) => {
+        const haystack = `${c.title} ${c.subtitle || ''} ${c.lastMessage || ''}`.toLowerCase();
+        const matchesSearch = !search || haystack.includes(search.toLowerCase());
+        const isArchived = c.type === 'booking' && archivedStatuses.has(c.bookingStatus || '');
+        const matchesTab = activeTab === 'archived' ? isArchived : !isArchived;
+        return matchesSearch && matchesTab;
+    });
 
     return (
-        <div className="mx-auto max-w-[1280px] px-6 py-8 h-[calc(100vh-140px)] flex flex-col">
+        <div className="mx-auto max-w-[1280px] px-6 py-4 h-[calc(100vh-100px)] flex flex-col">
             <main className="flex-1 flex flex-col overflow-hidden border border-slate-200 rounded-3xl bg-white shadow-xl shadow-slate-200/50">
                 <header className="h-20 border-b border-slate-200 bg-white flex items-center justify-between px-8 shrink-0">
                     <div className="flex items-center gap-3">
@@ -243,6 +266,16 @@ export default function GuestMessages() {
 
                 <div className="flex-1 flex overflow-hidden">
                     <section className="w-80 border-r border-slate-200 flex flex-col bg-white">
+                        {conversationError && (
+                            <div className="m-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                                <div className="flex items-start justify-between gap-3">
+                                    <span>{conversationError}</span>
+                                    <button type="button" onClick={fetchData} className="font-bold uppercase tracking-widest text-[#1d4ed8] shrink-0">
+                                        Повторить
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         <div className="flex border-b border-slate-100">
                             <button
                                 type="button"
@@ -273,10 +306,37 @@ export default function GuestMessages() {
                                 <div className="p-4 space-y-3">
                                     {[1, 2, 3, 4].map(i => <div key={i} className="h-16 w-full bg-slate-100 rounded-xl animate-pulse" />)}
                                 </div>
-                            ) : filteredConvs.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+                            ) : conversations.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center text-slate-400">
                                     <MessageSquare className="w-8 h-8" />
-                                    <p className="text-xs font-bold uppercase tracking-widest">Нет диалогов</p>
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-bold uppercase tracking-widest">Диалогов пока нет</p>
+                                        <p className="text-[11px] leading-6 text-slate-400">Здесь появятся переписки по бронированиям и сообщения ресторанам.</p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-center gap-3">
+                                        <Link to="/restaurants" className="px-4 py-2 rounded-lg bg-[#1d4ed8] text-white text-[10px] font-bold uppercase tracking-widest">
+                                            Найти ресторан
+                                        </Link>
+                                        <Link to="/guest/dashboard" className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-widest">
+                                            Мои брони
+                                        </Link>
+                                    </div>
+                                </div>
+                            ) : filteredConvs.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center text-slate-400">
+                                    <MessageSquare className="w-8 h-8" />
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-bold uppercase tracking-widest">{search.trim() ? 'Ничего не найдено' : 'Нет диалогов в этой вкладке'}</p>
+                                        <p className="text-[11px] leading-6 text-slate-400">{search.trim() ? 'Попробуйте другой запрос или очистите поиск.' : 'Переключитесь между последними и архивом, либо начните новый диалог из карточки брони.'}</p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-center gap-3">
+                                        <Link to="/restaurants" className="px-4 py-2 rounded-lg bg-[#1d4ed8] text-white text-[10px] font-bold uppercase tracking-widest">
+                                            Найти ресторан
+                                        </Link>
+                                        <Link to="/guest/dashboard" className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-widest">
+                                            Мои брони
+                                        </Link>
+                                    </div>
                                 </div>
                             ) : (
                                 <div>
@@ -321,6 +381,16 @@ export default function GuestMessages() {
                     <section className="flex-1 flex flex-col bg-brand-cream">
                         {selectedConv ? (
                             <>
+                                {messageError && (
+                                    <div className="px-6 pt-4">
+                                        <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700 flex items-center justify-between gap-3">
+                                            <span>{messageError}</span>
+                                            <button type="button" onClick={() => fetchMessages(selectedConv)} className="font-bold uppercase tracking-widest text-[#1d4ed8] shrink-0">
+                                                Повторить
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center font-bold text-[#1d4ed8] border border-blue-100">
@@ -447,13 +517,24 @@ export default function GuestMessages() {
                                     <p className="text-center text-[10px] text-slate-400 mt-2 uppercase tracking-tighter">Enter — отправить, Shift+Enter — новая строка</p>
                                 </div>
                             </>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 bg-slate-50/50">
-                                <MessageSquare className="w-12 h-12" />
-                                <p className="text-xs font-bold uppercase tracking-widest">Выберите диалог</p>
-                            </div>
-                        )}
-                    </section>
+                                ) : (
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-400 bg-slate-50/50 px-6 text-center">
+                                        <MessageSquare className="w-12 h-12" />
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-bold uppercase tracking-widest">Выберите диалог</p>
+                                            <p className="text-[11px] leading-6 text-slate-400 max-w-md">Откройте бронирование или ресторан, чтобы перейти в чат без лишних шагов.</p>
+                                        </div>
+                                        <div className="flex flex-wrap items-center justify-center gap-3">
+                                            <Link to="/restaurants" className="px-4 py-2 rounded-lg bg-[#1d4ed8] text-white text-[10px] font-bold uppercase tracking-widest">
+                                                Перейти к ресторанам
+                                            </Link>
+                                            <Link to="/guest/dashboard" className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-widest">
+                                                Мои брони
+                                            </Link>
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
                 </div>
             </main>
         </div>

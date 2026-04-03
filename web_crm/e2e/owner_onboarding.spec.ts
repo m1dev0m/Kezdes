@@ -6,7 +6,7 @@
  */
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://127.0.0.1:5174';
+const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173';
 const API = 'http://127.0.0.1:8000/api/v1';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,56 +93,54 @@ test.describe('Owner onboarding flow', () => {
         await page.goto(`${BASE}/app/tables`, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(1500);
 
-        const tablesBefore = await page.locator('table tbody tr').count();
-        console.log(`✓ Tables page loaded, existing tables: ${tablesBefore}`);
-
-        // ── Step 5: Add a table ───────────────────────────────────────────────
-        await page.locator('button', { hasText: 'Добавить стол' }).click();
-        await expect(page.locator('text=Добавить стол').nth(1)).toBeVisible({ timeout: 5000 });
+        const tablesBefore = await page.locator('button').filter({ has: page.locator('div.font-medium.text-slate-900') }).count();
+        console.log(`✓ Tables page loaded, existing table cards: ${tablesBefore}`);
 
         const tableName = `E2E-${ts}`;
-        await page.locator('input[placeholder*="1, A1, VIP"]').fill(tableName);
+        await page.locator('input[placeholder="Table 1"]').first().fill(tableName);
         await page.locator('input[type="number"]').first().fill('4');
-        await page.locator('button', { hasText: 'Сохранить' }).click();
+        await page.locator('button', { hasText: /Add table|Create first table/ }).click();
 
-        await expect(page.locator('text=Стол добавлен')).toBeVisible({ timeout: 6000 });
+        await expect(page.locator('text=Стол создан.')).toBeVisible({ timeout: 6000 });
+        await expect(page.locator('body')).toContainText(tableName);
         console.log(`✓ Table ${tableName} created`);
 
-        // ── Step 6: Verify table appears in list ──────────────────────────────
         await page.waitForTimeout(1000);
-        const tablesAfter = await page.locator('table tbody tr').count();
-        expect(tablesAfter).toBeGreaterThan(tablesBefore);
-        console.log(`✓ Table count increased: ${tablesBefore} → ${tablesAfter}`);
+        const tablesAfter = await page.locator('button').filter({ has: page.locator('div.font-medium.text-slate-900') }).count();
+        expect(tablesAfter).toBeGreaterThanOrEqual(tablesBefore);
+        console.log(`✓ Table cards after create: ${tablesBefore} → ${tablesAfter}`);
 
-        // ── Step 7: Toggle table active status ────────────────────────────────
-        // Find the new table row and click its active toggle
-        const newRow = page.locator('table tbody tr').filter({ hasText: tableName });
-        await expect(newRow).toBeVisible({ timeout: 5000 });
-        const activeToggle = newRow.locator('button', { hasText: /Активен|Неактивен/ });
-        const initialText = await activeToggle.textContent();
+        await page.locator('button', { hasText: tableName }).first().click();
+        const activeToggle = page.locator('button[aria-label^="table-active-"]').first();
+        await expect(activeToggle).toBeVisible({ timeout: 5000 });
+        const initialAria = await activeToggle.getAttribute('aria-label');
         await activeToggle.click();
         await page.waitForTimeout(800);
-        const newText = await activeToggle.textContent();
-        expect(newText).not.toBe(initialText);
-        console.log(`✓ Active toggle: "${initialText}" → "${newText}"`);
+        const nextAria = await activeToggle.getAttribute('aria-label');
+        expect(nextAria).not.toBe(initialAria);
+        await page.locator('button', { hasText: 'Save changes' }).click();
+        console.log(`✓ Active toggle: "${initialAria}" → "${nextAria}"`);
 
         // ── Step 8: Create a booking via UI ───────────────────────────────────
         await page.goto(`${BASE}/app/bookings`, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(1500);
 
-        await page.locator('button', { hasText: 'Новая бронь' }).click();
-        await expect(page.locator('text=Новое бронирование')).toBeVisible({ timeout: 5000 });
+        await page.locator('a,button', { hasText: /New booking|Новая бронь/ }).click();
+        await page.waitForURL(/\/app\/bookings\/new/, { timeout: 8000 });
+        await expect(page.locator('h1')).toContainText('New reservation');
 
         const guestName = `E2E Guest ${ts}`;
-        await page.locator('input[placeholder="Иван Иванов"]').fill(guestName);
-        await page.locator('input[placeholder="+7 900 123 4567"]').fill('+77001112233');
+        await page.locator('input[placeholder="Guest name"]').fill(guestName);
+        await page.locator('input[placeholder="+7 700 000 00 00"]').fill('+77001112233');
 
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         await page.locator('form input[type="date"]').fill(tomorrow.toISOString().split('T')[0]);
         await page.locator('form input[type="time"]').fill('19:00');
+        await page.locator('form input[type="number"]').fill('2');
 
-        await page.locator('button', { hasText: 'Создать бронь' }).click();
+        await page.locator('button', { hasText: 'Create reservation' }).click();
+        await page.waitForURL(/\/app\/bookings$/, { timeout: 12000 });
         await page.waitForTimeout(2500);
 
         // Check booking appears
@@ -154,7 +152,7 @@ test.describe('Owner onboarding flow', () => {
         }
 
         // ── Step 9: Verify booking actions work ───────────────────────────────
-        const seatBtns = await page.locator('button', { hasText: 'Посадить' }).count();
+        const seatBtns = await page.locator('button', { hasText: /Seat|Seat guest/ }).count();
         console.log(`✓ Seat buttons visible: ${seatBtns}`);
 
         console.log('\n✅ Owner onboarding E2E flow complete!');

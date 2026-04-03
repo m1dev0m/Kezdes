@@ -1,28 +1,103 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
+import { API_BASE_URL, fetchBookings } from '../../lib/api';
+
+type ProfileStats = {
+    totalBookings: number;
+    activeBookings: number;
+    favorites: number;
+};
 
 export default function ProfileScreen() {
     const router = useRouter();
     const { user, logout } = useAuth();
+    const [stats, setStats] = useState<ProfileStats>({ totalBookings: 0, activeBookings: 0, favorites: 0 });
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadStats = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+        if (!user?.access) {
+            setStats({ totalBookings: 0, activeBookings: 0, favorites: 0 });
+            setError(null);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
+
+        try {
+            if (!silent) setLoading(true);
+            setError(null);
+
+            const [bookings, favoritesResponse] = await Promise.all([
+                fetchBookings(user.access).catch(() => []),
+                fetch(`${API_BASE_URL}/restaurants/favorites/`, {
+                    headers: { Authorization: `Bearer ${user.access}` },
+                })
+                    .then((response) => (response.ok ? response.json() : []))
+                    .catch(() => []),
+            ]);
+
+            const totalBookings = Array.isArray(bookings) ? bookings.length : 0;
+            const activeBookings = Array.isArray(bookings)
+                ? bookings.filter((booking: any) =>
+                    ['pending', 'confirmed', 'approved', 'payment_pending', 'seated'].includes(booking.status),
+                ).length
+                : 0;
+            const favorites = Array.isArray(favoritesResponse)
+                ? favoritesResponse.length
+                : Array.isArray(favoritesResponse?.results)
+                    ? favoritesResponse.results.length
+                    : 0;
+
+            setStats({ totalBookings, activeBookings, favorites });
+        } catch (loadError) {
+            console.error('Failed to load profile stats:', loadError);
+            setError('Не удалось загрузить данные профиля. Проверьте подключение и попробуйте снова.');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [user?.access]);
+
+    useEffect(() => {
+        void loadStats();
+    }, [loadStats]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        void loadStats({ silent: true });
+    };
+
+    const displayName = useMemo(() => {
+        if (user?.username) return user.username;
+        return 'Гость Kezdes';
+    }, [user?.username]);
+
+    const accountLabel = user?.role === 'restaurant_admin'
+        ? 'Ресторан'
+        : user?.role === 'global_admin'
+            ? 'Администратор'
+            : 'Гость Kezdes';
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity style={styles.iconButton}>
+                <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Профиль</Text>
-                <TouchableOpacity style={styles.iconButton} onPress={logout}>
-                    <MaterialIcons name="logout" size={24} color={colors.primary} />
+                <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/settings')}>
+                    <MaterialIcons name="settings" size={22} color={colors.primary} />
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scroll}>
+            <ScrollView contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
                 <View style={styles.profileSection}>
                     <View style={styles.avatarContainer}>
                         <View style={styles.avatarWrap}>
@@ -31,29 +106,24 @@ export default function ProfileScreen() {
                                 style={styles.avatar}
                             />
                         </View>
-                        <TouchableOpacity style={styles.editButton}>
+                        <TouchableOpacity
+                            style={styles.editButton}
+                            onPress={() => router.push('/settings')}
+                        >
                             <MaterialIcons name="edit" size={16} color="#fff" />
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.userName}>{user?.username || 'Константин Козлов'}</Text>
-                    <Text style={styles.userCompany}>Бизнес-аналитик</Text>
+                    <Text style={styles.userName}>{displayName}</Text>
+                    <Text style={styles.userCompany}>{accountLabel}</Text>
 
                     <View style={styles.statsRow}>
-                        <View style={styles.statBox}>
-                            <Text style={styles.statNumber}>12</Text>
-                            <Text style={styles.statLabel}>Событий</Text>
-                        </View>
+                        <StatBox label="Активных" value={loading ? '—' : String(stats.activeBookings)} />
                         <View style={styles.statDivider} />
-                        <View style={styles.statBox}>
-                            <Text style={styles.statNumber}>5</Text>
-                            <Text style={styles.statLabel}>Избранных</Text>
-                        </View>
+                        <StatBox label="Всего броней" value={loading ? '—' : String(stats.totalBookings)} />
                         <View style={styles.statDivider} />
-                        <View style={styles.statBox}>
-                            <Text style={styles.statNumber}>4.9</Text>
-                            <Text style={styles.statLabel}>Рейтинг</Text>
-                        </View>
+                        <StatBox label="Избранных" value={loading ? '—' : String(stats.favorites)} />
                     </View>
+                    {error ? <Text style={styles.errorText}>{error}</Text> : null}
                 </View>
 
                 <View style={styles.mainContent}>
@@ -82,28 +152,25 @@ export default function ProfileScreen() {
                                 <Text style={styles.menuText}>История заказов</Text>
                                 <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.menuItem}>
+                            <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/settings')}>
                                 <View style={[styles.menuIconBox, { backgroundColor: '#e0e7ff' }]}>
-                                    <MaterialIcons name="payments" size={20} color="#4f46e5" />
+                                    <MaterialIcons name="settings" size={20} color="#4f46e5" />
                                 </View>
-                                <Text style={styles.menuText}>Способы оплаты</Text>
+                                <Text style={styles.menuText}>Настройки и уведомления</Text>
                                 <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.menuItem}>
-                                <View style={[styles.menuIconBox, { backgroundColor: '#fef3c7' }]}>
-                                    <MaterialIcons name="person" size={20} color="#d97706" />
-                                </View>
-                                <Text style={styles.menuText}>Редактировать профиль</Text>
-                                <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.menuItem, { borderBottomWidth: 0 }]}
-                                onPress={() => router.push('/support')}
-                            >
+                            <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/support')}>
                                 <View style={[styles.menuIconBox, { backgroundColor: '#dcfce7' }]}>
                                     <MaterialIcons name="help-outline" size={20} color="#16a34a" />
                                 </View>
                                 <Text style={styles.menuText}>Служба поддержки</Text>
+                                <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => router.push('/favorites')}>
+                                <View style={[styles.menuIconBox, { backgroundColor: '#fce7f3' }]}>
+                                    <MaterialIcons name="favorite-border" size={20} color="#db2777" />
+                                </View>
+                                <Text style={styles.menuText}>Избранные рестораны</Text>
                                 <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
@@ -129,10 +196,25 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
-                    <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                        <MaterialIcons name="logout" size={20} color={colors.error} />
-                        <Text style={styles.logoutText}>Выйти из аккаунта</Text>
-                    </TouchableOpacity>
+                    <View style={styles.group}>
+                        <Text style={styles.groupTitle}>АККАУНТ</Text>
+                        <View style={styles.groupCard}>
+                            <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/support')}>
+                                <View style={[styles.menuIconBox, { backgroundColor: '#fef3c7' }]}>
+                                    <MaterialIcons name="person-outline" size={20} color="#d97706" />
+                                </View>
+                                <Text style={styles.menuText}>Помощь по аккаунту</Text>
+                                <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => void logout()}>
+                                <View style={[styles.menuIconBox, { backgroundColor: '#fee2e2' }]}>
+                                    <MaterialIcons name="logout" size={20} color={colors.error} />
+                                </View>
+                                <Text style={[styles.menuText, { color: colors.error }]}>Выйти из аккаунта</Text>
+                                <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
                     <Text style={styles.versionText}>
                         Kezdes v3.0.0 (Premium){'\n'}© 2026 Kezdes SaaS Solutions
@@ -140,6 +222,15 @@ export default function ProfileScreen() {
                 </View>
             </ScrollView>
         </SafeAreaView>
+    );
+}
+
+function StatBox({ label, value }: { label: string; value: string }) {
+    return (
+        <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{value}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
     );
 }
 
@@ -233,6 +324,7 @@ const styles = StyleSheet.create({
     statBox: {
         alignItems: 'center',
         paddingHorizontal: 20,
+        minWidth: 92,
     },
     statNumber: {
         fontSize: 18,
@@ -243,26 +335,12 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: colors.textSecondary,
         marginTop: 4,
+        textAlign: 'center',
     },
     statDivider: {
         width: 1,
         height: 24,
         backgroundColor: colors.border,
-    },
-    badge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 71, 255, 0.1)',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 40,
-        marginTop: 8,
-        gap: 4,
-    },
-    badgeText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: colors.primary,
     },
     mainContent: {
         padding: 16,
@@ -306,28 +384,18 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: colors.text,
     },
-    logoutButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.3)',
-        paddingVertical: 16,
-        borderRadius: 40,
-        marginTop: 16,
-        gap: 8,
-    },
-    logoutText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.error,
-    },
     versionText: {
-        textAlign: 'center',
         fontSize: 12,
         color: colors.muted,
-        marginTop: 16,
+        textAlign: 'center',
         lineHeight: 18,
+        marginTop: 8,
+    },
+    errorText: {
+        marginTop: 16,
+        fontSize: 13,
+        lineHeight: 18,
+        color: colors.warning,
+        textAlign: 'center',
     },
 });

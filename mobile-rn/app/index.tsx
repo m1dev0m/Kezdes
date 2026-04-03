@@ -1,7 +1,9 @@
 import React from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../lib/auth-context';
+import { getPostAuthRoute, useAuth } from '../lib/auth-context';
+import { Logo } from '../components/ui/Logo';
+import { colors } from '../theme/colors';
 
 export default function WelcomeScreen() {
     const router = useRouter();
@@ -10,14 +12,30 @@ export default function WelcomeScreen() {
     React.useEffect(() => {
         if (isLoading) return;
 
-        if (user) {
-            router.replace('/(tabs)/home');
-        } else {
-            router.replace('/onboarding');
-        }
-    }, [user, isLoading]);
+        router.replace(user ? getPostAuthRoute(user) : '/onboarding');
+    }, [router, user, isLoading]);
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
+        <View style={styles.container}>
+            <Logo />
+            <Text style={styles.text}>Загружаем Kezdes…</Text>
+            <ActivityIndicator size="small" color={colors.primary} />
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        paddingHorizontal: 24,
+    },
+    text: {
+        color: colors.textSecondary,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+});

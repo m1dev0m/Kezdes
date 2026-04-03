@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock, Gift, MapPin, Plus, Star, Users } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, isBefore, isValid, parseISO, startOfDay } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
@@ -26,6 +26,50 @@ function formatBookingDate(value: string) {
   return isValid(parsed) ? format(parsed, 'EEEE, MMM d') : value;
 }
 
+function getStatusLabel(status: string) {
+  switch (status) {
+    case 'pending':
+      return 'В ожидании';
+    case 'approved':
+      return 'Одобрено';
+    case 'confirmed':
+      return 'Подтверждено';
+    case 'payment_pending':
+      return 'Ожидает оплаты';
+    case 'arrived':
+      return 'Гость прибыл';
+    case 'seated':
+      return 'За столом';
+    case 'completed':
+      return 'Завершено';
+    case 'no_show':
+      return 'Не пришёл';
+    case 'cancelled_by_user':
+      return 'Отменено вами';
+    case 'cancelled_by_restaurant':
+      return 'Отменено рестораном';
+    case 'rejected':
+      return 'Отклонено';
+    default:
+      return status.replaceAll('_', ' ');
+  }
+}
+
+function buildRepeatBookingHref(booking: Booking) {
+  if (!booking.restaurant) return '/restaurants';
+  const params = new URLSearchParams();
+  params.set('guests', String(booking.guests));
+  if (booking.time) params.set('time', booking.time.slice(0, 5));
+  if (booking.date) {
+    const bookingDate = parseISO(`${booking.date}T00:00:00`);
+    if (isValid(bookingDate) && !isBefore(bookingDate, startOfDay(new Date()))) {
+      params.set('date', booking.date);
+    }
+  }
+  const query = params.toString();
+  return `/restaurant/${booking.restaurant}/book${query ? `?${query}` : ''}`;
+}
+
 export default function GuestDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -38,7 +82,7 @@ export default function GuestDashboard() {
         const response = await api.get('/bookings/');
         setBookings(Array.isArray(response.data) ? response.data : response.data.results || []);
       } catch {
-        toast.error('Failed to load bookings');
+        toast.error('Не удалось загрузить бронирования');
       } finally {
         setLoading(false);
       }
@@ -147,7 +191,7 @@ export default function GuestDashboard() {
                       Детали
                     </button>
                     <button
-                      onClick={() => navigate('/restaurants')}
+                      onClick={() => navigate(buildRepeatBookingHref(booking))}
                       className="flex-1 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
                     >
                       Повторить
@@ -181,12 +225,13 @@ export default function GuestDashboard() {
                         <Star size={18} className="text-slate-400" />
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">{restaurant.restaurant_name}</div>
-                      <div className="mt-1 text-xs text-slate-500">{restaurant.restaurant_city || 'Restaurant visited before'}</div>
-                    </div>
-                  </button>
-                ))
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900">{restaurant.restaurant_name}</div>
+                      <div className="mt-1 text-xs text-slate-500">{restaurant.restaurant_city || 'Уже посещали раньше'}</div>
+                      </div>
+                      <div className="ml-auto text-xs font-semibold text-[#1d4ed8]">Открыть</div>
+                    </button>
+                  ))
               )}
             </div>
           </section>
@@ -199,12 +244,17 @@ export default function GuestDashboard() {
                 <div className="rounded-2xl bg-[#fafaf9] px-4 py-5 text-sm text-slate-500">История появится после первых посещений.</div>
               ) : (
                 pastBookings.slice(0, 5).map((booking) => (
-                  <div key={booking.id} className="rounded-2xl bg-[#fafaf9] px-4 py-4">
+                  <button
+                    key={booking.id}
+                    type="button"
+                    onClick={() => navigate(`/guest/bookings/${booking.id}`)}
+                    className="w-full rounded-2xl bg-[#fafaf9] px-4 py-4 text-left transition hover:bg-slate-50"
+                  >
                     <div className="text-sm font-semibold text-slate-900">{booking.restaurant_name}</div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {formatBookingDate(booking.date)} · {booking.status.replace('_', ' ')}
+                      {formatBookingDate(booking.date)} · {getStatusLabel(booking.status)}
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
@@ -246,5 +296,5 @@ function StatusBadge({ status }: { status: string }) {
           ? 'bg-blue-50 text-[#1d4ed8] border border-blue-100'
           : 'bg-slate-50 text-slate-400 border border-slate-100';
 
-  return <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest leading-none ${style}`}>{status.replace('_', ' ')}</span>;
+  return <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest leading-none ${style}`}>{getStatusLabel(status)}</span>;
 }

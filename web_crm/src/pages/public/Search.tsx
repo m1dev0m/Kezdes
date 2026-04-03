@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
+  CalendarDays,
   Clock3,
   MapPin,
   Search as SearchIcon,
   SlidersHorizontal,
   Sparkles,
   Star,
+  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
+import { getLocalDateString } from '@/features/reservations/shared';
 
 interface Restaurant {
   id: number;
@@ -24,6 +27,14 @@ interface Restaurant {
   closing_time?: string | null;
 }
 
+function buildRestaurantLink(restaurantId: number, date: string, time: string, guests: number) {
+  return `/restaurant/${restaurantId}?${new URLSearchParams({
+    date,
+    time,
+    guests: String(guests),
+  }).toString()}`;
+}
+
 const TAGS = ['Все', 'Итальянская', 'Японская', 'Стейкхаус', 'Грузинская', 'Бистро'] as const;
 const SORT_OPTIONS = [
   { value: 'recommended', label: 'Рекомендуемые' },
@@ -34,26 +45,59 @@ const SORT_OPTIONS = [
 type SortMode = (typeof SORT_OPTIONS)[number]['value'];
 
 export default function Search() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [activeFilter, setActiveFilter] = useState<(typeof TAGS)[number]>('Все');
   const [sortMode, setSortMode] = useState<SortMode>('recommended');
+  const [bookingDate, setBookingDate] = useState(searchParams.get('date') ?? getLocalDateString());
+  const [bookingTime, setBookingTime] = useState(searchParams.get('time') ?? '19:00');
+  const [partySize, setPartySize] = useState(Number(searchParams.get('guests') ?? 2));
+
+  const loadRestaurants = useCallback(async () => {
+    setLoading(true);
+    setPageError(null);
+
+    try {
+      const response = await api.get('/restaurants/');
+      const payload = Array.isArray(response.data?.results) ? response.data.results : response.data;
+      const items = Array.isArray(payload) ? payload : [];
+      setRestaurants(items);
+
+      if (!Array.isArray(payload) && !response.data?.results) {
+        setPageError('Не удалось разобрать список заведений. Попробуйте обновить страницу.');
+      }
+    } catch (error) {
+      const message = 'Не удалось загрузить список заведений.';
+      setRestaurants([]);
+      setPageError(message);
+      toast.error(message);
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadRestaurants = async () => {
-      try {
-        const response = await api.get('/restaurants/');
-        setRestaurants(response.data.results ?? response.data);
-      } catch {
-        toast.error('Не удалось загрузить список заведений.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     void loadRestaurants();
-  }, []);
+  }, [loadRestaurants]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (query.trim()) next.set('q', query.trim());
+    else next.delete('q');
+
+    if (bookingDate) next.set('date', bookingDate);
+    else next.delete('date');
+
+    if (bookingTime) next.set('time', bookingTime);
+    else next.delete('time');
+
+    next.set('guests', String(partySize));
+    setSearchParams(next, { replace: true });
+  }, [bookingDate, bookingTime, partySize, query, searchParams, setSearchParams]);
 
   const counts = useMemo(() => {
     return TAGS.reduce<Record<string, number>>((acc, tag) => {
@@ -121,14 +165,43 @@ export default function Search() {
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 <StatTile label="Результатов" value={visibleRestaurants.length.toString()} />
-                <StatTile label="Кухня" value={activeFilter} />
-                <StatTile
-                  label="Сортировка"
-                  value={SORT_OPTIONS.find((item) => item.value === sortMode)?.label ?? 'Рекомендуемые'}
-                />
+                <StatTile label="Дата" value={bookingDate} />
+                <StatTile label="Гостей" value={String(partySize)} />
               </div>
 
               <div className="mt-8 space-y-3">
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <label className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-600">
+                    <CalendarDays size={18} className="text-slate-400" />
+                    <input
+                      type="date"
+                      min={getLocalDateString()}
+                      value={bookingDate}
+                      onChange={(event) => setBookingDate(event.target.value)}
+                      className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none"
+                    />
+                  </label>
+                  <label className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-600">
+                    <Clock3 size={18} className="text-slate-400" />
+                    <input
+                      type="time"
+                      value={bookingTime}
+                      onChange={(event) => setBookingTime(event.target.value)}
+                      className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none"
+                    />
+                  </label>
+                  <label className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-600">
+                    <Users size={18} className="text-slate-400" />
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={partySize}
+                      onChange={(event) => setPartySize(Math.min(20, Math.max(1, Number(event.target.value) || 1)))}
+                      className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none"
+                    />
+                  </label>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_240px]">
                   <div className="relative">
                     <SearchIcon className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -176,6 +249,9 @@ export default function Search() {
                         setQuery('');
                         setActiveFilter('Все');
                         setSortMode('recommended');
+                        setBookingDate(getLocalDateString());
+                        setBookingTime('19:00');
+                        setPartySize(2);
                       }}
                       className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
                     >
@@ -188,7 +264,14 @@ export default function Search() {
 
             <div className="bg-[#f8fafc] p-4 sm:p-5 lg:p-6">
               {featuredRestaurant ? (
-                <FeaturedRestaurantCard restaurant={featuredRestaurant} />
+                <FeaturedRestaurantCard
+                  restaurant={featuredRestaurant}
+                  bookingDate={bookingDate}
+                  bookingTime={bookingTime}
+                  partySize={partySize}
+                />
+              ) : pageError ? (
+                <ErrorPreview error={pageError} onRetry={loadRestaurants} />
               ) : (
                 <EmptyPreview />
               )}
@@ -237,6 +320,21 @@ export default function Search() {
                   />
                 ))}
               </div>
+            ) : pageError ? (
+              <div className="overflow-hidden rounded-[32px] border border-rose-200 bg-white p-8 text-center shadow-[0_20px_60px_-44px_rgba(15,23,42,0.16)] sm:p-12">
+                <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-700">
+                  <SearchIcon size={24} />
+                </div>
+                <div className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">Каталог временно недоступен</div>
+                <div className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">{pageError}</div>
+                <button
+                  type="button"
+                  onClick={() => void loadRestaurants()}
+                  className="mt-7 inline-flex items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-[#1e40af]"
+                >
+                  Повторить загрузку
+                </button>
+              </div>
             ) : visibleRestaurants.length === 0 ? (
               <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-[0_20px_60px_-44px_rgba(15,23,42,0.16)] sm:p-12">
                 <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
@@ -261,7 +359,13 @@ export default function Search() {
             ) : (
               <div className="grid gap-4 md:grid-cols-6">
                 {remainingRestaurants.length === 0 ? (
-                  <CompactLeadCard restaurant={featuredRestaurant!} className="md:col-span-6" />
+                  <CompactLeadCard
+                    restaurant={featuredRestaurant!}
+                    className="md:col-span-6"
+                    bookingDate={bookingDate}
+                    bookingTime={bookingTime}
+                    partySize={partySize}
+                  />
                 ) : (
                   remainingRestaurants.map((restaurant, index) => (
                     <RestaurantCard
@@ -269,6 +373,9 @@ export default function Search() {
                       restaurant={restaurant}
                       variant={getCardVariant(index)}
                       className={getCardSpan(index)}
+                      bookingDate={bookingDate}
+                      bookingTime={bookingTime}
+                      partySize={partySize}
                     />
                   ))
                 )}
@@ -281,13 +388,23 @@ export default function Search() {
   );
 }
 
-function FeaturedRestaurantCard({ restaurant }: { restaurant: Restaurant }) {
+function FeaturedRestaurantCard({
+  restaurant,
+  bookingDate,
+  bookingTime,
+  partySize,
+}: {
+  restaurant: Restaurant;
+  bookingDate: string;
+  bookingTime: string;
+  partySize: number;
+}) {
   const label = getCuisineLabel(restaurant);
   const rating = getRating(restaurant).toFixed(1);
 
   return (
     <article className="overflow-hidden rounded-[32px] border border-slate-200 bg-white">
-      <Link to={`/restaurant/${restaurant.id}`} className="group block h-full">
+      <Link to={buildRestaurantLink(restaurant.id, bookingDate, bookingTime, partySize)} className="group block h-full">
         <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
           <div className="relative order-2 px-6 py-6 sm:px-7 sm:py-7 lg:order-1 lg:flex lg:flex-col lg:justify-between lg:px-8 lg:py-8">
             <div>
@@ -309,12 +426,12 @@ function FeaturedRestaurantCard({ restaurant }: { restaurant: Restaurant }) {
               <InfoPill icon={<Clock3 size={15} />} value={getHoursLabel(restaurant)} />
             </div>
 
-            <div className="mt-8 flex items-center justify-between gap-4 border-t border-slate-200 pt-5">
-              <div className="text-sm text-slate-500">
+              <div className="mt-8 flex items-center justify-between gap-4 border-t border-slate-200 pt-5">
+                <div className="text-sm text-slate-500">
                 Откройте карточку ресторана, чтобы посмотреть детали и перейти к бронированию.
-              </div>
-              <div className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition group-hover:bg-[#1e40af]">
-                Book now
+                </div>
+                <div className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition group-hover:bg-[#1e40af]">
+                Проверить доступность
                 <ArrowRight size={16} />
               </div>
             </div>
@@ -334,9 +451,28 @@ function FeaturedRestaurantCard({ restaurant }: { restaurant: Restaurant }) {
   );
 }
 
-function CompactLeadCard({ restaurant, className = '' }: { restaurant: Restaurant; className?: string }) {
+function CompactLeadCard({
+  restaurant,
+  className = '',
+  bookingDate,
+  bookingTime,
+  partySize,
+}: {
+  restaurant: Restaurant;
+  className?: string;
+  bookingDate: string;
+  bookingTime: string;
+  partySize: number;
+}) {
   return (
-    <RestaurantCard restaurant={restaurant} variant="wide" className={className} />
+    <RestaurantCard
+      restaurant={restaurant}
+      variant="wide"
+      className={className}
+      bookingDate={bookingDate}
+      bookingTime={bookingTime}
+      partySize={partySize}
+    />
   );
 }
 
@@ -344,10 +480,16 @@ function RestaurantCard({
   restaurant,
   variant,
   className = '',
+  bookingDate,
+  bookingTime,
+  partySize,
 }: {
   restaurant: Restaurant;
   variant: 'wide' | 'tall' | 'compact';
   className?: string;
+  bookingDate: string;
+  bookingTime: string;
+  partySize: number;
 }) {
   const label = getCuisineLabel(restaurant);
   const rating = getRating(restaurant).toFixed(1);
@@ -358,7 +500,10 @@ function RestaurantCard({
     <article
       className={`group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.16)] transition hover:-translate-y-1 hover:shadow-[0_24px_60px_-40px_rgba(15,23,42,0.22)] ${className}`}
     >
-      <Link to={`/restaurant/${restaurant.id}`} className={`block h-full ${isWide ? 'md:h-[100%]' : ''}`}>
+      <Link
+        to={buildRestaurantLink(restaurant.id, bookingDate, bookingTime, partySize)}
+        className={`block h-full ${isWide ? 'md:h-[100%]' : ''}`}
+      >
         <div className={isWide ? 'grid h-full md:grid-cols-[1.05fr_0.95fr]' : ''}>
           <div className={`relative overflow-hidden ${isWide ? 'aspect-[4/3] md:aspect-auto md:h-full' : isTall ? 'aspect-[3/4]' : 'aspect-[4/3]'}`}>
             <img
@@ -401,7 +546,7 @@ function RestaurantCard({
             <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Открыть карточку</div>
               <div className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700 transition group-hover:bg-blue-100">
-                Book
+                Открыть и выбрать
                 <ArrowRight size={14} />
               </div>
             </div>
@@ -495,6 +640,27 @@ function EmptyPreview() {
         </div>
         <div className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">Главный ресторан появится здесь</div>
         <p className="mt-3 text-sm leading-7 text-slate-600">После загрузки списка первый результат будет показан в крупном блоке справа.</p>
+      </div>
+    </div>
+  );
+}
+
+function ErrorPreview({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return (
+    <div className="flex h-full min-h-[360px] items-center justify-center rounded-[32px] border border-rose-200 bg-white px-8 py-10">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-700">
+          <SearchIcon size={24} />
+        </div>
+        <div className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">Не удалось показать выборку</div>
+        <p className="mt-3 text-sm leading-7 text-slate-600">{error}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-6 inline-flex items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-[#1e40af]"
+        >
+          Повторить
+        </button>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 
@@ -15,21 +15,64 @@ export default function GuestSettings() {
         lastName: '',
         bio: '',
         language: 'ru',
-        cuisine: ['Европейская', 'Азиатская']
+        cuisine: ['Европейская', 'Азиатская'],
+        city: 'Алматы',
+        tablePreference: 'window'
     });
     const [loading, setLoading] = useState(false);
+    const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+
+    useEffect(() => {
+        const storageKey = user?.id ? `guest-settings:${user.id}` : 'guest-settings:anonymous';
+        const storedValue = window.localStorage.getItem(storageKey);
+
+        if (storedValue) {
+            try {
+                const parsed = JSON.parse(storedValue) as Partial<{
+                    notifications: typeof notifications;
+                    profile: typeof profile;
+                }>;
+
+                if (parsed.notifications) {
+                    setNotifications((current) => ({ ...current, ...parsed.notifications }));
+                }
+                if (parsed.profile) {
+                    setProfile((current) => ({ ...current, ...parsed.profile }));
+                }
+                setSaveState('idle');
+                return;
+            } catch {
+                window.localStorage.removeItem(storageKey);
+            }
+        }
+
+        setProfile((current) => ({
+            ...current,
+            firstName: (user as any)?.first_name || '',
+        }));
+        setSaveState('idle');
+    }, [user]);
 
     const handleSave = async () => {
         setLoading(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            const storageKey = user?.id ? `guest-settings:${user.id}` : 'guest-settings:anonymous';
+            window.localStorage.setItem(storageKey, JSON.stringify({ notifications, profile }));
+            setSaveState('saved');
             toast.success('Настройки успешно обновлены');
-        } catch (err) {
+        } catch {
+            setSaveState('error');
             toast.error('Не удалось обновить настройки');
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (saveState === 'saved') {
+            setSaveState('idle');
+        }
+    }, [notifications, profile, saveState]);
 
     return (
         <div className="mx-auto max-w-[1280px] px-6 py-8 space-y-12 pb-24">
@@ -44,10 +87,13 @@ export default function GuestSettings() {
                 </div>
             </header>
 
-            <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
-                <div className="space-y-12">
-                    {/* Personal Info */}
-                    <section className="space-y-6">
+        <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
+            <div className="space-y-12">
+                <div className="rounded-[28px] border border-blue-100 bg-blue-50/70 px-6 py-4 text-sm font-medium leading-7 text-blue-800">
+                    Настройки сохраняются локально на этом устройстве. Это позволяет не терять предпочтения при первом использовании гостевого кабинета.
+                </div>
+                {/* Personal Info */}
+                <section className="space-y-6">
                         <div className="flex items-center gap-3">
                             <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700">
                                 <span className="material-symbols-outlined text-[20px]">person</span>
@@ -58,24 +104,27 @@ export default function GuestSettings() {
                         <div className="grid gap-6 rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
                             <div className="grid gap-6 sm:grid-cols-2">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Имя</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Город</label>
                                     <input
                                         type="text"
-                                        value={profile.firstName}
-                                        onChange={(e) => setProfile(p => ({ ...p, firstName: e.target.value }))}
-                                        placeholder="Александр"
+                                        value={profile.city}
+                                        onChange={(e) => setProfile(p => ({ ...p, city: e.target.value }))}
+                                        placeholder="Алматы"
                                         className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold focus:border-[#1d4ed8] focus:bg-white focus:outline-none transition-all"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Фамилия</label>
-                                    <input
-                                        type="text"
-                                        value={profile.lastName}
-                                        onChange={(e) => setProfile(p => ({ ...p, lastName: e.target.value }))}
-                                        placeholder="Казахстан"
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Тип столика</label>
+                                    <select
+                                        value={profile.tablePreference}
+                                        onChange={(e) => setProfile(p => ({ ...p, tablePreference: e.target.value }))}
                                         className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold focus:border-[#1d4ed8] focus:bg-white focus:outline-none transition-all"
-                                    />
+                                    >
+                                        <option value="window">У окна</option>
+                                        <option value="quiet">В тихой зоне</option>
+                                        <option value="sofa">С диванами</option>
+                                        <option value="bar">У бара</option>
+                                    </select>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -163,8 +212,12 @@ export default function GuestSettings() {
                         className="w-full h-14 bg-[#1d4ed8] text-white rounded-2xl font-bold transition-all hover:bg-[#1e40af] shadow-2xl shadow-blue-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
                     >
                         {loading ? <span className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[20px]">save</span>}
-                        {loading ? 'Сохранение...' : 'Сохранить изменения'}
+                        {loading ? 'Сохранение...' : saveState === 'saved' ? 'Сохранено' : 'Сохранить изменения'}
                     </button>
+
+                    <p className={`text-center text-[10px] font-black uppercase tracking-[0.2em] ${saveState === 'error' ? 'text-rose-500' : saveState === 'saved' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        {saveState === 'error' ? 'Не удалось сохранить настройки' : saveState === 'saved' ? 'Изменения сохранены локально' : 'Готово к сохранению'}
+                    </p>
 
                     <div className="pt-4 text-center">
                         <button className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] hover:text-rose-700 transition-colors">Удалить аккаунт</button>

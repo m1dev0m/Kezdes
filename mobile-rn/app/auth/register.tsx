@@ -1,115 +1,163 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
-
-import { useRouter, Link } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Alert,
+    ActivityIndicator,
+} from 'react-native';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { API_BASE_URL } from '../../lib/api';
-import { useAuth } from '../../lib/auth-context';
+import { request } from '../../lib/api';
+import { consumePendingPostAuthRoute, getAuthErrorMessage, getPostAuthRoute, sanitizeRedirectTarget, useAuth } from '../../lib/auth-context';
 import { Logo } from '../../components/ui/Logo';
 
-const CATEGORIES = [
-    { id: 'photographer', label: 'Фотограф' },
-    { id: 'videographer', label: 'Видеограф' },
-    { id: 'host', label: 'Ведущий' },
-    { id: 'music', label: 'DJ/Музыкант' },
-    { id: 'decorator', label: 'Декоратор' },
-];
+type RegisterRole = 'customer' | 'owner';
 
 export default function RegisterScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
     const { login } = useAuth();
-    const [role, setRole] = useState<'organizer' | 'worker' | 'restaurant_admin'>('organizer');
+
+    const [role, setRole] = useState<RegisterRole>('customer');
+    const [step, setStep] = useState<1 | 2>(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSendingOtp, setIsSendingOtp] = useState(false);
+    const [otpCooldown, setOtpCooldown] = useState(0);
+    const [otpEmail, setOtpEmail] = useState('');
+    const [debugOtpCode, setDebugOtpCode] = useState('');
+    const [otpRequired, setOtpRequired] = useState(true);
 
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [otpCode, setOtpCode] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [pendingRedirectTo] = useState(() => sanitizeRedirectTarget(consumePendingPostAuthRoute()));
+    const redirectTo = sanitizeRedirectTarget(typeof params.redirectTo === 'string' ? params.redirectTo : '');
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const isOtpCooldownActive = otpCooldown > 0 && otpEmail === normalizedEmail && normalizedEmail.length > 0;
 
-    const [category, setCategory] = useState('');
-    const [price, setPrice] = useState('');
-    const [bio, setBio] = useState('');
+    useEffect(() => {
+        if (otpCooldown <= 0) return;
+        const timer = setInterval(() => setOtpCooldown((value) => Math.max(0, value - 1)), 1000);
+        return () => clearInterval(timer);
+    }, [otpCooldown]);
+
+    const canSendOtp = useMemo(() => {
+        if (!normalizedEmail) return false;
+        if (isSendingOtp) return false;
+        if (isOtpCooldownActive) return false;
+        return true;
+    }, [isOtpCooldownActive, isSendingOtp, normalizedEmail]);
+
+    const validateBaseForm = () => {
+        if (!normalizedEmail || !username.trim() || !phone.trim() || !password || !confirmPassword) {
+            Alert.alert('Ошибка', 'Заполните email, логин, телефон и пароль.');
+            return false;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Ошибка', 'Пароли не совпадают.');
+            return false;
+        }
+        if (password.length < 8) {
+            Alert.alert('Ошибка', 'Пароль должен быть не короче 8 символов.');
+            return false;
+        }
+        return true;
+    };
+
+    const handleSendOtp = async () => {
+        if (!validateBaseForm()) return;
+        if (isOtpCooldownActive) {
+            Alert.alert('Подождите', `Новый код можно запросить через ${otpCooldown} сек.`);
+            return;
+        }
+
+        setIsSendingOtp(true);
+        try {
+            const data = await request('/auth/send-otp/', undefined, {
+                method: 'POST',
+                body: JSON.stringify({ email: normalizedEmail }),
+            });
+
+            const nextOtpRequired = data?.otp_required !== false;
+            setOtpEmail(normalizedEmail);
+            setDebugOtpCode(typeof data?.code === 'string' ? data.code : '');
+            setOtpRequired(nextOtpRequired);
+            setOtpCooldown(60);
+            setStep(2);
+            Alert.alert(
+                nextOtpRequired ? 'Код отправлен' : 'Почта подтверждена',
+                data?.detail || (nextOtpRequired ? 'Проверьте почту и введите код подтверждения.' : 'OTP не требуется. Продолжайте регистрацию.'),
+            );
+        } catch (error) {
+            const message = error instanceof Error && error.message
+                ? error.message
+                : 'Не удалось отправить код. Проверьте соединение с сервером.';
+            Alert.alert('Ошибка', message);
+        } finally {
+            setIsSendingOtp(false);
+        }
+    };
 
     const handleRegister = async () => {
         if (isSubmitting) return;
-        if (!email || !username || !password || !confirmPassword) {
-            Alert.alert('Ошибка', 'Пожалуйста, заполните все обязательные поля');
+        if (!validateBaseForm()) return;
+        if (otpRequired && !otpCode.trim()) {
+            Alert.alert('Ошибка', 'Введите код подтверждения.');
             return;
         }
 
-        if (password !== confirmPassword) {
-            Alert.alert('Ошибка', 'Пароли не совпадают. Пожалуйста, проверьте ввод.');
-            return;
-        }
-
+        setIsSubmitting(true);
         try {
-            setIsSubmitting(true);
-            const body: any = {
-                email,
-                username,
+            const payload: Record<string, string> = {
+                email: normalizedEmail,
+                username: username.trim(),
                 password,
+                password2: confirmPassword,
+                phone: phone.trim(),
                 role,
             };
-
-            if (role === 'worker') {
-                if (category) body.category = category;
-                if (price) body.price_from = parseFloat(price) || 0;
-                if (bio) body.description = bio;
-                body.name = username;
+            if (otpRequired) {
+                payload.otp_code = otpCode.trim();
             }
 
-            const response = await fetch(`${API_BASE_URL}/auth/register/`, {
+            await request('/auth/register/', undefined, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+                body: JSON.stringify(payload),
             });
 
-            if (response.ok) {
-                try {
-                    await login({ username, password });
-                } catch (loginError) {
-                    const msg = loginError instanceof Error && loginError.message ? loginError.message : 'Не удалось войти автоматически.';
-                    Alert.alert('Успех', `Аккаунт создан, но не удалось войти автоматически.\n\n${msg}`, [
-                        { text: 'Войти', onPress: () => router.replace('/auth/login') }
-                    ]);
-                }
-            } else {
-                const text = await response.text().catch(() => '');
-                let data: any = null;
-                try {
-                    data = text ? JSON.parse(text) : null;
-                } catch {
-                    data = null;
-                }
-
-                let errorMessage = 'Ошибка регистрации';
-                if (data?.detail) errorMessage = data.detail;
-                else if (data?.username) errorMessage = `Логин: ${data.username[0]}`;
-                else if (data?.email) errorMessage = `Email: ${data.email[0]}`;
-                else if (data?.price_from) errorMessage = `Цена: ${data.price_from[0]}`;
-                else if (data?.password) errorMessage = `Пароль: ${data.password[0]}`;
-                else if (text.trim()) errorMessage = text.trim();
-
-                Alert.alert('Ошибка', errorMessage);
-            }
+            const nextUser = await login({ username: username.trim(), email: normalizedEmail, password });
+            const nextRoute = (redirectTo || pendingRedirectTo || getPostAuthRoute(nextUser)) as Parameters<typeof router.replace>[0];
+            router.replace(nextRoute);
         } catch (error) {
-            Alert.alert('Ошибка', 'Не удалось подключиться к серверу. Убедитесь, что сервер запущен.');
+            const message = getAuthErrorMessage(error, 'Не удалось завершить регистрацию.');
+            Alert.alert('Ошибка', message);
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const roleHint =
+        role === 'owner'
+            ? 'Кабинет ресторана с настройкой зала, бронирований и заявкой на подключение.'
+            : 'Личный кабинет гостя с бронированиями, историей и отзывами.';
+
     return (
         <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
                         <MaterialIcons name="close" size={24} color={colors.text} />
@@ -119,7 +167,7 @@ export default function RegisterScreen() {
                 </View>
 
                 <View style={styles.tabsContainer}>
-                    <Link href="/auth/login" asChild>
+                    <Link href={redirectTo ? ({ pathname: '/auth/login', params: { redirectTo } } as const) : '/auth/login'} asChild>
                         <TouchableOpacity style={styles.tabInactive} activeOpacity={0.7}>
                             <Text style={styles.tabTextInactive}>Вход</Text>
                         </TouchableOpacity>
@@ -130,45 +178,43 @@ export default function RegisterScreen() {
                 </View>
 
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-
                     <View style={styles.titleContainer}>
-                        <Text style={styles.title}>Создать аккаунт</Text>
-                        <Text style={styles.subtitle}>Зарегистрируйтесь, чтобы начать планировать мероприятия</Text>
+                        <Text style={styles.title}>{step === 1 ? 'Создать аккаунт' : 'Подтвердить email'}</Text>
+                        <Text style={styles.subtitle}>
+                            {step === 1
+                                ? 'Один аккаунт для гостя или ресторана.'
+                                : `Мы отправили код на ${normalizedEmail || 'ваш email'}.`}
+                        </Text>
                     </View>
 
                     <View style={styles.form}>
                         <View style={styles.roleSegmentContainer}>
-                            <View style={styles.roleSegmentTriple}>
+                            <View style={styles.roleSegmentDouble}>
                                 <TouchableOpacity
-                                    style={role === 'organizer' ? styles.roleSegmentActive : styles.roleSegmentInactive}
-                                    onPress={() => setRole('organizer')}
+                                    style={role === 'customer' ? styles.roleSegmentActive : styles.roleSegmentInactive}
+                                    onPress={() => setRole('customer')}
                                     activeOpacity={0.7}
                                 >
-                                    <Text style={role === 'organizer' ? styles.roleSegmentTextActive : styles.roleSegmentTextInactive}>
-                                        Организатор
+                                    <Text style={role === 'customer' ? styles.roleSegmentTextActive : styles.roleSegmentTextInactive}>
+                                        Гость
                                     </Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
-                                    style={role === 'worker' ? styles.roleSegmentActive : styles.roleSegmentInactive}
-                                    onPress={() => setRole('worker')}
+                                    style={role === 'owner' ? styles.roleSegmentActive : styles.roleSegmentInactive}
+                                    onPress={() => setRole('owner')}
                                     activeOpacity={0.7}
                                 >
-                                    <Text style={role === 'worker' ? styles.roleSegmentTextActive : styles.roleSegmentTextInactive}>
-                                        Исполнитель
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={role === 'restaurant_admin' ? styles.roleSegmentActive : styles.roleSegmentInactive}
-                                    onPress={() => setRole('restaurant_admin')}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={role === 'restaurant_admin' ? styles.roleSegmentTextActive : styles.roleSegmentTextInactive}>
+                                    <Text style={role === 'owner' ? styles.roleSegmentTextActive : styles.roleSegmentTextInactive}>
                                         Ресторан
                                     </Text>
                                 </TouchableOpacity>
                             </View>
+                        </View>
+
+                        <View style={styles.hintCard}>
+                            <MaterialIcons name={role === 'owner' ? 'storefront' : 'person-outline'} size={18} color={colors.primary} />
+                            <Text style={styles.hintText}>{roleHint}</Text>
                         </View>
 
                         <View style={styles.inputWrapper}>
@@ -183,6 +229,7 @@ export default function RegisterScreen() {
                                     onChangeText={setEmail}
                                     autoCapitalize="none"
                                     keyboardType="email-address"
+                                    editable={step === 1}
                                 />
                             </View>
                         </View>
@@ -193,11 +240,28 @@ export default function RegisterScreen() {
                                 <MaterialIcons name="person" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIcon}
-                                    placeholder="alex123"
+                                    placeholder="kezdes_user"
                                     placeholderTextColor={colors.muted}
                                     value={username}
                                     onChangeText={setUsername}
                                     autoCapitalize="none"
+                                    editable={step === 1}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.label}>Телефон</Text>
+                            <View style={styles.inputIconContainer}>
+                                <MaterialIcons name="phone" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.inputWithIcon}
+                                    placeholder="+7 700 000 00 00"
+                                    placeholderTextColor={colors.muted}
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    keyboardType="phone-pad"
+                                    editable={step === 1}
                                 />
                             </View>
                         </View>
@@ -213,6 +277,7 @@ export default function RegisterScreen() {
                                     value={password}
                                     onChangeText={setPassword}
                                     secureTextEntry={!showPassword}
+                                    editable={step === 1}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                                     <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={colors.muted} />
@@ -222,98 +287,110 @@ export default function RegisterScreen() {
 
                         <View style={styles.inputWrapper}>
                             <Text style={styles.label}>Повторите пароль</Text>
-                            <View style={[styles.inputIconContainer, password && confirmPassword && password !== confirmPassword ? { borderColor: colors.error } : null]}>
+                            <View
+                                style={[
+                                    styles.inputIconContainer,
+                                    password && confirmPassword && password !== confirmPassword ? styles.inputErrorContainer : null,
+                                ]}
+                            >
                                 <MaterialIcons name="lock" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.inputWithIcon}
+                                    style={styles.inputWithIconRight}
                                     placeholder="••••••••"
                                     placeholderTextColor={colors.muted}
                                     value={confirmPassword}
                                     onChangeText={setConfirmPassword}
                                     secureTextEntry={!showConfirmPassword}
+                                    editable={step === 1}
                                 />
                                 <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
                                     <MaterialIcons name={showConfirmPassword ? 'visibility-off' : 'visibility'} size={20} color={colors.muted} />
                                 </TouchableOpacity>
                             </View>
-                            {password && confirmPassword && password !== confirmPassword && (
-                                <Text style={{ color: colors.error, fontSize: 12, marginTop: 4 }}>Пароли не совпадают</Text>
-                            )}
+                            {password && confirmPassword && password !== confirmPassword ? (
+                                <Text style={styles.errorText}>Пароли не совпадают.</Text>
+                            ) : null}
                         </View>
 
-
-                        {role === 'worker' && (
-                            <View style={styles.workerSection}>
-                                <Text style={styles.sectionTitle}>Профиль исполнителя</Text>
-
-                                <Text style={styles.label}>Кто вы?</Text>
-                                <View style={styles.categoryGrid}>
-                                    {CATEGORIES.map(c => (
-                                        <TouchableOpacity
-                                            key={c.id}
-                                            style={[styles.categoryBtn, category === c.id && styles.categoryBtnActive]}
-                                            onPress={() => setCategory(c.id)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={[styles.categoryBtnText, category === c.id && styles.categoryBtnTextActive]}>{c.label}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-
-                                <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>Мин. стоимость (₸)</Text>
-                                    <View style={styles.inputIconContainer}>
-                                        <MaterialIcons name="payments" size={20} color={colors.muted} style={styles.inputIcon} />
-                                        <TextInput
-                                            style={styles.inputWithIcon}
-                                            placeholder="50000"
-                                            placeholderTextColor={colors.muted}
-                                            keyboardType="numeric"
-                                            value={price}
-                                            onChangeText={setPrice}
-                                        />
+                        {step === 2 ? (
+                            <>
+                                {otpRequired && debugOtpCode ? (
+                                    <View style={styles.debugCard}>
+                                        <Text style={styles.debugLabel}>Dev OTP</Text>
+                                        <Text style={styles.debugCode}>{debugOtpCode}</Text>
                                     </View>
+                                ) : null}
+
+                                {otpRequired ? (
+                                    <View style={styles.inputWrapper}>
+                                        <Text style={styles.label}>Код подтверждения</Text>
+                                        <View style={styles.inputIconContainer}>
+                                            <MaterialIcons name="key" size={20} color={colors.muted} style={styles.inputIcon} />
+                                            <TextInput
+                                                style={styles.inputWithIcon}
+                                                placeholder="123456"
+                                                placeholderTextColor={colors.muted}
+                                                value={otpCode}
+                                                onChangeText={setOtpCode}
+                                                keyboardType="number-pad"
+                                            />
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={styles.debugCard}>
+                                        <Text style={styles.debugLabel}>Email status</Text>
+                                        <Text style={styles.debugCode}>READY</Text>
+                                    </View>
+                                )}
+
+                                <View style={styles.otpActions}>
+                                    <TouchableOpacity
+                                        style={styles.ghostButton}
+                                        onPress={() => setStep(1)}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={styles.ghostButtonText}>Изменить данные</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.ghostButton, !canSendOtp && styles.ghostButtonDisabled]}
+                                        onPress={handleSendOtp}
+                                        activeOpacity={0.85}
+                                        disabled={!canSendOtp}
+                                    >
+                                        <Text style={styles.ghostButtonText}>
+                                            {otpCooldown > 0 ? `Повтор через ${otpCooldown}с` : isSendingOtp ? 'Отправка...' : otpRequired ? 'Отправить снова' : 'Проверить email снова'}
+                                        </Text>
+                                    </TouchableOpacity>
                                 </View>
 
-                                <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>О себе</Text>
-                                    <View style={[styles.inputIconContainer, { alignItems: 'flex-start', paddingVertical: 12 }]}>
-                                        <MaterialIcons name="description" size={20} color={colors.muted} style={[styles.inputIcon, { marginTop: 2 }]} />
-                                        <TextInput
-                                            style={[styles.inputWithIcon, styles.textArea]}
-                                            placeholder="Расскажите о своем опыте и услугах..."
-                                            placeholderTextColor={colors.muted}
-                                            multiline
-                                            numberOfLines={4}
-                                            value={bio}
-                                            onChangeText={setBio}
-                                        />
-                                    </View>
-                                </View>
-                            </View>
+                                <TouchableOpacity
+                                    style={[styles.registerButton, isSubmitting ? styles.registerButtonDisabled : null]}
+                                    onPress={handleRegister}
+                                    activeOpacity={0.85}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.registerButtonText}>Подтвердить и войти</Text>}
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.registerButton, (isSendingOtp || !canSendOtp) ? styles.registerButtonDisabled : null]}
+                                onPress={handleSendOtp}
+                                activeOpacity={0.85}
+                                disabled={isSendingOtp}
+                            >
+                                {isSendingOtp ? <ActivityIndicator color="#fff" /> : <Text style={styles.registerButtonText}>Отправить код</Text>}
+                            </TouchableOpacity>
                         )}
-
-                        <TouchableOpacity
-                            style={[styles.registerButton, isSubmitting ? styles.registerButtonDisabled : null]}
-                            onPress={handleRegister}
-                            activeOpacity={0.85}
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.registerButtonText}>Зарегистрироваться</Text>
-                            )}
-                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.footerLinkContainer}>
                         <Text style={styles.footerLegalText}>
-                            Создавая аккаунт, вы соглашаетесь с нашими{'\n'}
-                            <Text style={styles.legalLink}>Условиями использования</Text> и <Text style={styles.legalLink}>Политикой</Text>
+                            Продолжая, вы соглашаетесь с нашими{'\n'}
+                            <Text style={styles.legalLink}>Условиями использования</Text> и <Text style={styles.legalLink}>Политикой конфиденциальности</Text>
                         </Text>
                     </View>
-
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -395,17 +472,13 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 24,
     },
+    form: {
+        gap: 20,
+    },
     roleSegmentContainer: {
-        marginBottom: 32,
+        marginBottom: 8,
     },
-    roleSegmentGroup: {
-        flexDirection: 'row',
-        backgroundColor: colors.border,
-        borderRadius: 40,
-        padding: 4,
-        height: 48,
-    },
-    roleSegmentTriple: {
+    roleSegmentDouble: {
         flexDirection: 'row',
         backgroundColor: colors.border,
         borderRadius: 40,
@@ -418,11 +491,21 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 1,
+            },
+            web: {
+                boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.08)',
+            },
+            default: {},
+        }),
     },
     roleSegmentInactive: {
         flex: 1,
@@ -439,8 +522,21 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: colors.textSecondary,
     },
-    form: {
-        gap: 20,
+    hintCard: {
+        flexDirection: 'row',
+        gap: 10,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: '#f8fafc',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+    },
+    hintText: {
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 20,
+        color: colors.textSecondary,
     },
     inputWrapper: {
         gap: 6,
@@ -458,6 +554,9 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         borderRadius: 40,
         backgroundColor: colors.white,
+    },
+    inputErrorContainer: {
+        borderColor: colors.error,
     },
     inputIcon: {
         paddingLeft: 16,
@@ -482,62 +581,78 @@ const styles = StyleSheet.create({
         right: 0,
         padding: 16,
     },
-    workerSection: {
-        gap: 16,
-        marginTop: 16,
-        paddingTop: 24,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
+    errorText: {
+        color: colors.error,
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
     },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: colors.text,
-        marginBottom: 8,
-    },
-    categoryGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    categoryBtn: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 32,
-        backgroundColor: colors.border,
-    },
-    categoryBtnActive: {
-        backgroundColor: colors.primary + '1A',
+    debugCard: {
+        borderRadius: 24,
         borderWidth: 1,
-        borderColor: colors.primary,
-        paddingHorizontal: 15,
-        paddingVertical: 9,
+        borderColor: '#bfdbfe',
+        backgroundColor: '#eff6ff',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
     },
-    categoryBtnText: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: colors.textSecondary,
-    },
-    categoryBtnTextActive: {
-        color: colors.primary,
+    debugLabel: {
+        fontSize: 11,
         fontWeight: '700',
+        color: '#1d4ed8',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
-    textArea: {
-        height: 100,
-        paddingTop: 0,
-        textAlignVertical: 'top',
+    debugCode: {
+        marginTop: 6,
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: 4,
+        color: '#1e3a8a',
+    },
+    otpActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    ghostButton: {
+        flex: 1,
+        minHeight: 48,
+        borderRadius: 32,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.white,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+    },
+    ghostButtonDisabled: {
+        opacity: 0.55,
+    },
+    ghostButtonText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: colors.textSecondary,
+        textAlign: 'center',
     },
     registerButton: {
         backgroundColor: colors.primary,
-        paddingVertical: 16,
-        borderRadius: 40,
+        paddingVertical: 18,
+        borderRadius: 32,
         alignItems: 'center',
-        marginTop: 8,
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 4px 10px rgba(29, 78, 216, 0.22)',
+            },
+            default: {},
+        }),
     },
     registerButtonDisabled: {
         opacity: 0.7,
@@ -548,16 +663,17 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     footerLinkContainer: {
-        marginTop: 40,
+        marginTop: 32,
         alignItems: 'center',
     },
     footerLegalText: {
-        fontSize: 12,
-        color: colors.muted,
         textAlign: 'center',
-        lineHeight: 18,
+        color: colors.textSecondary,
+        fontSize: 12,
+        lineHeight: 20,
     },
     legalLink: {
         color: colors.primary,
-    }
+        fontWeight: '700',
+    },
 });

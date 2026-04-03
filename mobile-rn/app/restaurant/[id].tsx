@@ -1,11 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, StatusBar, ActivityIndicator, Share, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { fetchRestaurantDetail } from '../../lib/api';
-
-const { width } = Dimensions.get('window');
 
 const MENU_ITEMS = [
     { id: '1', name: 'Рибай стейк', price: '8 500 ₸', image: require('../../assets/images/menu_1.jpg') },
@@ -13,26 +11,105 @@ const MENU_ITEMS = [
     { id: '3', name: 'Паста Карбонара', price: '3 800 ₸', image: require('../../assets/images/menu_3.jpg') },
 ];
 
+function getLocalDateString() {
+    const now = new Date();
+    const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
+    return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
 export default function RestaurantDetailScreen() {
     const params = useLocalSearchParams();
     const id = params.id;
     const router = useRouter();
     const [restaurant, setRestaurant] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const bookingDate = typeof params.date === 'string' ? params.date : getLocalDateString();
+    const bookingTime = typeof params.time === 'string' ? params.time : '19:00';
+    const bookingGuests = typeof params.guests === 'string' ? params.guests : '2';
+    const restaurantNameParam = typeof params.restaurantName === 'string' ? params.restaurantName : '';
+    const restaurantAddressParam = typeof params.restaurantAddress === 'string' ? params.restaurantAddress : '';
+    const restaurantImageParam = typeof params.restaurantImageUrl === 'string' ? params.restaurantImageUrl : '';
+    const searchQuery = typeof params.q === 'string' ? params.q : '';
 
-    React.useEffect(() => {
-        const load = async () => {
-            if (!id) return;
-            try {
-                const data = await fetchRestaurantDetail(id as string);
-                setRestaurant(data);
-            } catch (err) {
-                console.error(err);
-            }
-        };
-        load();
+    const loadRestaurant = React.useCallback(async () => {
+        if (!id) {
+            setError('Не удалось открыть ресторан.');
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await fetchRestaurantDetail(id as string);
+            setRestaurant(data);
+        } catch (err) {
+            console.error(err);
+            setError('Не удалось загрузить карточку ресторана.');
+            setRestaurant(null);
+        } finally {
+            setLoading(false);
+        }
     }, [id]);
 
-    if (!restaurant) return <View style={styles.container} />;
+    React.useEffect(() => {
+        void loadRestaurant();
+    }, [loadRestaurant]);
+
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+                <View style={styles.loader}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            </View>
+        );
+    }
+
+    if (error || !restaurant) {
+        return (
+            <View style={styles.container}>
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+                <View style={styles.errorState}>
+                    <Text style={styles.errorTitle}>{error || 'Ресторан не найден'}</Text>
+                    <View style={styles.errorActions}>
+                        <TouchableOpacity style={styles.errorButton} onPress={() => void loadRestaurant()}>
+                            <Text style={styles.errorButtonText}>Повторить</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.errorSecondaryButton}
+                            onPress={() =>
+                                router.replace({
+                                    pathname: '/results',
+                                    params: {
+                                        ...(searchQuery ? { q: searchQuery } : {}),
+                                        date: bookingDate,
+                                        time: bookingTime,
+                                        guests: bookingGuests,
+                                        ...(params.budget ? { budget: params.budget } : {}),
+                                        ...(params.eventType ? { eventType: params.eventType } : {}),
+                                    },
+                                })
+                            }
+                        >
+                            <Text style={styles.errorSecondaryButtonText}>К результатам</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
+    const handleShare = async () => {
+        try {
+            await Share.share({
+                message: `${restaurant.name}\n${restaurant.address || ''}`.trim(),
+            });
+        } catch {
+            return;
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -43,18 +120,18 @@ export default function RestaurantDetailScreen() {
                     <MaterialIcons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={styles.headerRight}>
-                    <TouchableOpacity style={styles.iconBtn} activeOpacity={0.8}>
+                    <TouchableOpacity style={styles.iconBtn} activeOpacity={0.8} onPress={() => void handleShare()}>
                         <MaterialIcons name="share" size={24} color={colors.text} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconBtn} activeOpacity={0.8}>
-                        <MaterialIcons name="favorite-border" size={24} color={colors.text} />
                     </TouchableOpacity>
                 </View>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 <View style={styles.coverWrapper}>
-                    <Image source={restaurant.image_url ? { uri: restaurant.image_url } : require('../../assets/images/rest_bg.jpg')} style={styles.coverImage} />
+                    <Image
+                        source={(restaurant.image_url || restaurantImageParam) ? { uri: (restaurant.image_url || restaurantImageParam) as string } : require('../../assets/images/rest_bg.jpg')}
+                        style={styles.coverImage}
+                    />
                     <View style={styles.gradientOverlay} />
                 </View>
 
@@ -69,7 +146,22 @@ export default function RestaurantDetailScreen() {
 
                         <View style={styles.locationRow}>
                             <MaterialIcons name="location-on" size={18} color={colors.primary} />
-                            <Text style={styles.locationText}>{restaurant.address}</Text>
+                            <Text style={styles.locationText}>{restaurant.address || restaurantAddressParam || 'Адрес не указан'}</Text>
+                        </View>
+
+                        <View style={styles.visitSummaryRow}>
+                            <View style={styles.visitSummaryChip}>
+                                <MaterialIcons name="calendar-month" size={16} color={colors.primary} />
+                                <Text style={styles.visitSummaryText}>{bookingDate}</Text>
+                            </View>
+                            <View style={styles.visitSummaryChip}>
+                                <MaterialIcons name="schedule" size={16} color={colors.primary} />
+                                <Text style={styles.visitSummaryText}>{bookingTime}</Text>
+                            </View>
+                            <View style={styles.visitSummaryChip}>
+                                <MaterialIcons name="groups" size={16} color={colors.primary} />
+                                <Text style={styles.visitSummaryText}>{bookingGuests} гостя</Text>
+                            </View>
                         </View>
 
                         <View style={styles.statsGrid}>
@@ -87,7 +179,7 @@ export default function RestaurantDetailScreen() {
                             </View>
                             <View style={styles.statBox}>
                                 <Text style={styles.statLabel}>Средний чек</Text>
-                                <Text style={styles.statValue}>{restaurant.average_price?.toLocaleString() || '15 000'} ₸</Text>
+                                <Text style={styles.statValue}>{Number(restaurant.average_price || 15000).toLocaleString('ru-RU')} ₸</Text>
                             </View>
                         </View>
                     </View>
@@ -106,7 +198,16 @@ export default function RestaurantDetailScreen() {
                         <TouchableOpacity
                             style={styles.seeAllBtn}
                             activeOpacity={0.8}
-                            onPress={() => router.push(`/restaurant/${restaurant.id}/reviews/new`)}
+                            onPress={() =>
+                                router.push({
+                                    pathname: '/restaurant/feedback',
+                                    params: {
+                                        restaurantId: String(restaurant.id),
+                                        restaurantName: restaurant.name,
+                                        visitDate: bookingDate,
+                                    },
+                                })
+                            }
                         >
                             <Text style={styles.seeAllText}>Написать отзыв</Text>
                             <MaterialIcons name="rate-review" size={16} color={colors.primary} />
@@ -170,7 +271,12 @@ export default function RestaurantDetailScreen() {
                         onPress={() =>
                             router.push({
                                 pathname: '/menu',
-                                params: { restaurantId: restaurant.id, restaurantName: restaurant.name },
+                                params: {
+                                    restaurantId: restaurant.id,
+                                    restaurantName: restaurant.name,
+                                    restaurantAddress: restaurant.address || restaurantAddressParam,
+                                    restaurantImageUrl: restaurant.image_url || restaurantImageParam,
+                                },
                             })
                         }
                     >
@@ -183,32 +289,42 @@ export default function RestaurantDetailScreen() {
                         activeOpacity={0.9}
                         onPress={() => {
                             const hasWizardData = params.date || params.eventType;
+                            const resolvedName = restaurant.name || restaurantNameParam || 'Ресторан';
+                            const resolvedAddress = restaurant.address || restaurantAddressParam || '';
+                            const resolvedImage = restaurant.image_url || restaurantImageParam || '';
                             if (hasWizardData) {
                                 router.push({
                                     pathname: '/review',
                                     params: {
                                         restaurantId: restaurant.id,
-                                        restaurantName: restaurant.name,
-                                        date: params.date,
-                                        time: params.time,
-                                        guests: params.guests,
+                                        restaurantName: resolvedName,
+                                        restaurantAddress: resolvedAddress,
+                                        restaurantImageUrl: resolvedImage,
+                                        date: bookingDate,
+                                        time: bookingTime,
+                                        guests: bookingGuests,
                                         budget: params.budget,
                                         eventType: params.eventType,
                                     },
                                 });
-                            } else {
-                                router.push({
-                                    pathname: '/wizard',
-                                    params: {
-                                        restaurantId: restaurant.id,
-                                        restaurantName: restaurant.name,
-                                    },
-                                });
-                            }
+                        } else {
+                            router.push({
+                                pathname: '/review',
+                                params: {
+                                    restaurantId: restaurant.id,
+                                    restaurantName: resolvedName,
+                                    restaurantAddress: resolvedAddress,
+                                    restaurantImageUrl: resolvedImage,
+                                    guests: bookingGuests,
+                                    date: bookingDate,
+                                    time: bookingTime,
+                                },
+                            });
+                        }
                         }}
                     >
                         <MaterialIcons name="check-circle-outline" size={20} color="#fff" />
-                        <Text style={styles.bookActionText}>Забронировать</Text>
+                        <Text style={styles.bookActionText}>{params.date || params.eventType ? 'Продолжить бронь' : 'Забронировать'}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -220,6 +336,50 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#ffffff',
+    },
+    loader: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    errorState: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+        gap: 16,
+    },
+    errorActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    errorTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+        textAlign: 'center',
+    },
+    errorButton: {
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+        borderRadius: 999,
+        backgroundColor: colors.primary,
+    },
+    errorButtonText: {
+        color: '#fff',
+        fontWeight: '700',
+    },
+    errorSecondaryButton: {
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+    },
+    errorSecondaryButtonText: {
+        color: colors.text,
+        fontWeight: '700',
     },
     headerOverlay: {
         position: 'absolute',
@@ -239,11 +399,21 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.9)', // Simulating bg-white/80 backdrop-blur
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 1px 4px rgba(15, 23, 42, 0.12)',
+            },
+            default: {},
+        }),
     },
     headerRight: {
         flexDirection: 'row',
@@ -279,11 +449,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderRadius: 40,
         padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 10,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 10px 24px rgba(15, 23, 42, 0.06)',
+            },
+            default: {},
+        }),
         borderWidth: 1,
         borderColor: colors.border,
     },
@@ -318,6 +498,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         marginBottom: 16,
+    },
+    visitSummaryRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+    },
+    visitSummaryChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 999,
+        backgroundColor: 'rgba(19,127,236,0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(19,127,236,0.12)',
+    },
+    visitSummaryText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: colors.text,
     },
     locationText: {
         fontSize: 14,
@@ -441,11 +643,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     pinWrapper: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 5,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 5,
+            },
+            web: {
+                boxShadow: '0px 8px 18px rgba(15, 23, 42, 0.2)',
+            },
+            default: {},
+        }),
     },
     pinMarker: {
         width: 48,
@@ -496,11 +708,21 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
         paddingVertical: 16,
         borderRadius: 40,
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 10px 20px rgba(0, 71, 255, 0.18)',
+            },
+            default: {},
+        }),
     },
     bookActionText: {
         color: '#ffffff',

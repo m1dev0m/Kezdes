@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ImageBackground, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ImageBackground, Animated, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -13,21 +13,25 @@ export default function BookingConfirmationScreen() {
     const params = useLocalSearchParams();
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
+    const accessToken = user?.access;
 
-    const restaurantName = (params.restaurantName as string) || (params.venueName as string) || 'hhal';
-    const dateString = (params.date as string) || '25 Октября';
+    const restaurantName = (params.restaurantName as string) || (params.venueName as string) || 'Выбранный ресторан';
+    const dateString = (params.date as string) || 'Дата не указана';
     const timeString = (params.time as string) || '19:00';
     const guestString = (params.guests as string) ? `${params.guests} гостей` : '2 человека';
-    const bookingId = (params.bookingId as string) || '882198';
+    const bookingId = (params.bookingId as string) || '';
+    const depositRequired = (params.depositRequired as string) === 'true';
+    const depositAmount = Number(params.depositAmount || 0);
+    const initialBookingStatus = (params.bookingStatus as string) || 'pending';
 
-    const [bookingStatus, setBookingStatus] = useState<string>('pending');
+    const [bookingStatus, setBookingStatus] = useState<string>(initialBookingStatus);
     const [fullBooking, setFullBooking] = useState<any>(null);
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [showStatusModal, setShowStatusModal] = useState(false);
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
-        if (bookingStatus === 'pending') {
+        if (bookingStatus === 'pending' || bookingStatus === 'payment_pending') {
             const pulse = Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true }),
@@ -40,11 +44,11 @@ export default function BookingConfirmationScreen() {
     }, [bookingStatus]);
 
     useEffect(() => {
-        if (!user?.access || !bookingId || bookingId === '882198') return;
+        if (!accessToken || !bookingId) return;
 
         const pollStatus = async () => {
             try {
-                const bookingData = await fetchBookingDetail(bookingId, user.access) as any;
+                const bookingData = await fetchBookingDetail(bookingId, accessToken) as any;
                 if (bookingData) {
                     setFullBooking(bookingData);
                     if (bookingData.status && bookingStatus !== bookingData.status) {
@@ -72,12 +76,14 @@ export default function BookingConfirmationScreen() {
             clearInterval(interval);
             clearTimeout(timeout);
         };
-    }, [user, bookingId, bookingStatus, isRedirecting]);
+    }, [accessToken, bookingId, bookingStatus, isRedirecting]);
 
     const getStatusConfig = () => {
         switch (bookingStatus) {
             case 'confirmed':
                 return { label: 'ПОДТВЕРЖДЕНО', color: '#10b981', icon: 'check-circle' as const };
+            case 'payment_pending':
+                return { label: 'ЖДЁТ ОПЛАТЫ', color: '#f59e0b', icon: 'payment' as const };
             case 'rejected':
                 return { label: 'ОТКЛОНЕНО', color: '#ef4444', icon: 'cancel' as const };
             case 'cancelled':
@@ -94,7 +100,7 @@ export default function BookingConfirmationScreen() {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.push('/home' as any)} style={styles.iconButton}>
+                <TouchableOpacity onPress={() => router.replace('/(tabs)/home')} style={styles.iconButton}>
                     <Ionicons name="close" size={28} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Подтверждение</Text>
@@ -111,7 +117,7 @@ export default function BookingConfirmationScreen() {
                         <Animated.View style={[
                             styles.statusBadge,
                             { backgroundColor: statusConfig.color },
-                            bookingStatus === 'pending' && { opacity: pulseAnim }
+                bookingStatus === 'pending' || bookingStatus === 'payment_pending' ? { opacity: pulseAnim } : null
                         ]}>
                             <MaterialIcons name={statusConfig.icon} size={12} color="#fff" style={{ marginRight: 4 }} />
                             <Text style={styles.statusBadgeText}>{statusConfig.label}</Text>
@@ -193,6 +199,13 @@ export default function BookingConfirmationScreen() {
                                     </View>
                                 )}
 
+                                {depositRequired && depositAmount > 0 && (
+                                    <View style={styles.paymentRow}>
+                                        <Text style={styles.paymentLabel}>Депозит</Text>
+                                        <Text style={styles.paymentVal}>{depositAmount.toLocaleString()} ₸</Text>
+                                    </View>
+                                )}
+
                                 <View style={styles.receiptDivider} />
 
                                 <View style={[styles.paymentRow, { marginBottom: 0 }]}>
@@ -220,7 +233,9 @@ export default function BookingConfirmationScreen() {
                                 bookingStatus === 'confirmed' && { color: '#10b981' }
                             ]}>
                                 {bookingStatus === 'confirmed'
-                                    ? 'Бронирование подтверждено! Переход в чат с рестораном...'
+                                    ? 'Бронирование подтверждено! Переход к вашим бронированиям...'
+                                    : bookingStatus === 'payment_pending' || depositRequired
+                                        ? 'Бронь создана. Для подтверждения может потребоваться депозит.'
                                     : bookingStatus === 'rejected'
                                         ? 'Бронирование отклонено рестораном.'
                                         : 'Ваша заявка отправлена. Ожидаем подтверждения от ресторана...'}
@@ -235,15 +250,15 @@ export default function BookingConfirmationScreen() {
             </ScrollView>
 
             <View style={[styles.bottomNav, { paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }]}>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/home')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(tabs)/home')}>
                     <Ionicons name="home" size={24} color={colors.textSecondary} />
                     <Text style={styles.navText}>Главная</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/events')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(tabs)/events')}>
                     <MaterialIcons name="event-note" size={24} color={colors.textSecondary} />
-                    <Text style={styles.navText}>События</Text>
+                    <Text style={styles.navText}>Бронирования</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/profile')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(tabs)/profile')}>
                     <Ionicons name="person-outline" size={24} color={colors.textSecondary} />
                     <Text style={styles.navText}>Профиль</Text>
                 </TouchableOpacity>
@@ -255,21 +270,14 @@ export default function BookingConfirmationScreen() {
                 title={bookingStatus === 'confirmed' ? 'Успешно' : 'Отклонено'}
                 message={
                     bookingStatus === 'confirmed'
-                        ? 'Ваша бронь подтверждена и добавлена в календарь'
+                        ? 'Ваша бронь подтверждена и добавлена в список бронирований'
                         : 'К сожалению, ресторан отклонил вашу заявку'
                 }
-                buttonText={bookingStatus === 'confirmed' ? 'Перейти в чат' : 'Мои бронирования'}
+                buttonText={bookingStatus === 'confirmed' ? 'К бронированиям' : 'Мои бронирования'}
                 onClose={() => setShowStatusModal(false)}
                 onAction={() => {
                     setShowStatusModal(false);
-                    if (bookingStatus === 'confirmed') {
-                        router.replace({
-                            pathname: '/chat',
-                            params: { name: restaurantName, bookingId: bookingId }
-                        });
-                    } else {
-                        router.push('/(tabs)/events' as any);
-                    }
+                    router.push('/(tabs)/events');
                 }}
             />
         </SafeAreaView>
@@ -304,11 +312,21 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: '#ffffff',
         borderRadius: 32,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        elevation: 8,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.1,
+                shadowRadius: 20,
+            },
+            android: {
+                elevation: 8,
+            },
+            web: {
+                boxShadow: '0px 18px 36px rgba(15, 23, 42, 0.12)',
+            },
+            default: {},
+        }),
         marginBottom: 24,
     },
     cardCover: {

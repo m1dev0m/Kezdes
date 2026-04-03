@@ -411,13 +411,14 @@ class BookingService:
     @staticmethod
     def reject_booking(booking_id, actor=None):
         """Rejects a pending booking."""
-        booking = Booking.objects.get(pk=booking_id)
-        if booking.status != Booking.PENDING:
-            return None, "Only pending bookings can be rejected."
+        with transaction.atomic():
+            booking = Booking.objects.select_for_update().get(pk=booking_id)
+            if booking.status != Booking.PENDING:
+                return None, "Only pending bookings can be rejected."
 
-        StatusMachine.transition(booking, Booking.REJECTED, actor=actor)
-        NotificationService.notify_customer_booking_rejected(booking)
-        return booking, None
+            StatusMachine.transition(booking, Booking.REJECTED, actor=actor)
+            NotificationService.notify_customer_booking_rejected(booking)
+            return booking, None
 
     # ── Maintenance ────────────────────────────────────────────────────────
 
@@ -476,11 +477,12 @@ class WaitlistService:
         entry.notified_at = timezone.now()
         entry.save()
 
-        NotificationService.notify_user(
-            entry.user,
-            "Место освободилось!",
-            f"В ресторане {restaurant.name} освободился столик на {date} в {time_val}. "
-            f"У вас есть 15 минут, чтобы подтвердить бронирование.",
-            data={"type": "waitlist_promoted", "waitlist_id": entry.id},
-        )
+        if entry.user_id:
+            NotificationService.notify_user(
+                entry.user,
+                "Место освободилось!",
+                f"В ресторане {restaurant.name} освободился столик на {date} в {time_val}. "
+                f"У вас есть 15 минут, чтобы подтвердить бронирование.",
+                data={"type": "waitlist_promoted", "waitlist_id": entry.id},
+            )
         return entry

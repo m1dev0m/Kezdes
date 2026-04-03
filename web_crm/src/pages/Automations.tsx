@@ -1,155 +1,230 @@
-import { useState } from 'react';
-import {
-    Zap,
-    Mail,
-    MessageSquare,
-    Plus,
-    Trash2,
-    ToggleLeft,
-    ToggleRight,
-    Settings
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/Button';
-import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { BellRing, Clock3, Mail, MessageSquare, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useI18n } from '@/i18n';
+import api from '@/services/api';
+import { extractResults, getApiErrorMessage } from '@/features/reservations/shared';
+
+type AutomationLogRecord = {
+  id: number;
+  type: string;
+  status: string;
+  sent_at?: string | null;
+  created_at: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+};
+
+const TEMPLATE_CATALOG = [
+  {
+    id: 'booking_confirmation',
+    channel: 'email',
+    trigger: 'On new booking',
+    title: 'Booking confirmation',
+    description: 'Отправляется сразу после создания брони и подтверждает дату, время и состав гостей.',
+  },
+  {
+    id: 'reservation_reminder',
+    channel: 'sms',
+    trigger: '24 hours before',
+    title: 'Reservation reminder',
+    description: 'Короткое напоминание перед визитом, чтобы снизить no-show и держать контакт с гостем.',
+  },
+  {
+    id: 'waitlist_slot',
+    channel: 'sms',
+    trigger: 'When slot opens',
+    title: 'Waitlist slot available',
+    description: 'Уведомление для листа ожидания, когда освобождается стол на нужное время.',
+  },
+  {
+    id: 'review_request',
+    channel: 'email',
+    trigger: 'After completed visit',
+    title: 'Review request',
+    description: 'Сообщение после завершённого визита, чтобы собрать отзыв от реального гостя.',
+  },
+] as const;
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function getStatusTone(status: string): string {
+  if (status === 'sent') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (status === 'failed') return 'border-rose-200 bg-rose-50 text-rose-700';
+  return 'border-slate-200 bg-slate-100 text-slate-700';
+}
 
 export default function Automations() {
-    const { t } = useI18n();
+  const [logs, setLogs] = useState<AutomationLogRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const [automationsState, setAutomationsState] = useState([
-        { id: 1, type: 'email', active: true },
-        { id: 2, type: 'sms', active: true },
-        { id: 3, type: 'email', active: false },
-        { id: 4, type: 'sms', active: true }
-    ]);
+  const loadLogs = useCallback(async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      const response = await api.get('/automations/logs/');
+      setLogs(extractResults<AutomationLogRecord>(response.data));
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Не удалось загрузить историю уведомлений.');
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-    const automations = automationsState.map(a => {
-        switch (a.id) {
-            case 1:
-                return { ...a, name: t('automations.bookingConfirmation'), trigger: t('automations.onNewBooking'), desc: t('automations.bookingConfirmationDesc') };
-            case 2:
-                return { ...a, name: t('automations.reminder24h'), trigger: t('automations.before24h'), desc: t('automations.reminder24hDesc') };
-            case 3:
-                return { ...a, name: t('automations.reviewRequest'), trigger: t('automations.after2h'), desc: t('automations.reviewRequestDesc') };
-            case 4:
-                return { ...a, name: t('automations.birthdaySpecial'), trigger: t('automations.onGuestBirthday'), desc: t('automations.birthdaySpecialDesc') };
-            default:
-                return { ...a, name: '', trigger: '', desc: '' };
-        }
-    });
+  useEffect(() => {
+    void loadLogs();
+  }, [loadLogs]);
 
-    const [deleteId, setDeleteId] = useState<number | null>(null);
+  const stats = useMemo(
+    () => ({
+      templates: TEMPLATE_CATALOG.length,
+      sent: logs.filter((log) => log.status === 'sent').length,
+      failed: logs.filter((log) => log.status === 'failed').length,
+      latest: logs[0]?.sent_at || logs[0]?.created_at || null,
+    }),
+    [logs],
+  );
 
-    const toggleActive = (id: number) => {
-        setAutomationsState(prev => prev.map(a => a.id === id ? { ...a, active: !a.active } : a));
-        const auto = automations.find(a => a.id === id);
-        if (auto) {
-            const status = !auto.active ? t('automations.activated') : t('automations.deactivated');
-            toast.success(`${auto.name} ${status}`);
-        }
-    };
-
-    const handleDelete = (id: number) => {
-        setAutomationsState(prev => prev.filter(a => a.id !== id));
-        toast.success(t('automations.removed'));
-        setDeleteId(null);
-    };
-
-    return (
-        <div className="space-y-8 pb-12">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                <div>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{t('automations.title')}</h1>
-                    <p className="text-slate-500 font-medium mt-1">{t('automations.description')}</p>
-                </div>
-                <Button variant="primary" size="lg" className="flex items-center gap-2 shadow-xl shadow-slate-200 dark:shadow-none">
-                    <Plus className="w-5 h-5" /> {t('automations.newAutomation')}
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AnimatePresence mode="popLayout">
-                    {automations.map((auto) => (
-                        <motion.div
-                            key={auto.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] p-8 hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group relative overflow-hidden"
-                        >
-                            <div className="flex items-start justify-between mb-8">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${auto.type === 'email' ? 'bg-primary/5 text-primary dark:bg-primary/5' : 'bg-amber-50 text-amber-500 dark:bg-amber-500/10'}`}>
-                                    {auto.type === 'email' ? <Mail size={28} /> : <MessageSquare size={28} />}
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        onClick={() => toggleActive(auto.id)}
-                                        className="transition-transform active:scale-90"
-                                    >
-                                        {auto.active ?
-                                            <ToggleRight size={44} className="text-slate-900 dark:text-slate-400" /> :
-                                            <ToggleLeft size={44} className="text-slate-300 dark:text-slate-700" />
-                                        }
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight mb-1">{auto.name}</h3>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
-                                        {auto.type === 'email' ? t('automations.email') : t('automations.sms')}
-                                    </span>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">•</span>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{auto.trigger}</span>
-                                </div>
-                            </div>
-
-                            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm leading-relaxed mb-8">
-                                {auto.desc}
-                            </p>
-
-                            <div className="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-800">
-                                <button className="text-[10px] font-black text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2">
-                                    <Settings className="w-3.5 h-3.5" /> {t('automations.editWorkflow')}
-                                </button>
-                                <button
-                                    onClick={() => setDeleteId(auto.id)}
-                                    className="text-rose-400 hover:text-rose-600 transition-colors p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
-                            </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-
-                <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-12 flex flex-col items-center justify-center gap-4 group hover:border-slate-900 dark:hover:border-slate-400 transition-all bg-slate-50/30 dark:bg-slate-900/50"
-                >
-                    <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
-                        <Zap size={32} className="text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
-                    </div>
-                    <div className="text-center">
-                        <p className="font-black text-slate-900 dark:text-white tracking-tight">{t('automations.createCustomFlow')}</p>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{t('automations.startFromScratch')}</p>
-                    </div>
-                </motion.button>
-            </div>
-
-            <ConfirmModal
-                isOpen={!!deleteId}
-                title={t('automations.deleteTitle')}
-                description={t('automations.deleteDesc')}
-                confirmLabel={t('automations.delete')}
-                onConfirm={() => deleteId && handleDelete(deleteId)}
-                onCancel={() => setDeleteId(null)}
-            />
+  return (
+    <div className="space-y-8 pb-10">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Templates</div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Notification templates</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+            В этой версии продукт использует встроенные системные шаблоны. Ниже видны активные типы сообщений и
+            фактическая история отправок по ресторану.
+          </p>
         </div>
-    );
+
+        <button
+          type="button"
+          onClick={() => void loadLogs()}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Обновление...' : 'Refresh'}
+        </button>
+      </header>
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <SummaryCard icon={<BellRing size={18} />} label="Templates" value={stats.templates} />
+        <SummaryCard icon={<Mail size={18} />} label="Sent" value={stats.sent} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <SummaryCard icon={<MessageSquare size={18} />} label="Failed" value={stats.failed} tone="border-rose-200 bg-rose-50 text-rose-700" />
+        <SummaryCard icon={<Clock3 size={18} />} label="Latest activity" value={stats.latest ? formatDateTime(stats.latest) : '—'} />
+      </section>
+
+      {error ? (
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => void loadLogs()}
+            className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-6 py-5">
+            <h2 className="text-lg font-semibold text-slate-900">Built-in template catalog</h2>
+            <p className="mt-1 text-sm text-slate-500">Набор системных уведомлений, которые уже участвуют в booking flow.</p>
+          </div>
+          <div className="divide-y divide-slate-200">
+            {TEMPLATE_CATALOG.map((template) => (
+              <div key={template.id} className="flex flex-col gap-3 px-6 py-5 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${template.channel === 'email' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                      {template.channel}
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{template.trigger}</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900">{template.title}</h3>
+                  <p className="max-w-2xl text-sm leading-6 text-slate-600">{template.description}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Active
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-6 py-5">
+            <h2 className="text-lg font-semibold text-slate-900">Recent delivery log</h2>
+            <p className="mt-1 text-sm text-slate-500">Последние реальные отправки по CRM и системным событиям.</p>
+          </div>
+
+          <div className="divide-y divide-slate-200">
+            {loading ? (
+              <div className="px-6 py-12 text-center text-sm text-slate-500">Загрузка истории уведомлений...</div>
+            ) : logs.length === 0 ? (
+              <div className="px-6 py-12 text-center text-sm text-slate-500">
+                История уведомлений пока пуста. Логи появятся после первых подтверждений, напоминаний и review-запросов.
+              </div>
+            ) : (
+              logs.slice(0, 10).map((log) => (
+                <div key={log.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{log.customer_name || 'Guest'}</div>
+                      <div className="mt-1 text-xs text-slate-500">{log.customer_phone || '—'}</div>
+                    </div>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${getStatusTone(log.status)}`}>
+                      {log.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
+                    <span>{log.type}</span>
+                    <span>{formatDateTime(log.sent_at || log.created_at)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  tone = 'border-slate-200 bg-white text-slate-700',
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string | number;
+  tone?: string;
+}) {
+  return (
+    <div className={`rounded-3xl border px-5 py-4 shadow-sm ${tone}`}>
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em]">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-3 text-3xl font-semibold tracking-tight">{value}</div>
+    </div>
+  );
 }

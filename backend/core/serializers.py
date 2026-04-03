@@ -7,8 +7,12 @@ from django.db.models import Q
 from .models import Profile, PushToken, OTPVerification
 from contractors.models import Contractor
 from django.conf import settings
-from django.utils import timezone
-from datetime import timedelta
+
+
+def _normalize_email(value: str) -> str:
+    return (value or '').strip().lower()
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -51,6 +55,50 @@ class UserMeSerializer(serializers.ModelSerializer):
             'role', 'restaurant', 'phone', 'restaurant_verified', 'restaurant_setup_required'
         ]
 
+
+class UserMeUpdateSerializer(serializers.Serializer):
+    username = serializers.CharField(required=False, allow_blank=False)
+    email = serializers.EmailField(required=False, allow_blank=False)
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=20)
+
+    def validate_username(self, value):
+        value = (value or '').strip()
+        user = self.context['request'].user
+        if not value:
+            raise serializers.ValidationError("Username is required.")
+        if User.objects.filter(username=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+        return value
+
+    def validate_email(self, value):
+        value = _normalize_email(value)
+        user = self.context['request'].user
+        if not value:
+            raise serializers.ValidationError("Email is required.")
+        if User.objects.filter(email__iexact=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("A user with that email already exists.")
+        return value
+
+    def update(self, instance, validated_data):
+        profile = instance.profile
+        user_fields = []
+
+        for field in ('username', 'email', 'first_name', 'last_name'):
+            if field in validated_data:
+                setattr(instance, field, validated_data[field])
+                user_fields.append(field)
+
+        if user_fields:
+            instance.save(update_fields=user_fields)
+
+        if 'phone' in validated_data:
+            profile.phone = validated_data['phone'] or ''
+            profile.save(update_fields=['phone'])
+
+        return instance
+
 class RegisterSerializer(serializers.ModelSerializer):
     username = serializers.CharField(required=True, allow_blank=False)
     email = serializers.EmailField(required=True, allow_blank=False)
@@ -74,7 +122,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate_email(self, value):
-        value = (value or '').strip().lower()
+        value = _normalize_email(value)
         if not value:
             raise serializers.ValidationError("Email is required.")
         if User.objects.filter(email__iexact=value).exists():
@@ -90,7 +138,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        email = attrs.get('email')
+        email = _normalize_email(attrs.get('email'))
+        attrs['email'] = email
         password = attrs.get('password')
         password2 = attrs.get('password2')
         if not password:
@@ -132,13 +181,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             if not otp_code:
                 raise serializers.ValidationError({"otp_code": "OTP code is required."})
 
-            otp_record = OTPVerification.objects.filter(email=email).first()
-            if not otp_record:
+            otp_record = OTPVerification.objects.filter(email__iexact=email).order_by('-created_at').first()
+            if not otp_record or otp_record.is_expired():
                 raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
 
-            expires_minutes = int(getattr(settings, "OTP_EXPIRE_MINUTES", 10))
-            if otp_record.created_at < (timezone.now() - timedelta(minutes=expires_minutes)):
-                raise serializers.ValidationError({"otp_code": "OTP code expired. Request a new one."})
+            if otp_record.is_verified:
+                raise serializers.ValidationError({"otp_code": "OTP code already used. Request a new one."})
 
             if otp_record.code != otp_code:
                 raise serializers.ValidationError({"otp_code": "Invalid or expired OTP code."})
@@ -198,7 +246,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
         
         # Mark OTP as verified
-        OTPVerification.objects.filter(email=user.email).update(is_verified=True)
+        otp_record = OTPVerification.objects.filter(email__iexact=user.email).order_by('-created_at').first()
+        if otp_record:
+            otp_record.mark_verified()
             
         return user
 
@@ -206,6 +256,7 @@ class SendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
     def validate_email(self, value):
+        value = _normalize_email(value)
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("Учетная запись с таким email уже существует.")
         return value
@@ -218,46 +269,27 @@ class SetupRestaurantSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=50, required=False, allow_blank=True)
     owner_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
     description = serializers.CharField(required=False, allow_blank=True)
-    lat = serializers.FloatField(required=True)
-    lng = serializers.FloatField(required=True)
+    lat = serializers.FloatField(required=False, allow_null=True)
+    lng = serializers.FloatField(required=False, allow_null=True)
 
     def create(self, validated_data):
-        from restaurants.models import Restaurant
+        from restaurants.models import RestaurantRequest
         user = self.context["request"].user
 
-        if hasattr(user, "profile") and user.profile.restaurant:
-            raise serializers.ValidationError({"detail": "У вас уже есть ресторан."})
-        if Restaurant.objects.filter(owner=user).exists():
-            raise serializers.ValidationError({"detail": "У вас уже есть ресторан."})
+        if RestaurantRequest.objects.filter(owner=user, status="pending").exists():
+            raise serializers.ValidationError({"detail": "У вас уже есть активная заявка."})
 
-        # Directly create Restaurant since Step 2 is instant approval
-        restaurant = Restaurant.objects.create(
-            name=validated_data["restaurant_name"],
-            address=validated_data["address"],
-            city=validated_data.get("city", "Алматы"),
-            latitude=validated_data["lat"],
-            longitude=validated_data["lng"],
-            phone=validated_data.get("phone", ""),
-            description=validated_data.get("description", ""),
-            is_claimed=True,
-            is_verified=True,
+        req = RestaurantRequest.objects.create(
             owner=user,
-            source='manual'
+            name=validated_data["restaurant_name"],
+            address=validated_data.get("address", ""),
+            city=validated_data.get("city", "Алматы"),
+            phone=validated_data.get("phone", ""),
+            email=user.email,
+            admin_username=user.username,
+            status="pending",
         )
-
-        if hasattr(user, "profile"):
-            user.profile.role = "owner"
-            user.profile.restaurant = restaurant
-            user.profile.save()
-
-        # Seed initial tables layout for convenience if wanted (optional)
-        from restaurants.utils import generate_default_table_map
-        try:
-            generate_default_table_map(restaurant)
-        except Exception:
-            pass
-
-        return restaurant
+        return req
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         login_input = attrs.get("username")

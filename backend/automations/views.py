@@ -1,10 +1,12 @@
 from rest_framework import viewsets, permissions
 from .models import AutomationLog
 from .serializers import AutomationLogSerializer
+from core.permissions import HasRestaurantFeature
 
 class AutomationLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AutomationLogSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasRestaurantFeature]
+    required_feature = "automations"
 
     def get_queryset(self):
         return AutomationLog.objects.filter(

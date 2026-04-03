@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -38,7 +38,7 @@ const NOTIFICATIONS = [
         id: '3',
         type: 'reminder',
         title: 'Напоминание о событии',
-        message: 'Событие начнется через 2 часа. Подготовьте QR-код для входа.',
+        message: 'Событие начнется через 2 часа. Проверьте детали бронирования и приходите вовремя.',
         time: '12 мин. назад',
         icon: 'schedule',
         iconColor: '#f59e0b', // amber-500
@@ -143,11 +143,21 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(241, 245, 249, 0.95)', // slate-100 very slight transparency
         borderRadius: 40,
         padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 20,
-        elevation: 10,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.2,
+                shadowRadius: 20,
+            },
+            android: {
+                elevation: 10,
+            },
+            web: {
+                boxShadow: '0px 18px 32px rgba(15, 23, 42, 0.12)',
+            },
+            default: {},
+        }),
     },
     cardHeader: {
         flexDirection: 'row',

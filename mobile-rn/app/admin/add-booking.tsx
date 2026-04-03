@@ -23,6 +23,11 @@ export default function AdminAddBookingScreen() {
     const isBlank = (v: string) => !v || !v.trim();
 
     const handleCreate = async () => {
+        const token = user?.access;
+        if (!token) {
+            Alert.alert('Ошибка', 'Сессия истекла. Войдите заново.');
+            return;
+        }
         setSubmitAttempted(true);
         if (isBlank(name) || isBlank(phone) || isBlank(date) || isBlank(time) || isBlank(guests)) {
             Alert.alert('Ошибка', 'Пожалуйста, заполните необходимые поля (имя, телефон, дата, время, гости)');
@@ -31,9 +36,9 @@ export default function AdminAddBookingScreen() {
 
         setIsSubmitting(true);
         try {
-            const restaurant = await fetchMyRestaurant(user.access);
+            const restaurant = await fetchMyRestaurant(token);
 
-            const res = await createManualBooking({
+            await createManualBooking({
                 restaurant: restaurant.id,
                 user_name_manual: name,
                 user_phone_manual: phone,
@@ -43,7 +48,7 @@ export default function AdminAddBookingScreen() {
                 event_type: eventType,
                 event_title: eventTitle || `Бронь: ${name}`,
                 status: 'confirmed'
-            }, user.access);
+            }, token);
 
             Alert.alert('Успех', 'Бронирование создано!', [
                 { text: 'ОК', onPress: () => router.back() }

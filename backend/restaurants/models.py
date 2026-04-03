@@ -1,7 +1,38 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 class Restaurant(models.Model):
+    PLAN_NONE = 'none'
+    PLAN_PLUS = 'plus'
+    PLAN_PRO = 'pro'
+    PAYMENT_INACTIVE = 'inactive'
+    PAYMENT_TRIAL = 'trial'
+    PAYMENT_ACTIVE = 'active'
+    PAYMENT_GRACE = 'grace'
+    PAYMENT_PAST_DUE = 'past_due'
+    PAYMENT_CANCELED = 'canceled'
+    PLAN_ALIASES = {
+        'starter': PLAN_NONE,
+        'business': PLAN_PRO,
+    }
+    PLAN_LIMITS = {
+        PLAN_NONE: {
+            'tables': 10,
+            'zones': 1,
+            'staff': 0,
+        },
+        PLAN_PLUS: {
+            'tables': 40,
+            'zones': 5,
+            'staff': 15,
+        },
+        PLAN_PRO: {
+            'tables': None,
+            'zones': None,
+            'staff': None,
+        },
+    }
     SOURCE_CHOICES = [
         ('2gis', '2GIS'),
         ('manual', 'Manual'),
@@ -46,11 +77,24 @@ class Restaurant(models.Model):
     reviews_count = models.PositiveIntegerField(default=0)
     price_level = models.IntegerField(default=1) 
     PLAN_CHOICES = [
-        ('starter', 'Starter'),
-        ('pro', 'Pro'),
-        ('business', 'Business'),
+        (PLAN_NONE, 'Без подписки'),
+        (PLAN_PLUS, 'Plus'),
+        (PLAN_PRO, 'Pro'),
     ]
-    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='starter')
+    PAYMENT_STATUS_CHOICES = [
+        (PAYMENT_INACTIVE, 'Не активна'),
+        (PAYMENT_TRIAL, 'Тестовый период'),
+        (PAYMENT_ACTIVE, 'Активна'),
+        (PAYMENT_GRACE, 'Льготный период'),
+        (PAYMENT_PAST_DUE, 'Просрочена'),
+        (PAYMENT_CANCELED, 'Отменена'),
+    ]
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default=PLAN_NONE)
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default=PAYMENT_INACTIVE)
+    current_period_starts_at = models.DateTimeField(null=True, blank=True)
+    current_period_ends_at = models.DateTimeField(null=True, blank=True)
+    grace_until = models.DateTimeField(null=True, blank=True)
+    feature_flags = models.JSONField(default=dict, blank=True)
     views_count = models.PositiveIntegerField(default=0)
     floor = models.CharField(max_length=50, blank=True, null=True, help_text="Этаж")
     entrance = models.CharField(max_length=50, blank=True, null=True, help_text="Вход/подъезд")
@@ -74,31 +118,191 @@ class Restaurant(models.Model):
     def __str__(self):
         return self.name
 
+    def get_effective_plan(self) -> str:
+        return self.PLAN_ALIASES.get(self.plan, self.plan or self.PLAN_NONE)
+
+    def is_paid_plan(self) -> bool:
+        return self.get_effective_plan() in {self.PLAN_PLUS, self.PLAN_PRO}
+
+    def is_subscription_live(self) -> bool:
+        if not self.is_paid_plan():
+            return True
+        if self.payment_status in {self.PAYMENT_ACTIVE, self.PAYMENT_TRIAL}:
+            return True
+        if self.grace_until and self.grace_until >= timezone.now():
+            return True
+        return False
+
+    def get_subscription_state(self) -> str:
+        if not self.is_paid_plan():
+            return 'none'
+        if self.grace_until and self.grace_until >= timezone.now():
+            return 'grace'
+        if self.is_subscription_live():
+            return 'active'
+        return 'limited'
+
+    def get_plan_limits(self) -> dict[str, int | None]:
+        plan = self.get_effective_plan()
+        return self.PLAN_LIMITS.get(plan, self.PLAN_LIMITS[self.PLAN_PRO]).copy()
+
+    def get_usage_snapshot(self) -> dict[str, int]:
+        return {
+            'tables': self.tables.count(),
+            'zones': self.zones.count(),
+            'staff': self.staff_profiles.filter(role__in=['manager', 'host']).count(),
+        }
+
+    def can_add_resource(self, resource: str, increment: int = 1) -> tuple[bool, str | None]:
+        limits = self.get_plan_limits()
+        usage = self.get_usage_snapshot()
+        limit = limits.get(resource)
+        if limit is None:
+            return True, None
+        current = usage.get(resource, 0)
+        if current + increment <= limit:
+            return True, None
+        return (
+            False,
+            f"Лимит тарифа {self.get_plan_display()} по ресурсу '{resource}' исчерпан: {current}/{limit}.",
+        )
+
+    def get_onboarding_checklist(self) -> list[dict[str, object]]:
+        usage = self.get_usage_snapshot()
+        return [
+            {
+                'key': 'tables',
+                'label': 'Добавьте столы',
+                'done': usage['tables'] > 0,
+                'description': 'Создайте хотя бы один стол и расставьте его на схеме зала.',
+                'path': '/app/tables',
+            },
+            {
+                'key': 'hours',
+                'label': 'Настройте часы работы',
+                'done': self.operating_hours.exists(),
+                'description': 'Укажите расписание, чтобы публичное бронирование показывало реальные слоты.',
+                'path': '/app/settings',
+            },
+            {
+                'key': 'staff',
+                'label': 'Пригласите staff',
+                'done': usage['staff'] > 0,
+                'description': 'Добавьте менеджера или хостес, чтобы команда могла работать в CRM.',
+                'path': '/app/staff',
+            },
+            {
+                'key': 'billing',
+                'label': 'Проверьте подписку',
+                'done': not self.is_paid_plan() or self.is_subscription_live(),
+                'description': 'Без активной подписки Plus/Pro часть CRM-функций будет ограничена.',
+                'path': '/app/billing',
+            },
+        ]
+
     def has_feature(self, feature: str) -> bool:
         """
-        Simple feature-flag matrix per тариф.
-        starter: базовый функционал без продвинутой аналитики/карты.
-        pro: включает карту столов и базовую аналитику.
-        business: всё, включая расширенную аналитику/автоматизации.
+        Simple feature-flag matrix per subscription plan.
+        none: базовый операционный минимум — брони, схема зала и один зал с лимитами.
+        plus: ежедневная операционная работа ресторана.
+        pro: plus + продвинутая аналитика и автоматизации.
         """
-        plan = self.plan or 'starter'
-        starter_features = {
+        overrides = self.feature_flags or {}
+        if isinstance(overrides.get(feature), bool):
+            return overrides[feature]
+
+        plan = self.get_effective_plan()
+        none_features = {
             'bookings_basic',
             'chat_basic',
-        }
-        pro_features = starter_features | {
             'table_map',
+            'zones',
+        }
+        plus_features = none_features | {
+            'shifts',
+            'staff_basic',
+            'menu_basic',
+            'orders_basic',
             'analytics_basic',
         }
-        business_features = pro_features | {
+        pro_features = plus_features | {
             'analytics_advanced',
             'automations',
         }
-        if plan == 'starter':
-            return feature in starter_features
-        if plan == 'pro':
-            return feature in pro_features
-        return feature in business_features
+        if self.is_paid_plan() and not self.is_subscription_live():
+            plan = self.PLAN_NONE
+        if plan == self.PLAN_NONE:
+            return feature in none_features
+        if plan == self.PLAN_PLUS:
+            return feature in plus_features
+        return feature in pro_features
+
+    def save(self, *args, **kwargs):
+        self.plan = self.get_effective_plan()
+        super().save(*args, **kwargs)
+
+
+class RestaurantInvoice(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_PAID = 'paid'
+    STATUS_FAILED = 'failed'
+    STATUS_VOID = 'void'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Ожидает оплаты'),
+        (STATUS_PAID, 'Оплачен'),
+        (STATUS_FAILED, 'Не оплачен'),
+        (STATUS_VOID, 'Аннулирован'),
+    ]
+
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='invoices')
+    plan = models.CharField(max_length=20, choices=Restaurant.PLAN_CHOICES)
+    number = models.CharField(max_length=64, unique=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=8, default='KZT')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    issued_at = models.DateTimeField(default=timezone.now)
+    due_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    period_start = models.DateTimeField(null=True, blank=True)
+    period_end = models.DateTimeField(null=True, blank=True)
+    note = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-issued_at']
+        indexes = [
+            models.Index(fields=['restaurant', '-issued_at']),
+            models.Index(fields=['restaurant', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.number} - {self.restaurant.name}"
+
+
+class RestaurantAuditLog(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='audit_logs')
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='restaurant_audit_logs',
+    )
+    event_type = models.CharField(max_length=50)
+    target_type = models.CharField(max_length=50, default='restaurant')
+    target_id = models.CharField(max_length=64, blank=True)
+    summary = models.CharField(max_length=255)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['restaurant', '-created_at']),
+            models.Index(fields=['event_type', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.restaurant.name} · {self.event_type}"
 
 class OpeningHours(models.Model):
     DAY_CHOICES = [
@@ -270,7 +474,7 @@ class Availability(models.Model):
         verbose_name_plural = "Availabilities"
     def __str__(self):
         return f"{self.restaurant.name} - {self.date}"
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.db.models import Avg
 class Review(models.Model):
@@ -291,6 +495,66 @@ def update_restaurant_rating(sender, instance, **kwargs):
     avg_rating = Review.objects.filter(restaurant=restaurant).aggregate(Avg('rating'))['rating__avg']
     restaurant.rating = avg_rating or 0.0
     restaurant.save()
+
+
+@receiver(pre_save, sender=Restaurant)
+def capture_restaurant_subscription_state(sender, instance, **kwargs):
+    if not instance.pk:
+        instance._subscription_audit_previous = None
+        return
+    try:
+        previous = Restaurant.objects.only(
+            'status',
+            'plan',
+            'payment_status',
+            'current_period_ends_at',
+            'grace_until',
+        ).get(pk=instance.pk)
+        instance._subscription_audit_previous = {
+            'status': previous.status,
+            'plan': previous.plan,
+            'payment_status': previous.payment_status,
+            'current_period_ends_at': previous.current_period_ends_at.isoformat() if previous.current_period_ends_at else None,
+            'grace_until': previous.grace_until.isoformat() if previous.grace_until else None,
+        }
+    except Restaurant.DoesNotExist:
+        instance._subscription_audit_previous = None
+
+
+@receiver(post_save, sender=Restaurant)
+def log_restaurant_subscription_state(sender, instance, created, **kwargs):
+    if created:
+        RestaurantAuditLog.objects.create(
+            restaurant=instance,
+            event_type='restaurant_created',
+            summary=f"Создан ресторан {instance.name}.",
+            payload={'plan': instance.plan, 'payment_status': instance.payment_status},
+        )
+        return
+
+    previous = getattr(instance, '_subscription_audit_previous', None)
+    if previous is None:
+        return
+
+    current = {
+        'status': instance.status,
+        'plan': instance.plan,
+        'payment_status': instance.payment_status,
+        'current_period_ends_at': instance.current_period_ends_at.isoformat() if instance.current_period_ends_at else None,
+        'grace_until': instance.grace_until.isoformat() if instance.grace_until else None,
+    }
+    if current == previous:
+        return
+
+    RestaurantAuditLog.objects.create(
+        restaurant=instance,
+        event_type='subscription_updated',
+        summary='Обновлены статус ресторана или параметры подписки.',
+        payload={
+            'before': previous,
+            'after': current,
+        },
+    )
 
 from django.core.mail import send_mail
 from django.conf import settings

@@ -8,13 +8,15 @@ from django.core.cache import cache
 from django.db import connections
 from django.db import OperationalError
 from django.db import IntegrityError
-from .models import PushToken, OTPVerification
+from django.db import transaction
+from .models import OTPDeliveryAttempt, PushToken, OTPVerification
 from .serializers import (
     RegisterSerializer,
     CustomTokenObtainPairSerializer,
     PushTokenSerializer,
     SetupRestaurantSerializer,
     UserMeSerializer,
+    UserMeUpdateSerializer,
     SendOTPSerializer,
 )
 import random
@@ -22,12 +24,41 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 
-class UserProfileView(generics.RetrieveAPIView):
-    serializer_class = UserMeSerializer
+
+def _normalize_email(value: str) -> str:
+    return (value or '').strip().lower()
+
+class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_serializer_class(self):
+        if self.request.method in ('PATCH', 'PUT'):
+            return UserMeUpdateSerializer
+        return UserMeSerializer
+
     def get_object(self):
-        return self.request.user
+        return (
+            User.objects.select_related("profile", "profile__restaurant")
+            .only(
+                "id",
+                "username",
+                "email",
+                "first_name",
+                "last_name",
+                "profile__role",
+                "profile__phone",
+                "profile__restaurant_id",
+                "profile__restaurant__is_verified",
+            )
+            .get(pk=self.request.user.pk)
+        )
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = self.get_serializer(user, data=request.data, partial=request.method == 'PATCH')
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserMeSerializer(user).data, status=status.HTTP_200_OK)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -54,26 +85,45 @@ class SendOTPView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = SendOTPSerializer(data=request.data)
         if serializer.is_valid():
-            email = serializer.validated_data['email']
+            email = _normalize_email(serializer.validated_data['email'])
             code = f"{random.randint(100000, 999999)}"
-            
-            # Save or update OTP (also refresh created_at for expiry tracking)
-            OTPVerification.objects.update_or_create(
-                email=email,
-                defaults={'code': code, 'is_verified': False}
-            )
-            OTPVerification.objects.filter(email=email).update(created_at=timezone.now(), is_verified=False, code=code)
-            
-            # Send Email
+
             try:
-                send_mail(
-                    subject='Код подтверждения Kezdes',
-                    message=f'Ваш код подтверждения: {code}\nНикому не сообщайте этот код.',
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=False,
+                with transaction.atomic():
+                    otp_record, created = OTPVerification.objects.update_or_create(
+                        email=email,
+                        defaults={'code': code, 'is_verified': False},
+                    )
+                    if not created:
+                        OTPVerification.objects.filter(pk=otp_record.pk).update(
+                            created_at=timezone.now(),
+                            is_verified=False,
+                            code=code,
+                        )
+
+                    send_mail(
+                        subject='Код подтверждения Kezdes',
+                        message=f'Ваш код подтверждения: {code}\nНикому не сообщайте этот код.',
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[email],
+                        fail_silently=False,
+                    )
+                    OTPDeliveryAttempt.objects.create(
+                        email=email,
+                        status=OTPDeliveryAttempt.STATUS_SENT,
+                        metadata={
+                            "otp_required": bool(getattr(settings, "REQUIRE_EMAIL_OTP", False)),
+                        },
+                    )
+            except Exception:
+                OTPDeliveryAttempt.objects.create(
+                    email=email,
+                    status=OTPDeliveryAttempt.STATUS_FAILED,
+                    error_message="Не удалось отправить письмо. Проверьте настройки почты.",
+                    metadata={
+                        "otp_required": bool(getattr(settings, "REQUIRE_EMAIL_OTP", False)),
+                    },
                 )
-            except Exception as e:
                 return Response(
                     {"detail": "Не удалось отправить письмо. Проверьте настройки почты."},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -82,12 +132,8 @@ class SendOTPView(APIView):
             return Response(
                 {
                     "detail": "Код отправлен на ваш email.",
-                    **(
-                        {"code": code}
-                        if getattr(settings, "DEBUG", False)
-                        and getattr(settings, "EMAIL_BACKEND", "").endswith("console.EmailBackend")
-                        else {}
-                    ),
+                    "otp_required": bool(getattr(settings, "REQUIRE_EMAIL_OTP", False)),
+                    **({"code": code} if getattr(settings, "DEBUG", False) else {}),
                 },
                 status=status.HTTP_200_OK
             )

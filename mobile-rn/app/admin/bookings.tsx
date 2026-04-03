@@ -18,10 +18,11 @@ export default function AdminBookingsScreen() {
     const [onlyToday, setOnlyToday] = useState(false);
 
     const initData = React.useCallback(async () => {
-        if (!user?.access) return;
+        const token = user?.access;
+        if (!token) return;
         setIsLoading(true);
         try {
-            const books = await fetchMyRestaurantBookings(user.access) as any[];
+            const books = await fetchMyRestaurantBookings(token) as any[];
             setBookings(books || []);
         } catch (error) {
             console.error('Error fetching bookings:', error);
@@ -36,8 +37,13 @@ export default function AdminBookingsScreen() {
     }, [initData]);
 
     const handleAction = React.useCallback(async (bookingId: string | number, action: 'confirm' | 'reject') => {
+        const token = user?.access;
+        if (!token) {
+            Alert.alert('Ошибка', 'Сессия истекла. Войдите заново.');
+            return;
+        }
         try {
-            await updateBookingStatus(bookingId, action, user.access);
+            await updateBookingStatus(bookingId, action, token);
             setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: action === 'confirm' ? 'approved' : 'rejected' } : b));
         } catch (error) {
             Alert.alert('Ошибка', 'Не удалось обновить статус');
@@ -45,8 +51,13 @@ export default function AdminBookingsScreen() {
     }, [user?.access]);
 
     const handlePatchStatus = React.useCallback(async (bookingId: string | number, status: 'no_show' | 'complete') => {
+        const token = user?.access;
+        if (!token) {
+            Alert.alert('Ошибка', 'Сессия истекла. Войдите заново.');
+            return;
+        }
         try {
-            await updateBookingStatus(bookingId, status, user.access);
+            await updateBookingStatus(bookingId, status, token);
             const nextStatus = status === 'complete' ? 'completed' : 'no_show';
             setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: nextStatus } : b));
         } catch (error) {

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshCw } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { extractResults, getLocalDateString } from '@/features/reservations/shared';
 
 const HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`);
 const HOUR_HEIGHT = 100;
@@ -16,6 +18,11 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; 
     pending: { bg: 'bg-amber-500/5', text: 'text-amber-600', border: 'border-amber-500/20', icon: 'pending' },
     seated: { bg: 'bg-indigo-500/5', text: 'text-indigo-600', border: 'border-indigo-500/20', icon: 'chair_alt' },
     cancelled: { bg: 'bg-rose-500/5', text: 'text-rose-600', border: 'border-rose-500/20', icon: 'cancel' },
+    cancelled_by_user: { bg: 'bg-rose-500/5', text: 'text-rose-600', border: 'border-rose-500/20', icon: 'cancel' },
+    cancelled_by_restaurant: { bg: 'bg-rose-500/5', text: 'text-rose-600', border: 'border-rose-500/20', icon: 'cancel' },
+    rejected: { bg: 'bg-rose-500/5', text: 'text-rose-600', border: 'border-rose-500/20', icon: 'block' },
+    no_show: { bg: 'bg-slate-500/5', text: 'text-slate-600', border: 'border-slate-500/20', icon: 'person_off' },
+    completed: { bg: 'bg-slate-500/5', text: 'text-slate-600', border: 'border-slate-500/20', icon: 'done_all' },
 };
 
 interface CalendarBooking {
@@ -39,7 +46,7 @@ interface CalendarTable {
 }
 
 function formatDate(d: Date) {
-    return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function addDays(d: Date, n: number) {
@@ -48,32 +55,41 @@ function addDays(d: Date, n: number) {
     return r;
 }
 
+function parseDateInput(value: string) {
+    const parsed = new Date(`${value}T12:00:00`);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 export default function CalendarPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [bookings, setBookings] = useState<CalendarBooking[]>([]);
     const [tables, setTables] = useState<CalendarTable[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'timeline' | 'day'>('timeline');
     const [selectedBooking, setSelectedBooking] = useState<CalendarBooking | null>(null);
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const currentDateValue = getLocalDateString(currentDate);
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const dStr = currentDate.toISOString().slice(0, 10);
+            setError(null);
+            const dStr = getLocalDateString(currentDate);
             const [bRes, tRes] = await Promise.all([
                 api.get(`/bookings/my_restaurant/?date=${dStr}`),
                 api.get('/tables/status/').catch(() => api.get('/tables/'))
             ]);
 
-            setBookings(Array.isArray(bRes.data) ? bRes.data : (bRes.data.results || []));
-            setTables(tRes.data || []);
+            setBookings(extractResults<CalendarBooking>(bRes.data));
+            setTables(extractResults<CalendarTable>(tRes.data));
         } catch (e) {
-            toast.error("Failed to fetch operational schedule");
+            setError('Не удалось загрузить календарь смены и бронирований. Проверьте соединение и повторите запрос.');
+            toast.error('Не удалось загрузить расписание.');
         } finally {
             setLoading(false);
         }
@@ -111,7 +127,7 @@ export default function CalendarPage() {
                         <span className="material-symbols-outlined text-[28px]">calendar_month</span>
                     </div>
                     <div className="space-y-1">
-                        <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-widest leading-none">Operation Schedule</h1>
+                        <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-widest leading-none">Календарь смены</h1>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{formatDate(currentDate)}</p>
                     </div>
                 </div>
@@ -124,7 +140,7 @@ export default function CalendarPage() {
                                     initial={{ width: 0, opacity: 0 }}
                                     animate={{ width: 220, opacity: 1 }}
                                     exit={{ width: 0, opacity: 0 }}
-                                    placeholder="Find guest record..."
+                                    placeholder="Поиск по имени..."
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
                                     className="h-12 pl-4 pr-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold outline-none ring-2 ring-transparent focus:ring-[#0047FF]/10 transition-all"
@@ -146,14 +162,33 @@ export default function CalendarPage() {
                                 onClick={() => setViewMode(mode as any)}
                                 className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-700 text-[#0047FF] shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                {mode === 'timeline' ? 'Matrix' : 'Feed'}
+                                {mode === 'timeline' ? 'Таймлайн' : 'Список'}
                             </button>
                         ))}
                     </div>
 
                     <div className="flex items-center gap-1">
                         <button onClick={() => setCurrentDate(d => addDays(d, -1))} className="p-3 border border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 hover:text-[#0047FF] transition-all"><span className="material-symbols-outlined">chevron_left</span></button>
-                        <button onClick={() => setCurrentDate(new Date())} className="px-6 py-3 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#0047FF] transition-all">Now</button>
+                        <button
+                            onClick={() => setCurrentDate(new Date())}
+                            aria-label="calendar-today"
+                            className="px-6 py-3 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#0047FF] transition-all"
+                        >
+                            Сегодня
+                        </button>
+                        <button
+                            onClick={() => setCurrentDate(addDays(new Date(), 1))}
+                            className="px-4 py-3 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#0047FF] transition-all"
+                        >
+                            Завтра
+                        </button>
+                        <input
+                            type="date"
+                            aria-label="calendar-date-input"
+                            value={currentDateValue}
+                            onChange={(event) => setCurrentDate(parseDateInput(event.target.value))}
+                            className="h-12 rounded-xl border border-slate-100 bg-white px-4 text-xs font-bold text-slate-700 outline-none ring-2 ring-transparent transition-all focus:border-[#0047FF] focus:ring-[#0047FF]/10 dark:border-slate-800 dark:bg-slate-800"
+                        />
                         <button onClick={() => setCurrentDate(d => addDays(d, 1))} className="p-3 border border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 hover:text-[#0047FF] transition-all"><span className="material-symbols-outlined">chevron_right</span></button>
                     </div>
 
@@ -162,7 +197,7 @@ export default function CalendarPage() {
                         className="h-14 px-8 bg-[#0047FF] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0039cc] transition-all flex items-center gap-3 shadow-2xl shadow-[#0047FF]/20"
                     >
                         <span className="material-symbols-outlined text-[20px]">add_circle</span>
-                        Book
+                        Новая бронь
                     </button>
                 </div>
             </header>
@@ -170,6 +205,21 @@ export default function CalendarPage() {
             {/* Calendar Body */}
             <div className="flex-1 overflow-hidden relative">
                 <div ref={scrollRef} className="absolute inset-0 overflow-auto no-scrollbar bg-slate-50/20 dark:bg-slate-900/40">
+                    {error && (
+                        <div className="sticky top-0 z-30 mx-6 mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <span>{error}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void fetchData()}
+                                    className="inline-flex items-center gap-2 self-start rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
+                                >
+                                    <RefreshCw size={14} />
+                                    Retry
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-full gap-4">
                             <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#0047FF]/20 border-t-[#0047FF]"></div>
@@ -188,7 +238,7 @@ export default function CalendarPage() {
                             {/* Unassigned row */}
                             <div className="flex border-b border-slate-100 dark:border-slate-800 h-24 bg-slate-50/40 dark:bg-slate-800/20">
                                 <div className="w-40 px-8 flex flex-col justify-center border-r border-slate-100 dark:border-slate-800 sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[4px_0_10px_rgba(0,0,0,0.02)] shrink-0">
-                                    <span className="font-black text-rose-500 text-[10px] uppercase tracking-[0.2em] italic">Waitlist</span>
+                                    <span className="font-black text-rose-500 text-[10px] uppercase tracking-[0.2em] italic">Лист ожидания</span>
                                 </div>
                                 <div className="flex-1 relative">
                                     {HOURS.map((_, i) => <div key={i} className="absolute h-full border-r border-slate-100/30 dark:border-slate-800/30" style={{ left: (i + 1) * 160 }} />)}
@@ -203,12 +253,12 @@ export default function CalendarPage() {
                                 <div key={t.id} className="flex border-b border-slate-100 dark:border-slate-800 h-24 group">
                                     <div className="w-40 px-8 flex flex-col justify-center border-r border-slate-100 dark:border-slate-800 sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[4px_0_10px_rgba(0,0,0,0.02)] shrink-0">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-black text-slate-900 dark:text-white text-lg italic tracking-tighter">#{t.number}</span>
-                                        </div>
-                                        <span className="text-[9px] font-black text-slate-400 flex items-center gap-1.5 uppercase tracking-widest">
-                                            <span className="material-symbols-outlined text-[12px] text-[#0047FF]">group</span> {t.seats} PAX
-                                        </span>
+                                        <span className="font-black text-slate-900 dark:text-white text-lg italic tracking-tighter">#{t.number}</span>
                                     </div>
+                                    <span className="text-[9px] font-black text-slate-400 flex items-center gap-1.5 uppercase tracking-widest">
+                                            <span className="material-symbols-outlined text-[12px] text-[#0047FF]">group</span> {t.seats} гостей
+                                    </span>
+                                </div>
                                     <div className="flex-1 relative">
                                         {HOURS.map((_, i) => <div key={i} className="absolute h-full border-r border-slate-100/30 dark:border-slate-800/30" style={{ left: (i + 1) * 160 }} />)}
                                         {filteredBookings.filter(b => b.table_id === t.id).map(b => (
@@ -252,11 +302,11 @@ export default function CalendarPage() {
                                                 <div className="space-y-2">
                                                     <div className="flex items-center gap-2">
                                                         <span className="material-symbols-outlined text-[18px]">{status.icon}</span>
-                                                        <p className="font-black text-lg tracking-tight leading-none uppercase italic">{b.user_name || 'Walk-in Guest'}</p>
+                                                        <p className="font-black text-lg tracking-tight leading-none uppercase italic">{b.user_name || 'Гость'}</p>
                                                     </div>
                                                     <div className="flex items-center gap-4">
                                                         <p className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 opacity-70">
-                                                            <span className="material-symbols-outlined text-[14px]">groups</span> {b.guests} PAX
+                                                            <span className="material-symbols-outlined text-[14px]">groups</span> {b.guests} гостей
                                                         </p>
                                                         {b.table_number && (
                                                             <p className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 opacity-70">
@@ -294,7 +344,7 @@ export default function CalendarPage() {
                             className="fixed top-0 right-0 bottom-0 w-full md:w-[450px] bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 z-[70] flex flex-col shadow-[-20px_0_60px_rgba(0,0,0,0.1)]"
                         >
                             <div className="p-8 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] text-[10px]">Reservation Intelligence</h3>
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] text-[10px]">Детали бронирования</h3>
                                 <button onClick={() => setSelectedBooking(null)} className="material-symbols-outlined text-slate-400 hover:text-[#0047FF] transition-all">close</button>
                             </div>
 
@@ -304,22 +354,22 @@ export default function CalendarPage() {
                                         {selectedBooking.user_name?.[0] || 'W'}
                                     </div>
                                     <div className="space-y-1">
-                                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">{selectedBooking.user_name || 'Walk-in Guest'}</h2>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Entry UID #{selectedBooking.id}</p>
+                                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">{selectedBooking.user_name || 'Гость'}</h2>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Заявка #{selectedBooking.id}</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <DetailCard label="Entry Time" value={selectedBooking.time?.slice(0, 5)} icon="schedule" />
-                                    <DetailCard label="Size" value={`${selectedBooking.guests} PAX`} icon="groups" />
-                                    <DetailCard label="Station" value={selectedBooking.table_number ? `Unit #${selectedBooking.table_number}` : 'Unassigned'} icon="table_bar" />
-                                    <DetailCard label="Lifecycle" value={selectedBooking.status?.toUpperCase()} icon="sync_saved_locally" />
+                                    <DetailCard label="Время" value={selectedBooking.time?.slice(0, 5)} icon="schedule" />
+                                    <DetailCard label="Гостей" value={`${selectedBooking.guests} гостей`} icon="groups" />
+                                    <DetailCard label="Стол" value={selectedBooking.table_number ? `#${selectedBooking.table_number}` : 'Не назначен'} icon="table_bar" />
+                                    <DetailCard label="Статус" value={selectedBooking.status?.toUpperCase()} icon="sync_saved_locally" />
                                 </div>
 
                                 {selectedBooking.comment && (
                                     <div className="p-8 bg-amber-500/5 border border-amber-500/10 rounded-3xl space-y-2">
                                         <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-[16px]">notes</span> Guest Briefing
+                                            <span className="material-symbols-outlined text-[16px]">notes</span> Комментарий гостя
                                         </p>
                                         <p className="text-sm text-amber-900 dark:text-amber-200 font-bold leading-relaxed">{selectedBooking.comment}</p>
                                     </div>
@@ -328,17 +378,17 @@ export default function CalendarPage() {
 
                             <div className="p-8 border-t border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50 flex flex-col gap-4">
                                 <button
-                                    onClick={() => navigate('/app/bookings')}
+                                    onClick={() => navigate(`/app/bookings?id=${selectedBooking.id}`)}
                                     className="w-full h-16 bg-[#0047FF] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#0039cc] transition-all shadow-xl shadow-[#0047FF]/20 flex items-center justify-center gap-3"
                                 >
                                     <span className="material-symbols-outlined text-[18px]">edit_note</span>
-                                    Modify Reservation
+                                    Открыть в бронированиях
                                 </button>
                                 <button
                                     onClick={() => setSelectedBooking(null)}
                                     className="w-full h-14 border border-slate-100 dark:border-slate-800 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-slate-900 dark:hover:text-white transition-all"
                                 >
-                                    Dismiss Workspace
+                                    Закрыть
                                 </button>
                             </div>
                         </motion.aside>
@@ -363,7 +413,7 @@ function BookingBlock({ booking, onClick }: { booking: CalendarBooking; onClick:
         >
             <div className="flex items-center gap-2 overflow-hidden">
                 <span className="material-symbols-outlined text-[14px] shrink-0">{status.icon}</span>
-                <p className="font-black text-[10px] uppercase tracking-widest truncate">{booking.user_name || 'Walk-in'}</p>
+                <p className="font-black text-[10px] uppercase tracking-widest truncate">{booking.user_name || 'Гость'}</p>
             </div>
             <div className="flex items-center gap-3 opacity-60">
                 <p className="text-[9px] font-black flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">groups</span> {booking.guests}</p>
@@ -379,7 +429,7 @@ function DetailCard({ label, value, icon }: { label: string; value?: string | nu
             <p className="text-[9px] font-black text-slate-400 group-hover:text-[#0047FF] uppercase tracking-widest mb-2 flex items-center gap-2 transition-colors">
                 <span className="material-symbols-outlined text-[14px]">{icon}</span> {label}
             </p>
-            <p className="font-black text-slate-900 dark:text-white text-lg tracking-tighter uppercase italic truncate">{value || 'N/A'}</p>
+            <p className="font-black text-slate-900 dark:text-white text-lg tracking-tighter uppercase italic truncate">{value || '—'}</p>
         </div>
     );
 }

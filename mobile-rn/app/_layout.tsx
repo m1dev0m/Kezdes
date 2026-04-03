@@ -1,11 +1,11 @@
-import { Stack, useSegments, useRouter } from 'expo-router';
+import { Stack, useGlobalSearchParams, useSegments, useRouter } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider, useAuth } from '../lib/auth-context';
+import { AuthProvider, useAuth, isAdminRole, isRestaurantRole, getPostAuthRoute, sanitizeRedirectTarget, setPendingPostAuthRoute } from '../lib/auth-context';
 import { NotificationProvider } from './notifications';
 import { useEffect } from 'react';
 
@@ -15,47 +15,61 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, isLoading } = useAuth();
     const segments = useSegments();
     const router = useRouter();
+    const globalSearchParams = useGlobalSearchParams();
 
     useEffect(() => {
         if (isLoading) return;
 
-        const inAuthGroup = segments[0] === 'auth';
-        const isRoot = (segments as any).length === 0 || (segments.length === 1 && (segments[0] as any) === 'index');
-        const isOnboarding = segments[0] === 'onboarding';
+        const routeSegments = segments as string[];
+        const routeGroup = routeSegments[0];
+        const isRoot = routeSegments.length === 0 || (routeSegments.length === 1 && routeGroup === 'index');
+        const isAuthGroup = routeGroup === 'auth';
+        const isOnboarding = routeGroup === 'onboarding';
+        const isAdminGroup = routeGroup === 'admin';
+        const isTabsGroup = routeGroup === '(tabs)';
+        const currentPath = '/' + routeSegments.filter(Boolean).join('/');
 
-        const current = '/' + (segments as string[]).filter(Boolean).join('/');
-        const safeReplace = (to: string) => {
-            if (current !== to) router.replace(to);
+        const safeReplace = (to: Parameters<typeof router.replace>[0]) => {
+            if (currentPath !== to) {
+                router.replace(to);
+            }
         };
 
         if (!user) {
-            if (!inAuthGroup && !isRoot && !isOnboarding) {
-                // Not authenticated, trying to go to restricted area
-                // NOTE: Using a timeout or checking to ensure we haven't already just navigated here
-                requestAnimationFrame(() => safeReplace('/onboarding'));
+            if (isAdminGroup || isTabsGroup) {
+                setPendingPostAuthRoute(currentPath);
+                safeReplace('/onboarding');
             }
-        } else {
-            const isRestaurantOwner = user.role === 'owner' || user.role === 'restaurant_admin' || user.role === 'restaurant_owner';
-
-            if (segments[0] === 'admin' && !isRestaurantOwner) {
-                requestAnimationFrame(() => safeReplace('/(tabs)/home'));
-                return;
-            }
-
-            if (segments[0] === '(tabs)' && isRestaurantOwner) {
-                requestAnimationFrame(() => safeReplace('/admin'));
-                return;
-            }
-
-            if (inAuthGroup || isRoot || isOnboarding) {
-                if (isRestaurantOwner) {
-                    requestAnimationFrame(() => safeReplace('/admin'));
-                } else {
-                    requestAnimationFrame(() => safeReplace('/(tabs)/home'));
-                }
-            }
+            return;
         }
-    }, [user, isLoading, segments, router]);
+
+        const adminTarget = isAdminRole(user.role) || isRestaurantRole(user.role)
+            ? getPostAuthRoute(user)
+            : '/(tabs)/home';
+
+        const isRestaurantUser = adminTarget === '/admin' || adminTarget === '/admin/setup';
+
+        if (isAdminGroup && !isRestaurantUser) {
+            safeReplace('/(tabs)/home');
+            return;
+        }
+
+        if (isTabsGroup && isRestaurantUser) {
+            safeReplace('/admin');
+            return;
+        }
+
+        if (isAuthGroup || isRoot || isOnboarding) {
+            const redirectTo = sanitizeRedirectTarget(
+                typeof globalSearchParams.redirectTo === 'string' ? globalSearchParams.redirectTo : '',
+            );
+            if (user && redirectTo) {
+                safeReplace(redirectTo as Parameters<typeof router.replace>[0]);
+                return;
+            }
+            safeReplace(user ? adminTarget : '/onboarding');
+        }
+    }, [user, isLoading, segments, router, globalSearchParams.redirectTo]);
 
 
 

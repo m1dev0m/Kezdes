@@ -20,6 +20,8 @@ class CustomerSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source='name', read_only=True)
     total_bookings = serializers.IntegerField(source='visits_count', read_only=True)
     is_vip = serializers.SerializerMethodField(read_only=True)
+    is_blacklisted = serializers.SerializerMethodField(read_only=True)
+    risk_label = serializers.SerializerMethodField(read_only=True)
     notes = serializers.SerializerMethodField(read_only=True)
     tags = serializers.CharField(required=False, allow_blank=True)
 
@@ -28,12 +30,24 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'restaurant', 'name', 'full_name', 'phone', 'email',
             'visits_count', 'total_bookings', 'total_spent', 'avg_check', 'last_visit',
-            'date_of_birth', 'tags',
-            'created_at', 'visit_history', 'internal_notes', 'notes', 'is_vip'
+            'date_of_birth', 'tags', 'flag', 'no_show_count',
+            'created_at', 'visit_history', 'internal_notes', 'notes', 'is_vip', 'is_blacklisted', 'risk_label'
         ]
 
     def get_is_vip(self, obj):
-        return (obj.visits_count or 0) >= 5
+        return obj.flag == 'vip' or (obj.visits_count or 0) >= 5
+
+    def get_is_blacklisted(self, obj):
+        return obj.flag == 'problem'
+
+    def get_risk_label(self, obj):
+        if obj.flag == 'problem':
+            return 'blacklist'
+        if (obj.no_show_count or 0) >= 2:
+            return 'no_show_risk'
+        if obj.flag == 'vip' or (obj.visits_count or 0) >= 5:
+            return 'vip'
+        return 'regular'
 
     def get_notes(self, obj):
         notes = obj.internal_notes.order_by('-updated_at').values_list('content', flat=True)

@@ -71,6 +71,23 @@ def other_restaurant(other_owner):
 def client():
     return APIClient()
 
+@pytest.fixture
+def manager(db, restaurant):
+    u = User.objects.create_user("table_manager", "tm@test.com", "pass123")
+    u.profile.role = "manager"
+    u.profile.restaurant = restaurant
+    u.profile.save()
+    return u
+
+
+@pytest.fixture
+def host(db, restaurant):
+    u = User.objects.create_user("table_host", "th@test.com", "pass123")
+    u.profile.role = "host"
+    u.profile.restaurant = restaurant
+    u.profile.save()
+    return u
+
 
 @pytest.fixture
 def future_date():
@@ -173,6 +190,15 @@ class TestTableCreate:
         resp = client.post("/api/v1/tables/", {"name": "1", "capacity": 4})
         assert resp.status_code in (403, 400)
 
+    @pytest.mark.django_db
+    def test_free_plan_table_limit_enforced(self, client, owner, restaurant):
+        for index in range(10):
+            Table.objects.create(restaurant=restaurant, number=f"T{index + 1}", seats=4)
+        client.force_authenticate(user=owner)
+        resp = client.post("/api/v1/tables/", {"name": "T11", "capacity": 4}, format="json")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Лимит тарифа" in str(resp.data)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. READ (LIST / RETRIEVE)
@@ -258,6 +284,23 @@ class TestTableUpdate:
         assert resp.status_code == status.HTTP_200_OK
         t.refresh_from_db()
         assert t.is_active is False
+
+    @pytest.mark.django_db
+    def test_update_layout_fields(self, client, owner, restaurant):
+        t = Table.objects.create(restaurant=restaurant, number="1", seats=4)
+        client.force_authenticate(user=owner)
+        resp = client.patch(
+            f"/api/v1/tables/{t.id}/",
+            {"x": 180, "y": 120, "width": 96, "height": 72, "rotation": 15},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_200_OK
+        t.refresh_from_db()
+        assert t.x == 180
+        assert t.y == 120
+        assert t.width == 96
+        assert t.height == 72
+        assert t.rotation == 15
 
     @pytest.mark.django_db
     def test_update_capacity_out_of_range_rejected(self, client, owner, restaurant):
@@ -378,6 +421,55 @@ class TestTenantIsolation:
         resp = client.delete(f"/api/v1/tables/{t.id}/")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
         assert Table.objects.filter(id=t.id).exists()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5b. ROLE PERMISSIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestTableRolePermissions:
+
+    @pytest.mark.django_db
+    def test_host_can_view_tables_and_status(self, client, host, restaurant, future_date):
+        t = Table.objects.create(restaurant=restaurant, number="1", seats=4)
+        client.force_authenticate(user=host)
+
+        resp = client.get("/api/v1/tables/")
+        assert resp.status_code == status.HTTP_200_OK
+        data = resp.data if isinstance(resp.data, list) else resp.data.get("results", [])
+        assert len(data) == 1
+        assert data[0]["id"] == t.id
+
+        resp = client.get(f"/api/v1/tables/status/?date={future_date}&time=19:00")
+        assert resp.status_code == status.HTTP_200_OK
+
+    @pytest.mark.django_db
+    def test_host_cannot_create_update_or_delete(self, client, host, restaurant):
+        existing = Table.objects.create(restaurant=restaurant, number="1", seats=4)
+        client.force_authenticate(user=host)
+
+        resp = client.post("/api/v1/tables/", {"name": "2", "capacity": 2})
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+        resp = client.patch(f"/api/v1/tables/{existing.id}/", {"capacity": 6})
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+        resp = client.delete(f"/api/v1/tables/{existing.id}/")
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    @pytest.mark.django_db
+    def test_manager_can_create_and_update_but_cannot_delete(self, client, manager, restaurant):
+        client.force_authenticate(user=manager)
+
+        resp = client.post("/api/v1/tables/", {"name": "M1", "capacity": 4})
+        assert resp.status_code == status.HTTP_201_CREATED
+        table_id = resp.data["id"]
+
+        resp = client.patch(f"/api/v1/tables/{table_id}/", {"capacity": 6})
+        assert resp.status_code == status.HTTP_200_OK
+
+        resp = client.delete(f"/api/v1/tables/{table_id}/")
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
 
 
 # ══════════════════════════════════════════════════════════════════════════════

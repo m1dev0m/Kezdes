@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
 export default function RestaurantFeedbackScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
+    const restaurantName = typeof params.restaurantName === 'string' ? params.restaurantName : 'Ресторан';
+    const visitDate = typeof params.visitDate === 'string' ? params.visitDate : 'Дата визита не указана';
 
     const handleSubmit = () => {
         if (rating === 0) {
             Alert.alert("Ошибка", "Пожалуйста, поставьте оценку");
             return;
         }
-        Alert.alert("Спасибо!", "Ваш отзыв успешно отправлен");
+        Alert.alert("Спасибо!", `Ваш отзыв о ресторане «${restaurantName}» отправлен.`);
         router.back();
     };
 
@@ -35,8 +38,8 @@ export default function RestaurantFeedbackScreen() {
                         <Ionicons name="restaurant" size={32} color={colors.primary} />
                     </View>
                     <View>
-                        <Text style={styles.restaurantName}>hhal</Text>
-                        <Text style={styles.restaurantSub}>Ваш визит был 25 Октября</Text>
+                        <Text style={styles.restaurantName}>{restaurantName}</Text>
+                        <Text style={styles.restaurantSub}>Ваш визит: {visitDate}</Text>
                     </View>
                 </View>
 
@@ -69,7 +72,11 @@ export default function RestaurantFeedbackScreen() {
                     />
                 </View>
 
-                <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+                <TouchableOpacity
+                    style={[styles.submitBtn, rating === 0 ? styles.submitBtnDisabled : null]}
+                    onPress={handleSubmit}
+                    disabled={rating === 0}
+                >
                     <Text style={styles.submitText}>Отправить отзыв</Text>
                 </TouchableOpacity>
             </ScrollView>
@@ -92,6 +99,27 @@ const styles = StyleSheet.create({
     starsRow: { flexDirection: 'row', gap: 12 },
     commentSection: { marginBottom: 40 },
     input: { backgroundColor: colors.surface, borderRadius: 32, padding: 20, fontSize: 15, color: colors.text, minHeight: 150, borderWidth: 1, borderColor: colors.border },
-    submitBtn: { backgroundColor: colors.primary, paddingVertical: 18, borderRadius: 32, alignItems: 'center', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
+    submitBtn: {
+        backgroundColor: colors.primary,
+        paddingVertical: 18,
+        borderRadius: 32,
+        alignItems: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 5,
+            },
+            web: {
+                boxShadow: '0px 10px 20px rgba(0, 71, 255, 0.18)',
+            },
+            default: {},
+        }),
+    },
+    submitBtnDisabled: { backgroundColor: '#94a3b8' },
     submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

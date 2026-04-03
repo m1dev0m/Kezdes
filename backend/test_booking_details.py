@@ -45,8 +45,8 @@ class ReproIssuesTest(APITestCase):
             "date": "2030-10-21",
             "time": "20:00:00",
             "guests": 2,
-            "user_name_manual": "Guest 1",
-            "user_phone_manual": "+123456789",
+            "user_name": "Guest 1",
+            "user_phone": "+123456789",
             "status": "confirmed",
         }
         res = self.client.post("/api/v1/bookings/create_manual/", manual_payload, format="json")
@@ -66,8 +66,8 @@ class ReproIssuesTest(APITestCase):
             "date": "2030-10-22",
             "time": "20:00:00",
             "guests": 2,
-            "user_name_manual": "Guest 2",
-            "user_phone_manual": "+987654321",
+            "user_name": "Guest 2",
+            "user_phone": "+987654321",
             "status": "confirmed",
         }
         res = self.client.post("/api/v1/bookings/create_manual/", manual_payload, format="json")

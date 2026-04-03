@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { Pressable, Text, ActivityIndicator, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 
 export interface ButtonProps {
@@ -9,7 +9,7 @@ export interface ButtonProps {
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Button({
@@ -25,7 +25,7 @@ export function Button({
 
   const variants = {
     primary: {
-      backgroundColor: theme.colors.primary[600],
+      backgroundColor: theme.colors.primary,
       color: '#ffffff',
     },
     secondary: {
@@ -57,30 +57,12 @@ export function Button({
     },
   };
 
-  const buttonStyle = [
-    styles.base,
-    {
-      backgroundColor: variants[variant].backgroundColor,
-      ...sizes[size],
-    },
-    disabled && styles.disabled,
-    style,
-  ];
+  const buttonStyle = [styles.base, { backgroundColor: variants[variant].backgroundColor, ...sizes[size] }, disabled && styles.disabled, style];
 
-  const textStyle = [
-    styles.text,
-    {
-      color: variants[variant].color,
-      fontSize: theme.fontSize.sm,
-    },
-  ];
+  const textStyle: StyleProp<TextStyle> = [styles.text, { color: variants[variant].color, fontSize: theme.fontSize.sm }];
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled || loading}
-      style={buttonStyle}
-    >
+    <Pressable onPress={onPress} disabled={disabled || loading} style={buttonStyle}>
       {loading && (
         <ActivityIndicator
           size="small"
@@ -89,7 +71,7 @@ export function Button({
         />
       )}
       <Text style={textStyle}>{children}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

@@ -15,15 +15,22 @@ export type ReservationStatus =
 export interface ReservationRecord {
   id: number;
   restaurant: number;
+  user: number | null;
   user_name: string | null;
   user_phone: string | null;
+  guest_email?: string | null;
   date: string;
   time: string;
   guests: number;
   status: ReservationStatus;
+  source?: string | null;
+  event_type?: string | null;
   special_requests?: string | null;
   table_id?: number | null;
   table_number?: string | null;
+  has_preorder?: boolean;
+  orders_count?: number;
+  check_in_time?: string | null;
   history?: Array<{
     id: number;
     event_type: string;
@@ -40,6 +47,17 @@ export interface TableRecord {
   number?: string;
   capacity?: number;
   seats?: number;
+  x?: number | null;
+  y?: number | null;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  table_type?: 'rectangle' | 'square' | 'circle' | string;
+  zone?: number | null;
+  grid_x?: number;
+  grid_y?: number;
+  grid_w?: number;
+  grid_h?: number;
   status?: 'free' | 'reserved' | 'occupied' | 'cleaning' | string;
   is_active?: boolean;
   current_booking?: {
@@ -60,6 +78,10 @@ export interface GuestRecord {
   last_visit: string | null;
   notes?: string;
   is_vip?: boolean;
+  flag?: string;
+  no_show_count?: number;
+  risk_label?: string;
+  is_blacklisted?: boolean;
 }
 
 export interface RestaurantRecord {
@@ -67,11 +89,23 @@ export interface RestaurantRecord {
   name: string;
   description?: string | null;
   address?: string | null;
+  city?: string | null;
   phone?: string | null;
   image_url?: string | null;
   photo_url?: string | null;
   opening_time?: string | null;
   closing_time?: string | null;
+  rating?: number | null;
+  max_party_size?: number | null;
+  reviews?: ReviewRecord[];
+}
+
+export interface ReviewRecord {
+  id: number;
+  user_name?: string | null;
+  rating: number;
+  comment?: string | null;
+  created_at: string;
 }
 
 export function getLocalDateString(date = new Date()): string {
@@ -102,6 +136,22 @@ export function getDateTimeLabel(date?: string | null, time?: string | null): st
   return `${getDateLabel(date)} · ${getTimeLabel(time)}`;
 }
 
+export function buildRestaurantBookHref(
+  restaurantId: number | string,
+  context?: {
+    date?: string | null;
+    time?: string | null;
+    guests?: number | null;
+  },
+): string {
+  const params = new URLSearchParams();
+  if (context?.date) params.set('date', context.date);
+  if (context?.time) params.set('time', context.time);
+  if (context?.guests) params.set('guests', String(context.guests));
+  const query = params.toString();
+  return `/restaurant/${restaurantId}/book${query ? `?${query}` : ''}`;
+}
+
 export function getReservationName(reservation: ReservationRecord): string {
   return reservation.user_name?.trim() || 'Walk-in guest';
 }
@@ -123,6 +173,23 @@ export function getTableLabel(
 
 export function getTableCapacity(table: TableRecord): number {
   return Number(table.capacity ?? table.seats ?? 0);
+}
+
+export function getReservationSourceLabel(source?: string | null): string {
+  switch (source) {
+    case 'admin':
+      return 'Admin';
+    case 'phone':
+      return 'Phone';
+    case 'walk_in':
+      return 'Walk-in';
+    case 'telegram':
+      return 'Telegram';
+    case 'web':
+      return 'Web';
+    default:
+      return 'Web';
+  }
 }
 
 export function getReservationStatusMeta(status: ReservationStatus): {

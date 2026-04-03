@@ -4,17 +4,19 @@ import toast from 'react-hot-toast';
 
 interface GuestWriteReviewModalProps {
     bookingId: number;
+    restaurantId: number;
     restaurantName: string;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export default function GuestWriteReviewModal({ bookingId, restaurantName, onClose, onSuccess }: GuestWriteReviewModalProps) {
+export default function GuestWriteReviewModal({ bookingId, restaurantId, restaurantName, onClose, onSuccess }: GuestWriteReviewModalProps) {
     const [rating, setRating] = useState(0);
     const [hoveredRating, setHoveredRating] = useState(0);
     const [comment, setComment] = useState('');
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const getRatingLabel = () => {
         const value = hoveredRating || rating;
@@ -30,19 +32,24 @@ export default function GuestWriteReviewModal({ bookingId, restaurantName, onClo
 
     const handleSubmit = async () => {
         if (rating === 0) {
+            setErrorMessage('Пожалуйста, выберите оценку.');
             toast.error('Пожалуйста, выберите оценку.');
             return;
         }
+        setErrorMessage(null);
         setLoading(true);
         try {
-            await api.post(`/restaurants/${bookingId}/reviews/`, {
+            await api.post(`/restaurants/${restaurantId}/reviews/`, {
                 rating,
                 comment,
+                booking_id: bookingId,
                 is_anonymous: isAnonymous,
             });
             onSuccess();
         } catch (err: any) {
-            toast.error(err.response?.data?.detail || 'Не удалось отправить отзыв. Возможно, он уже существует.');
+            const detail = err.response?.data?.detail || 'Не удалось отправить отзыв. Возможно, он уже существует.';
+            setErrorMessage(detail);
+            toast.error(detail);
         } finally {
             setLoading(false);
         }
@@ -86,6 +93,11 @@ export default function GuestWriteReviewModal({ bookingId, restaurantName, onClo
                     </div>
 
                     <div className="space-y-4">
+                        {errorMessage && (
+                            <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                                {errorMessage}
+                            </div>
+                        )}
                         <div className="flex flex-col gap-2">
                             <label className="text-slate-700 font-bold text-xs uppercase tracking-widest">Ваш отзыв</label>
                             <textarea
@@ -123,7 +135,7 @@ export default function GuestWriteReviewModal({ bookingId, restaurantName, onClo
                         <button onClick={onClose} className="flex-1 sm:flex-none px-6 py-3 rounded-xl text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-200 transition-colors">
                             Отмена
                         </button>
-                        <button disabled={loading} onClick={handleSubmit} className="flex-1 sm:flex-none min-w-[140px] px-8 py-3 bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-70">
+                        <button disabled={loading || rating === 0} onClick={handleSubmit} className="flex-1 sm:flex-none min-w-[140px] px-8 py-3 bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-70">
                             {loading ? 'Публикация...' : 'Отправить отзыв'}
                         </button>
                     </div>

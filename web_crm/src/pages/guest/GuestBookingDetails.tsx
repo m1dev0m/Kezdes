@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '@/services/api';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import GuestWriteReviewModal from './GuestWriteReviewModal';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { buildRestaurantBookHref } from '@/features/reservations/shared';
 import {
     ChevronLeft,
     Clock,
@@ -22,7 +23,8 @@ import {
     CalendarPlus,
     Settings2,
     Trash2,
-    Star
+    Star,
+    MessageSquare
 } from 'lucide-react';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -51,6 +53,9 @@ interface Booking {
     status: string;
     special_requests?: string;
     table_id?: number;
+    created_at?: string;
+    updated_at?: string;
+    cancelled_at?: string;
     preorder?: {
         id: number;
         items: any[];
@@ -76,6 +81,7 @@ interface MenuCategory {
 
 export default function GuestBookingDetails() {
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
 
     const [booking, setBooking] = useState<Booking | null>(null);
     const [restaurantTables, setRestaurantTables] = useState<any[]>([]);
@@ -86,8 +92,21 @@ export default function GuestBookingDetails() {
     const [fetchingMenu, setFetchingMenu] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchBooking = async () => {
+        if (!id) {
+            setError('Не удалось открыть бронирование.');
+            setLoading(false);
+            return;
+        }
+
+        setError(null);
+        setLoading(true);
+        setShowMenu(false);
+        setShowReviewModal(false);
+        setShowCancelConfirm(false);
+
         try {
             const res = await api.get(`/bookings/${id}/`);
             const bData = res.data;
@@ -95,13 +114,21 @@ export default function GuestBookingDetails() {
 
             if (bData.preorder) {
                 setActiveOrder(bData.preorder);
+            } else {
+                setActiveOrder(null);
             }
 
-            api.get(`/restaurants/${bData.restaurant}/`).then(r => {
-                setRestaurantTables(r.data.tables || []);
-            });
+            try {
+                const restaurantRes = await api.get(`/restaurants/${bData.restaurant}/`);
+                setRestaurantTables(restaurantRes.data.tables || []);
+            } catch {
+                setRestaurantTables([]);
+            }
         } catch (err) {
-            toast.error('Failed to load booking details');
+            const detail = (err as any)?.response?.data?.detail || 'Не удалось загрузить бронирование. Проверьте соединение и попробуйте ещё раз.';
+            setBooking(null);
+            setRestaurantTables([]);
+            setError(detail);
         } finally {
             setLoading(false);
         }
@@ -124,8 +151,8 @@ export default function GuestBookingDetails() {
             });
             setActiveOrder(orderRes.data);
             setShowMenu(true);
-        } catch (err) {
-            toast.error('Failed to load menu');
+        } catch {
+            toast.error('Не удалось загрузить меню');
         } finally {
             setFetchingMenu(false);
         }
@@ -140,8 +167,8 @@ export default function GuestBookingDetails() {
             });
             setActiveOrder(res.data);
             toast.success('Cart updated');
-        } catch (err) {
-            toast.error('Failed to update order');
+        } catch {
+            toast.error('Не удалось обновить заказ');
         }
     };
 
@@ -152,8 +179,8 @@ export default function GuestBookingDetails() {
             toast.success('Pre-order confirmed!');
             setShowMenu(false);
             fetchBooking();
-        } catch (err) {
-            toast.error('Failed to confirm order');
+        } catch {
+            toast.error('Не удалось подтвердить предзаказ');
         }
     };
 
@@ -163,20 +190,49 @@ export default function GuestBookingDetails() {
             setBooking(prev => prev ? { ...prev, status: 'cancelled_by_user' } : null);
             toast.success('Reservation cancelled successfully.');
             setShowCancelConfirm(false);
-        } catch (err) {
-            toast.error('Could not cancel reservation.');
+        } catch {
+            toast.error('Не удалось отменить бронирование.');
         }
     };
 
-    if (loading) return <div className="flex justify-center items-center h-screen bg-white"><div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-50 border-t-[#1d4ed8]" /></div>;
-    if (!booking) return <div className="flex flex-col justify-center items-center h-screen bg-white gap-4">
-        <h2 className="text-2xl font-black text-slate-900 uppercase">Бронирование не найдено</h2>
-        <Link to="/guest/dashboard" className="text-xs font-bold uppercase tracking-widest text-white bg-[#1d4ed8] px-6 py-3 rounded-xl transition hover:bg-[#1e40af]">Вернуться в кабинет</Link>
-    </div>;
+    if (loading) return (
+        <div className="flex flex-col justify-center items-center h-screen bg-white gap-4">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-50 border-t-[#1d4ed8]" />
+            <div className="text-center space-y-1">
+                <h2 className="text-lg font-black text-slate-900 uppercase">Загружаем бронирование</h2>
+                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Подготавливаем историю и детали визита</p>
+            </div>
+        </div>
+    );
+
+    if (error || !booking) return (
+        <div className="flex flex-col justify-center items-center h-screen bg-white gap-4 px-6 text-center">
+            <h2 className="text-2xl font-black text-slate-900 uppercase">{booking ? 'Не удалось загрузить бронирование' : 'Бронирование не найдено'}</h2>
+            <p className="max-w-lg text-sm font-medium leading-7 text-slate-500">{error || 'Запись могла быть удалена или у вас нет доступа к ней.'}</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+                <button onClick={fetchBooking} className="text-xs font-bold uppercase tracking-widest text-white bg-[#1d4ed8] px-6 py-3 rounded-xl transition hover:bg-[#1e40af]">
+                    Повторить
+                </button>
+                <Link to="/guest/dashboard" className="text-xs font-bold uppercase tracking-widest text-[#1d4ed8] bg-blue-50 px-6 py-3 rounded-xl transition hover:bg-blue-100">
+                    Вернуться в кабинет
+                </Link>
+            </div>
+        </div>
+    );
 
     const isActive = ['pending', 'confirmed', 'payment_pending', 'approved', 'arrived'].includes(booking.status);
     const isCompleted = booking.status === 'completed';
     const isSeated = booking.status === 'seated';
+    const rebookHref = buildRestaurantBookHref(booking.restaurant, {
+        date: booking.date,
+        time: booking.time,
+        guests: booking.guests,
+    });
+    const bookingTimeline = [
+        booking.created_at && { label: 'Создано', value: format(parseISO(booking.created_at), 'd MMM yyyy, HH:mm', { locale: ru }) },
+        booking.updated_at && { label: 'Обновлено', value: format(parseISO(booking.updated_at), 'd MMM yyyy, HH:mm', { locale: ru }) },
+        booking.cancelled_at && { label: 'Отменено', value: format(parseISO(booking.cancelled_at), 'd MMM yyyy, HH:mm', { locale: ru }) },
+    ].filter(Boolean) as Array<{ label: string; value: string }>;
 
     return (
         <div className="flex flex-col gap-6 w-full">
@@ -293,6 +349,20 @@ export default function GuestBookingDetails() {
                             </svg>
                         </div>
                     </div>
+
+                    {bookingTimeline.length > 0 && (
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
+                            <h3 className="font-black text-slate-900 mb-4 uppercase text-[11px] tracking-widest border-b border-slate-50 pb-4">История бронирования</h3>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {bookingTimeline.map((item) => (
+                                    <div key={item.label} className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.label}</div>
+                                        <div className="mt-2 text-sm font-bold text-slate-900">{item.value}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col gap-6">
@@ -318,20 +388,47 @@ export default function GuestBookingDetails() {
                                         <Trash2 size={18} />
                                         Отменить
                                     </button>
+                                    <button
+                                        onClick={() => navigate('/guest/messages', { state: { bookingId: booking.id } })}
+                                        className="w-full flex justify-center items-center gap-2 py-4 bg-white text-slate-900 font-bold text-xs uppercase tracking-widest rounded-xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
+                                    >
+                                        <MessageSquare size={18} />
+                                        Написать в ресторан
+                                    </button>
                                 </>
                             ) : isCompleted ? (
-                                <button
-                                    onClick={() => setShowReviewModal(true)}
-                                    className="w-full flex justify-center items-center gap-2 py-4 bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-blue-200 hover:bg-[#1e40af] transition-all"
-                                >
-                                    <Star size={18} />
-                                    Оставить отзыв
-                                </button>
+                                <div className="space-y-3">
+                                    <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm leading-7 text-emerald-800">
+                                        Визит завершён. Можно сразу оставить отзыв и повторить бронь с теми же параметрами.
+                                    </div>
+                                    <button
+                                        onClick={() => setShowReviewModal(true)}
+                                        className="w-full flex justify-center items-center gap-2 py-4 bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-blue-200 hover:bg-[#1e40af] transition-all"
+                                    >
+                                        <Star size={18} />
+                                        Оставить отзыв
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/guest/messages', { state: { bookingId: booking.id } })}
+                                        className="w-full flex justify-center items-center gap-2 py-4 bg-white text-slate-900 font-bold text-xs uppercase tracking-widest rounded-xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
+                                    >
+                                        <MessageSquare size={18} />
+                                        Написать ресторану
+                                    </button>
+                                </div>
                             ) : (
                                 <div className="p-6 bg-slate-50 rounded-xl text-center border border-slate-100">
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Бронирование: {(STATUS_MAP[booking.status]?.label || booking.status)}</p>
                                 </div>
                             )}
+
+                            <Link
+                                to={rebookHref}
+                                className="w-full flex justify-center items-center gap-2 py-4 bg-white text-slate-900 font-bold text-xs uppercase tracking-widest rounded-xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
+                            >
+                                <CalendarPlus size={18} />
+                                Повторить бронь
+                            </Link>
                         </div>
                     </div>
 
@@ -445,6 +542,7 @@ export default function GuestBookingDetails() {
             {showReviewModal && (
                 <GuestWriteReviewModal
                     bookingId={booking.id}
+                    restaurantId={booking.restaurant}
                     restaurantName={booking.restaurant_name}
                     onClose={() => setShowReviewModal(false)}
                     onSuccess={() => {

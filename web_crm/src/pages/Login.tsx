@@ -1,10 +1,27 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { Logo } from '@/components/ui/Logo';
+
+const LOGIN_METRICS = [
+  { label: 'Сегодня', value: '24' },
+  { label: 'Подтверждено', value: '12' },
+  { label: 'Свободно', value: '9' },
+];
+
+const LOGIN_HIGHLIGHTS = [
+  {
+    title: 'Единая смена',
+    description: 'Брони, столы и гостевые статусы без переключений между системами.',
+  },
+  {
+    title: 'Оперативная сводка',
+    description: 'Все ключевые числа собраны в одном контуре без лишнего шума.',
+  },
+];
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -20,10 +37,10 @@ export default function Login() {
     try {
       const response = await api.post('/auth/login/', { username, password });
       await login(response.data.access, response.data.refresh);
-      toast.success('Welcome back');
+      toast.success('Добро пожаловать');
       navigate('/');
     } catch {
-      toast.error('Invalid credentials');
+      toast.error('Неверный логин или пароль');
     } finally {
       setLoading(false);
     }
@@ -40,7 +57,7 @@ export default function Login() {
 
             <div className="mt-14 max-w-xl">
               <div className="inline-flex rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1d4ed8]">
-                Admin access
+                Доступ администратора
               </div>
               <h1 className="mt-8 text-5xl font-black leading-[1.02] tracking-tight text-slate-900">
                 Операционная панель ресторана без лишнего шума
@@ -51,24 +68,26 @@ export default function Login() {
             </div>
 
             <div className="mt-10 grid max-w-xl gap-3 sm:grid-cols-3">
-              <CompactStat label="Сегодня" value="24" />
-              <CompactStat label="Подтверждено" value="12" />
-              <CompactStat label="Свободно" value="9" />
+              {LOGIN_METRICS.map((metric) => (
+                <MetricCard key={metric.label} label={metric.label} value={metric.value} />
+              ))}
             </div>
           </div>
 
           <div className="mt-6 space-y-5">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.35)]">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-blue-50 p-3 text-[#1d4ed8] border border-blue-100">
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">Единая смена</div>
-                  <div className="text-sm text-slate-500">Брони, столы и гостевые статусы без переключений между системами.</div>
+            {LOGIN_HIGHLIGHTS.map((item) => (
+              <div key={item.title} className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.35)]">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-blue-50 p-3 text-[#1d4ed8] border border-blue-100">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                    <div className="text-sm text-slate-500">{item.description}</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
 
             <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.35)]">
               <div className="flex items-center justify-between">
@@ -95,7 +114,7 @@ export default function Login() {
 
             <div className="mt-8 rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.35)] sm:p-10 lg:p-8">
               <div className="max-w-xs">
-                <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Login</div>
+                <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Вход</div>
                 <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-900">Вход в рабочее пространство</h2>
                 <p className="mt-4 text-sm leading-7 text-slate-600">
                   Используйте данные вашей команды, чтобы открыть административную панель ресторана.
@@ -104,9 +123,9 @@ export default function Login() {
 
               <form className="mt-10 space-y-6" onSubmit={handleLogin}>
                 <Field
-                  label="Username"
+                  label="Логин"
                   name="username"
-                  icon={<Mail size={18} />}
+                  icon={<UserRound size={18} />}
                   type="text"
                   placeholder="manager_alma"
                   value={username}
@@ -115,10 +134,8 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Password</label>
-                    <button type="button" className="text-xs font-bold text-[#1d4ed8] uppercase tracking-widest hover:underline">
-                      Forgot password
-                    </button>
+                    <label htmlFor="password" className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Пароль</label>
+                    <span className="text-xs font-bold text-[#1d4ed8] uppercase tracking-widest">Забыли пароль?</span>
                   </div>
                   <div className="relative">
                     <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -127,7 +144,7 @@ export default function Login() {
                     <input
                       id="password"
                       name="password"
-                      aria-label="Password"
+                      aria-label="Пароль"
                       className="h-14 w-full rounded-2xl border border-slate-200 bg-[#fafaf9] pl-12 pr-12 text-sm font-medium text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white focus:ring-4 focus:ring-blue-50"
                       placeholder="••••••••"
                       type={showPassword ? 'text' : 'password'}
@@ -148,9 +165,9 @@ export default function Login() {
                 <button
                   className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] text-sm font-semibold text-white shadow-[0_14px_30px_-16px_rgba(29,78,216,0.65)] transition hover:bg-[#1e40af] disabled:opacity-50"
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !username.trim() || !password.trim()}
                 >
-                  <span>{loading ? 'Logging in...' : 'Login'}</span>
+                  <span>{loading ? 'Входим...' : 'Войти'}</span>
                   <ArrowRight size={18} className={loading ? 'animate-pulse' : ''} />
                 </button>
               </form>
@@ -220,7 +237,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompactStat({ label, value }: { label: string; value: string }) {
+function MetricCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[22px] border border-white/80 bg-white/80 px-4 py-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.25)] backdrop-blur">
       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>

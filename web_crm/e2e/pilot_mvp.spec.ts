@@ -39,7 +39,7 @@ test.describe('Pilot MVP flow', () => {
     await page.goto('/login');
     await page.locator('input[name="username"]').fill(ownerUsername);
     await page.locator('input[name="password"]').fill(ownerPassword);
-    await page.getByRole('button', { name: /^login$/i }).click();
+    await page.getByRole('button', { name: 'Войти' }).click();
     await page.waitForURL(/\/app\/dashboard/, { timeout: 30_000 });
 
     await page.goto('/app/bookings');

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '@/services/api';
+import { normalizeUserRole } from './roles';
 
 interface UserProfile {
     role: string;
@@ -26,6 +27,10 @@ interface User {
         address: string;
     } | null;
 }
+
+type AuthUserResponse = Partial<User> & {
+    profile?: Partial<UserProfile> | null;
+};
 
 interface AuthContextType {
     user: User | null;
@@ -84,17 +89,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
     }, []);
 
+    const normalizeUser = useCallback((data: unknown): User | null => {
+        if (!data || typeof data !== 'object') return null;
+
+        const payload = data as AuthUserResponse;
+        const profile = payload.profile && typeof payload.profile === 'object' ? payload.profile : undefined;
+        const resolvedRole = normalizeUserRole(payload.role ?? profile?.role);
+        const restaurant = payload.restaurant ?? profile?.restaurant ?? null;
+        const phone = payload.phone ?? profile?.phone ?? null;
+
+        return {
+            ...(payload as User),
+            role: resolvedRole,
+            restaurant,
+            phone,
+            profile: {
+                role: resolvedRole,
+                restaurant: restaurant ?? undefined,
+                phone: phone ?? undefined,
+            },
+        };
+    }, []);
+
     const checkAuth = useCallback(async () => {
         if (safeStorage.getItem('accessToken')) {
             try {
                 const res = await api.get('/auth/me/');
-                setUser(res.data);
+                const normalizedUser = normalizeUser(res.data);
+                if (normalizedUser) {
+                    setUser(normalizedUser);
+                } else {
+                    logout();
+                }
             } catch {
                 logout();
             }
         }
         setLoading(false);
-    }, [logout]);
+    }, [logout, normalizeUser]);
 
     useEffect(() => {
         checkAuth();

@@ -34,6 +34,7 @@ export function PricingCard({
     index: number;
 }) {
     const savingsPercent = getSavingsPercent(plan.price, plan.oldPrice);
+    const isFree = plan.price === 0;
 
     return (
         <motion.div
@@ -73,16 +74,29 @@ export function PricingCard({
                 <div className="mt-10">
                     <h3 className="text-[11px] font-black tracking-[0.3em] text-[#0047FF] uppercase italic">{plan.name}</h3>
                     <p className="mt-2 text-lg font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">{plan.tagline}</p>
+                    {plan.marketingLine ? (
+                        <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                            {plan.marketingLine}
+                        </p>
+                    ) : null}
 
                     <div className="mt-10 flex items-end gap-3">
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-6xl font-black tracking-tighter text-slate-950 dark:text-white italic tabular-nums leading-none">
-                                {formatNumber(plan.price)}
+                        {isFree ? (
+                            <span className="text-5xl font-black tracking-tighter text-slate-950 dark:text-white leading-none">
+                                Бесплатно
                             </span>
-                            <span className="text-2xl font-black tracking-tighter text-[#0047FF] uppercase italic">{plan.currencySymbol}</span>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-6xl font-black tracking-tighter text-slate-950 dark:text-white italic tabular-nums leading-none">
+                                        {formatNumber(plan.price)}
+                                    </span>
+                                    <span className="text-2xl font-black tracking-tighter text-[#0047FF] uppercase italic">{plan.currencySymbol}</span>
+                                </div>
 
-                        <span className="pb-1 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">{plan.periodLabel}</span>
+                                <span className="pb-1 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">{plan.periodLabel}</span>
+                            </>
+                        )}
                     </div>
 
                     {plan.oldPrice ? (

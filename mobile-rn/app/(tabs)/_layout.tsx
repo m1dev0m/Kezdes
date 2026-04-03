@@ -1,14 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import React from 'react';
+import { Platform, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../lib/auth-context';
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
-    const { user } = useAuth();
-    const [hasNewEvents, setHasNewEvents] = useState(false);
 
     return (
         <Tabs screenOptions={{
@@ -21,11 +18,21 @@ export default function TabLayout() {
                 height: 65 + insets.bottom,
                 paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
                 paddingTop: 10,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: -4 },
-                shadowOpacity: 0.05,
-                shadowRadius: 12,
-                elevation: 10,
+                ...Platform.select({
+                    ios: {
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: -4 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 12,
+                    },
+                    android: {
+                        elevation: 10,
+                    },
+                    web: {
+                        boxShadow: '0px -4px 18px rgba(15, 23, 42, 0.08)',
+                    },
+                    default: {},
+                }),
             },
             tabBarLabelStyle: {
                 fontSize: 11,
@@ -36,8 +43,8 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="home"
                 options={{
-                    title: 'Home',
-                    tabBarIcon: ({ color, size }) => (
+                    title: 'Главная',
+                    tabBarIcon: ({ color }) => (
                         <Ionicons name="home-outline" size={24} color={color} />
                     ),
                 }}
@@ -46,51 +53,9 @@ export default function TabLayout() {
                 name="events"
                 options={{
                     title: 'События',
-                    tabBarIcon: ({ color, size }) => (
+                    tabBarIcon: ({ color }) => (
                         <View>
                             <Ionicons name="calendar-outline" size={24} color={color} />
-                            {hasNewEvents && (
-                                <View
-                                    style={{
-                                        position: 'absolute',
-                                        top: -2,
-                                        right: -4,
-                                        minWidth: 16,
-                                        height: 16,
-                                        borderRadius: 32,
-                                        backgroundColor: '#ef4444',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        paddingHorizontal: 3,
-                                    }}
-                                >
-                                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>•</Text>
-                                </View>
-                            )}
-                        </View>
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="qr"
-                options={{
-                    title: 'Мой QR',
-                    tabBarIcon: ({ color, size }) => (
-                        <View style={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 40,
-                            backgroundColor: '#0047FF',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            marginTop: -20,
-                            shadowColor: '#0047FF',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 8,
-                            elevation: 5,
-                        }}>
-                            <Ionicons name="qr-code-outline" size={26} color="#ffffff" />
                         </View>
                     ),
                 }}
@@ -99,7 +64,7 @@ export default function TabLayout() {
                 name="profile"
                 options={{
                     title: 'Профиль',
-                    tabBarIcon: ({ color, size }) => (
+                    tabBarIcon: ({ color }) => (
                         <Ionicons name="person-outline" size={24} color={color} />
                     ),
                 }}

@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { CalendarCheck2, ChartColumnBig, CircleUserRound, DoorClosed, Phone, Users } from 'lucide-react';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { PublicHeader } from '@/components/public/PublicHeader';
@@ -43,9 +43,25 @@ const FOOTER_INFO = [
   { label: 'Режим', value: 'CRM + public booking page' },
 ];
 
+const PRICING_CARDS = [
+  {
+    title: 'Для гостей',
+    price: 'Бесплатно',
+    description: 'Поиск ресторанов, бронирование столика и личный кабинет без абонентской платы.',
+    ctaLabel: 'Забронировать',
+    to: '/restaurants',
+  },
+  {
+    title: 'Для ресторанов',
+    price: 'от 16990 ₸',
+    description: 'CRM, столы, бронирования и гостевая база для ежедневной работы ресторана.',
+    ctaLabel: 'Посмотреть тарифы',
+    to: '/pricing',
+  },
+];
+
 export default function Welcome() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
@@ -60,13 +76,6 @@ export default function Welcome() {
       // ignore storage cleanup errors
     }
   }, [user, logout]);
-
-  const handleProtectedRedirect = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!user) {
-      event.preventDefault();
-      navigate('/register');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-inter text-slate-900">
@@ -93,14 +102,13 @@ export default function Welcome() {
                     to="/register?mode=restaurant"
                     className="inline-flex min-w-[180px] items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
                   >
-                    Для бизнеса
+                    Открыть кабинет ресторана
                   </Link>
                   <Link
                     to="/restaurants"
-                    onClick={handleProtectedRedirect}
                     className="inline-flex min-w-[180px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                   >
-                    Перейти к бронированию
+                    Найти ресторан
                   </Link>
                 </div>
               </div>
@@ -226,6 +234,34 @@ export default function Welcome() {
 
         <section className="border-t border-slate-200 bg-white">
           <div className="mx-auto max-w-[1280px] px-6 py-14 lg:px-8">
+            <div className="max-w-2xl">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Цены</div>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">Прозрачные тарифы для двух сценариев</h2>
+              <p className="mt-4 text-sm leading-7 text-slate-600">
+                Для обычных пользователей сервис бесплатный. Для ресторанов рабочий тариф начинается от 16990 ₸ в месяц.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-5 md:grid-cols-2">
+              {PRICING_CARDS.map((card) => (
+                <div key={card.title} className="rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{card.title}</div>
+                  <div className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">{card.price}</div>
+                  <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">{card.description}</p>
+                  <Link
+                    to={card.to}
+                    className="mt-6 inline-flex items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+                  >
+                    {card.ctaLabel}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-slate-200 bg-white">
+          <div className="mx-auto max-w-[1280px] px-6 py-14 lg:px-8">
             <div className="rounded-[32px] border border-slate-200 bg-slate-50 px-8 py-10">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="max-w-2xl">
@@ -245,7 +281,6 @@ export default function Welcome() {
                   </Link>
                   <Link
                     to="/restaurants"
-                    onClick={handleProtectedRedirect}
                     className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                   >
                     Открыть бронирование

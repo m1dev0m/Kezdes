@@ -18,9 +18,14 @@ export default function AdminMessagesScreen() {
     }, [user]);
 
     const initData = async () => {
+        const token = user?.access;
+        if (!token) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         try {
-            const books = await fetchMyRestaurantBookings(user.access);
+            const books = await fetchMyRestaurantBookings(token);
             setConversations(Array.isArray(books) ? books : []);
         } catch (error) {
             console.error('Error fetching conversations:', error);

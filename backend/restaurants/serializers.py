@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import Restaurant, Availability, Review, RestaurantRequest, Table, Zone, Shift
+from .models import (
+    Restaurant,
+    Availability,
+    Review,
+    RestaurantRequest,
+    Table,
+    Zone,
+    Shift,
+    RestaurantAuditLog,
+    RestaurantInvoice,
+)
 
 class ZoneSerializer(serializers.ModelSerializer):
     class Meta:
@@ -99,16 +109,35 @@ class TableAPISerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Table
-        fields = ["id", "name", "capacity", "number", "seats", "x", "y", "status",
-                  "is_active", "table_type", "zone", "grid_x", "grid_y", "grid_w", "grid_h"]
-        read_only_fields = ["id", "x", "y", "status"]
+        fields = [
+            "id",
+            "name",
+            "capacity",
+            "number",
+            "seats",
+            "x",
+            "y",
+            "width",
+            "height",
+            "rotation",
+            "status",
+            "is_active",
+            "table_type",
+            "zone",
+            "grid_x",
+            "grid_y",
+            "grid_w",
+            "grid_h",
+        ]
+        read_only_fields = ["id", "status"]
 
     def get_status(self, obj):
         from bookings.models import Booking
+        from django.db.models import Q
         from django.utils import timezone
         now = timezone.now()
         active = Booking.objects.filter(
-            table=obj,
+            Q(table=obj) | Q(tables=obj),
             status__in=Booking.ACTIVE_STATUSES,
             start_datetime__lte=now,
             end_datetime__gt=now,
@@ -150,6 +179,27 @@ class TableAPISerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"capacity": f"capacity must be <= {Table.CAPACITY_MAX}"})
             attrs["capacity"] = capacity_int
 
+        for field in ("width", "height"):
+            value = attrs.get(field)
+            if value is None:
+                continue
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({field: f"{field} must be a number."})
+            if numeric <= 0:
+                raise serializers.ValidationError({field: f"{field} must be > 0."})
+            attrs[field] = numeric
+
+        for field in ("x", "y", "rotation"):
+            value = attrs.get(field)
+            if value is None:
+                continue
+            try:
+                attrs[field] = float(value)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({field: f"{field} must be a number."})
+
         # Check duplicate table name within restaurant
         if name:
             request = self.context.get('request')
@@ -182,6 +232,11 @@ class TableAPISerializer(serializers.ModelSerializer):
             is_active=is_active,
             table_type=table_type,
             zone=zone,
+            x=validated_data.get("x"),
+            y=validated_data.get("y"),
+            width=validated_data.get("width", 60.0),
+            height=validated_data.get("height", 60.0),
+            rotation=validated_data.get("rotation", 0.0),
             grid_x=validated_data.get("grid_x", 0),
             grid_y=validated_data.get("grid_y", 0),
             grid_w=validated_data.get("grid_w", 1),
@@ -199,6 +254,16 @@ class TableAPISerializer(serializers.ModelSerializer):
             instance.table_type = validated_data["table_type"]
         if "zone" in validated_data:
             instance.zone = validated_data["zone"]
+        if "x" in validated_data:
+            instance.x = validated_data["x"]
+        if "y" in validated_data:
+            instance.y = validated_data["y"]
+        if "width" in validated_data:
+            instance.width = validated_data["width"]
+        if "height" in validated_data:
+            instance.height = validated_data["height"]
+        if "rotation" in validated_data:
+            instance.rotation = validated_data["rotation"]
         if "grid_x" in validated_data:
             instance.grid_x = validated_data["grid_x"]
         if "grid_y" in validated_data:
@@ -215,30 +280,34 @@ class AvailabilitySerializer(serializers.ModelSerializer):
         fields = ['date', 'available_seats', 'is_fully_booked']
 class ReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.username')
+    booking_id = serializers.IntegerField(write_only=True, required=False)
+    is_anonymous = serializers.BooleanField(write_only=True, required=False, default=False)
+
     class Meta:
         model = Review
-        fields = ['id', 'user', 'user_name', 'rating', 'comment', 'created_at']
+        fields = ['id', 'user', 'user_name', 'rating', 'comment', 'created_at', 'booking_id', 'is_anonymous']
         read_only_fields = ['user']
 class RestaurantSerializer(serializers.ModelSerializer):
     availabilities = AvailabilitySerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
     tables = TableSerializer(many=True, read_only=True)
     photo_url = serializers.SerializerMethodField()
-    plan = serializers.CharField(read_only=False, required=False)
+    plan = serializers.CharField(read_only=True)
+    payment_status = serializers.CharField(read_only=True)
 
     class Meta:
         model = Restaurant
         fields = [
             'id', 'name', 'description', 'address', 'latitude', 'longitude',
             'phone', 'image_url', 'image', 'photo_url', 'source', 'is_claimed', 'is_verified',
-            'capacity', 'average_price', 'rating', 'price_level', 'plan', 'views_count', 'availabilities',
+            'capacity', 'average_price', 'rating', 'price_level', 'plan', 'payment_status', 'views_count', 'availabilities',
             'reviews', 'tables', 'floor', 'entrance', 'extra_address_info', 'city', 'status',
             'deposit_min_guests', 'deposit_amount_per_guest',
             'slug', 'turnover_default_min', 'has_namazhana', 'has_parking', 'has_kids_zone',
             'has_wifi', 'has_terrace', 'deposit_required', 'birthday_service_available',
-            'wheelchair_accessible', 'max_party_size',
+            'wheelchair_accessible', 'max_party_size', 'current_period_starts_at', 'current_period_ends_at', 'grace_until',
         ]
-        read_only_fields = ['views_count', 'rating']
+        read_only_fields = ['views_count', 'rating', 'plan', 'payment_status', 'current_period_starts_at', 'current_period_ends_at', 'grace_until', 'status']
 
     def get_photo_url(self, obj):
         request = self.context.get('request')
@@ -248,6 +317,127 @@ class RestaurantSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(url)
             return url
         return obj.image_url or None
+
+
+class RestaurantInvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestaurantInvoice
+        fields = [
+            'id',
+            'number',
+            'plan',
+            'amount',
+            'currency',
+            'status',
+            'issued_at',
+            'due_at',
+            'paid_at',
+            'period_start',
+            'period_end',
+            'note',
+        ]
+
+
+class RestaurantAuditLogSerializer(serializers.ModelSerializer):
+    actor_username = serializers.CharField(source='actor.username', read_only=True)
+
+    class Meta:
+        model = RestaurantAuditLog
+        fields = [
+            'id',
+            'event_type',
+            'target_type',
+            'target_id',
+            'summary',
+            'payload',
+            'actor_username',
+            'created_at',
+        ]
+
+
+class RestaurantSubscriptionSerializer(serializers.ModelSerializer):
+    plan_label = serializers.CharField(source='get_plan_display', read_only=True)
+    payment_status_label = serializers.CharField(source='get_payment_status_display', read_only=True)
+    limits = serializers.SerializerMethodField()
+    usage = serializers.SerializerMethodField()
+    features = serializers.SerializerMethodField()
+    checklist = serializers.SerializerMethodField()
+    invoices = RestaurantInvoiceSerializer(many=True, read_only=True)
+    is_subscription_live = serializers.SerializerMethodField()
+    subscription_state = serializers.SerializerMethodField()
+    usage_percent = serializers.SerializerMethodField()
+    upgrade_cta = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Restaurant
+        fields = [
+            'id',
+            'name',
+            'status',
+            'plan',
+            'plan_label',
+            'payment_status',
+            'payment_status_label',
+            'current_period_starts_at',
+            'current_period_ends_at',
+            'grace_until',
+            'is_subscription_live',
+            'subscription_state',
+            'limits',
+            'usage',
+            'usage_percent',
+            'features',
+            'checklist',
+            'feature_flags',
+            'invoices',
+            'upgrade_cta',
+        ]
+
+    def get_limits(self, obj: Restaurant):
+        return obj.get_plan_limits()
+
+    def get_usage(self, obj: Restaurant):
+        return obj.get_usage_snapshot()
+
+    def get_usage_percent(self, obj: Restaurant):
+        usage = obj.get_usage_snapshot()
+        limits = obj.get_plan_limits()
+        return {
+            key: None if limits.get(key) in (None, 0) else round((usage.get(key, 0) / limits[key]) * 100)
+            for key in ('tables', 'zones', 'staff')
+        }
+
+    def get_is_subscription_live(self, obj: Restaurant):
+        return obj.is_subscription_live()
+
+    def get_subscription_state(self, obj: Restaurant):
+        return obj.get_subscription_state()
+
+    def get_checklist(self, obj: Restaurant):
+        return obj.get_onboarding_checklist()
+
+    def get_features(self, obj: Restaurant):
+        feature_labels = [
+            ('table_map', 'Схема зала'),
+            ('zones', 'Зоны / залы'),
+            ('shifts', 'Смены'),
+            ('staff_basic', 'Команда'),
+            ('orders_basic', 'Предзаказы и заказы'),
+            ('analytics_basic', 'Базовая аналитика'),
+            ('analytics_advanced', 'Продвинутая аналитика'),
+            ('automations', 'Автоматизации'),
+        ]
+        return [
+            {'key': key, 'label': label, 'enabled': obj.has_feature(key)}
+            for key, label in feature_labels
+        ]
+
+    def get_upgrade_cta(self, obj: Restaurant):
+        target_plan = Restaurant.PLAN_PRO if obj.get_effective_plan() == Restaurant.PLAN_PLUS else Restaurant.PLAN_PLUS
+        return {
+            'label': f'Перейти на {dict(Restaurant.PLAN_CHOICES).get(target_plan, target_plan)}',
+            'path': '/pricing',
+        }
 
 class RestaurantClaimSerializer(serializers.Serializer):
     restaurant_id = serializers.IntegerField()

@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, status, serializers as drf_serializers
+from rest_framework import filters, viewsets, permissions, status, serializers as drf_serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction, IntegrityError
@@ -15,7 +15,12 @@ from core.responses import api_error
 from core.permissions import IsRestaurantAdmin, CanManageReservations
 
 logger = logging.getLogger(__name__)
-from .serializers import BookingSerializer, AdminBookingSerializer
+from .serializers import (
+    BookingSerializer,
+    AdminBookingSerializer,
+    BookingAdminUpdateSerializer,
+    PublicBookingSerializer,
+)
 from .waitlist_serializers import WaitlistEntrySerializer
 from .models import Booking, WaitlistEntry
 from restaurants.models import Table, Restaurant
@@ -27,9 +32,44 @@ from core.viewsets import OptionalPaginationMixin
 class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['user_name', 'user_phone', 'guest_email', 'user__username', 'table__number']
+    ordering_fields = [
+        'date',
+        'time',
+        'created_at',
+        'guests',
+        'status',
+        'user_name',
+        'user_phone',
+        'restaurant__name',
+        'table__number',
+    ]
+    ordering = ['-date', '-time']
 
     def get_permissions(self):
         if self.action == 'create':
+            return [permissions.AllowAny()]
+        if self.action in {
+            'create_manual',
+            'my_restaurant',
+            'reschedule',
+            'confirm',
+            'reject',
+            'cancel_by_restaurant',
+            'seat',
+            'complete',
+            'no_show',
+            'reassign_table',
+            'check_in',
+            'smart_tables',
+            'update',
+            'partial_update',
+        }:
+            return [CanManageReservations()]
+        if self.action == 'cancel':
+            return [permissions.IsAuthenticated()]
+        if self.action in {'public_booking', 'public_waitlist', 'join_waitlist', 'confirm_waitlist'}:
             return [permissions.AllowAny()]
         return super().get_permissions()
 
@@ -37,7 +77,8 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def _normalize_statuses(raw_statuses):
         normalized = []
         for st in raw_statuses:
-            if st == 'confirmed':
+            if st in ('confirmed', 'approved'):
+                # 'approved' is a frontend alias for 'confirmed' (same DB value)
                 normalized.append(Booking.CONFIRMED)
             elif st == 'cancelled':
                 normalized.extend([Booking.CANCELLED_BY_USER, Booking.CANCELLED_BY_RESTAURANT])
@@ -53,37 +94,39 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def _request_payload_hash(data) -> str:
         payload = json.dumps(data, sort_keys=True, default=str)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-    
-    def get_queryset(self):
-        user = self.request.user
-        if not user or not user.is_authenticated:
-            return Booking.objects.none()
-        if not hasattr(user, 'profile'):
-            return Booking.objects.none()
-        
-        # Mandatory tenant isolation for staff
-        if user.profile.is_staff_member:
-             from core.utils import get_user_restaurant
-             user_rest = get_user_restaurant(user)
-             if not user_rest:
-                 return Booking.objects.none()
-             return Booking.objects.filter(
-                 restaurant=user_rest
-             ).select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders').order_by('-date', '-time')
-             
-        # Guest logic
-        if user.profile.role in ('customer', 'organizer'):
-            return Booking.objects.filter(user=user).select_related('restaurant', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
-            
-        # Global admin (platform level)
-        if user.profile.role == 'global_admin':
-            return Booking.objects.all().select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
-            
-        return Booking.objects.filter(user=user).select_related('restaurant', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
 
-    def list(self, request, *args, **kwargs):
-        qs = self.filter_queryset(self.get_queryset())
+    @staticmethod
+    def _parse_time_value(raw_value, default_time=None):
+        if raw_value in (None, ''):
+            return default_time
 
+        if hasattr(raw_value, 'hour') and hasattr(raw_value, 'minute'):
+            return raw_value
+
+        raw_text = str(raw_value).strip()
+        if not raw_text:
+            return default_time
+
+        try:
+            if len(raw_text) == 8:
+                return datetime.strptime(raw_text, '%H:%M:%S').time()
+            return datetime.strptime(raw_text, '%H:%M').time()
+        except ValueError:
+            return default_time
+
+    @staticmethod
+    def _schedule_fields_changed(payload) -> bool:
+        return any(field in payload for field in {'date', 'time', 'duration_minutes', 'guests', 'table_id'})
+
+    @staticmethod
+    def _metadata_fields_from_payload(payload):
+        fields = {}
+        for key in ('user_name', 'user_phone', 'guest_email', 'event_type', 'event_title', 'special_requests', 'budget', 'pay_at_restaurant'):
+            if key in payload:
+                fields[key] = payload[key]
+        return fields
+
+    def _apply_common_filters(self, qs, request):
         status_param = request.query_params.get('status')
         if status_param:
             statuses = self._normalize_statuses(status_param.split(','))
@@ -132,13 +175,226 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 pass
 
-        page = self.paginate_queryset(qs)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        source_param = request.query_params.get('source')
+        if source_param:
+            qs = qs.filter(source__in=[item for item in source_param.split(',') if item])
+
+        shift_param = request.query_params.get('shift')
+        if shift_param:
+            qs = qs.filter(shift_id=shift_param)
+
+        return qs
+
+    def _apply_response_pagination(self, request, qs, *, allow_limit=False):
+        if allow_limit and 'limit' in request.query_params and 'page' not in request.query_params and 'page_size' not in request.query_params:
+            limit_param = request.query_params.get('limit')
+            try:
+                limit_int = max(1, min(int(limit_param), 100))
+                qs = qs[:limit_int]
+            except (TypeError, ValueError):
+                pass
+
+        if 'page' in request.query_params or 'page_size' in request.query_params:
+            page = self.paginate_queryset(qs)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
+
+    def _apply_metadata_update(self, booking, payload, actor):
+        update_fields = []
+        for field, value in self._metadata_fields_from_payload(payload).items():
+            setattr(booking, field, value)
+            update_fields.append(field)
+
+        if update_fields:
+            booking.save(update_fields=update_fields + ['updated_at'])
+        else:
+            booking.save()
+
+        try:
+            from .models import ReservationHistory
+            ReservationHistory.objects.create(
+                reservation=booking,
+                status=booking.status,
+                event_type='edit',
+                actor=actor,
+                from_status=booking.status,
+                to_status=booking.status,
+                from_table=booking.table,
+                to_table=booking.table,
+            )
+        except Exception:
+            logger.exception("Failed to write reservation history for booking edit")
+
+        return Response(self.get_serializer(booking).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get', 'delete'], permission_classes=[permissions.AllowAny], url_path=r'public/(?P<public_token>[^/.]+)')
+    def public_booking(self, request, public_token=None):
+        """Public lookup and self-service cancel endpoint for a booking token."""
+        try:
+            booking = (
+                Booking.objects.select_related('restaurant', 'user', 'table')
+                .prefetch_related('tables')
+                .get(public_token=public_token)
+            )
+        except Booking.DoesNotExist:
+            return api_error("Booking not found", status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'GET':
+            return Response(PublicBookingSerializer(booking, context={'request': request}).data, status=status.HTTP_200_OK)
+
+        try:
+            actor = booking.user if booking.user_id else None
+            StatusMachine.transition(booking, Booking.CANCELLED_BY_USER, actor=actor)
+        except ValidationError as e:
+            return api_error(str(e), status.HTTP_400_BAD_REQUEST)
+
+        if booking.restaurant.owner:
+            NotificationService.notify_user(
+                booking.restaurant.owner,
+                "Бронь отменена",
+                f"Бронирование на {booking.date} в {booking.time} было отменено по ссылке из подтверждения.",
+                data={"booking_id": booking.id, "public_token": booking.public_token, "type": "booking_cancelled_by_token"},
+            )
+
+        WaitlistService.promote_next(booking.restaurant, booking.date, booking.time)
+        return Response(PublicBookingSerializer(booking).data, status=status.HTTP_200_OK)
+
+    def _apply_schedule_update(self, request, booking, payload, *, event_type='reschedule'):
+        from .models import ReservationHistory
+
+        new_date = payload.get('date', booking.date)
+        raw_time = payload.get('time', booking.time)
+        new_time = self._parse_time_value(raw_time, booking.time)
+        new_duration = int(payload.get('duration_minutes', booking.duration_minutes))
+        new_guests = int(payload.get('guests', booking.guests))
+        preferred_table_id = payload.get('table_id')
+
+        if not new_time:
+            return api_error(
+                "Invalid date/time/duration_minutes",
+                status.HTTP_400_BAD_REQUEST,
+                details={"date": new_date, "time": raw_time, "duration_minutes": new_duration},
+            )
+
+        restaurant = booking.restaurant
+
+        if not BookingService.is_within_operating_hours(restaurant, new_date, new_time, new_duration):
+            return api_error("Бронирование недоступно на выбранное время.", status.HTTP_400_BAD_REQUEST)
+
+        if not BookingService.acquire_booking_lock(restaurant.id, new_date, new_time, duration_minutes=new_duration):
+            return api_error(
+                "Это время сейчас бронируется другим пользователем. Попробуйте снова.",
+                status.HTTP_409_CONFLICT,
+            )
+
+        try:
+            with transaction.atomic():
+                booking = Booking.objects.select_for_update().prefetch_related('tables').get(id=booking.id)
+
+                if booking.status not in Booking.ACTIVE_STATUSES:
+                    return api_error(
+                        f"Booking is in {booking.status} status, cannot reschedule.",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+
+                ok, available = BookingService.check_capacity(
+                    restaurant,
+                    new_date,
+                    new_time,
+                    new_guests,
+                    new_duration,
+                    exclude_booking_id=booking.id,
+                )
+                if not ok:
+                    return api_error(
+                        "Превышена вместимость ресторана.",
+                        status.HTTP_400_BAD_REQUEST,
+                        details={"available_seats": available, "needed": new_guests},
+                    )
+
+                tables = BookingService.find_best_tables(
+                    restaurant=restaurant,
+                    date=new_date,
+                    start_time=new_time,
+                    guests=new_guests,
+                    duration_minutes=new_duration,
+                    preferred_table_id=preferred_table_id,
+                    exclude_booking_id=booking.id,
+                )
+                if not tables:
+                    return api_error(
+                        "Нет доступных столов на выбранное время.",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+
+                old_status = booking.status
+                old_table = booking.table
+                old_date = booking.date
+                old_time = booking.time
+
+                booking.date = new_date
+                booking.time = new_time
+                booking.duration_minutes = new_duration
+                booking.guests = new_guests
+                booking.table = tables[0]
+                for field, value in self._metadata_fields_from_payload(payload).items():
+                    setattr(booking, field, value)
+                booking.save()
+                booking.tables.set(tables)
+
+                ReservationHistory.objects.create(
+                    reservation=booking,
+                    status=booking.status,
+                    event_type=event_type,
+                    actor=request.user,
+                    from_status=old_status,
+                    to_status=booking.status,
+                    from_table=old_table,
+                    to_table=booking.table,
+                )
+
+                if (old_date, old_time) != (new_date, new_time):
+                    WaitlistService.promote_next(restaurant, old_date, old_time)
+
+                return Response(self.get_serializer(booking).data)
+        finally:
+            BookingService.release_booking_lock(restaurant.id, new_date, new_time, duration_minutes=new_duration)
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Booking.objects.none()
+        if not hasattr(user, 'profile'):
+            return Booking.objects.none()
+
+        # Mandatory tenant isolation for staff
+        if user.profile.is_staff_member:
+            from core.utils import get_user_restaurant
+            user_rest = get_user_restaurant(user)
+            if not user_rest:
+                return Booking.objects.none()
+            return Booking.objects.filter(
+                restaurant=user_rest
+            ).select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders').order_by('-date', '-time')
+
+        # Guest logic
+        if user.profile.role in ('customer', 'organizer'):
+            return Booking.objects.filter(user=user).select_related('restaurant', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
+
+        # Global admin (platform level)
+        if user.profile.role == 'global_admin':
+            return Booking.objects.all().select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
+
+        return Booking.objects.filter(user=user).select_related('restaurant', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        qs = self._apply_common_filters(self.get_queryset(), request)
+        qs = self.filter_queryset(qs)
+        return self._apply_response_pagination(request, qs)
 
     def create(self, request, *args, **kwargs):
         """
@@ -216,10 +472,15 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         booking_data = {
             'user_name': serializer.validated_data.get('user_name'),
             'user_phone': serializer.validated_data.get('user_phone'),
+            'guest_email': serializer.validated_data.get('guest_email'),
             'event_type': serializer.validated_data.get('event_type'),
             'event_title': serializer.validated_data.get('event_title'),
             'special_requests': serializer.validated_data.get('special_requests'),
+            'budget': serializer.validated_data.get('budget'),
+            'source': 'web',
         }
+        if serializer.validated_data.get('pay_at_restaurant') is not None:
+            booking_data['pay_at_restaurant'] = serializer.validated_data.get('pay_at_restaurant')
 
         try:
             booking = BookingService.create_booking(
@@ -333,24 +594,29 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         else:
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
 
-        # Extract preferred table ID
-        preferred_table_id = None
-        preferred_table_id_raw = request.data.get('table_id')
-        if preferred_table_id_raw not in (None, ''):
-            try:
-                preferred_table_id = int(preferred_table_id_raw)
-            except (TypeError, ValueError):
-                return api_error("Некорректный table_id.", status.HTTP_400_BAD_REQUEST)
-
         # Extract booking data — pop 'status' separately to avoid duplicate kwarg
         requested_status = serializer.validated_data.get('status', Booking.CONFIRMED)
+        preferred_table_id = serializer.validated_data.get('table_id')
+        if preferred_table_id is None:
+            preferred_table_id_raw = request.data.get('table_id')
+            if preferred_table_id_raw not in (None, ''):
+                try:
+                    preferred_table_id = int(preferred_table_id_raw)
+                except (TypeError, ValueError):
+                    return api_error("Некорректный table_id.", status.HTTP_400_BAD_REQUEST)
+
         booking_data = {
             'user_name': serializer.validated_data.get('user_name'),
             'user_phone': serializer.validated_data.get('user_phone'),
+            'guest_email': serializer.validated_data.get('guest_email'),
             'event_type': serializer.validated_data.get('event_type'),
             'event_title': serializer.validated_data.get('event_title'),
             'special_requests': serializer.validated_data.get('special_requests'),
+            'budget': serializer.validated_data.get('budget'),
+            'source': 'admin',
         }
+        if serializer.validated_data.get('pay_at_restaurant') is not None:
+            booking_data['pay_at_restaurant'] = serializer.validated_data.get('pay_at_restaurant')
 
         try:
             booking = BookingService.create_booking(
@@ -368,7 +634,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 booking.status = requested_status
                 booking.save(update_fields=['status'])
             # Return the created booking data
-            response_serializer = AdminBookingSerializer(booking)
+            response_serializer = BookingSerializer(booking)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         except DjangoValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
@@ -381,7 +647,7 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if not restaurant:
             return Response({"detail": "No restaurant associated with this user."}, status=status.HTTP_400_BAD_REQUEST)
         
-        qs = Booking.objects.filter(restaurant=restaurant).select_related('restaurant', 'user').prefetch_related('history')
+        qs = Booking.objects.filter(restaurant=restaurant).select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders')
         qs = qs.annotate(
             _pending_first=Case(
                 When(status=Booking.PENDING, then=Value(0)),
@@ -390,85 +656,36 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             )
         ).order_by('_pending_first', '-date', '-time')
 
-        # Filters (keep in sync with main list endpoint expectations)
-        status_param = request.query_params.get('status')
-        if status_param:
-            statuses = self._normalize_statuses(status_param.split(','))
-            qs = qs.filter(status__in=statuses)
+        qs = self._apply_common_filters(qs, request)
+        qs = self.filter_queryset(qs)
+        return self._apply_response_pagination(request, qs, allow_limit=True)
 
-        source_param = request.query_params.get('source')
-        if source_param:
-            # Handle multiple comma-separated sources if needed
-            sources = source_param.split(',')
-            qs = qs.filter(source__in=sources)
+    def _edit_booking(self, request, booking, payload, *, partial=False):
+        serializer = BookingAdminUpdateSerializer(
+            instance=booking,
+            data=payload,
+            partial=partial,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
 
-        shift_param = request.query_params.get('shift')
-        if shift_param:
-            qs = qs.filter(shift_id=shift_param)
+        validated_data = serializer.validated_data
+        if self._schedule_fields_changed(validated_data):
+            return self._apply_schedule_update(request, booking, validated_data)
 
-        date_param = request.query_params.get('date')
-        if date_param:
-            try:
-                qs = qs.filter(date=date_param)
-            except Exception:
-                pass
+        return self._apply_metadata_update(booking, validated_data, request.user)
 
-        date_from_param = request.query_params.get('date_from')
-        if date_from_param:
-            try:
-                qs = qs.filter(date__gte=date_from_param)
-            except Exception:
-                pass
+    def update(self, request, *args, **kwargs):
+        booking = self.get_object()
+        if not self._is_restaurant_staff(request, booking):
+            return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+        return self._edit_booking(request, booking, request.data, partial=False)
 
-        date_to_param = request.query_params.get('date_to')
-        if date_to_param:
-            try:
-                qs = qs.filter(date__lte=date_to_param)
-            except Exception:
-                pass
-
-        time_from_param = request.query_params.get('time_from')
-        if time_from_param:
-            time_from_param = time_from_param.strip()
-            if time_from_param:
-                try:
-                    qs = qs.filter(time__gte=datetime.strptime(time_from_param, '%H:%M').time())
-                except ValueError:
-                    pass
-
-        time_to_param = request.query_params.get('time_to')
-        if time_to_param:
-            time_to_param = time_to_param.strip()
-            if time_to_param:
-                try:
-                    qs = qs.filter(time__lte=datetime.strptime(time_to_param, '%H:%M').time())
-                except ValueError:
-                    pass
-
-        table_id_param = request.query_params.get('table_id')
-        if table_id_param:
-            try:
-                table_id_int = int(table_id_param)
-                qs = qs.filter(Q(table_id=table_id_int) | Q(tables__id=table_id_int)).distinct()
-            except (TypeError, ValueError):
-                pass
-
-        limit_param = request.query_params.get('limit')
-        if limit_param:
-            try:
-                limit_int = max(1, min(int(limit_param), 100))
-                qs = qs[:limit_int]
-            except (TypeError, ValueError):
-                pass
-            
-        if 'page' in request.query_params or 'page_size' in request.query_params:
-            page = self.paginate_queryset(qs)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-            
-        serializer = self.get_serializer(qs, many=True)
-        return Response(serializer.data)
+    def partial_update(self, request, *args, **kwargs):
+        booking = self.get_object()
+        if not self._is_restaurant_staff(request, booking):
+            return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+        return self._edit_booking(request, booking, request.data, partial=True)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def attach_order(self, request, pk=None):
@@ -516,128 +733,31 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             )
 
         with transaction.atomic():
+            try:
+                StatusMachine.transition(booking, Booking.SEATED, actor=request.user)
+            except ValidationError as e:
+                transaction.set_rollback(True)
+                return api_error(str(e), status.HTTP_400_BAD_REQUEST)
             booking.is_checked_in = True
             booking.check_in_time = timezone.now()
             booking.save(update_fields=['is_checked_in', 'check_in_time'])
-            # Transition to SEATED so status is consistent
-            try:
-                StatusMachine.transition(booking, Booking.SEATED, actor=request.user)
-            except Exception:
-                pass  # already seated or transition not allowed — keep is_checked_in flag
 
         return Response(self.get_serializer(booking).data)
 
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def reschedule(self, request, pk=None):
         """Reschedule booking by changing date/time/duration, re-checking capacity and reallocating tables."""
-        from .models import ReservationHistory
-
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
-
-        date_raw = request.data.get('date', str(booking.date))
-        time_raw = request.data.get('time', booking.time.strftime('%H:%M'))
-        duration_raw = request.data.get('duration_minutes', booking.duration_minutes)
-
-        try:
-            new_date = datetime.strptime(str(date_raw), '%Y-%m-%d').date()
-            if isinstance(time_raw, str) and len(time_raw) == 8:
-                new_time = datetime.strptime(time_raw, '%H:%M:%S').time()
-            else:
-                new_time = datetime.strptime(str(time_raw), '%H:%M').time()
-            new_duration = int(duration_raw)
-            if new_duration < 15:
-                raise ValueError
-        except Exception:
-            return api_error(
-                "Invalid date/time/duration_minutes",
-                status.HTTP_400_BAD_REQUEST,
-                details={"date": date_raw, "time": time_raw, "duration_minutes": duration_raw},
-            )
-
-        restaurant = booking.restaurant
-
-        if not BookingService.is_within_operating_hours(restaurant, new_date, new_time, new_duration):
-            return api_error("Бронирование недоступно на выбранное время.", status.HTTP_400_BAD_REQUEST)
-
-        if not BookingService.acquire_booking_lock(restaurant.id, new_date, new_time, duration_minutes=new_duration):
-            return api_error(
-                "Это время сейчас бронируется другим пользователем. Попробуйте снова.",
-                status.HTTP_409_CONFLICT,
-            )
-
-        try:
-            with transaction.atomic():
-                booking = Booking.objects.select_for_update().prefetch_related('tables').get(id=booking.id)
-
-                if booking.status not in Booking.ACTIVE_STATUSES:
-                    return api_error(
-                        f"Booking is in {booking.status} status, cannot reschedule.",
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-                ok, available = BookingService.check_capacity(
-                    restaurant,
-                    new_date,
-                    new_time,
-                    booking.guests,
-                    new_duration,
-                    exclude_booking_id=booking.id,
-                )
-                if not ok:
-                    return api_error(
-                        "Превышена вместимость ресторана.",
-                        status.HTTP_400_BAD_REQUEST,
-                        details={"available_seats": available, "needed": booking.guests},
-                    )
-
-                preferred_table_id = request.data.get('table_id')
-                tables = BookingService.find_best_tables(
-                    restaurant=restaurant,
-                    date=new_date,
-                    start_time=new_time,
-                    guests=booking.guests,
-                    duration_minutes=new_duration,
-                    preferred_table_id=preferred_table_id,
-                    exclude_booking_id=booking.id,
-                )
-                if not tables:
-                    return api_error(
-                        "Нет доступных столов на выбранное время.",
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-                old_status = booking.status
-                old_table = booking.table
-                old_date = booking.date
-                old_time = booking.time
-
-                booking.date = new_date
-                booking.time = new_time
-                booking.duration_minutes = new_duration
-                booking.table = tables[0]
-                # Call full save() so start_datetime/end_datetime are recalculated
-                booking.save()
-                booking.tables.set(tables)
-
-                ReservationHistory.objects.create(
-                    reservation=booking,
-                    status=booking.status,
-                    event_type='reschedule',
-                    actor=request.user,
-                    from_status=old_status,
-                    to_status=booking.status,
-                    from_table=old_table,
-                    to_table=booking.table,
-                )
-
-                if (old_date, old_time) != (new_date, new_time):
-                    WaitlistService.promote_next(restaurant, old_date, old_time)
-
-                return Response(self.get_serializer(booking).data)
-        finally:
-            BookingService.release_booking_lock(restaurant.id, new_date, new_time, duration_minutes=new_duration)
+        serializer = BookingAdminUpdateSerializer(
+            instance=booking,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        return self._apply_schedule_update(request, booking, serializer.validated_data, event_type='reschedule')
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def confirm(self, request, pk=None):
         """PENDING → APPROVED with capacity re-check inside a transaction."""
@@ -675,7 +795,8 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def seat(self, request, pk=None):
         """APPROVED → SEATED (guest has arrived and been seated). Allows setting a table_id."""
-        from restaurants.models import Table
+        from .services import BookingService
+
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -684,11 +805,33 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if table_id:
             try:
                 table = Table.objects.get(id=table_id, restaurant=booking.restaurant)
-                booking.table = table
-                booking.save(update_fields=['table', 'updated_at'])
-                booking.tables.set([table])
             except Table.DoesNotExist:
                 return api_error("Указанный стол не найден.", status.HTTP_400_BAD_REQUEST)
+
+            if table.seats < booking.guests:
+                return api_error(
+                    "Вместимость стола недостаточна для этой брони.",
+                    status.HTTP_400_BAD_REQUEST,
+                    details={"seats": table.seats, "guests": booking.guests},
+                )
+
+            available_table_ids = BookingService.get_available_table_ids(
+                booking.restaurant,
+                booking.date,
+                booking.time,
+                booking.duration_minutes,
+                exclude_booking_id=booking.id,
+            )
+            if table.id not in available_table_ids:
+                return api_error(
+                    "Стол недоступен для этого времени.",
+                    status.HTTP_400_BAD_REQUEST,
+                    details={"table_id": table.id},
+                )
+
+            booking.table = table
+            booking.save(update_fields=['table', 'updated_at'])
+            booking.tables.set([table])
 
         try:
             StatusMachine.transition(booking, Booking.SEATED, actor=request.user)
@@ -829,15 +972,16 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
              duration = 90
 
         if not restaurant_id or not date_str:
-            raise drf_serializers.ValidationError(
-                {"detail": "restaurant_id and date are required."}
-            )
+            raise drf_serializers.ValidationError({"detail": "restaurant_id and date are required."})
         
         try:
+            restaurant_id_int = int(restaurant_id)
             guests = int(guests_raw)
-            if guests < 1 or duration < 1:
+            if guests < 1 or guests > 20:
                 raise ValueError
-            restaurant = Restaurant.objects.get(id=restaurant_id)
+            if duration < 1:
+                raise ValueError
+            restaurant = Restaurant.objects.get(id=restaurant_id_int)
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
         except (Restaurant.DoesNotExist, ValueError):
             raise drf_serializers.ValidationError(
@@ -850,7 +994,20 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             )
             
         slots = BookingService.get_available_slots(restaurant, date_obj, guests, duration)
-        return Response({"slots": slots})
+        # Keep legacy "slots" while exposing a stable, explicit shape for web/mobile.
+        return Response(
+            {
+                "slots": slots,
+                "available_slots": slots,
+                "unavailable_slots": [],
+                "meta": {
+                    "restaurant_id": restaurant.id,
+                    "date": date_str,
+                    "guests": guests,
+                    "duration_minutes": duration,
+                },
+            }
+        )
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def suggestions(self, request):
@@ -941,7 +1098,44 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         table_ids = BookingService.get_available_table_ids(restaurant, date_obj, time_obj, duration)
         available_tables = Table.objects.filter(id__in=table_ids).order_by('name')
         serializer = TableSerializer(available_tables, many=True)
-        return Response({"available_tables": serializer.data})
+        return Response({
+            "available_tables": serializer.data,
+            "available_table_ids": table_ids,
+        })
+
+    @action(detail=True, methods=['get'], permission_classes=[CanManageReservations])
+    def smart_tables(self, request, pk=None):
+        """
+        Returns the smallest suitable table suggestions for a reservation,
+        respecting the restaurant turnover window and current occupancy.
+        """
+        booking = self.get_object()
+        if not self._is_restaurant_staff(request, booking):
+            return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
+
+        suggestions = BookingService.find_best_tables(
+            booking.restaurant,
+            booking.date,
+            booking.time,
+            booking.guests,
+            duration_minutes=booking.duration_minutes,
+        )
+        serializer = TableSerializer(suggestions[:5], many=True)
+        warning = None
+        if not suggestions:
+            warning = (
+                f"Нет свободных столов на {booking.time.strftime('%H:%M')} "
+                f"с учетом turnover {booking.duration_minutes} мин."
+            )
+        return Response(
+            {
+                "reservation_id": booking.id,
+                "turnover_minutes": getattr(booking.restaurant, 'turnover_default_min', 85),
+                "duration_minutes": booking.duration_minutes,
+                "warning": warning,
+                "suggested_tables": serializer.data,
+            }
+        )
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def cancel(self, request, pk=None):
@@ -968,19 +1162,40 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     # ── Waitlist endpoints ──────────────────────────────────────────────
 
-    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def join_waitlist(self, request):
         """User joins the waitlist for a fully-booked slot."""
-        serializer = WaitlistEntrySerializer(data=request.data)
+        serializer = WaitlistEntrySerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         try:
-            entry = serializer.save(user=request.user)
+            entry = serializer.save(user=request.user if request.user.is_authenticated else None)
         except IntegrityError:
             return Response(
                 {"detail": "Вы уже в листе ожидания на это время."},
                 status=status.HTTP_409_CONFLICT,
             )
         return Response(WaitlistEntrySerializer(entry).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get', 'delete'], permission_classes=[permissions.AllowAny], url_path=r'waitlist/public/(?P<public_token>[^/.]+)')
+    def public_waitlist(self, request, public_token=None):
+        """Public lookup/cancel endpoint for anonymous or token-based waitlist entries."""
+        try:
+            entry = (
+                WaitlistEntry.objects.select_related('restaurant', 'user', 'promoted_booking')
+                .get(public_token=public_token)
+            )
+        except WaitlistEntry.DoesNotExist:
+            return api_error("Waitlist entry not found", status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'GET':
+            return Response(WaitlistEntrySerializer(entry).data, status=status.HTTP_200_OK)
+
+        if entry.status not in (WaitlistEntry.WAITING, WaitlistEntry.NOTIFIED):
+            return api_error("Запись уже обработана.", status.HTTP_400_BAD_REQUEST)
+
+        entry.status = WaitlistEntry.CANCELLED
+        entry.save(update_fields=['status'])
+        return Response(WaitlistEntrySerializer(entry).data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def leave_waitlist(self, request):
@@ -1007,21 +1222,36 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         ).select_related('restaurant')
         return Response(WaitlistEntrySerializer(entries, many=True).data)
 
-    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def confirm_waitlist(self, request):
         """User confirms a waitlist notification → creates a real booking."""
         from .services import BookingService
 
+        entry = None
+        public_token = request.data.get('public_token')
         entry_id = request.data.get('waitlist_id')
-        if not entry_id:
-            return Response({"detail": "waitlist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            entry = WaitlistEntry.objects.get(
-                id=entry_id, user=request.user, status=WaitlistEntry.NOTIFIED
-            )
-        except WaitlistEntry.DoesNotExist:
-            return Response({"detail": "Not found or already expired."}, status=status.HTTP_404_NOT_FOUND)
+        if public_token:
+            try:
+                entry = WaitlistEntry.objects.select_related('restaurant', 'user', 'promoted_booking').get(
+                    public_token=public_token,
+                    status=WaitlistEntry.NOTIFIED,
+                )
+            except WaitlistEntry.DoesNotExist:
+                return Response({"detail": "Not found or already expired."}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            if not request.user.is_authenticated:
+                return Response({"detail": "public_token or waitlist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if not entry_id:
+                return Response({"detail": "waitlist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                entry = WaitlistEntry.objects.select_related('restaurant', 'user', 'promoted_booking').get(
+                    id=entry_id,
+                    user=request.user,
+                    status=WaitlistEntry.NOTIFIED,
+                )
+            except WaitlistEntry.DoesNotExist:
+                return Response({"detail": "Not found or already expired."}, status=status.HTTP_404_NOT_FOUND)
 
         # Check if the notification hasn't expired (15 min window)
         if entry.notified_at and (timezone.now() - entry.notified_at).total_seconds() > 900:
@@ -1057,12 +1287,16 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                         duration_minutes=duration,
                         status=Booking.CONFIRMED,
                         table=tables[0],
+                        user_name=entry.contact_name,
+                        user_phone=entry.contact_phone,
+                        guest_email=entry.contact_email,
                     )
                     booking.tables.set(tables)
 
                     entry.status = WaitlistEntry.PROMOTED
                     entry.promoted_booking = booking
                     entry.save()
+                    NotificationService.notify_restaurant_new_booking(booking)
 
                     return Response(
                         BookingSerializer(booking).data,
@@ -1079,6 +1313,11 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 class WaitlistViewSet(viewsets.ModelViewSet):
     serializer_class = WaitlistEntrySerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+        return super().get_permissions()
 
     def get_queryset(self):
         qs = WaitlistEntry.objects.all()
@@ -1141,7 +1380,7 @@ class WaitlistViewSet(viewsets.ModelViewSet):
                 )
                 booking.tables.set(tables)
 
-                entry.status = WaitlistEntry.SEATED
+                entry.status = WaitlistEntry.PROMOTED
                 entry.promoted_booking = booking
                 entry.save()
 

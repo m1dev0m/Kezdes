@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 
 class Profile(models.Model):
@@ -97,3 +100,54 @@ class OTPVerification(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.code}"
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        if self.code:
+            self.code = self.code.strip()
+        super().save(*args, **kwargs)
+
+    def is_expired(self, expires_minutes=None):
+        if not self.created_at:
+            return False
+        minutes = expires_minutes if expires_minutes is not None else getattr(
+            settings, "OTP_EXPIRE_MINUTES", 10
+        )
+        return self.created_at <= timezone.now() - timedelta(minutes=minutes)
+
+    def mark_verified(self):
+        if not self.is_verified:
+            self.is_verified = True
+            self.save(update_fields=["is_verified"])
+
+
+class OTPDeliveryAttempt(models.Model):
+    CHANNEL_EMAIL = "email"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    CHANNEL_CHOICES = [
+        (CHANNEL_EMAIL, "Email"),
+    ]
+    STATUS_CHOICES = [
+        (STATUS_SENT, "Sent"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    email = models.EmailField(db_index=True)
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default=CHANNEL_EMAIL)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    provider = models.CharField(max_length=50, default="django_mail")
+    error_message = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["email", "-created_at"]),
+            models.Index(fields=["status", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.email} · {self.status}"

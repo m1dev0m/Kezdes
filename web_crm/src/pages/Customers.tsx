@@ -17,7 +17,7 @@ function formatLastVisit(value: string | null): string {
   }).format(date);
 }
 
-type FilterMode = 'all' | 'vip' | 'new';
+type FilterMode = 'all' | 'vip' | 'new' | 'risk';
 
 export default function Customers() {
   const navigate = useNavigate();
@@ -27,9 +27,12 @@ export default function Customers() {
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterMode>('all');
+  const [pageError, setPageError] = useState<string | null>(null);
+  const hasSearch = Boolean(search.trim());
 
   const loadGuests = useCallback(async () => {
     setRefreshing(true);
+    setPageError(null);
     try {
       const params = new URLSearchParams({ ordering: '-last_visit' });
       if (search.trim()) params.set('search', search.trim());
@@ -37,7 +40,9 @@ export default function Customers() {
       const response = await api.get(`/crm/customers/?${params.toString()}`);
       setGuests(extractResults<GuestRecord>(response.data));
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Не удалось загрузить список гостей.'));
+      const message = getApiErrorMessage(error, 'Не удалось загрузить список гостей.');
+      setPageError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -55,6 +60,7 @@ export default function Customers() {
   const filteredGuests = useMemo(() => {
     if (activeFilter === 'vip') return guests.filter((guest) => guest.is_vip);
     if (activeFilter === 'new') return guests.filter((guest) => (guest.visits_count || 0) <= 1);
+    if (activeFilter === 'risk') return guests.filter((guest) => guest.is_blacklisted || (guest.no_show_count || 0) >= 2);
     return guests;
   }, [guests, activeFilter]);
 
@@ -63,6 +69,7 @@ export default function Customers() {
       total: guests.length,
       vip: guests.filter((guest) => guest.is_vip).length,
       newGuests: guests.filter((guest) => (guest.visits_count || 0) <= 1).length,
+      risk: guests.filter((guest) => guest.is_blacklisted || (guest.no_show_count || 0) >= 2).length,
     }),
     [guests],
   );
@@ -120,16 +127,30 @@ export default function Customers() {
       <section className="grid gap-4 md:grid-cols-3">
         <SummaryCard icon={<Users size={18} />} label="Всего гостей" value={stats.total} />
         <SummaryCard icon={<Star size={18} />} label="VIP" value={stats.vip} accent="text-amber-600 bg-amber-50" />
-        <SummaryCard icon={<UserPlus size={18} />} label="Новые" value={stats.newGuests} accent="text-emerald-600 bg-emerald-50" />
+        <SummaryCard icon={<UserPlus size={18} />} label="Риск no-show" value={stats.risk} accent="text-rose-600 bg-rose-50" />
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+        {pageError ? (
+          <div className="border-b border-rose-200 bg-rose-50 px-6 py-4 text-sm text-rose-700 flex items-center justify-between gap-4">
+            <span>{pageError}</span>
+            <button
+              type="button"
+              onClick={() => void loadGuests()}
+              className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-2">
             {[
               { key: 'all', label: 'Все' },
               { key: 'vip', label: 'VIP' },
               { key: 'new', label: 'Новые' },
+              { key: 'risk', label: 'Риск' },
             ].map((item) => (
               <button
                 key={item.key}
@@ -183,10 +204,40 @@ export default function Customers() {
                     Загрузка гостей...
                   </td>
                 </tr>
+              ) : pageError ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-14 text-center text-sm text-slate-500">
+                    Ошибка загрузки списка гостей.
+                  </td>
+                </tr>
               ) : filteredGuests.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-14 text-center text-sm text-slate-500">
-                    По текущим фильтрам гостей нет.
+                    <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">По текущим фильтрам гостей нет.</p>
+                        <p className="mt-2 text-sm text-slate-500">
+                          {hasSearch || activeFilter !== 'all'
+                            ? 'Сбросьте фильтр или попробуйте другой поиск.'
+                            : 'Гости появятся здесь после первых визитов и бронирований.'}
+                        </p>
+                      </div>
+                      {hasSearch || activeFilter !== 'all' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearch('');
+                            setActiveFilter('all');
+                          }}
+                          className="inline-flex items-center rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+                        >
+                          Clear filters
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -209,7 +260,15 @@ export default function Customers() {
                                   VIP
                                 </span>
                               ) : null}
+                              {guest.is_blacklisted ? (
+                                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                                  Blacklist
+                                </span>
+                              ) : null}
                             </div>
+                            {(guest.no_show_count || 0) > 0 ? (
+                              <div className="mt-1 text-xs text-rose-600">No-show: {guest.no_show_count}</div>
+                            ) : null}
                           </div>
                         </div>
                       </td>

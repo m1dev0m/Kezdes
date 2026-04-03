@@ -1,98 +1,139 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
     Image,
-    Dimensions,
     StatusBar,
     ScrollView,
     ActivityIndicator,
-    TextInput
+    TextInput,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-import { Venue, Contractor, generateVenues, generateContractors } from '../lib/mock-data';
 import { fetchRestaurants } from '../lib/api';
 import MapComponent from './MapComponent';
 
-const { width, height } = Dimensions.get('window');
+type Restaurant = {
+    id: number;
+    name: string;
+    address?: string | null;
+    capacity?: number | null;
+    average_price?: number | string | null;
+    description?: string | null;
+    image_url?: string | null;
+    photo_url?: string | null;
+    rating?: number | string | null;
+};
+
+function getDefaultVisitDate() {
+    const now = new Date();
+    const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
+    return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
+function getNumericRating(value?: number | string | null) {
+    const parsed = typeof value === 'number' ? value : Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function extractResults<T>(payload: unknown): T[] {
+    if (Array.isArray(payload)) return payload as T[];
+    if (payload && typeof payload === 'object' && 'results' in payload && Array.isArray((payload as any).results)) {
+        return (payload as any).results as T[];
+    }
+    return [];
+}
 
 export default function ResultsScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const eventType = params.eventType as string || 'wedding';
-    const [viewMode, setViewMode] = useState<'list' | 'map'>('map');
-    const [selectedVenue, setSelectedVenue] = useState<any | null>(null);
-
-    const [venues, setVenues] = useState<any[]>([]); // FIXME: replace any with Venue interface after API is stable
+    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    const [selectedVenue, setSelectedVenue] = useState<Restaurant | null>(null);
+    const [venues, setVenues] = useState<Restaurant[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchText, setSearchText] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [searchText, setSearchText] = useState(typeof params.q === 'string' ? params.q : '');
+    const [largeCapacityOnly, setLargeCapacityOnly] = useState(false);
+    const [highRatedOnly, setHighRatedOnly] = useState(false);
+    const [affordableOnly, setAffordableOnly] = useState(false);
+    const bookingDate = typeof params.date === 'string' ? params.date : getDefaultVisitDate();
+    const bookingTime = typeof params.time === 'string' ? params.time : '19:00';
+    const bookingGuests = typeof params.guests === 'string' ? params.guests : '2';
+
+    const loadData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const city = typeof params.city === 'string' && params.city.trim() ? params.city.trim() : undefined;
+            const vData = await fetchRestaurants(city ? { city } : undefined);
+            setVenues(extractResults<Restaurant>(vData));
+        } catch {
+            setError('Не удалось загрузить рестораны. Проверьте подключение и попробуйте снова.');
+            setVenues([]);
+            setSelectedVenue(null);
+            setViewMode('list');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const loadData = async () => {
-            setLoading(true);
-            try {
-                const vData = await fetchRestaurants({ city: 'Алматы' });
-                const list = Array.isArray(vData) ? vData : ((vData as any)?.results || vData || []);
-                setVenues(Array.isArray(list) ? list : []);
-            } catch (error) {
-                const guestCountNum = parseInt(params.guests as string) || 100;
-                const budgetNum = parseInt(params.budget as string) || 50000;
-                const wizardState = {
-                    eventType: eventType as any,
-                    city: 'Алматы' as any,
-                    guestCount: guestCountNum,
-                    budget: budgetNum,
-                    contractorTypes: [],
-                };
-                if (__DEV__) {
-                }
-                setVenues(generateVenues(wizardState));
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadData();
-    }, [eventType]);
+        void loadData();
+    }, [loadData, eventType]);
 
-    const filteredVenues = venues.filter(v =>
-        v.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-        v.address?.toLowerCase().includes(searchText.toLowerCase())
-    );
+    const filteredVenues = useMemo(() => {
+        return venues
+            .filter((venue) =>
+                venue.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+                venue.address?.toLowerCase().includes(searchText.toLowerCase()),
+            )
+            .filter((venue) => !largeCapacityOnly || Number(venue.capacity || 0) >= 100)
+            .filter((venue) => !highRatedOnly || getNumericRating(venue.rating ?? 4.8) >= 4.5)
+            .filter((venue) => !affordableOnly || Number(venue.average_price || 0) <= 15000);
+    }, [affordableOnly, highRatedOnly, largeCapacityOnly, searchText, venues]);
 
-    const renderVenueCard = (venue: any) => (
+    const openVenue = useCallback((venue: Restaurant) => {
+        router.push({
+            pathname: '/restaurant/[id]',
+            params: {
+                id: venue.id,
+                restaurantName: venue.name,
+                restaurantAddress: venue.address || '',
+                restaurantImageUrl: venue.photo_url || venue.image_url || '',
+                budget: params.budget,
+                guests: bookingGuests,
+                eventType: params.eventType,
+                date: bookingDate,
+                time: bookingTime,
+                q: searchText.trim(),
+            },
+        });
+    }, [bookingDate, bookingGuests, bookingTime, params.budget, params.eventType, router, searchText]);
+
+    const renderVenueCard = (venue: Restaurant) => (
         <TouchableOpacity
             key={venue.id}
             style={styles.listCard}
             activeOpacity={0.9}
-            onPress={() => router.push({
-                pathname: '/restaurant/[id]',
-                params: {
-                    id: venue.id,
-                    restaurantName: venue.name,
-                    budget: params.budget,
-                    guests: params.guests,
-                    eventType: params.eventType,
-                    date: params.date,
-                    time: params.time
-                }
-            })}
+            onPress={() => openVenue(venue)}
         >
             <View style={styles.listCardImageWrap}>
                 <Image source={venue.image_url ? { uri: venue.image_url } : require('../assets/images/featured_1.jpg')} style={styles.listCardImage} />
                 <View style={styles.listCardRating}>
                     <Ionicons name="star" size={12} color="#f59e0b" />
-                    <Text style={styles.listCardRatingText}>{venue.rating}</Text>
+                    <Text style={styles.listCardRatingText}>{venue.rating ?? '4.8'}</Text>
                 </View>
             </View>
             <View style={styles.listCardContent}>
                 <Text style={styles.listCardTitle} numberOfLines={1}>{venue.name}</Text>
                 <Text style={styles.listCardDesc}>{venue.address}</Text>
-                <Text style={styles.listCardPrice}>{venue.average_price?.toLocaleString() || '15 000'} ₸</Text>
+                <Text style={styles.listCardPrice}>{Number(venue.average_price || 15000).toLocaleString('ru-RU')} ₸</Text>
             </View>
         </TouchableOpacity>
     );
@@ -116,7 +157,7 @@ export default function ResultsScreen() {
                         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
                             <MaterialIcons name="arrow-back-ios" size={20} color="#0f172a" />
                         </TouchableOpacity>
-                        <Text style={styles.topNavTitle}>Поиск на карте</Text>
+                        <Text style={styles.topNavTitle}>{viewMode === 'map' ? 'Поиск на карте' : 'Подходящие рестораны'}</Text>
                         <View style={{ width: 40 }} />
                     </View>
 
@@ -131,20 +172,32 @@ export default function ResultsScreen() {
                         />
                     </View>
 
+                    <View style={styles.bookingSummaryRow}>
+                        <Text style={styles.bookingSummaryText}>{bookingDate}</Text>
+                        <Text style={styles.bookingSummaryDivider}>•</Text>
+                        <Text style={styles.bookingSummaryText}>{bookingTime}</Text>
+                        <Text style={styles.bookingSummaryDivider}>•</Text>
+                        <Text style={styles.bookingSummaryText}>{bookingGuests} гостя</Text>
+                    </View>
+
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-                        <TouchableOpacity style={styles.filterChipActive}>
-                            <Text style={styles.filterChipTextActive}>Вместимость</Text>
-                            <MaterialIcons name="keyboard-arrow-down" size={16} color="#fff" />
+                        <TouchableOpacity style={largeCapacityOnly ? styles.filterChipActive : styles.filterChip} onPress={() => setLargeCapacityOnly((value) => !value)}>
+                            <Text style={largeCapacityOnly ? styles.filterChipTextActive : styles.filterChipText}>Большие залы</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.filterChip}>
-                            <Text style={styles.filterChipText}>Рейтинг</Text>
-                            <MaterialIcons name="keyboard-arrow-down" size={16} color="#64748b" />
+                        <TouchableOpacity style={highRatedOnly ? styles.filterChipActive : styles.filterChip} onPress={() => setHighRatedOnly((value) => !value)}>
+                            <Text style={highRatedOnly ? styles.filterChipTextActive : styles.filterChipText}>Выше 4.5</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.filterChip}>
-                            <Text style={styles.filterChipText}>Кухня</Text>
-                            <MaterialIcons name="keyboard-arrow-down" size={16} color="#64748b" />
+                        <TouchableOpacity style={affordableOnly ? styles.filterChipActive : styles.filterChip} onPress={() => setAffordableOnly((value) => !value)}>
+                            <Text style={affordableOnly ? styles.filterChipTextActive : styles.filterChipText}>До 15k</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.filterChip}>
+                        <TouchableOpacity
+                            style={styles.filterChip}
+                            onPress={() => {
+                                setLargeCapacityOnly(false);
+                                setHighRatedOnly(false);
+                                setAffordableOnly(false);
+                            }}
+                        >
                             <MaterialIcons name="tune" size={16} color="#64748b" />
                         </TouchableOpacity>
                     </ScrollView>
@@ -170,6 +223,21 @@ export default function ResultsScreen() {
                 <ScrollView contentContainerStyle={styles.listScrollContent} showsVerticalScrollIndicator={false}>
                     {loading ? (
                         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+                    ) : error ? (
+                        <View style={{ paddingHorizontal: 20, paddingTop: 40 }}>
+                            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 8 }}>{error}</Text>
+                            <TouchableOpacity style={[styles.bookButton, { alignSelf: 'flex-start' }]} onPress={() => void loadData()}>
+                                <Text style={styles.bookButtonText}>Повторить</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : filteredVenues.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyTitle}>Ничего не найдено</Text>
+                            <Text style={styles.emptyDescription}>Попробуйте другой запрос или вернитесь к общему списку ресторанов.</Text>
+                            <TouchableOpacity style={styles.emptyButton} onPress={() => setSearchText('')}>
+                                <Text style={styles.emptyButtonText}>Сбросить поиск</Text>
+                            </TouchableOpacity>
+                        </View>
                     ) : (
                         filteredVenues.map(renderVenueCard)
                     )}
@@ -182,9 +250,6 @@ export default function ResultsScreen() {
                         <View style={styles.cardLayoutRow}>
                             <View style={styles.cardImageContainer}>
                                 <Image source={selectedVenue.image_url ? { uri: selectedVenue.image_url } : require('../assets/images/featured_1.jpg')} style={styles.bottomCardImage} />
-                                <TouchableOpacity style={styles.favoriteButton}>
-                                    <MaterialIcons name="favorite-border" size={18} color="#fff" />
-                                </TouchableOpacity>
                             </View>
                             <View style={styles.cardContentRight}>
                                 <View>
@@ -206,20 +271,9 @@ export default function ResultsScreen() {
                                 <View style={styles.cardActionRow}>
                                     <TouchableOpacity
                                         style={styles.selectPlaceBtn}
-                                        onPress={() => router.push({
-                                            pathname: '/review',
-                                            params: {
-                                                restaurantId: selectedVenue.id,
-                                                restaurantName: selectedVenue.name,
-                                                budget: params.budget,
-                                                guests: params.guests,
-                                                eventType: params.eventType,
-                                                date: params.date,
-                                                time: params.time
-                                            }
-                                        })}
+                                        onPress={() => openVenue(selectedVenue)}
                                     >
-                                        <Text style={styles.selectPlaceBtnText}>Выбрать это место</Text>
+                                        <Text style={styles.selectPlaceBtnText}>Открыть карточку</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -292,6 +346,22 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginBottom: 12,
     },
+    bookingSummaryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+        paddingHorizontal: 4,
+    },
+    bookingSummaryText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    bookingSummaryDivider: {
+        fontSize: 12,
+        color: '#cbd5e1',
+    },
     searchInput: {
         flex: 1,
         height: '100%',
@@ -323,10 +393,21 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 40,
         gap: 4,
-        shadowColor: '#0047FF',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#0047FF',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 6px 12px rgba(0, 71, 255, 0.18)',
+            },
+            default: {},
+        }),
     },
     filterChipText: {
         fontSize: 14,
@@ -353,11 +434,21 @@ const styles = StyleSheet.create({
     },
     segmentBtnActive: {
         backgroundColor: '#ffffff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 4px 10px rgba(15, 23, 42, 0.08)',
+            },
+            default: {},
+        }),
     },
     segmentBtnText: {
         fontSize: 14,
@@ -372,6 +463,36 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 40,
     },
+    emptyState: {
+        backgroundColor: '#ffffff',
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        padding: 20,
+        gap: 10,
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#0f172a',
+    },
+    emptyDescription: {
+        fontSize: 14,
+        lineHeight: 20,
+        color: '#64748b',
+    },
+    emptyButton: {
+        alignSelf: 'flex-start',
+        backgroundColor: colors.primary,
+        borderRadius: 999,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+    },
+    emptyButtonText: {
+        color: '#ffffff',
+        fontSize: 13,
+        fontWeight: '700',
+    },
     listCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 40,
@@ -379,11 +500,21 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#F0F0F0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 10px 24px rgba(15, 23, 42, 0.06)',
+            },
+            default: {},
+        }),
     },
     listCardImageWrap: {
         width: '100%',
@@ -430,6 +561,32 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#4361ee',
     },
+    bookButton: {
+        backgroundColor: '#0047FF',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 40,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#0047FF',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 10px 20px rgba(0, 71, 255, 0.18)',
+            },
+            default: {},
+        }),
+    },
+    bookButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
 
     mapBottomCardContainer: {
         position: 'absolute',
@@ -446,11 +603,21 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         borderWidth: 1,
         borderColor: '#F0F0F0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 24,
-        elevation: 10,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.1,
+                shadowRadius: 24,
+            },
+            android: {
+                elevation: 10,
+            },
+            web: {
+                boxShadow: '0px 18px 36px rgba(15, 23, 42, 0.12)',
+            },
+            default: {},
+        }),
         overflow: 'hidden',
     },
     cardLayoutRow: {
@@ -540,10 +707,21 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderRadius: 40,
         alignItems: 'center',
-        shadowColor: '#0047FF',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#0047FF',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 10px 20px rgba(0, 71, 255, 0.18)',
+            },
+            default: {},
+        }),
     },
     selectPlaceBtnText: {
         fontSize: 14,
@@ -560,11 +738,21 @@ const styles = StyleSheet.create({
     zoomControls: {
         backgroundColor: '#ffffff',
         borderRadius: 40,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 10px 20px rgba(15, 23, 42, 0.12)',
+            },
+            default: {},
+        }),
         width: 48,
         alignItems: 'center',
     },
@@ -575,11 +763,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#ffffff',
         borderRadius: 40,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0px 10px 20px rgba(15, 23, 42, 0.12)',
+            },
+            default: {},
+        }),
     },
     mapControlDivider: {
         width: 24,

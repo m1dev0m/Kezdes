@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
+import { getPostAuthRedirectPath, isGuestRole, isRestaurantRole, normalizeUserRole } from '@/modules/auth/logic/roles';
 
 export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) => {
     const { user, loading } = useAuth();
@@ -17,8 +18,7 @@ export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) =>
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    const role = user.role;
-    // Only real backend roles that belong to restaurant staff (excludes worker — worker has no restaurant_verified requirement)
+    const role = normalizeUserRole(user.role);
     const isRestaurantStaff = ['owner', 'manager', 'host'].includes(role);
 
     if (isRestaurantStaff && !user.restaurant_verified) {
@@ -31,15 +31,14 @@ export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) =>
         return <Navigate to="/register-restaurant/pending" replace />;
     }
 
-    if (allowedRoles && !allowedRoles.includes(role)) {
-        if (role === 'global_admin') {
-            return <Navigate to="/admin/dashboard" replace />;
+    const normalizedAllowedRoles = allowedRoles?.map(normalizeUserRole);
+
+    if (normalizedAllowedRoles && !normalizedAllowedRoles.includes(role)) {
+        if (role === 'pending') {
+            return <Navigate to="/role-selection" replace />;
         }
-        if (isRestaurantStaff || role === 'worker') {
-            return <Navigate to="/app/dashboard" replace />;
-        }
-        if (role === 'customer') {
-            return <Navigate to="/guest/dashboard" replace />;
+        if (role === 'global_admin' || isRestaurantRole(role) || isGuestRole(role)) {
+            return <Navigate to={getPostAuthRedirectPath(user)} replace />;
         }
         return <Navigate to="/login" replace />;
     }

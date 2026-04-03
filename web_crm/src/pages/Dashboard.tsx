@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarClock, CheckCircle2, DoorClosed, RefreshCw } from 'lucide-react';
+import { ArrowRight, CalendarClock, CheckCircle2, CreditCard, DoorClosed, RefreshCw } from 'lucide-react';
 import api from '@/services/api';
+import { useRestaurantSubscriptionSummary } from '@/features/subscription/useRestaurantSubscriptionSummary';
 import { extractResults, getApiErrorMessage, getLocalDateString, getReservationStatusMeta } from '@/features/reservations/shared';
 
 type DashboardBooking = {
@@ -22,6 +23,7 @@ type DashboardTable = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { summary } = useRestaurantSubscriptionSummary();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +97,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Dashboard</div>
+          <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Панель</div>
           <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900">Операционная картина на сегодня</h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
             Быстрый обзор текущих бронирований, ближайших гостей и доступных столов без перехода между разделами.
@@ -107,9 +109,78 @@ export default function Dashboard() {
           className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-          Refresh
+          Обновить
         </button>
       </div>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <QuickAction
+          title="Схема зала"
+          description="Открыть схему зала для посадки, назначения стола и контроля статусов в зале."
+          actionLabel="Открыть схему"
+          onAction={() => navigate('/app/floor')}
+        />
+        <QuickAction
+          title="Календарь смены"
+          description="Перейти к дате, расписанию дня и ближайшим подтверждённым броням."
+          actionLabel="Открыть календарь"
+          onAction={() => navigate('/app/calendar')}
+        />
+        <QuickAction
+          title="Новая бронь"
+          description="Создать бронирование вручную без лишних переходов между разделами."
+          actionLabel="Создать бронь"
+          onAction={() => navigate('/app/bookings/new')}
+        />
+        <QuickAction
+          title="Заказы"
+          description="Проверить новые заказы и быстро открыть связанную бронь или пустой orders flow."
+          actionLabel="Открыть заказы"
+          onAction={() => navigate('/app/orders')}
+        />
+      </section>
+
+      {summary ? (
+        <section className={`rounded-3xl border px-5 py-4 shadow-sm ${
+          summary.subscription_state === 'none'
+            ? 'border-slate-200 bg-white'
+            : summary.subscription_state === 'grace'
+            ? 'border-amber-200 bg-amber-50'
+            : summary.is_subscription_live
+              ? 'border-slate-200 bg-white'
+              : 'border-rose-200 bg-rose-50'
+        }`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl bg-white/80 p-3 text-[#1d4ed8]">
+                <CreditCard size={18} />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">
+                  Тариф {summary.plan_label} · {summary.payment_status_label}
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {summary.subscription_state === 'none'
+                    ? 'Базовый план активен. Если нужна команда, аналитика и расширенные операции — перейдите на Plus / Pro.'
+                    : summary.subscription_state === 'grace'
+                    ? 'Льготный период активен. Проверьте оплату, чтобы не потерять расширенные функции.'
+                    : summary.is_subscription_live
+                      ? 'Подписка в порядке. Лимиты и счета доступны в разделе подписки.'
+                      : 'Часть CRM-функций ограничена. Проверьте подписку и оплату.'}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/app/billing')}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#1d4ed8] shadow-sm"
+            >
+              Открыть подписку
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {error ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
 
@@ -148,7 +219,7 @@ export default function Dashboard() {
               onClick={() => navigate('/app/bookings')}
               className="inline-flex items-center gap-2 text-sm font-semibold text-[#1d4ed8]"
             >
-              All reservations
+              Все бронирования
               <ArrowRight size={16} />
             </button>
           </div>
@@ -157,7 +228,7 @@ export default function Dashboard() {
             <EmptyState
               title="На сегодня пока нет бронирований"
               description="Создайте первую бронь вручную или дождитесь новых заявок с публичной страницы."
-              actionLabel="Create reservation"
+              actionLabel="Создать бронь"
               onAction={() => navigate('/app/bookings/new')}
             />
           ) : (
@@ -165,11 +236,11 @@ export default function Dashboard() {
               <table className="w-full text-left">
                 <thead className="border-b border-slate-200 bg-[#fafaf9] text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                   <tr>
-                    <th className="px-6 py-4">Time</th>
-                    <th className="px-6 py-4">Guest</th>
-                    <th className="px-6 py-4">Guests</th>
-                    <th className="px-6 py-4">Table</th>
-                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Время</th>
+                    <th className="px-6 py-4">Гость</th>
+                    <th className="px-6 py-4">Гостей</th>
+                    <th className="px-6 py-4">Стол</th>
+                    <th className="px-6 py-4">Статус</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -180,9 +251,9 @@ export default function Dashboard() {
                       onClick={() => navigate(`/app/bookings?id=${booking.id}`)}
                     >
                       <td className="px-6 py-4 text-sm font-semibold text-slate-900">{booking.time?.slice(0, 5) || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-slate-700">{booking.user_name || 'Guest'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-700">{booking.user_name || 'Гость'}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">{booking.guests}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{booking.table_number ? `Table ${booking.table_number}` : '—'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{booking.table_number ? `Стол ${booking.table_number}` : '—'}</td>
                       <td className="px-6 py-4">
                         <StatusBadge status={booking.status} />
                       </td>
@@ -206,9 +277,9 @@ export default function Dashboard() {
                   <div key={booking.id} className="rounded-2xl bg-[#fafaf9] px-4 py-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-semibold text-slate-900">{booking.user_name || 'Guest'}</div>
+                        <div className="text-sm font-semibold text-slate-900">{booking.user_name || 'Гость'}</div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {booking.time?.slice(0, 5) || '—'} · {booking.guests} guests
+                          {booking.time?.slice(0, 5) || '—'} · {booking.guests} гостей
                         </div>
                       </div>
                       <StatusBadge status={booking.status} />
@@ -223,18 +294,32 @@ export default function Dashboard() {
             <div className="text-lg font-bold tracking-tight text-slate-900">Первый запуск</div>
             <div className="mt-1 text-sm text-slate-500">Быстрые шаги, если ресторан только запускается</div>
             <div className="mt-5 space-y-3">
-              <QuickAction
-                title="Проверить столы"
-                description={stats.freeTables > 0 ? 'Столы уже созданы, можно продолжать работу.' : 'Сначала создайте хотя бы один стол.'}
-                actionLabel={stats.freeTables > 0 ? 'Open tables' : 'Create tables'}
-                onAction={() => navigate('/app/tables')}
-              />
-              <QuickAction
-                title="Создать бронь"
-                description="Если тестируете продукт, создайте первую бронь вручную и проверьте flow."
-                actionLabel="New reservation"
-                onAction={() => navigate('/app/bookings/new')}
-              />
+              {summary?.checklist?.length ? (
+                summary.checklist.map((item) => (
+                  <QuickAction
+                    key={item.key}
+                    title={item.label}
+                    description={item.description}
+                    actionLabel={item.done ? 'Открыть' : 'Настроить'}
+                    onAction={() => navigate(item.path)}
+                  />
+                ))
+              ) : (
+                <>
+                  <QuickAction
+                    title="Проверить схему зала"
+                    description={stats.freeTables > 0 ? 'Столы уже созданы, можно продолжать работу через схему зала.' : 'Сначала создайте хотя бы один стол и расставьте его на схеме зала.'}
+                    actionLabel={stats.freeTables > 0 ? 'Открыть схему' : 'Собрать схему'}
+                    onAction={() => navigate('/app/floor')}
+                  />
+                  <QuickAction
+                    title="Создать бронь"
+                    description="Если тестируете продукт, создайте первую бронь вручную и проверьте flow."
+                    actionLabel="Новая бронь"
+                    onAction={() => navigate('/app/bookings/new')}
+                  />
+                </>
+              )}
             </div>
           </section>
         </div>

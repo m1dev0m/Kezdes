@@ -1,160 +1,387 @@
-import { CreditCard, Zap, Check, ShieldCheck, ArrowRight, History } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { useI18n } from '@/i18n';
+import { useMemo, type ReactNode } from 'react';
+import { ArrowRight, CreditCard, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+import { useRestaurantSubscriptionSummary } from '@/features/subscription/useRestaurantSubscriptionSummary';
+
+function formatDate(value?: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatAmount(amount: string, currency: string) {
+  const numeric = Number(amount);
+  if (Number.isNaN(numeric)) return `${amount} ${currency}`;
+  return new Intl.NumberFormat('ru-RU').format(numeric) + ` ${currency}`;
+}
+
+function getInvoiceStatusLabel(status: string) {
+  switch (status) {
+    case 'paid':
+      return 'Оплачен';
+    case 'pending':
+      return 'Ожидает оплаты';
+    case 'failed':
+      return 'Не оплачен';
+    case 'void':
+      return 'Аннулирован';
+    default:
+      return status;
+  }
+}
+
+function getPlanLabel(plan: string) {
+  switch (plan) {
+    case 'none':
+      return 'Без подписки';
+    case 'plus':
+      return 'Plus';
+    case 'pro':
+      return 'Pro';
+    default:
+      return plan;
+  }
+}
 
 export default function Billing() {
-    const { t } = useI18n();
+  const navigate = useNavigate();
+  const { summary, audit, loading, refreshing, error, reload } = useRestaurantSubscriptionSummary();
 
-    const plans = [
-        {
-            name: 'Basic',
-            price: 'Free',
-            desc: 'Essential for small coffee shops',
-            features: ['Up to 10 tables', '50 bookings/mo', 'Basic analytics', 'SMS notifications'],
-            current: true,
-            color: 'bg-slate-50 border-slate-200'
-        },
-        {
-            name: 'Pro',
-            price: '₸15,000',
-            period: '/mo',
-            desc: 'Perfect for growing restaurants',
-            features: ['Unlimited tables', 'Unlimited bookings', 'Advanced analytics', 'Visual map editor', 'Staff management', 'Multi-device support'],
-            current: false,
-            recommended: true,
-            color: 'bg-primary/5 border-indigo-100 ring-2 ring-primary ring-offset-2'
-        },
-        {
-            name: 'Enterprise',
-            price: 'Custom',
-            desc: 'For restaurant chains & hotels',
-            features: ['Multi-restaurant control', 'Custom integration', 'Priority support', 'White-labeling', 'API Access', 'On-premise option'],
-            current: false,
-            color: 'bg-slate-900 border-slate-900 text-white'
-        }
-    ];
+  const invoiceStats = useMemo(() => {
+    if (!summary) return { paid: 0, pending: 0 };
+    return {
+      paid: summary.invoices.filter((invoice) => invoice.status === 'paid').length,
+      pending: summary.invoices.filter((invoice) => invoice.status === 'pending').length,
+    };
+  }, [summary]);
 
+  if (loading && !summary) {
     return (
-        <div className="space-y-12 pb-20">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{t('billing.title', { defaultValue: 'Billing & Plans' })}</h1>
-                    <p className="text-slate-500 font-medium mt-1 uppercase tracking-widest text-[10px]">{t('billing.subtitle', { defaultValue: 'Manage your subscription and usage' })}</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 -z-10"></div>
-                    <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8">
-                        <div>
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                                    <ShieldCheck size={20} />
-                                </div>
-                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Subscription</span>
-                            </div>
-                            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Basic Starter Plan</h2>
-                            <p className="text-slate-500 text-sm mb-6">Your current plan includes all core features to get started.</p>
-                            <div className="flex items-center gap-6">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Usage</p>
-                                    <p className="text-lg font-black text-slate-900">12 / 50 Bookings</p>
-                                </div>
-                                <div className="w-px h-8 bg-slate-100"></div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Next Renewal</p>
-                                    <p className="text-lg font-black text-slate-900">Apr 12, 2026</p>
-                                </div>
-                            </div>
-                        </div>
-                        <Button variant="primary" className="shadow-lg shadow-primary/20">Upgrade Now <ArrowRight size={16} className="ml-2" /></Button>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm">
-                    <div className="flex items-center gap-3 mb-6">
-                        <CreditCard className="text-slate-400" />
-                        <h3 className="text-lg font-black text-slate-900">Payment Method</h3>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="w-12 h-8 bg-white border border-slate-100 rounded flex items-center justify-center font-bold text-[8px] text-slate-400">VISA</div>
-                            <span className="text-slate-400 text-xs font-bold">**** 4422</span>
-                        </div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expires 12/28</p>
-                    </div>
-                    <Button variant="secondary" className="w-full mt-6">Edit Method</Button>
-                </div>
-            </div>
-
-            <div className="space-y-8">
-                <div className="text-center max-w-2xl mx-auto">
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Select a Plan</h2>
-                    <p className="text-slate-500 text-sm">Choose the best plan for your venue size and business goals.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {plans.map((plan, i) => (
-                        <div key={i} className={`${plan.color} border rounded-[2.5rem] p-10 flex flex-col relative`}>
-                            {plan.recommended && (
-                                <div className="absolute top-0 right-10 -translate-y-1/2 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg shadow-primary/20">Recommended</div>
-                            )}
-                            <div className="mb-8">
-                                <h3 className="text-xl font-black tracking-tight mb-1">{plan.name}</h3>
-                                <p className={`text-xs font-medium ${plan.name === 'Enterprise' ? 'text-white/60' : 'text-slate-500'}`}>{plan.desc}</p>
-                            </div>
-                            <div className="mb-8">
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black tracking-tighter">{plan.price}</span>
-                                    {plan.period && <span className={`text-sm font-bold ${plan.name === 'Enterprise' ? 'text-white/60' : 'text-slate-400'}`}>{plan.period}</span>}
-                                </div>
-                            </div>
-                            <div className="space-y-4 flex-1 mb-10">
-                                {plan.features.map((f, j) => (
-                                    <div key={j} className="flex items-start gap-3">
-                                        <div className={`mt-0.5 ${plan.name === 'Enterprise' ? 'text-primary' : 'text-emerald-500'}`}><Check size={14} /></div>
-                                        <span className={`text-sm font-bold ${plan.name === 'Enterprise' ? 'text-white/80' : 'text-slate-600'}`}>{f}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <Button variant={plan.current ? 'secondary' : plan.name === 'Enterprise' ? 'secondary' : 'primary'} className="w-full" disabled={plan.current}>
-                                {plan.current ? 'Current Plan' : plan.name === 'Enterprise' ? 'Contact Sales' : 'Switch Plan'}
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                        <History className="text-slate-400" />
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight">Recent Invoices</h3>
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    {[
-                        { id: '#INV-2024-001', date: 'Mar 12, 2026', amount: '₸15,000', status: 'Paid' },
-                        { id: '#INV-2024-002', date: 'Feb 12, 2026', amount: '₸15,000', status: 'Paid' },
-                    ].map((inv, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-colors group">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-slate-500"><Zap size={16} /></div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{inv.id}</p>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{inv.date}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-6">
-                                <span className="text-sm font-black text-slate-900 dark:text-white">{inv.amount}</span>
-                                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full">{inv.status}</span>
-                                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">Download</Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-[#1d4ed8]" />
+      </div>
     );
+  }
+
+  if (!summary) {
+    return (
+      <div className="space-y-4 rounded-3xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
+        <div className="text-lg font-semibold">Подписка недоступна</div>
+        <div className="text-sm">{error || 'Не удалось определить ресторан и тариф.'}</div>
+        <button
+          type="button"
+          onClick={() => void reload()}
+          className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700"
+        >
+          <RefreshCw size={16} />
+          Повторить
+        </button>
+      </div>
+    );
+  }
+
+  const statusTone =
+    summary.subscription_state === 'none'
+      ? 'border-slate-200 bg-slate-100 text-slate-700'
+      : summary.subscription_state === 'grace'
+      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      : summary.is_subscription_live
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+        : 'border-rose-200 bg-rose-50 text-rose-700';
+
+  return (
+    <div className="space-y-8 pb-10">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Подписка</div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Подписка и биллинг</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
+            Текущий тариф ресторана, лимиты, состояние оплаты, последние счета и быстрый переход к сравнению Plus / Pro.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void reload()}
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            Обновить
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(summary.upgrade_cta?.path || '/pricing')}
+            className="inline-flex items-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+          >
+            {summary.upgrade_cta?.label || 'Сравнить тарифы'}
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      </header>
+
+      {error ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {error}
+        </div>
+      ) : null}
+
+      <section className="grid gap-5 lg:grid-cols-[1.3fr_0.7fr]">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <ShieldCheck size={14} />
+                Текущий тариф
+              </div>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-900">{summary.plan_label}</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Статус ресторана: {summary.status} · Оплата: {summary.payment_status_label}
+              </p>
+            </div>
+            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone}`}>
+              {summary.subscription_state === 'grace' ? 'Льготный период' : summary.payment_status_label}
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <InfoCard label="Период с" value={formatDate(summary.current_period_starts_at)} />
+            <InfoCard label="Следующее списание" value={formatDate(summary.current_period_ends_at)} />
+            <InfoCard label="Льготный период до" value={formatDate(summary.grace_until)} />
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <Sparkles size={16} className="text-[#1d4ed8]" />
+              Что открывает ваш тариф
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {summary.features.map((feature) => (
+                <div
+                  key={feature.key}
+                  className={`rounded-2xl border px-4 py-3 text-sm ${
+                    feature.enabled ? 'border-emerald-200 bg-white text-slate-700' : 'border-slate-200 bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <div className="font-semibold">{feature.label}</div>
+                  <div className="mt-1 text-xs uppercase tracking-[0.16em]">
+                    {feature.enabled ? 'Доступно' : 'Недоступно'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <SummaryCard
+            icon={<CreditCard size={18} />}
+            label="Оплаченных счетов"
+            value={invoiceStats.paid}
+            tone="bg-emerald-50 text-emerald-700"
+          />
+          <SummaryCard
+            icon={<CreditCard size={18} />}
+            label="Ожидают оплаты"
+            value={invoiceStats.pending}
+            tone="bg-amber-50 text-amber-700"
+          />
+          <SummaryCard
+            icon={<ShieldCheck size={18} />}
+            label="Точечные фичи"
+            value={Object.keys(summary.feature_flags || {}).length}
+            tone="bg-slate-100 text-slate-700"
+          />
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-lg font-semibold tracking-tight text-slate-900">Лимиты и использование</div>
+          <div className="mt-1 text-sm text-slate-500">Количественные ограничения активного тарифа.</div>
+          <div className="mt-5 space-y-4">
+            {(['tables', 'zones', 'staff'] as const).map((key) => (
+              <UsageRow
+                key={key}
+                label={key === 'tables' ? 'Столы' : key === 'zones' ? 'Залы / зоны' : 'Сотрудники'}
+                used={summary.usage[key] ?? 0}
+                limit={summary.limits[key] ?? null}
+                percentage={summary.usage_percent[key] ?? null}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-lg font-semibold tracking-tight text-slate-900">Чеклист первого запуска</div>
+          <div className="mt-1 text-sm text-slate-500">Чтобы ресторан был реально готов к первому использованию.</div>
+          <div className="mt-5 space-y-3">
+            {summary.checklist.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => navigate(item.path)}
+                className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                  item.done
+                    ? 'border-emerald-200 bg-emerald-50/50'
+                    : 'border-slate-200 bg-slate-50 hover:bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{item.label}</div>
+                    <div className="mt-1 text-sm text-slate-500">{item.description}</div>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                    item.done ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {item.done ? 'Готово' : 'Открыть'}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+          <div>
+            <div className="text-lg font-semibold tracking-tight text-slate-900">История счетов</div>
+            <div className="mt-1 text-sm text-slate-500">Последние инвойсы по ресторану.</div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-6 py-4">Счёт</th>
+                <th className="px-6 py-4">Тариф</th>
+                <th className="px-6 py-4">Период</th>
+                <th className="px-6 py-4">Сумма</th>
+                <th className="px-6 py-4">Статус</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {summary.invoices.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-500">
+                    Счета появятся здесь после первой активации или продления.
+                  </td>
+                </tr>
+              ) : (
+                summary.invoices.map((invoice) => (
+                  <tr key={invoice.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-900">{invoice.number}</td>
+	                    <td className="px-6 py-4 text-sm text-slate-600">{getPlanLabel(invoice.plan)}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {formatDate(invoice.period_start)} — {formatDate(invoice.period_end)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-900">{formatAmount(invoice.amount, invoice.currency)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        invoice.status === 'paid'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : invoice.status === 'pending'
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-slate-100 text-slate-700'
+                      }`}>
+	                        {getInvoiceStatusLabel(invoice.status)}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="text-lg font-semibold tracking-tight text-slate-900">Последние изменения</div>
+        <div className="mt-1 text-sm text-slate-500">Аудит по подписке, статусу ресторана и операционным событиям.</div>
+        <div className="mt-5 space-y-3">
+          {audit.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+              Пока нет записей аудита.
+            </div>
+          ) : (
+            audit.slice(0, 8).map((entry) => (
+              <div key={entry.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-semibold text-slate-900">{entry.summary}</div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-slate-400">{formatDate(entry.created_at)}</div>
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {entry.actor_username || 'System'} · {entry.event_type.replaceAll('_', ' ')}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className={`inline-flex rounded-2xl p-3 ${tone}`}>{icon}</div>
+      <div className="mt-4 text-sm font-medium text-slate-500">{label}</div>
+      <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="mt-2 text-lg font-semibold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function UsageRow({
+  label,
+  used,
+  limit,
+  percentage,
+}: {
+  label: string;
+  used: number;
+  limit: number | null;
+  percentage: number | null;
+}) {
+  const width = percentage === null ? 100 : Math.min(Math.max(percentage, 0), 100);
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-semibold text-slate-900">{label}</span>
+        <span className="text-slate-500">
+          {used} / {limit === null ? '∞' : limit}
+        </span>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full ${percentage !== null && percentage >= 90 ? 'bg-amber-500' : 'bg-[#1d4ed8]'}`} style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
 }

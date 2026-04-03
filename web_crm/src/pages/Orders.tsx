@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
     ShoppingBag, Clock, ChevronRight, ChevronLeft,
-    Receipt, DollarSign
+    Receipt, DollarSign, RefreshCw
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
@@ -33,8 +34,11 @@ interface Order {
 
 export default function Orders() {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -46,7 +50,7 @@ export default function Orders() {
     }, [filter, page]);
 
     const load = async () => {
-        setLoading(true);
+        setRefreshing(true);
         try {
             const params = new URLSearchParams();
             if (filter) params.set('status', filter);
@@ -60,10 +64,14 @@ export default function Orders() {
                 setOrders(Array.isArray(res.data) ? res.data : []);
                 setTotalPages(1);
             }
+            setError(null);
         } catch {
-            toast.error(t('orders.failedToLoad'));
+            const message = t('orders.failedToLoad');
+            setError(message);
+            toast.error(message);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -95,7 +103,32 @@ export default function Orders() {
                     <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{t('orders.title')}</h1>
                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mt-1.5 opacity-80">{t('orders.description')}</p>
                 </div>
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={load}
+                    className="h-11 rounded-2xl border-slate-200 bg-white px-4 text-slate-700"
+                >
+                    <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+                    Обновить
+                </Button>
             </div>
+
+            {error ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <span>{error}</span>
+                        <button
+                            type="button"
+                            onClick={() => void load()}
+                            className="inline-flex items-center gap-2 self-start rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
+                        >
+                            <RefreshCw size={14} />
+                            Повторить
+                        </button>
+                    </div>
+                </div>
+            ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white dark:bg-brand-dark/40 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 flex items-center justify-between shadow-sm">
@@ -210,6 +243,13 @@ export default function Orders() {
                                             <span className="px-3 py-1.5 rounded-lg bg-primary/5 dark:bg-primary/5 text-primary dark:text-indigo-400 text-[9px] font-black uppercase tracking-[0.2em] border border-indigo-100 dark:border-primary/20">
                                                 {t('orders.linkedToReservation')} #{order.reservation || order.reservation_id}
                                             </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(`/app/bookings?id=${order.reservation || order.reservation_id}`)}
+                                                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:bg-slate-50"
+                                            >
+                                                Открыть бронь
+                                            </button>
                                         </div>
                                     )}
                                 </div>

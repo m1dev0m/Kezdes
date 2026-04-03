@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Restaurant, RestaurantRequest, Table, Availability, Review
+from .models import Restaurant, RestaurantRequest, Table, Availability, Review, RestaurantInvoice, RestaurantAuditLog
 import string
 import random
 from django.contrib.auth.models import User
@@ -36,9 +36,34 @@ class RestaurantRequestAdmin(admin.ModelAdmin):
 
 @admin.register(Restaurant)
 class RestaurantAdmin(admin.ModelAdmin):
-    list_display = ('name', 'address', 'is_verified', 'is_claimed', 'owner')
-    list_filter = ('is_verified', 'is_claimed', 'source')
+    list_display = (
+        'name',
+        'status',
+        'plan',
+        'payment_status',
+        'is_verified',
+        'is_claimed',
+        'owner',
+        'subscription_features',
+    )
+    list_filter = ('status', 'plan', 'payment_status', 'is_verified', 'is_claimed', 'source')
     search_fields = ('name', 'address', 'phone')
+    list_editable = ('status', 'plan', 'payment_status', 'is_verified', 'is_claimed')
+    readonly_fields = ('subscription_features',)
+
+    def subscription_features(self, obj):
+        flags = []
+        if obj.has_feature('bookings_basic'):
+            flags.append('bookings')
+        if obj.has_feature('table_map'):
+            flags.append('tables')
+        if obj.has_feature('analytics_basic'):
+            flags.append('analytics')
+        if obj.has_feature('automations'):
+            flags.append('automations')
+        return ', '.join(flags) or 'minimal'
+
+    subscription_features.short_description = 'Features'
 
 @admin.register(Table)
 class TableAdmin(admin.ModelAdmin):
@@ -52,3 +77,18 @@ class AvailabilityAdmin(admin.ModelAdmin):
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
     list_display = ('restaurant', 'user', 'rating', 'created_at')
+
+
+@admin.register(RestaurantInvoice)
+class RestaurantInvoiceAdmin(admin.ModelAdmin):
+    list_display = ('number', 'restaurant', 'plan', 'amount', 'currency', 'status', 'issued_at', 'due_at', 'paid_at')
+    list_filter = ('plan', 'status', 'currency')
+    search_fields = ('number', 'restaurant__name', 'note')
+
+
+@admin.register(RestaurantAuditLog)
+class RestaurantAuditLogAdmin(admin.ModelAdmin):
+    list_display = ('restaurant', 'event_type', 'target_type', 'summary', 'actor', 'created_at')
+    list_filter = ('event_type', 'target_type')
+    search_fields = ('restaurant__name', 'summary', 'target_id')
+    readonly_fields = ('restaurant', 'actor', 'event_type', 'target_type', 'target_id', 'summary', 'payload', 'created_at')

@@ -1,56 +1,251 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, Filter, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
+import { ManualBookingForm } from '@/components/ManualBookingForm';
 import {
-  extractResults,
   getApiErrorMessage,
   getDateTimeLabel,
   getLocalDateString,
   getReservationDateTime,
   getReservationName,
   getReservationPhone,
+  getReservationSourceLabel,
   getReservationStatusMeta,
   getTableCapacity,
   getTableLabel,
   getTimeLabel,
-  isActiveReservation,
   type ReservationRecord,
   type TableRecord,
 } from '@/features/reservations/shared';
 
-type FilterMode = 'today' | 'now' | 'upcoming';
+type TimeFilterMode = 'all' | 'today' | 'now' | 'upcoming';
+type StatusFilterMode = 'all' | 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no_show';
+
+type PagedApiResponse<T> = {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
+  results?: T[];
+};
+
+type SmartTablesResponse = {
+  turnover_minutes: number;
+  duration_minutes: number;
+  warning?: string | null;
+  suggested_tables: TableRecord[];
+};
+
+const PAGE_SIZE = 25;
+const SEARCH_PAGE_SIZE = 100;
+const MAX_SEARCH_PAGES = 10;
+
+function normalizeStatus(status: string): string {
+  if (status === 'approved') return 'confirmed';
+  if (status === 'cancelled') return 'cancelled';
+  return status;
+}
+
+function getStatusFilterQuery(status: StatusFilterMode) {
+  if (status === 'all') return null;
+  if (status === 'cancelled') return 'cancelled';
+  return status;
+}
+
+function buildTimeFilterParams(timeFilter: TimeFilterMode) {
+  const params: Record<string, string> = {};
+  const today = getLocalDateString();
+  const now = new Date();
+  const rounded = new Date(now);
+  rounded.setMinutes(rounded.getMinutes() - 60, 0, 0);
+  const forward = new Date(now);
+  forward.setMinutes(forward.getMinutes() + 60, 0, 0);
+
+  if (timeFilter === 'today') {
+    params.date = today;
+  } else if (timeFilter === 'upcoming') {
+    params.date_from = today;
+  } else if (timeFilter === 'now') {
+    params.date = today;
+    params.time_from = rounded.toTimeString().slice(0, 5);
+    params.time_to = forward.toTimeString().slice(0, 5);
+  }
+
+  return params;
+}
+
+function getStatusSummary(status: string) {
+  const normalized = normalizeStatus(status);
+  if (normalized === 'pending') return 'Ожидает подтверждения';
+  if (normalized === 'confirmed') return 'Подтверждена';
+  if (normalized === 'seated') return 'Гость уже за столом';
+  if (normalized === 'completed') return 'Визит завершён';
+  if (normalized === 'no_show') return 'Неявка';
+  if (normalized === 'cancelled_by_user') return 'Отменена гостем';
+  if (normalized === 'cancelled_by_restaurant') return 'Отменена рестораном';
+  return getReservationStatusMeta(status).label;
+}
+
+function getStatusTypeMeta(status: string) {
+  const normalized = normalizeStatus(status);
+  if (normalized === 'pending') {
+    return {
+      label: 'Ожидание',
+      caption: 'Гость ждёт подтверждения',
+      className: 'border-amber-200 bg-amber-50 text-amber-700',
+    };
+  }
+
+  if (normalized === 'confirmed') {
+    return {
+      label: 'Бронирование',
+      caption: 'Подтверждённая бронь до посадки',
+      className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    };
+  }
+
+  if (normalized === 'seated') {
+    return {
+      label: 'За столом',
+      caption: 'Гость уже сидит в зале',
+      className: 'border-blue-200 bg-blue-50 text-blue-700',
+    };
+  }
+
+  return {
+    label: 'Архив',
+    caption: 'Завершённые и отменённые визиты',
+    className: 'border-slate-200 bg-slate-100 text-slate-700',
+  };
+}
+
+function getReservationAccentClass(status: string) {
+  const normalized = normalizeStatus(status);
+  if (normalized === 'pending') return 'border-l-amber-400';
+  if (normalized === 'confirmed') return 'border-l-emerald-400';
+  if (normalized === 'seated') return 'border-l-blue-400';
+  return 'border-l-slate-300';
+}
 
 export default function Bookings() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [reservations, setReservations] = useState<ReservationRecord[]>([]);
   const [selectedReservationId, setSelectedReservationId] = useState<number | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilterMode>('today');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterMode>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterMode>('today');
   const [tablePickerReservation, setTablePickerReservation] = useState<ReservationRecord | null>(null);
+  const [tablePickerMode, setTablePickerMode] = useState<'seat' | 'assign'>('seat');
   const [availableTables, setAvailableTables] = useState<TableRecord[]>([]);
+  const [smartTables, setSmartTables] = useState<SmartTablesResponse | null>(null);
+  const [smartTablesLoading, setSmartTablesLoading] = useState(false);
   const [tablesLoading, setTablesLoading] = useState(false);
   const [inFlightId, setInFlightId] = useState<number | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [manualBookingOpen, setManualBookingOpen] = useState(false);
+  const requestSeq = useRef(0);
 
-  const loadReservations = useCallback(async () => {
+  const hasSearch = Boolean(search.trim());
+  const hasDeepLink = Boolean(searchParams.get('id'));
+  const useFullDataset = hasSearch || hasDeepLink;
+  const hasActiveFilters = hasSearch || timeFilter !== 'today' || statusFilter !== 'all';
+
+  const parseReservationsResponse = useCallback((payload: unknown) => {
+    if (Array.isArray(payload)) {
+      return {
+        items: payload as ReservationRecord[],
+        count: payload.length,
+      };
+    }
+
+    if (payload && typeof payload === 'object') {
+      const data = payload as PagedApiResponse<ReservationRecord>;
+      if (Array.isArray(data.results)) {
+        return {
+          items: data.results,
+          count: typeof data.count === 'number' ? data.count : data.results.length,
+        };
+      }
+    }
+
+    return {
+      items: [],
+      count: 0,
+    };
+  }, []);
+
+  const loadReservations = useCallback(async (page: number) => {
+    const currentRequestId = ++requestSeq.current;
     setRefreshing(true);
+
     try {
-      const response = await api.get('/bookings/my_restaurant/?ordering=date,time');
-      const nextReservations = extractResults<ReservationRecord>(response.data);
-      setReservations(nextReservations);
-      setPageError(null);
+      const serverFilters = buildTimeFilterParams(timeFilter);
+      const statusQuery = getStatusFilterQuery(statusFilter);
+      const pageSize = useFullDataset ? SEARCH_PAGE_SIZE : PAGE_SIZE;
+      const fetchPage = async (pageNumber: number) => {
+        const params = new URLSearchParams({ ordering: 'date,time', page: String(pageNumber), page_size: String(pageSize) });
+        Object.entries(serverFilters).forEach(([key, value]) => params.set(key, value));
+        if (statusQuery) params.set('status', statusQuery);
+
+        const response = await api.get(`/bookings/my_restaurant/?${params.toString()}`);
+        return parseReservationsResponse(response.data);
+      };
+
+      let items: ReservationRecord[] = [];
+      let total = 0;
+
+      if (useFullDataset) {
+        for (let pageNumber = 1; pageNumber <= MAX_SEARCH_PAGES; pageNumber += 1) {
+          const parsed = await fetchPage(pageNumber);
+          if (currentRequestId !== requestSeq.current) return;
+
+          if (pageNumber === 1) {
+            total = parsed.count;
+          }
+
+          items = items.concat(parsed.items);
+          if (parsed.items.length < pageSize || (total && items.length >= total)) {
+            break;
+          }
+        }
+      } else {
+        const parsed = await fetchPage(page);
+        if (currentRequestId !== requestSeq.current) return;
+        items = parsed.items;
+        total = parsed.count;
+      }
 
       const paramId = searchParams.get('id');
       if (paramId) {
-        setSelectedReservationId(Number(paramId));
+        const reservationId = Number(paramId);
+        if (!Number.isNaN(reservationId) && !items.some((reservation) => reservation.id === reservationId)) {
+          const detailResponse = await api.get(`/bookings/${reservationId}/`);
+          if (currentRequestId !== requestSeq.current) return;
+
+          const detailReservation = detailResponse.data as ReservationRecord;
+          if (detailReservation?.id === reservationId) {
+            items = [detailReservation, ...items.filter((reservation) => reservation.id !== reservationId)];
+          }
+        }
+      }
+
+      setReservations(items);
+      setTotalCount(total || items.length);
+      setPageError(null);
+
+      if (paramId) {
+        const id = Number(paramId);
+        setSelectedReservationId(Number.isNaN(id) ? null : id);
       } else {
         setSelectedReservationId((current) => {
-          if (current && nextReservations.some((reservation) => reservation.id === current)) return current;
-          return nextReservations[0]?.id ?? null;
+          if (current && items.some((reservation) => reservation.id === current)) return current;
+          return items[0]?.id ?? null;
         });
       }
     } catch (error) {
@@ -58,18 +253,19 @@ export default function Bookings() {
       setPageError(message);
       toast.error(message);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (currentRequestId === requestSeq.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [searchParams]);
-
+  }, [parseReservationsResponse, searchParams, statusFilter, timeFilter, useFullDataset]);
   useEffect(() => {
-    void loadReservations();
+    void loadReservations(currentPage);
     const intervalId = window.setInterval(() => {
-      void loadReservations();
+      void loadReservations(currentPage);
     }, 15000);
     return () => window.clearInterval(intervalId);
-  }, [loadReservations]);
+  }, [currentPage, loadReservations]);
 
   const selectedReservation = useMemo(
     () => reservations.find((reservation) => reservation.id === selectedReservationId) ?? null,
@@ -80,25 +276,69 @@ export default function Bookings() {
     const today = getLocalDateString();
     const now = new Date();
     const searchValue = search.trim().toLowerCase();
+    const deepLinkedReservationId = (() => {
+      const raw = searchParams.get('id');
+      if (!raw) return null;
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? null : parsed;
+    })();
 
     return reservations
-      .filter((reservation) => isActiveReservation(reservation.status))
       .filter((reservation) => {
-        if (filter === 'today') return reservation.date === today;
-        if (filter === 'upcoming') return getReservationDateTime(reservation.date, reservation.time) >= now;
+        if (reservation.id === deepLinkedReservationId) return true;
+        const normalized = normalizeStatus(reservation.status);
+        if (statusFilter === 'all') return true;
+        if (statusFilter === 'cancelled') {
+          return ['cancelled', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(normalized);
+        }
+        return normalized === statusFilter;
+      })
+      .filter((reservation) => {
+        if (reservation.id === deepLinkedReservationId) return true;
+        if (timeFilter === 'all') return true;
+        if (timeFilter === 'today') return reservation.date === today;
+        if (timeFilter === 'upcoming') return getReservationDateTime(reservation.date, reservation.time) >= now;
 
         const slot = getReservationDateTime(reservation.date, reservation.time);
         const diffMinutes = (slot.getTime() - now.getTime()) / 60000;
         return reservation.date === today && diffMinutes >= -60 && diffMinutes <= 60;
       })
       .filter((reservation) => {
+        if (reservation.id === deepLinkedReservationId) return true;
         if (!searchValue) return true;
+        const tableText = getTableLabel(reservation).toLowerCase();
         return (
           getReservationName(reservation).toLowerCase().includes(searchValue) ||
-          getReservationPhone(reservation).toLowerCase().includes(searchValue)
+          getReservationPhone(reservation).toLowerCase().includes(searchValue) ||
+          tableText.includes(searchValue) ||
+          String(reservation.id).includes(searchValue)
         );
       });
-  }, [filter, reservations, search]);
+  }, [reservations, search, statusFilter, timeFilter]);
+
+  const statusCards = useMemo(
+    () => [
+      {
+        key: 'pending' as const,
+        label: 'Ожидание',
+        description: 'Новые заявки и лист ожидания',
+        count: reservations.filter((reservation) => normalizeStatus(reservation.status) === 'pending').length,
+      },
+      {
+        key: 'confirmed' as const,
+        label: 'Бронирование',
+        description: 'Подтверждённые брони до посадки',
+        count: reservations.filter((reservation) => normalizeStatus(reservation.status) === 'confirmed').length,
+      },
+      {
+        key: 'seated' as const,
+        label: 'За столом',
+        description: 'Гости, уже сидящие в зале',
+        count: reservations.filter((reservation) => normalizeStatus(reservation.status) === 'seated').length,
+      },
+    ],
+    [reservations],
+  );
 
   const updateReservationLocally = useCallback(
     (reservationId: number, updater: (reservation: ReservationRecord) => ReservationRecord) => {
@@ -231,9 +471,19 @@ export default function Bookings() {
       }
 
       setTablePickerReservation(reservation);
+      setTablePickerMode('seat');
       void loadTableOptions(reservation);
     },
     [loadTableOptions, mutateReservation],
+  );
+
+  const handleAssignTable = useCallback(
+    async (reservation: ReservationRecord) => {
+      setTablePickerReservation(reservation);
+      setTablePickerMode('assign');
+      await loadTableOptions(reservation);
+    },
+    [loadTableOptions],
   );
 
   const handleSeatWithTable = useCallback(
@@ -265,10 +515,76 @@ export default function Bookings() {
     [tablePickerReservation, updateReservationLocally],
   );
 
+  const handleMessageGuest = useCallback((reservation: ReservationRecord) => {
+    if (!reservation.user) {
+      toast.error('Этот гость не зарегистрирован в системе.');
+      return;
+    }
+    navigate('/app/messages', { state: { bookingId: reservation.id } });
+  }, [navigate]);
+
+  const handleAssignTableWithTable = useCallback(
+    async (tableId: number) => {
+      if (!tablePickerReservation) return;
+
+      const reservation = tablePickerReservation;
+      const previousReservation = { ...reservation };
+      setInFlightId(reservation.id);
+      updateReservationLocally(reservation.id, (current) => ({
+        ...current,
+        table_id: tableId,
+      }));
+
+      try {
+        const response = await api.post(`/bookings/${reservation.id}/reassign_table/`, { table_id: tableId });
+        const nextReservation = response.data as ReservationRecord;
+        updateReservationLocally(reservation.id, () => nextReservation);
+        setTablePickerReservation(null);
+        toast.success(previousReservation.table_id ? 'Стол обновлён.' : 'Стол назначен.');
+      } catch (error) {
+        updateReservationLocally(reservation.id, () => previousReservation);
+        toast.error(getApiErrorMessage(error, 'Не удалось назначить стол.'));
+      } finally {
+        setInFlightId(null);
+      }
+    },
+    [tablePickerReservation, updateReservationLocally],
+  );
+
+  const loadSmartTables = useCallback(async (reservation: ReservationRecord) => {
+    if (!['pending', 'approved', 'confirmed'].includes(reservation.status)) {
+      setSmartTables(null);
+      return;
+    }
+
+    setSmartTablesLoading(true);
+    try {
+      const response = await api.get<SmartTablesResponse>(`/bookings/${reservation.id}/smart_tables/`);
+      setSmartTables(response.data);
+    } catch {
+      setSmartTables(null);
+    } finally {
+      setSmartTablesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedReservation) {
+      setSmartTables(null);
+      return;
+    }
+    void loadSmartTables(selectedReservation);
+  }, [loadSmartTables, selectedReservation]);
+
   if (loading && reservations.length === 0) {
     return (
-      <div className="flex h-[60vh] items-center justify-center text-sm text-slate-500">
-        Загрузка бронирований...
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div className="flex items-center gap-3 text-sm text-slate-600">
+            <span className="material-symbols-outlined animate-spin text-[20px] text-[#1d4ed8]">refresh</span>
+            Загрузка бронирований...
+          </div>
+        </div>
       </div>
     );
   }
@@ -280,62 +596,179 @@ export default function Bookings() {
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Reservations</h1>
           <p className="mt-2 text-sm text-slate-600">Подтверждение, посадка и завершение брони без перезагрузки страницы.</p>
         </div>
-        <Link
-          to="/app/bookings/new"
-          aria-label="reservation-new"
+        <button
+          type="button"
+          onClick={() => setManualBookingOpen(true)}
+          aria-label="reservations-manual-create"
           className="inline-flex items-center gap-2 rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
         >
-          <span className="material-symbols-outlined text-[20px]">add</span>
+          <Plus size={16} />
           New booking
-        </Link>
+        </button>
       </div>
 
       {pageError ? (
-        <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{pageError}</div>
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 md:flex-row md:items-center md:justify-between">
+          <span>{pageError}</span>
+          <button
+            type="button"
+            onClick={() => void loadReservations(currentPage)}
+            className="inline-flex items-center gap-2 self-start rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
+          >
+            <RefreshCw size={14} />
+            Retry
+          </button>
+        </div>
       ) : null}
+
+      <section className="mb-6 rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setCurrentPage(1);
+                }}
+                aria-label="reservations-search"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white focus:ring-4 focus:ring-blue-50 lg:w-80"
+                placeholder="Поиск по гостю, телефону, столу или ID"
+                type="text"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ['all', 'All'],
+                  ['today', 'Today'],
+                  ['now', 'Now'],
+                  ['upcoming', 'Upcoming'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setTimeFilter(value);
+                    setCurrentPage(1);
+                  }}
+                  className={`rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                    timeFilter === value ? 'bg-[#1d4ed8] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ['all', 'All statuses'],
+                  ['pending', 'Pending'],
+                  ['confirmed', 'Confirmed'],
+                  ['seated', 'Seated'],
+                  ['completed', 'Completed'],
+                  ['cancelled', 'Cancelled'],
+                  ['no_show', 'No show'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(value);
+                    setCurrentPage(1);
+                  }}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-widest transition ${
+                    statusFilter === value ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Filter size={14} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setTimeFilter('today');
+                  setStatusFilter('all');
+                  setCurrentPage(1);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50"
+              >
+                <X size={14} />
+                Clear filters
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void loadReservations(currentPage)}
+              aria-label="reservations-refresh"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+            >
+              <span className={`material-symbols-outlined text-[20px] ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-6 grid gap-4 md:grid-cols-3">
+        {statusCards.map((card) => {
+          const active = statusFilter === card.key;
+          return (
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => {
+                setStatusFilter(card.key);
+                setCurrentPage(1);
+              }}
+              className={`rounded-3xl border px-5 py-4 text-left shadow-sm transition ${
+                active
+                  ? 'border-blue-200 bg-blue-50'
+                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{card.label}</div>
+              <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{card.count}</div>
+              <div className="mt-2 text-sm text-slate-500">{card.description}</div>
+            </button>
+          );
+        })}
+      </section>
 
       <div className="grid flex-1 grid-cols-12 gap-6 min-h-0">
         <div className="col-span-12 flex min-h-0 flex-col xl:col-span-8">
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    aria-label="reservations-search"
-                    className="h-11 w-64 rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50"
-                    placeholder="Поиск по имени или телефону"
-                    type="text"
-                  />
-                </div>
-
-                <div className="flex rounded-xl bg-slate-200 p-1 gap-1">
-                  {(['today', 'now', 'upcoming'] as const).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setFilter(item)}
-                      aria-label={`reservations-filter-${item}`}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-                        filter === item ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
+              <div className="text-sm font-medium text-slate-600">
+                {useFullDataset
+                  ? `Показано ${filteredReservations.length} из ${reservations.length}`
+                  : `Страница ${currentPage} из ${Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}`}
               </div>
-
-              <button
-                type="button"
-                onClick={() => void loadReservations()}
-                aria-label="reservations-refresh"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
-              >
-                <span className={`material-symbols-outlined text-[20px] ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
-              </button>
+              <div className="flex items-center gap-3">
+                {refreshing ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+                    <span className="material-symbols-outlined animate-spin text-[16px]">refresh</span>
+                    Updating
+                  </span>
+                ) : null}
+                {!useFullDataset && totalCount > PAGE_SIZE ? (
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Server pagination enabled
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             <div className="min-h-0 overflow-auto custom-scrollbar">
@@ -351,10 +784,38 @@ export default function Bookings() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {filteredReservations.length === 0 ? (
+                  {pageError ? (
                     <tr>
                       <td colSpan={6} className="p-12 text-center text-sm text-slate-500">
-                        Подходящих бронирований не найдено.
+                        Не удалось показать бронирования. Попробуйте обновить страницу или повторить запрос.
+                      </td>
+                    </tr>
+                  ) : filteredReservations.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center">
+                        <div className="mx-auto max-w-sm">
+                          <p className="text-sm font-medium text-slate-900">Подходящих бронирований не найдено.</p>
+                          <p className="mt-2 text-sm text-slate-500">
+                            {hasActiveFilters
+                              ? 'Сбросьте фильтры или попробуйте другой диапазон поиска.'
+                              : 'Новые брони появятся здесь автоматически.'}
+                          </p>
+                          {hasActiveFilters ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearch('');
+                                setTimeFilter('today');
+                                setStatusFilter('all');
+                                setCurrentPage(1);
+                              }}
+                              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+                            >
+                              <X size={14} />
+                              Clear filters
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -362,15 +823,13 @@ export default function Bookings() {
                       const isBusy = inFlightId === reservation.id;
 
                       return (
-                        <tr
-                          key={reservation.id}
-                          onClick={() => setSelectedReservationId(reservation.id)}
-                          aria-label={`reservation-row-${reservation.id}`}
-                          className={`cursor-pointer transition hover:bg-slate-50 ${
-                            selectedReservationId === reservation.id ? 'bg-blue-50/60' : ''
-                          }`}
-                        >
-                          <td className="p-4">
+                    <tr
+                      key={reservation.id}
+                      onClick={() => setSelectedReservationId(reservation.id)}
+                      aria-label={`reservation-row-${reservation.id}`}
+                      className={`cursor-pointer transition hover:bg-slate-50 ${selectedReservationId === reservation.id ? 'bg-blue-50/60' : ''}`}
+                    >
+                          <td className={`border-l-4 p-4 ${getReservationAccentClass(reservation.status)}`}>
                             <div className="flex items-center gap-3">
                               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
                                 {getReservationName(reservation).charAt(0).toUpperCase()}
@@ -385,40 +844,29 @@ export default function Bookings() {
                           <td className="p-4 text-sm text-slate-600">{reservation.guests}</td>
                           <td className="p-4 text-sm text-slate-600">{getTableLabel(reservation)}</td>
                           <td className="p-4">
-                            <StatusBadge status={reservation.status} />
+                            <div className="space-y-2">
+                              <StatusBadge status={reservation.status} />
+                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium ${getStatusTypeMeta(reservation.status).className}`}>
+                                {getStatusTypeMeta(reservation.status).label}
+                              </span>
+                            </div>
                           </td>
                           <td className="p-4 text-right">
-                            <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
-                              {reservation.status === 'pending' ? (
-                                <ActionIcon
-                                  label={`reservation-confirm-${reservation.id}`}
-                                  title="Confirm"
-                                  tone="emerald"
-                                  disabled={isBusy}
-                                  onClick={() => void handleConfirm(reservation)}
-                                  icon="check"
-                                />
-                              ) : null}
-                              {['approved', 'confirmed'].includes(reservation.status) ? (
-                                <ActionIcon
-                                  label={`reservation-seat-${reservation.id}`}
-                                  title="Seat guest"
-                                  tone="blue"
-                                  disabled={isBusy}
-                                  onClick={() => void handleSeat(reservation)}
-                                  icon="chair"
-                                />
-                              ) : null}
-                              {['pending', 'approved', 'confirmed'].includes(reservation.status) ? (
-                                <ActionIcon
-                                  label={`reservation-cancel-${reservation.id}`}
-                                  title="Cancel"
-                                  tone="rose"
-                                  disabled={isBusy}
-                                  onClick={() => void handleCancel(reservation)}
-                                  icon="close"
-                                />
-                              ) : null}
+                            <div
+                              className="flex items-center justify-end gap-1.5 rounded-full border border-slate-200 bg-white p-1 shadow-sm"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <ReservationActions
+                                reservation={reservation}
+                                busy={isBusy}
+                                onConfirm={() => void handleConfirm(reservation)}
+                                onAssignTable={() => void handleAssignTable(reservation)}
+                                onSeat={() => void handleSeat(reservation)}
+                                onCancel={() => void handleCancel(reservation)}
+                                onComplete={() => void handleComplete(reservation)}
+                                onNoShow={() => void handleNoShow(reservation)}
+                                onMessage={() => handleMessageGuest(reservation)}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -428,6 +876,32 @@ export default function Bookings() {
                 </tbody>
               </table>
             </div>
+
+            {!useFullDataset && totalCount > PAGE_SIZE ? (
+              <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-4">
+                <div className="text-sm text-slate-500">
+                  {`${(currentPage - 1) * PAGE_SIZE + 1}-${Math.min(currentPage * PAGE_SIZE, totalCount)} из ${totalCount}`}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Назад
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((value) => value + 1)}
+                    disabled={currentPage >= Math.ceil(totalCount / PAGE_SIZE)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Вперёд
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -453,8 +927,20 @@ export default function Bookings() {
                   </div>
                   <h4 className="text-xl font-semibold text-slate-900">{getReservationName(selectedReservation)}</h4>
                   <p className="mt-1 text-sm text-slate-500">{getReservationPhone(selectedReservation)}</p>
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
                     <StatusBadge status={selectedReservation.status} />
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider ${getStatusTypeMeta(selectedReservation.status).className}`}>
+                      {getStatusTypeMeta(selectedReservation.status).label}
+                    </span>
+                    {selectedReservation.user && (
+                      <button
+                        onClick={() => handleMessageGuest(selectedReservation)}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">forum</span>
+                        Message
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -465,9 +951,60 @@ export default function Bookings() {
                       <DetailItem label="Date & time" value={getDateTimeLabel(selectedReservation.date, selectedReservation.time)} />
                       <DetailItem label="Guests" value={`${selectedReservation.guests}`} />
                       <DetailItem label="Table" value={getTableLabel(selectedReservation)} />
-                      <DetailItem label="Channel" value="Online booking" />
+                      <DetailItem label="Status" value={getStatusSummary(selectedReservation.status)} />
+                      <DetailItem label="Тип" value={getStatusTypeMeta(selectedReservation.status).label} />
+                      <DetailItem label="Channel" value={getReservationSourceLabel(selectedReservation.source)} />
                     </div>
                   </section>
+
+                  {selectedReservation.has_preorder ? (
+                    <section>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Предзаказ</p>
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+                        <div className="text-sm font-semibold text-emerald-900">
+                          К брони уже привязан предзаказ ({selectedReservation.orders_count || 1}).
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/app/orders')}
+                          className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800"
+                        >
+                          Открыть заказы
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {['pending', 'approved', 'confirmed'].includes(selectedReservation.status) ? (
+                    <section>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Smart seating</p>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                        {smartTablesLoading ? (
+                          <div className="text-sm text-slate-500">Подбираем лучший стол...</div>
+                        ) : smartTables?.suggested_tables?.length ? (
+                          <div className="space-y-3">
+                            <div className="text-sm text-slate-600">
+                              Система предлагает посадку с учётом доступности и turnover {smartTables.turnover_minutes} мин.
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {smartTables.suggested_tables.map((table, index) => (
+                                <span key={table.id} className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                                  index === 0 ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700'
+                                }`}>
+                                  {getTableLabel(table)} · {getTableCapacity(table)} мест
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-slate-500">
+                            {smartTables?.warning || 'Сейчас нет подходящих столов под этот слот.'}
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  ) : null}
 
                   {selectedReservation.special_requests ? (
                     <section>
@@ -506,6 +1043,42 @@ export default function Bookings() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 border-t border-slate-200 bg-slate-50 p-6">
+                {selectedReservation.status === 'pending' ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleConfirm(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-confirm-selected-${selectedReservation.id}`}
+                    className="rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Confirm
+                  </button>
+                ) : null}
+
+                {['approved', 'confirmed'].includes(selectedReservation.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleAssignTable(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-assign-table-${selectedReservation.id}`}
+                    className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {selectedReservation.table_id ? 'Move table' : 'Assign table'}
+                  </button>
+                ) : null}
+
+                {['approved', 'confirmed'].includes(selectedReservation.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSeat(selectedReservation)}
+                    disabled={inFlightId === selectedReservation.id}
+                    aria-label={`reservation-seat-selected-${selectedReservation.id}`}
+                    className="rounded-xl bg-[#1d4ed8] py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+                  >
+                    Seat guest
+                  </button>
+                ) : null}
+
                 {['approved', 'confirmed'].includes(selectedReservation.status) ? (
                   <button
                     type="button"
@@ -530,30 +1103,6 @@ export default function Bookings() {
                   </button>
                 ) : null}
 
-                {selectedReservation.status === 'pending' ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleConfirm(selectedReservation)}
-                    disabled={inFlightId === selectedReservation.id}
-                    aria-label={`reservation-confirm-selected-${selectedReservation.id}`}
-                    className="rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    Confirm
-                  </button>
-                ) : null}
-
-                {['approved', 'confirmed'].includes(selectedReservation.status) ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleSeat(selectedReservation)}
-                    disabled={inFlightId === selectedReservation.id}
-                    aria-label={`reservation-seat-selected-${selectedReservation.id}`}
-                    className="rounded-xl bg-[#1d4ed8] py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
-                  >
-                    Seat guest
-                  </button>
-                ) : null}
-
                 {selectedReservation.status === 'seated' ? (
                   <button
                     type="button"
@@ -571,6 +1120,14 @@ export default function Bookings() {
             <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
               <span className="material-symbols-outlined mb-4 text-5xl">touch_app</span>
               <p className="text-sm">Выберите бронь, чтобы увидеть детали и быстрые действия.</p>
+              <button
+                type="button"
+                onClick={() => setManualBookingOpen(true)}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+              >
+                <Plus size={14} />
+                Create manual booking
+              </button>
             </div>
           )}
         </div>
@@ -579,12 +1136,24 @@ export default function Bookings() {
       {tablePickerReservation ? (
         <TablePicker
           reservation={tablePickerReservation}
+          mode={tablePickerMode}
           tables={availableTables}
           loading={tablesLoading}
           onClose={() => setTablePickerReservation(null)}
-          onConfirm={(tableId) => void handleSeatWithTable(tableId)}
+          onConfirm={(tableId) =>
+            void (tablePickerMode === 'seat' ? handleSeatWithTable(tableId) : handleAssignTableWithTable(tableId))
+          }
         />
       ) : null}
+
+      <ManualBookingForm
+        isOpen={manualBookingOpen}
+        onClose={() => setManualBookingOpen(false)}
+        onSuccess={() => {
+          setManualBookingOpen(false);
+          void loadReservations(currentPage);
+        }}
+      />
     </div>
   );
 }
@@ -599,7 +1168,7 @@ function ActionIcon({
 }: {
   label: string;
   title: string;
-  tone: 'emerald' | 'blue' | 'rose';
+  tone: 'emerald' | 'blue' | 'rose' | 'slate';
   disabled: boolean;
   onClick: () => void;
   icon: string;
@@ -609,7 +1178,9 @@ function ActionIcon({
       ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
       : tone === 'blue'
         ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-        : 'bg-rose-100 text-rose-700 hover:bg-rose-200';
+        : tone === 'slate'
+          ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          : 'bg-rose-100 text-rose-700 hover:bg-rose-200';
 
   return (
     <button
@@ -622,6 +1193,61 @@ function ActionIcon({
     >
       <span className="material-symbols-outlined text-[18px]">{icon}</span>
     </button>
+  );
+}
+
+function ReservationActions({
+  reservation,
+  busy,
+  onConfirm,
+  onAssignTable,
+  onSeat,
+  onCancel,
+  onComplete,
+  onNoShow,
+  onMessage,
+}: {
+  reservation: ReservationRecord;
+  busy: boolean;
+  onConfirm: () => void;
+  onAssignTable: () => void;
+  onSeat: () => void;
+  onCancel: () => void;
+  onComplete: () => void;
+  onNoShow: () => void;
+  onMessage: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {reservation.status === 'pending' ? (
+        <ActionIcon label={`reservation-confirm-${reservation.id}`} title="Confirm" tone="emerald" disabled={busy} onClick={onConfirm} icon="check" />
+      ) : null}
+      {['approved', 'confirmed', 'seated'].includes(reservation.status) ? (
+        <ActionIcon
+          label={`reservation-assign-table-${reservation.id}`}
+          title={reservation.table_id ? 'Move table' : 'Assign table'}
+          tone="slate"
+          disabled={busy}
+          onClick={onAssignTable}
+          icon="table_restaurant"
+        />
+      ) : null}
+      {['approved', 'confirmed'].includes(reservation.status) ? (
+        <ActionIcon label={`reservation-seat-${reservation.id}`} title="Seat guest" tone="blue" disabled={busy} onClick={onSeat} icon="chair" />
+      ) : null}
+      {['pending', 'approved', 'confirmed'].includes(reservation.status) ? (
+        <ActionIcon label={`reservation-cancel-${reservation.id}`} title="Cancel" tone="rose" disabled={busy} onClick={onCancel} icon="close" />
+      ) : null}
+      {reservation.status === 'seated' ? (
+        <ActionIcon label={`reservation-complete-${reservation.id}`} title="Complete service" tone="emerald" disabled={busy} onClick={onComplete} icon="flag" />
+      ) : null}
+      {['approved', 'confirmed'].includes(reservation.status) ? (
+        <ActionIcon label={`reservation-no-show-${reservation.id}`} title="No show" tone="slate" disabled={busy} onClick={onNoShow} icon="person_off" />
+      ) : null}
+      {reservation.user ? (
+        <ActionIcon label={`reservation-chat-${reservation.id}`} title="Chat with guest" tone="slate" disabled={busy} onClick={onMessage} icon="forum" />
+      ) : null}
+    </div>
   );
 }
 
@@ -648,12 +1274,14 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 function TablePicker({
   reservation,
+  mode,
   tables,
   loading,
   onClose,
   onConfirm,
 }: {
   reservation: ReservationRecord;
+  mode: 'seat' | 'assign';
   tables: TableRecord[];
   loading: boolean;
   onClose: () => void;
@@ -666,7 +1294,7 @@ function TablePicker({
       <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Choose a table</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{mode === 'seat' ? 'Choose a table' : 'Assign a table'}</h2>
             <p className="text-sm text-slate-500">
               {getReservationName(reservation)} · {reservation.guests} guests
             </p>
@@ -699,11 +1327,10 @@ function TablePicker({
                   type="button"
                   aria-label={`table-choice-${table.id}`}
                   onClick={() => setSelectedTableId(table.id)}
-                  className={`rounded-2xl border p-4 text-left transition ${
-                    selectedTableId === table.id
+                  className={`rounded-2xl border p-4 text-left transition ${selectedTableId === table.id
                       ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-300'
                       : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <div className={`text-lg font-semibold ${selectedTableId === table.id ? 'text-blue-700' : 'text-slate-900'}`}>
                     {getTableLabel(table)}
@@ -733,7 +1360,7 @@ function TablePicker({
             aria-label="table-picker-confirm"
             className="rounded-xl bg-[#1d4ed8] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
           >
-            Seat guest
+            {mode === 'seat' ? 'Seat guest' : 'Save table'}
           </button>
         </div>
       </div>

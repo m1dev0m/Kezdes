@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -12,6 +14,14 @@ from typing import Optional, List, Dict, Any
 class TsRange(Func):
     function = 'tstzrange'
     output_field = DateTimeRangeField()
+
+
+def generate_booking_public_token() -> str:
+    return uuid.uuid4().hex
+
+
+def generate_waitlist_public_token() -> str:
+    return uuid.uuid4().hex
 
 class Booking(models.Model):
     # Status constants
@@ -166,6 +176,13 @@ class Booking(models.Model):
         blank=True,
         null=True,
         help_text="Email for unauthenticated guests"
+    )
+    public_token = models.CharField(
+        max_length=32,
+        unique=True,
+        db_index=True,
+        editable=False,
+        default=generate_booking_public_token,
     )
     is_checked_in = models.BooleanField(default=False)
     check_in_time = models.DateTimeField(null=True, blank=True)
@@ -492,11 +509,27 @@ class WaitlistEntry(models.Model):
         (CANCELLED, 'Отменено'),
     ]
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='waitlist_entries')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='waitlist_entries',
+    )
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='waitlist_entries')
     date = models.DateField()
     time = models.TimeField()
     guests = models.PositiveIntegerField(default=2)
+    guest_name = models.CharField(max_length=255, blank=True, null=True)
+    guest_phone = models.CharField(max_length=50, blank=True, null=True)
+    guest_email = models.EmailField(blank=True, null=True)
+    public_token = models.CharField(
+        max_length=32,
+        unique=True,
+        db_index=True,
+        editable=False,
+        default=generate_waitlist_public_token,
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=WAITING)
     notified_at = models.DateTimeField(null=True, blank=True)
     promoted_booking = models.ForeignKey(
@@ -513,10 +546,34 @@ class WaitlistEntry(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'restaurant', 'date', 'time'],
-                condition=models.Q(status__in=['waiting', 'notified']),
-                name='unique_active_waitlist_per_slot',
+                condition=models.Q(status__in=['waiting', 'notified'], user__isnull=False),
+                name='unique_active_waitlist_per_slot_user',
+            ),
+            models.UniqueConstraint(
+                fields=['guest_phone', 'restaurant', 'date', 'time'],
+                condition=models.Q(status__in=['waiting', 'notified'], user__isnull=True),
+                name='unique_active_waitlist_per_slot_guest_phone',
             ),
         ]
 
     def __str__(self):
-        return f"Waitlist: {self.user.username} @ {self.restaurant.name} on {self.date} {self.time}"
+        contact_label = self.user.username if self.user_id else (self.guest_name or self.guest_email or "guest")
+        return f"Waitlist: {contact_label} @ {self.restaurant.name} on {self.date} {self.time}"
+
+    @property
+    def contact_name(self) -> str:
+        if self.user_id:
+            return self.user.get_full_name() or self.user.username
+        return self.guest_name or self.guest_email or "Гость"
+
+    @property
+    def contact_email(self) -> str | None:
+        if self.user_id and self.user.email:
+            return self.user.email
+        return self.guest_email
+
+    @property
+    def contact_phone(self) -> str | None:
+        if self.user_id and hasattr(self.user, 'profile'):
+            return self.user.profile.phone or None
+        return self.guest_phone

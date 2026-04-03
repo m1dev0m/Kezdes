@@ -25,9 +25,14 @@ export default function AdminTablesScreen() {
     }, [user]);
 
     const loadData = async () => {
+        const token = user?.access;
+        if (!token) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         try {
-            const data = await fetchTables(user.access);
+            const data = await fetchTables(token);
             setTables(data || []);
         } catch (error) {
             console.error('Error fetching tables:', error);
@@ -63,8 +68,13 @@ export default function AdminTablesScreen() {
                     text: 'Удалить',
                     style: 'destructive',
                     onPress: async () => {
+                        const token = user?.access;
+                        if (!token) {
+                            Alert.alert('Ошибка', 'Сессия истекла. Войдите заново.');
+                            return;
+                        }
                         try {
-                            await deleteTable(id, user.access);
+                            await deleteTable(id, token);
                             setTables(prev => prev.filter(t => t.id !== id));
                         } catch (error) {
                             Alert.alert('Ошибка', 'Не удалось удалить стол');
@@ -76,6 +86,11 @@ export default function AdminTablesScreen() {
     };
 
     const handleSave = async () => {
+        const token = user?.access;
+        if (!token) {
+            Alert.alert('Ошибка', 'Сессия истекла. Войдите заново.');
+            return;
+        }
         if (!number || !seats) {
             Alert.alert('Ошибка', 'Пожалуйста, заполните все поля');
             return;
@@ -91,10 +106,10 @@ export default function AdminTablesScreen() {
             };
 
             if (editingTable) {
-                const res = await updateTable(editingTable.id, data, user.access);
+                const res = await updateTable(editingTable.id, data, token);
                 setTables(prev => prev.map(t => t.id === editingTable.id ? res : t));
             } else {
-                const res = await createTable(data, user.access);
+                const res = await createTable(data, token);
                 setTables(prev => [...prev, res]);
             }
             setIsModalVisible(false);

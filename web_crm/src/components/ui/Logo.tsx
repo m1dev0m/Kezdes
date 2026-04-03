@@ -9,12 +9,12 @@ interface LogoProps {
 export const Logo: React.FC<LogoProps> = ({ className = '', variant = 'wordmark', onClick }) => {
     const isText = variant === 'text';
     const imageVariant = variant === 'wordmark' ? 'client' : variant;
-    const src = imageVariant === 'admin' ? '/Kezdes_admin_Logo.jpg' : '/Kezdes_client_logo.jpg';
+    const src = imageVariant === 'admin' ? '/Kezdes_admin_Logo.jpg' : '/Kezdes_client_logo.png';
     const alt = imageVariant === 'admin' ? 'Kezdes CRM' : 'Kezdes';
     const [imageOk, setImageOk] = useState(true);
 
     const content = isText || !imageOk ? (
-        <span className={`text-brand-green font-black tracking-tighter ${className}`} style={{ fontSize: '1.5em', lineHeight: 1 }}>
+        <span className={`text-[#1d4ed8] font-black tracking-tighter ${className}`} style={{ fontSize: '1.5em', lineHeight: 1 }}>
             Kezdes
         </span>
     ) : (

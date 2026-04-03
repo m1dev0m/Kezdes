@@ -2,11 +2,12 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/modules/auth/logic/AuthContext';
+import { getPostAuthRedirectPath } from '@/modules/auth/logic/roles';
 import { I18nProvider } from '@/i18n/index.tsx';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import AdminLayout from '@/layouts/AdminLayout';
-import PublicLayout from '@/layouts/PublicLayout';
 import GlobalAdminLayout from '@/layouts/GlobalAdminLayout';
+import PublicLayout from '@/layouts/PublicLayout';
 import './App.css';
 
 const Login = lazy(() => import('@/pages/Login'));
@@ -16,12 +17,24 @@ const Bookings = lazy(() => import('@/pages/Bookings'));
 const CreateReservation = lazy(() => import('@/pages/CreateReservation'));
 const Customers = lazy(() => import('@/pages/Customers'));
 const CustomerDetail = lazy(() => import('@/pages/CustomerDetail'));
-const Tables = lazy(() => import('@/pages/Tables'));
 const Settings = lazy(() => import('@/pages/Settings'));
+const Staff = lazy(() => import('@/pages/Staff'));
+const Analytics = lazy(() => import('@/pages/Analytics'));
+const Billing = lazy(() => import('@/pages/Billing'));
+const Calendar = lazy(() => import('@/pages/Calendar'));
+const Automations = lazy(() => import('@/pages/Automations'));
 const RestaurantPage = lazy(() => import('@/pages/public/RestaurantPage'));
 const BookPage = lazy(() => import('@/pages/public/BookPage'));
 const ConfirmationPage = lazy(() => import('@/pages/public/ConfirmationPage'));
+const PublicReservationPage = lazy(() => import('@/pages/public/PublicReservationPage'));
+const PublicWaitlistPage = lazy(() => import('@/pages/public/PublicWaitlistPage'));
 const Search = lazy(() => import('@/pages/public/Search'));
+const FloorView = lazy(() => import('@/pages/FloorView'));
+const Tables = lazy(() => import('@/pages/Tables'));
+const Waitlist = lazy(() => import('@/pages/Waitlist'));
+const Messages = lazy(() => import('@/pages/Messages'));
+const Orders = lazy(() => import('@/pages/Orders'));
+const Pricing = lazy(() => import('@/pages/public/Pricing'));
 const GlobalDashboard = lazy(() => import('@/pages/global_admin/GlobalDashboard'));
 const Requests = lazy(() => import('@/pages/global_admin/Requests'));
 const Restaurants = lazy(() => import('@/pages/global_admin/Restaurants'));
@@ -54,49 +67,11 @@ function IndexRedirect() {
   if (loading) return <PageLoader />;
   if (!user) return <Welcome />;
 
-  const role = user.role;
-
-  if (role === 'global_admin') return <Navigate to="/admin/dashboard" replace />;
-
-  if (['owner', 'manager', 'host', 'worker'].includes(role)) {
-    if (!user.restaurant_verified && role !== 'worker') {
-      if (user.restaurant_setup_required) {
-        return <Navigate to="/setup-restaurant" replace />;
-      }
-      return <Navigate to="/register-restaurant/pending" replace />;
-    }
-
-    return <Navigate to="/app/dashboard" replace />;
-  }
-
-  if (role === 'pending') return <Navigate to="/role-selection" replace />;
-
-  if (['customer'].includes(role)) return <Navigate to="/guest/dashboard" replace />;
-
-  return <Welcome />;
-}
-
-function AdaptiveLayout() {
-  const { user, loading } = useAuth();
-
-  if (loading) return <PageLoader />;
-
-  const isGuest = user && ['customer'].includes(user.role);
-
-  if (isGuest) {
-    return <GuestLayout />;
-  }
-
-  return <PublicLayout />;
+  return <Navigate to={getPostAuthRedirectPath(user)} replace />;
 }
 
 function App() {
-  const restaurantRoles = [
-    'owner',
-    'manager',
-    'host',
-    'worker',
-  ];
+  const restaurantRoles = ['owner', 'manager', 'host', 'worker', 'restaurant_admin', 'restaurant_owner', 'restaurant_staff', 'hostess'];
 
   return (
     <I18nProvider>
@@ -107,12 +82,15 @@ function App() {
             <Routes>
               <Route path="/" element={<IndexRedirect />} />
 
-              <Route element={<AdaptiveLayout />}>
+              <Route element={<PublicLayout />}>
                 <Route path="restaurants" element={<Search />} />
+                <Route path="pricing" element={<Pricing />} />
                 <Route path="discover" element={<Navigate to="/restaurants" replace />} />
                 <Route path="discover/map" element={<Navigate to="/restaurants" replace />} />
                 <Route path="restaurant/:id" element={<RestaurantPage />} />
                 <Route path="restaurant/:id/success" element={<ConfirmationPage />} />
+                <Route path="reservation/:token" element={<PublicReservationPage />} />
+                <Route path="waitlist/:token" element={<PublicWaitlistPage />} />
               </Route>
 
               <Route path="/login" element={<Login />} />
@@ -122,9 +100,11 @@ function App() {
               <Route path="/setup-restaurant" element={<SetupRestaurant />} />
               <Route path="/setup_restaurant" element={<Navigate to="/setup-restaurant" replace />} />
               <Route path="/register-restaurant/pending" element={<RestaurantPendingApproval />} />
+              <Route path="/book" element={<BookPage />} />
+              <Route path="/book/:id" element={<BookPage />} />
               <Route path="/restaurant/:id/book" element={<BookPage />} />
 
-              <Route path="/guest" element={<ProtectedRoute allowedRoles={['customer']} />}>
+              <Route path="/guest" element={<ProtectedRoute allowedRoles={['customer', 'organizer', 'guest']} />}>
                 <Route element={<GuestLayout />}>
                   <Route path="dashboard" element={<GuestDashboard />} />
                   <Route path="bookings/:id" element={<GuestBookingDetails />} />
@@ -140,15 +120,23 @@ function App() {
 
               <Route path="/app" element={<ProtectedRoute allowedRoles={restaurantRoles} />}>
                 <Route element={<AdminLayout />}>
+                  <Route index element={<Navigate to="/app/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="bookings" element={<Bookings />} />
                   <Route path="bookings/new" element={<CreateReservation />} />
+                  <Route path="floor" element={<FloorView />} />
+                  <Route path="calendar" element={<Calendar />} />
+                  <Route path="waitlist" element={<Waitlist />} />
+                  <Route path="messages" element={<Messages />} />
+                  <Route path="orders" element={<Orders />} />
                   <Route path="customers" element={<Customers />} />
                   <Route path="customers/:id" element={<CustomerDetail />} />
                   <Route path="tables" element={<Tables />} />
+                  <Route path="staff" element={<Staff />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="billing" element={<Billing />} />
+                  <Route path="notifications" element={<Automations />} />
                   <Route path="settings" element={<Settings />} />
-                  <Route path="calendar" element={<Navigate to="/app/bookings" replace />} />
-                  <Route path="analytics" element={<Navigate to="/app/dashboard" replace />} />
                   <Route path="reports" element={<Navigate to="/app/dashboard" replace />} />
                   <Route path="reviews" element={<Navigate to="/app/dashboard" replace />} />
                 </Route>

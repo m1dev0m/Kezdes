@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
+import api from '@/services/api';
 import toast from 'react-hot-toast';
 import {
   LogOut,
@@ -10,33 +10,92 @@ import {
   Phone,
   MapPin,
   Shield,
-  Lock,
   Camera,
   Trash2,
-  Key,
-  ShieldCheck
+  CheckCircle2
 } from 'lucide-react';
 
 export default function GuestProfile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [formData, setFormData] = useState({
     username: user?.username || '',
+    firstName: user?.first_name || '',
+    lastName: user?.last_name || '',
     email: user?.email || '',
     phone: (user as any)?.profile?.phone || (user as any)?.phone || '',
-    country: (user as any)?.profile?.country || 'Казахстан',
-    city: (user as any)?.profile?.city || 'Алматы',
+    country: 'Казахстан',
+    city: 'Алматы',
   });
+
+  useEffect(() => {
+    const storageKey = user?.id ? `guest-profile-preferences:${user.id}` : 'guest-profile-preferences:anonymous';
+    const storedValue = window.localStorage.getItem(storageKey);
+    const fallbackPhone = (user as any)?.profile?.phone || (user as any)?.phone || '';
+
+    if (storedValue) {
+      try {
+        const parsed = JSON.parse(storedValue) as Partial<Pick<typeof formData, 'country' | 'city'>>;
+        setFormData((current) => ({
+          ...current,
+          username: user?.username ?? '',
+          firstName: user?.first_name ?? '',
+          lastName: user?.last_name ?? '',
+          email: user?.email ?? '',
+          phone: fallbackPhone,
+          country: parsed.country ?? 'Казахстан',
+          city: parsed.city ?? 'Алматы',
+        }));
+        setSaveState('idle');
+        return;
+      } catch {
+        window.localStorage.removeItem(storageKey);
+      }
+    }
+
+    setFormData({
+      username: user?.username || '',
+      firstName: user?.first_name || '',
+      lastName: user?.last_name || '',
+      email: user?.email || '',
+      phone: fallbackPhone,
+      country: 'Казахстан',
+      city: 'Алматы',
+    });
+    setSaveState('idle');
+  }, [user]);
+
+  useEffect(() => {
+    if (saveState === 'saved') {
+      setSaveState('idle');
+    }
+  }, [formData, saveState]);
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     try {
-      await api.patch('/auth/me/', formData);
+      await api.patch('/auth/me/', {
+        username: formData.username.trim(),
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+      });
+
+      const storageKey = user?.id ? `guest-profile-preferences:${user.id}` : 'guest-profile-preferences:anonymous';
+      window.localStorage.setItem(storageKey, JSON.stringify({
+        country: formData.country,
+        city: formData.city,
+      }));
+      setSaveState('saved');
       toast.success('Профиль успешно обновлен');
-    } catch {
-      toast.error('Ошибка при обновлении профиля');
+    } catch (error: any) {
+      setSaveState('error');
+      const detail = error?.response?.data?.detail || error?.response?.data?.username?.[0] || error?.response?.data?.email?.[0] || 'Ошибка при обновлении профиля';
+      toast.error(detail);
     } finally {
       setLoading(false);
     }
@@ -74,7 +133,7 @@ export default function GuestProfile() {
               {(user as any)?.avatar ? (
                 <img src={(user as any).avatar} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-4xl font-black text-[#1d4ed8]">{formData.username?.charAt(0).toUpperCase() || 'G'}</span>
+                <span className="text-4xl font-black text-[#1d4ed8]">{(formData.firstName || formData.username)?.charAt(0).toUpperCase() || 'G'}</span>
               )}
             </div>
             <button className="absolute bottom-1 right-1 size-10 bg-[#1d4ed8] text-white rounded-full shadow-lg border-2 border-white dark:border-slate-900 flex items-center justify-center hover:scale-110 transition-transform">
@@ -95,6 +154,9 @@ export default function GuestProfile() {
       </section>
 
       <form onSubmit={handleSave} className="space-y-8">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs font-medium leading-6 text-blue-800">
+          Контактные данные и логин сохраняются в аккаунте. Город и страна остаются локальными предпочтениями этого устройства.
+        </div>
         {/* Personal Details Section */}
         <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
           <div className="flex items-center gap-3 text-[#1d4ed8]">
@@ -104,10 +166,22 @@ export default function GuestProfile() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <InputField
-              label="Полное имя"
+              label="Логин"
               icon={<User size={18} />}
               value={formData.username}
               onChange={(v) => setFormData(p => ({ ...p, username: v }))}
+            />
+            <InputField
+              label="Имя"
+              icon={<User size={18} />}
+              value={formData.firstName}
+              onChange={(v) => setFormData(p => ({ ...p, firstName: v }))}
+            />
+            <InputField
+              label="Фамилия"
+              icon={<User size={18} />}
+              value={formData.lastName}
+              onChange={(v) => setFormData(p => ({ ...p, lastName: v }))}
             />
             <InputField
               label="Электронная почта"
@@ -129,6 +203,12 @@ export default function GuestProfile() {
               value={formData.city}
               onChange={(v) => setFormData(p => ({ ...p, city: v }))}
             />
+            <InputField
+              label="Страна"
+              icon={<MapPin size={18} />}
+              value={formData.country}
+              onChange={(v) => setFormData(p => ({ ...p, country: v }))}
+            />
           </div>
         </section>
 
@@ -139,11 +219,25 @@ export default function GuestProfile() {
             <h2 className="text-lg font-bold text-slate-900 uppercase tracking-[0.1em]">Безопасность</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <InputField label="Текущий пароль" icon={<Lock size={18} />} type="password" value="" onChange={() => { }} />
-            <div className="hidden md:block" />
-            <InputField label="Новый пароль" icon={<Key size={18} />} type="password" value="" onChange={() => { }} />
-            <InputField label="Повторите пароль" icon={<ShieldCheck size={18} />} type="password" value="" onChange={() => { }} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <SecurityCard
+              icon={<Mail size={16} />}
+              label="Email аккаунта"
+              value={formData.email || 'Не указан'}
+              hint="Используется для входа и подтверждения бронирований"
+            />
+            <SecurityCard
+              icon={<Phone size={16} />}
+              label="Телефон"
+              value={formData.phone || 'Не привязан'}
+              hint="Рестораны используют его для уточнения деталей"
+            />
+            <SecurityCard
+              icon={<CheckCircle2 size={16} />}
+              label="Статус доступа"
+              value="Аккаунт активен"
+              hint="Изменения логина и контактов сохраняются в профиле"
+            />
           </div>
         </section>
 
@@ -167,10 +261,13 @@ export default function GuestProfile() {
               disabled={loading}
               className="flex-1 md:px-12 h-14 bg-[#1d4ed8] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-2xl shadow-[#1d4ed8]/20 hover:bg-[#1e40af] hover:-translate-y-0.5 transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              {loading ? 'Сохранение...' : 'Сохранить изменения'}
+              {loading ? 'Сохранение...' : saveState === 'saved' ? 'Сохранено' : 'Сохранить изменения'}
             </button>
           </div>
         </div>
+        <p className={`text-[10px] font-black uppercase tracking-[0.2em] text-center ${saveState === 'error' ? 'text-rose-500' : saveState === 'saved' ? 'text-emerald-600' : 'text-slate-400'}`}>
+          {saveState === 'error' ? 'Не удалось сохранить изменения' : saveState === 'saved' ? 'Профиль и предпочтения сохранены' : 'Готово к сохранению'}
+        </p>
       </form>
     </div>
   );
@@ -191,6 +288,29 @@ function InputField({ label, icon, value, type = 'text', onChange }: { label: st
           className="w-full h-14 pl-14 pr-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 focus:border-[#1d4ed8] transition-all text-sm font-bold placeholder:font-medium text-slate-900"
         />
       </div>
+    </div>
+  );
+}
+
+function SecurityCard({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+      <div className="flex items-center gap-2 text-[#1d4ed8]">
+        {icon}
+        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</span>
+      </div>
+      <div className="mt-4 text-sm font-bold text-slate-900">{value}</div>
+      <div className="mt-2 text-xs font-medium leading-6 text-slate-500">{hint}</div>
     </div>
   );
 }

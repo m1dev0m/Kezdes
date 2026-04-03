@@ -14,6 +14,10 @@ interface CustomerDetail {
   last_visit: string;
   notes: string;
   is_vip: boolean;
+  is_blacklisted?: boolean;
+  risk_label?: string;
+  flag?: string;
+  no_show_count?: number;
   created_at: string;
   tags?: string;
   date_of_birth?: string | null;
@@ -81,6 +85,7 @@ export default function CustomerDetailPage() {
   const [pageError, setPageError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
+  const [flag, setFlag] = useState('new');
   const [savingNotes, setSavingNotes] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [newNoteImportant, setNewNoteImportant] = useState(false);
@@ -101,6 +106,7 @@ export default function CustomerDetailPage() {
       setCustomer(customerResponse.data);
       setNotes(customerResponse.data.notes || '');
       setTags(customerResponse.data.tags || '');
+      setFlag(customerResponse.data.flag || 'new');
       setBookings(Array.isArray(bookingsResponse.data) ? bookingsResponse.data : bookingsResponse.data.results || []);
     } catch (error) {
       const message = getApiErrorMessage(error, 'Не удалось загрузить карточку гостя.');
@@ -161,10 +167,12 @@ export default function CustomerDetailPage() {
       const response = await api.patch(`/crm/customers/${id}/`, {
         notes: notes.trim(),
         tags: tags.trim(),
+        flag,
       });
       setCustomer(response.data);
       setNotes(response.data.notes || '');
       setTags(response.data.tags || '');
+      setFlag(response.data.flag || 'new');
       toast.success('Профиль гостя обновлён.');
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Не удалось сохранить изменения.'));
@@ -231,9 +239,17 @@ export default function CustomerDetailPage() {
                   VIP
                 </span>
               ) : null}
+              {customer.is_blacklisted ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                  Blacklist
+                </span>
+              ) : null}
             </div>
             <p className="mt-2 text-sm text-slate-600">
               Визитов: {customer.total_bookings || 0} · Последний визит: {formatDate(customer.last_visit)}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              No-show: {customer.no_show_count || 0} · Риск: {customer.risk_label || 'regular'}
             </p>
           </div>
         </div>
@@ -280,6 +296,8 @@ export default function CustomerDetailPage() {
               <InfoTile label="Email" value={customer.email || '—'} />
               <InfoTile label="Всего визитов" value={String(customer.total_bookings || 0)} />
               <InfoTile label="Последний визит" value={formatDate(customer.last_visit)} />
+              <InfoTile label="No-show" value={String(customer.no_show_count || 0)} />
+              <InfoTile label="Риск" value={customer.risk_label || 'regular'} />
             </div>
           </section>
 
@@ -288,6 +306,20 @@ export default function CustomerDetailPage() {
             <p className="mt-1 text-sm text-slate-500">Теги и заметки команды доступны в CRM без дополнительных экранов.</p>
 
             <div className="mt-5 space-y-4">
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Статус гостя</span>
+                <select
+                  value={flag}
+                  onChange={(event) => setFlag(event.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50"
+                >
+                  <option value="new">Новый</option>
+                  <option value="regular">Постоянный</option>
+                  <option value="vip">VIP</option>
+                  <option value="problem">Blacklist / problem</option>
+                </select>
+              </label>
+
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Теги</span>
                 <input

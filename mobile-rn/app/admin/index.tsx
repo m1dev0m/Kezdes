@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -7,66 +7,114 @@ import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
 import { fetchMyRestaurant, fetchMyRestaurantBookings, updateBookingStatus, fetchMyRestaurantApplication } from '../../lib/api';
 
+type RestaurantState = 'loading' | 'ready' | 'pending' | 'needs_setup' | 'error';
+
 export default function AdminDashboardScreen() {
     const router = useRouter();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const [restaurant, setRestaurant] = useState<any>(null);
     const [bookings, setBookings] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [restaurantState, setRestaurantState] = useState<RestaurantState>('loading');
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (user?.access) {
-            initData();
-            const interval = setInterval(() => {
-                fetchMyRestaurantBookings(user.access)
-                    .then(setBookings)
-                    .catch(e => console.error('Polling error:', e));
-            }, 3000);
-            return () => clearInterval(interval);
+    const initData = useCallback(async () => {
+        const access = user?.access;
+        if (!access) {
+            return;
         }
-    }, [user]);
 
-    const initData = async () => {
         setIsLoading(true);
+        setRestaurantState('loading');
+        setStatusMessage(null);
         try {
-            const rest = await fetchMyRestaurant(user.access);
+            const rest = await fetchMyRestaurant(access);
             setRestaurant(rest);
-            const books = await fetchMyRestaurantBookings(user.access);
+            setRestaurantState('ready');
+            const books = await fetchMyRestaurantBookings(access);
             setBookings(books);
         } catch (error: any) {
             if (error?.message?.includes('404')) {
                 try {
-                    const app = await fetchMyRestaurantApplication(user.access);
+                    const app = await fetchMyRestaurantApplication(access);
                     if (app && app.status === 'pending') {
-                        Alert.alert(
-                            'Заявка на модерации',
-                            'Ваша заявка на подключение ресторана находится на рассмотрении. Мы уведомим вас после одобрения.'
-                        );
                         setRestaurant(null);
                         setBookings([]);
+                        setRestaurantState('pending');
+                        setStatusMessage('Ваша заявка на подключение ресторана сейчас на рассмотрении. Вы можете проверить настройки и обратиться в поддержку, если данные изменились.');
                     } else {
+                        setRestaurantState('needs_setup');
                         router.replace('/admin/setup');
                     }
                 } catch {
+                    setRestaurantState('needs_setup');
                     router.replace('/admin/setup');
                 }
             } else {
                 console.error('Error fetching admin data:', error);
+                setRestaurantState('error');
+                setStatusMessage('Не удалось загрузить данные ресторана. Проверьте соединение и попробуйте снова.');
                 Alert.alert('Ошибка', 'Не удалось загрузить данные ресторана.');
             }
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [router, user?.access]);
 
-    const handleAction = async (bookingId: string, action: 'confirm' | 'reject') => {
+    useEffect(() => {
+        const access = user?.access;
+        if (!access) {
+            setIsLoading(false);
+            setRestaurantState('error');
+            setStatusMessage('Сессия не найдена. Войдите заново, чтобы открыть панель ресторана.');
+            return;
+        }
+
+        initData();
+        const interval = setInterval(() => {
+            fetchMyRestaurantBookings(access)
+                .then(setBookings)
+                .catch(e => console.error('Polling error:', e));
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [initData, user?.access]);
+
+    const handleAction = useCallback(async (bookingId: string, action: 'confirm' | 'reject') => {
+        const access = user?.access;
+        if (!access) {
+            return;
+        }
+
         try {
-            await updateBookingStatus(bookingId, action, user.access);
+            await updateBookingStatus(bookingId, action, access);
             setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: action === 'confirm' ? 'approved' : 'rejected' } : b));
         } catch (error) {
             Alert.alert('Ошибка', 'Не удалось обновить статус');
         }
-    };
+    }, [user?.access]);
+
+    const pendingBookings = useMemo(() => bookings.filter((b) => b.status === 'pending'), [bookings]);
+    const unhandledCount = pendingBookings.length;
+
+    const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const todaysCount = useMemo(() => {
+        return bookings.filter((b) => b.date === todayStr && (b.status === 'approved' || b.status === 'confirmed')).length;
+    }, [bookings, todayStr]);
+
+    const greetingSub = useMemo(() => {
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' });
+        return `Сегодня: ${dateStr}`;
+    }, []);
+
+    const openSetup = useCallback(() => {
+        router.push('/admin/setup');
+    }, [router]);
+
+    const openSupport = useCallback(() => {
+        router.push('/support');
+    }, [router]);
 
     if (isLoading) {
         return (
@@ -75,15 +123,6 @@ export default function AdminDashboardScreen() {
             </View>
         );
     }
-
-    const unhandledCount = bookings.filter(b => b.status === 'pending').length;
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todaysCount = bookings.filter(b => b.date === todayStr && (b.status === 'approved' || b.status === 'confirmed')).length;
-
-const today = new Date();
-const dateStr = today.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' });
-const greetingSub = `Сегодня: ${dateStr}`;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -110,80 +149,129 @@ const greetingSub = `Сегодня: ${dateStr}`;
                 <Text style={styles.greetingTitle}>Привет, Админ! 👋</Text>
                 <Text style={styles.greetingSub}>{greetingSub}</Text>
 
-                <View style={styles.kpiRow}>
-                    <View style={[styles.kpiCard, styles.kpiCardWhite]}>
-                        <Text style={styles.kpiLabel}>СЕГОДНЯ</Text>
-                        <View style={styles.kpiValRow}>
-                            <Text style={styles.kpiValBlack}>{todaysCount}</Text>
-                            <Text style={styles.kpiValText}>броней</Text>
+                {restaurantState !== 'ready' && (
+                    <View style={styles.noticeCard}>
+                        <View style={styles.noticeRow}>
+                            <View style={[styles.noticeDot, restaurantState === 'pending' ? styles.noticeDotAmber : styles.noticeDotBlue]} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.noticeTitle}>
+                                    {restaurantState === 'pending'
+                                        ? 'Заявка на модерации'
+                                        : restaurantState === 'needs_setup'
+                                            ? 'Ресторан еще не настроен'
+                                            : 'Не удалось обновить данные'}
+                                </Text>
+                                <Text style={styles.noticeText}>
+                                    {statusMessage || 'Проверьте настройки ресторана и повторите загрузку.'}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={styles.noticeActions}>
+                            <TouchableOpacity style={styles.noticeSecondaryBtn} onPress={openSupport}>
+                                <Text style={styles.noticeSecondaryText}>Поддержка</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.noticePrimaryBtn} onPress={openSetup}>
+                                <Text style={styles.noticePrimaryText}>Открыть настройки</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
-                    <View style={[styles.kpiCard, styles.kpiCardPurple]}>
-                        <Text style={[styles.kpiLabel, { color: 'rgba(255,255,255,0.7)' }]}>ОЖИДАЮТ</Text>
-                        <View style={styles.kpiValRow}>
-                            <Text style={styles.kpiValWhite}>{unhandledCount}</Text>
-                            <Text style={[styles.kpiValText, { color: '#fff' }]}>запроса</Text>
-                        </View>
-                    </View>
-                    <View style={[styles.kpiCard, styles.kpiCardWhite]}>
-                        <Text style={styles.kpiLabel}>ПРОСМОТРЫ</Text>
-                        <View style={styles.kpiValRow}>
-                            <Text style={styles.kpiValBlack}>{restaurant?.views_count || 0}</Text>
-                            <Text style={styles.kpiValText}>профиля</Text>
-                        </View>
-                    </View>
-                </View>
+                )}
 
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Новые запросы</Text>
-                    <TouchableOpacity onPress={() => router.push('/admin/bookings')}>
-                        <Text style={styles.sectionLink}>Все ›</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {bookings.filter(b => b.status === 'pending').slice(0, 5).map(booking => (
-                    <View key={booking.id} style={styles.requestCard}>
-                        <View style={styles.reqTopRow}>
-                            <View style={styles.reqUserBox}>
-                                <View style={styles.reqAvatar}><Text style={styles.reqAvText}>{booking.user_name?.charAt(0) || 'U'}</Text></View>
-                                <View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                        <Text style={styles.reqUserName}>{booking.user_name || 'Клиент'}</Text>
-                                        <View style={styles.vipBadge}><Text style={styles.vipText}>VIP</Text></View>
-                                    </View>
-                                    <View style={styles.reqMetaRow}>
-                                        <Ionicons name="people" size={14} color={colors.textSecondary} />
-                                        <Text style={styles.reqMetaText}>{booking.guests} гостя</Text>
-                                        <Ionicons name="warning" size={14} color="#ef4444" style={{ marginLeft: 8 }} />
-                                    </View>
+                {restaurantState === 'ready' ? (
+                    <>
+                        <View style={styles.kpiRow}>
+                            <View style={[styles.kpiCard, styles.kpiCardWhite]}>
+                                <Text style={styles.kpiLabel}>СЕГОДНЯ</Text>
+                                <View style={styles.kpiValRow}>
+                                    <Text style={styles.kpiValBlack}>{todaysCount}</Text>
+                                    <Text style={styles.kpiValText}>броней</Text>
                                 </View>
                             </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={styles.reqTime}>{booking.time ? booking.time.substring(0, 5) : '--:--'}</Text>
-                                <Text style={styles.reqDateText}>сегодня</Text>
+                            <View style={[styles.kpiCard, styles.kpiCardPurple]}>
+                                <Text style={[styles.kpiLabel, { color: 'rgba(255,255,255,0.7)' }]}>ОЖИДАЮТ</Text>
+                                <View style={styles.kpiValRow}>
+                                    <Text style={styles.kpiValWhite}>{unhandledCount}</Text>
+                                    <Text style={[styles.kpiValText, { color: '#fff' }]}>запроса</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.kpiCard, styles.kpiCardWhite]}>
+                                <Text style={styles.kpiLabel}>ПРОСМОТРЫ</Text>
+                                <View style={styles.kpiValRow}>
+                                    <Text style={styles.kpiValBlack}>{restaurant?.views_count || 0}</Text>
+                                    <Text style={styles.kpiValText}>профиля</Text>
+                                </View>
                             </View>
                         </View>
 
-                        {booking.special_requests ? (
-                            <Text style={styles.reqComment}>
-                                <Text style={{ fontWeight: '600', color: colors.text }}>Комментарий: </Text>
-                                {booking.special_requests}
-                            </Text>
-                        ) : null}
-
-                        <View style={styles.reqActions}>
-                            <TouchableOpacity style={styles.btnPrimary} onPress={() => handleAction(booking.id, 'confirm')}>
-                                <Text style={styles.btnPrimaryText}>Подтвердить</Text>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Новые запросы</Text>
+                            <TouchableOpacity onPress={() => router.push('/admin/bookings')}>
+                                <Text style={styles.sectionLink}>Все ›</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.btnSecondary} onPress={() => handleAction(booking.id, 'reject')}>
-                                <Text style={styles.btnSecondaryText}>Отклонить</Text>
+                        </View>
+
+                        {pendingBookings.slice(0, 5).map(booking => (
+                            <View key={booking.id} style={styles.requestCard}>
+                                <View style={styles.reqTopRow}>
+                                    <View style={styles.reqUserBox}>
+                                        <View style={styles.reqAvatar}><Text style={styles.reqAvText}>{booking.user_name?.charAt(0) || 'U'}</Text></View>
+                                        <View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                <Text style={styles.reqUserName}>{booking.user_name || 'Клиент'}</Text>
+                                                <View style={styles.vipBadge}><Text style={styles.vipText}>VIP</Text></View>
+                                            </View>
+                                            <View style={styles.reqMetaRow}>
+                                                <Ionicons name="people" size={14} color={colors.textSecondary} />
+                                                <Text style={styles.reqMetaText}>{booking.guests} гостя</Text>
+                                                <Ionicons name="warning" size={14} color="#ef4444" style={{ marginLeft: 8 }} />
+                                            </View>
+                                        </View>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <Text style={styles.reqTime}>{booking.time ? booking.time.substring(0, 5) : '--:--'}</Text>
+                                        <Text style={styles.reqDateText}>сегодня</Text>
+                                    </View>
+                                </View>
+
+                                {booking.special_requests ? (
+                                    <Text style={styles.reqComment}>
+                                        <Text style={{ fontWeight: '600', color: colors.text }}>Комментарий: </Text>
+                                        {booking.special_requests}
+                                    </Text>
+                                ) : null}
+
+                                <View style={styles.reqActions}>
+                                    <TouchableOpacity style={styles.btnPrimary} onPress={() => handleAction(booking.id, 'confirm')}>
+                                        <Text style={styles.btnPrimaryText}>Подтвердить</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.btnSecondary} onPress={() => handleAction(booking.id, 'reject')}>
+                                        <Text style={styles.btnSecondaryText}>Отклонить</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ))}
+
+                        {pendingBookings.length === 0 && (
+                            <Text style={styles.emptyText}>Нет новых запросов</Text>
+                        )}
+                    </>
+                ) : (
+                    <View style={styles.emptyStateCard}>
+                        <Text style={styles.emptyStateTitle}>
+                            {restaurantState === 'pending' ? 'Заявка на модерации' : restaurantState === 'needs_setup' ? 'Ресторан еще не настроен' : 'Данные ресторана не загружены'}
+                        </Text>
+                        <Text style={styles.emptyStateText}>
+                            {statusMessage || 'Откройте настройки, чтобы завершить подключение ресторана и вернуться к рабочей панели.'}
+                        </Text>
+                        <View style={styles.noticeActions}>
+                            <TouchableOpacity style={styles.noticeSecondaryBtn} onPress={openSupport}>
+                                <Text style={styles.noticeSecondaryText}>Поддержка</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.noticePrimaryBtn} onPress={openSetup}>
+                                <Text style={styles.noticePrimaryText}>Открыть настройки</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
-                ))}
-
-                {bookings.filter(b => b.status === 'pending').length === 0 && (
-                    <Text style={styles.emptyText}>Нет новых запросов</Text>
                 )}
 
             </ScrollView>
@@ -206,6 +294,19 @@ const styles = StyleSheet.create({
     greetingTitle: { fontSize: 24, fontWeight: '800', color: colors.text, marginTop: 12 },
     greetingSub: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: 24 },
 
+    noticeCard: { backgroundColor: '#fff7ed', borderRadius: 28, padding: 18, borderWidth: 1, borderColor: '#fed7aa', marginBottom: 24 },
+    noticeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    noticeDot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
+    noticeDotAmber: { backgroundColor: '#f59e0b' },
+    noticeDotBlue: { backgroundColor: colors.primary },
+    noticeTitle: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: 4 },
+    noticeText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
+    noticeActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+    noticeSecondaryBtn: { flex: 1, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#fde68a', paddingVertical: 12, borderRadius: 30, alignItems: 'center' },
+    noticeSecondaryText: { fontSize: 13, fontWeight: '700', color: '#b45309' },
+    noticePrimaryBtn: { flex: 1, backgroundColor: '#4300FF', paddingVertical: 12, borderRadius: 30, alignItems: 'center' },
+    noticePrimaryText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
     kpiRow: { flexDirection: 'row', gap: 8, marginBottom: 32 },
     kpiCard: { flex: 1, padding: 16, borderRadius: 32, borderCurve: 'continuous', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
     kpiCardWhite: { backgroundColor: '#ffffff' },
@@ -219,6 +320,10 @@ const styles = StyleSheet.create({
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
     sectionLink: { fontSize: 14, fontWeight: '600', color: '#4300FF' },
+
+    emptyStateCard: { backgroundColor: '#ffffff', borderRadius: 28, borderWidth: 1, borderColor: '#f1f5f9', padding: 20, marginBottom: 24 },
+    emptyStateTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 8 },
+    emptyStateText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginBottom: 16 },
 
     requestCard: { backgroundColor: '#ffffff', borderRadius: 32, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4 },
     reqTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
