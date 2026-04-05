@@ -121,3 +121,10 @@ client_guest
 .env.local
 *.env
 p_docs/
+
+# local cleanup targets
+translate_locales.py
+update_bookings.py
+.agents/skills/
+.github/workflow/
+.github/workflows/
