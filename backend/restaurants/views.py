@@ -26,10 +26,12 @@ from orders.models import MenuCategory, MenuItem
 from orders.serializers import PublicMenuCategorySerializer, PublicMenuItemSerializer
 from core.responses import api_error
 
-from .models import Availability, Restaurant, RestaurantRequest, Review, Table, Zone, Shift
+from .models import Availability, FloorMapShape, Restaurant, RestaurantRequest, Review, Table, Zone, Shift
 from .serializers import (
     AvailabilitySerializer,
+    FloorMapShapeSerializer,
     RestaurantAuditLogSerializer,
+    RestaurantFeatureFlagsSerializer,
     RestaurantInvoiceSerializer,
     RestaurantRequestSerializer,
     RestaurantSerializer,
@@ -61,6 +63,8 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsRestaurantOrGlobalAdmin()]
+        if self.action == "feature_flags":
+            return [IsGlobalAdmin()]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -178,6 +182,38 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
         invoices = restaurant.invoices.all()[:25]
         return Response(RestaurantInvoiceSerializer(invoices, many=True).data)
+
+    @action(detail=True, methods=["get", "patch"], permission_classes=[IsGlobalAdmin], url_path="feature-flags")
+    def feature_flags(self, request, pk=None):
+        restaurant = self.get_object()
+
+        if request.method == "PATCH":
+            serializer = RestaurantFeatureFlagsSerializer(restaurant, data=request.data, partial=True)
+            if not serializer.is_valid():
+                return api_error("Invalid feature flag payload.", status.HTTP_400_BAD_REQUEST, details=serializer.errors)
+            before = dict(restaurant.feature_flags or {})
+            updated = serializer.save()
+            after = updated.feature_flags or {}
+            changed_keys = sorted(
+                key for key in set(before.keys()) | set(after.keys())
+                if before.get(key) != after.get(key)
+            )
+            log_restaurant_event(
+                updated,
+                actor=request.user,
+                event_type="feature_flags_updated",
+                target_type="restaurant",
+                target_id=updated.id,
+                summary=f"Обновлены feature flags: {', '.join(changed_keys) or 'без изменений'}.",
+                payload={
+                    "before": before,
+                    "after": after,
+                    "changed_keys": changed_keys,
+                },
+            )
+            return Response(RestaurantFeatureFlagsSerializer(updated).data)
+
+        return Response(RestaurantFeatureFlagsSerializer(restaurant).data)
 
     @action(detail=False, methods=["get"], url_path=r'by-slug/(?P<slug>[-\w]+)', permission_classes=[permissions.AllowAny])
     def by_slug(self, request, slug=None):
@@ -344,7 +380,7 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
         user = User.objects.create_user(username=username, email=email, password=password)
         if hasattr(user, 'profile'):
-            user.profile.role = 'owner'
+            user.profile.role = 'pending'
             user.profile.save(update_fields=['role'])
 
         instance = serializer.save(owner=user, admin_username=username)
@@ -525,11 +561,7 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         table = self.get_object()
         self._check_ownership(table)
 
-        active_bookings = Booking.objects.filter(
-            status__in=Booking.ACTIVE_STATUSES,
-            restaurant=table.restaurant,
-        ).filter(models.Q(table=table) | models.Q(tables=table)).exists()
-        if active_bookings:
+        if self._table_has_active_bookings(table):
             return api_error(
                 "Cannot delete table with active bookings. "
                 "Cancel or complete bookings first.",
@@ -547,12 +579,120 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         )
         return super().destroy(request, *args, **kwargs)
 
+    @action(detail=False, methods=["post"], url_path="clear-all")
+    def clear_all(self, request):
+        user = request.user
+        from core.utils import get_user_restaurant
+
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
+
+        if not self._can_delete_tables(user):
+            raise PermissionDenied("Only owners and global admins can delete all tables.")
+
+        tables = list(
+            Table.objects.select_related("restaurant", "zone").filter(restaurant=restaurant)
+        )
+        if not tables:
+            return Response(
+                {
+                    "deleted_count": 0,
+                    "blocked_count": 0,
+                    "blocked_tables": [],
+                    "remaining_count": 0,
+                }
+            )
+
+        blocked_ids = self._get_blocked_table_ids(tables)
+        deleted_tables = [table for table in tables if table.id not in blocked_ids]
+        blocked_tables = [table for table in tables if table.id in blocked_ids]
+
+        deleted_count = 0
+        with transaction.atomic():
+            for table in deleted_tables:
+                log_restaurant_event(
+                    table.restaurant,
+                    actor=request.user,
+                    event_type='table_deleted',
+                    target_type='table',
+                    target_id=table.id,
+                    summary=f"Удалён стол {table.number}.",
+                    payload={'table_id': table.id, 'name': table.number, 'bulk': True},
+                )
+                table.delete()
+                deleted_count += 1
+
+            if deleted_count:
+                log_restaurant_event(
+                    restaurant,
+                    actor=request.user,
+                    event_type='tables_bulk_deleted',
+                    target_type='table',
+                    summary=f"Удалено {deleted_count} столов. Заблокировано {len(blocked_tables)}.",
+                    payload={
+                        'deleted_count': deleted_count,
+                        'blocked_count': len(blocked_tables),
+                        'blocked_table_ids': [table.id for table in blocked_tables],
+                    },
+                )
+
+        remaining_count = Table.objects.filter(restaurant=restaurant).count()
+        response_payload = {
+            "deleted_count": deleted_count,
+            "blocked_count": len(blocked_tables),
+            "blocked_tables": [
+                {
+                    "id": table.id,
+                    "name": table.number,
+                    "capacity": table.seats,
+                    "reason": "Есть активные бронирования, удаление недоступно.",
+                }
+                for table in blocked_tables
+            ],
+            "remaining_count": remaining_count,
+        }
+        return Response(response_payload)
+
     def _check_ownership(self, table):
         """Verify the table belongs to the current user's restaurant."""
         from core.utils import get_user_restaurant
         restaurant = get_user_restaurant(self.request.user)
         if restaurant is None or table.restaurant_id != restaurant.id:
             raise PermissionDenied("This table does not belong to your restaurant.")
+
+    def _can_delete_tables(self, user) -> bool:
+        profile = getattr(user, "profile", None)
+        if profile is None:
+            return False
+        return bool(getattr(profile, "is_owner", False) or getattr(profile, "is_global_admin", False))
+
+    def _table_has_active_bookings(self, table) -> bool:
+        return Booking.objects.filter(
+            status__in=Booking.ACTIVE_STATUSES,
+            restaurant=table.restaurant,
+        ).filter(models.Q(table=table) | models.Q(tables=table)).exists()
+
+    def _get_blocked_table_ids(self, tables):
+        table_ids = [table.id for table in tables]
+        if not table_ids:
+            return set()
+
+        blocked_ids = set()
+        active_bookings = (
+            Booking.objects.filter(
+                restaurant=tables[0].restaurant,
+                status__in=Booking.ACTIVE_STATUSES,
+            )
+            .filter(models.Q(table_id__in=table_ids) | models.Q(tables__id__in=table_ids))
+            .prefetch_related('tables')
+            .distinct()
+        )
+        for booking in active_bookings:
+            if booking.table_id in table_ids:
+                blocked_ids.add(booking.table_id)
+            blocked_ids.update(table.id for table in booking.tables.all() if table.id in table_ids)
+        return blocked_ids
 
     @action(detail=False, methods=["get"])
     def status(self, request):
@@ -760,20 +900,25 @@ class ZoneViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Zone.objects.all()
         restaurant_id = self.request.query_params.get('restaurant_id')
-        if restaurant_id:
-            qs = qs.filter(restaurant_id=restaurant_id)
-        else:
-            user = self.request.user
-            if user.is_authenticated:
-                from core.utils import get_user_restaurant
-                restaurant = get_user_restaurant(user)
-                if restaurant:
-                    qs = qs.filter(restaurant=restaurant)
-                else:
-                    qs = Zone.objects.none()
-            else:
-                 qs = Zone.objects.none()
-        return qs
+        user = self.request.user
+        profile = getattr(user, "profile", None) if user and user.is_authenticated else None
+        is_global_admin = bool(profile and profile.role == "global_admin")
+
+        if is_global_admin:
+            if restaurant_id:
+                return qs.filter(restaurant_id=restaurant_id)
+            return qs
+
+        if not user or not user.is_authenticated:
+            return Zone.objects.none()
+
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            return Zone.objects.none()
+        if restaurant_id and str(restaurant_id) != str(restaurant.id):
+            return Zone.objects.none()
+        return qs.filter(restaurant=restaurant)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -803,6 +948,49 @@ class ZoneViewSet(viewsets.ModelViewSet):
             payload={'zone_id': zone.id},
         )
 
+
+class FloorMapShapeViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
+    serializer_class = FloorMapShapeSerializer
+    permission_classes = [permissions.IsAuthenticated, HasRestaurantFeature]
+    required_feature = "table_map"
+    queryset = FloorMapShape.objects.select_related('restaurant', 'zone')
+
+    def get_queryset(self):
+        user = self.request.user
+        from core.utils import get_user_restaurant
+
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            return FloorMapShape.objects.none()
+
+        qs = FloorMapShape.objects.select_related('restaurant', 'zone').filter(restaurant=restaurant)
+        zone_id = self.request.query_params.get('zone_id')
+        if zone_id:
+            qs = qs.filter(zone_id=zone_id)
+        return qs
+
+    def perform_create(self, serializer):
+        from core.utils import get_user_restaurant
+
+        restaurant = get_user_restaurant(self.request.user)
+        if not restaurant:
+            raise PermissionDenied("You don't have a restaurant to attach floor shapes to.")
+        zone = serializer.validated_data.get('zone')
+        if zone and zone.restaurant_id != restaurant.id:
+            raise ValidationError({"zone": "Zone must belong to your restaurant."})
+        serializer.save(restaurant=restaurant)
+
+    def perform_update(self, serializer):
+        from core.utils import get_user_restaurant
+
+        restaurant = get_user_restaurant(self.request.user)
+        if not restaurant:
+            raise PermissionDenied("You don't have a restaurant to manage floor shapes.")
+        zone = serializer.validated_data.get('zone')
+        if zone and zone.restaurant_id != restaurant.id:
+            raise ValidationError({"zone": "Zone must belong to your restaurant."})
+        serializer.save()
+
 class ShiftViewSet(viewsets.ModelViewSet):
     serializer_class = ShiftSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -816,20 +1004,25 @@ class ShiftViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Shift.objects.all()
         restaurant_id = self.request.query_params.get('restaurant_id')
-        if restaurant_id:
-            qs = qs.filter(restaurant_id=restaurant_id)
-        else:
-            user = self.request.user
-            if user.is_authenticated:
-                from core.utils import get_user_restaurant
-                restaurant = get_user_restaurant(user)
-                if restaurant:
-                    qs = qs.filter(restaurant=restaurant)
-                else:
-                    qs = Shift.objects.none()
-            else:
-                 qs = Shift.objects.none()
-        return qs
+        user = self.request.user
+        profile = getattr(user, "profile", None) if user and user.is_authenticated else None
+        is_global_admin = bool(profile and profile.role == "global_admin")
+
+        if is_global_admin:
+            if restaurant_id:
+                return qs.filter(restaurant_id=restaurant_id)
+            return qs
+
+        if not user or not user.is_authenticated:
+            return Shift.objects.none()
+
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            return Shift.objects.none()
+        if restaurant_id and str(restaurant_id) != str(restaurant.id):
+            return Shift.objects.none()
+        return qs.filter(restaurant=restaurant)
 
     def perform_create(self, serializer):
         user = self.request.user

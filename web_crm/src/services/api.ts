@@ -42,14 +42,35 @@ const safeStorage = {
     },
 };
 
+function isLocalLikeHostname(hostname: string) {
+    return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '0.0.0.0' ||
+        /^10\./.test(hostname) ||
+        /^192\.168\./.test(hostname) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+    );
+}
+
+function normalizeBaseUrl(value?: string | null) {
+    return value?.trim().replace(/\/+$/, '') || null;
+}
+
 function getDefaultApiBaseUrl() {
     if (typeof window === 'undefined') return 'http://localhost:8000/api/v1';
-    const host = window.location.hostname || 'localhost';
-    return `http://${host}:8000/api/v1`;
+    const { hostname, origin, port, protocol } = window.location;
+    const devPorts = new Set(['3000', '4173', '5173', '5174', '5175']);
+
+    if (isLocalLikeHostname(hostname) || devPorts.has(port)) {
+        return `${protocol}//${hostname}:8000/api/v1`;
+    }
+
+    return `${origin.replace(/\/+$/, '')}/api/v1`;
 }
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || getDefaultApiBaseUrl(),
+    baseURL: normalizeBaseUrl(import.meta.env.VITE_API_URL) || getDefaultApiBaseUrl(),
     headers: {
         'Content-Type': 'application/json',
     },

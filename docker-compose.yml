@@ -42,9 +42,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    command: sh -c "python manage.py migrate --noinput && python manage.py ensure_periodic_tasks && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
       - ./backend:/app
+    env_file:
+      - ${BACKEND_ENV_FILE:-./backend/.env}
     ports:
       - "8000:8000"
     environment:
@@ -61,9 +63,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "python manage.py migrate --noinput && celery -A config worker -l INFO"
+    command: celery -A config worker -l INFO
     volumes:
       - ./backend:/app
+    env_file:
+      - ${BACKEND_ENV_FILE:-./backend/.env}
     environment:
       - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/kezdes_db
       - REDIS_URL=redis://redis:6379/0
@@ -79,9 +83,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "python manage.py migrate --noinput && celery -A config beat -l INFO"
+    command: celery -A config beat -l INFO
     volumes:
       - ./backend:/app
+    env_file:
+      - ${BACKEND_ENV_FILE:-./backend/.env}
     environment:
       - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/kezdes_db
       - REDIS_URL=redis://redis:6379/0

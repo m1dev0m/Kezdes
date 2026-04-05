@@ -71,7 +71,8 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    instance.profile.save()
+    profile, _ = Profile.objects.get_or_create(user=instance)
+    profile.save()
 
 
 # Normalize legacy role aliases before saving Profile

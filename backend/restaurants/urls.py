@@ -1,10 +1,20 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import RestaurantViewSet, RestaurantRequestViewSet, TableViewSet, StaffViewSet, ReviewViewSet, ZoneViewSet, ShiftViewSet
+from .views import (
+    FloorMapShapeViewSet,
+    RestaurantRequestViewSet,
+    RestaurantViewSet,
+    ReviewViewSet,
+    ShiftViewSet,
+    StaffViewSet,
+    TableViewSet,
+    ZoneViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'requests', RestaurantRequestViewSet, basename='requests')
 router.register(r'tables', TableViewSet, basename='tables')
+router.register(r'floor-shapes', FloorMapShapeViewSet, basename='floor-shapes')
 router.register(r'zones', ZoneViewSet, basename='zones')
 router.register(r'shifts', ShiftViewSet, basename='shifts')
 router.register(r'staff', StaffViewSet, basename='staff')

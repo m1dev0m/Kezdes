@@ -8,7 +8,8 @@ class AdminIPAllowlistMiddleware:
         self.admin_prefix = f"/{getattr(settings, 'ADMIN_URL', 'admin').strip('/')}/"
 
     def __call__(self, request):
-        if request.path.startswith(self.admin_prefix):
+        normalized_path = request.path.rstrip('/') + '/'
+        if normalized_path.startswith(self.admin_prefix):
             allowlist = getattr(settings, 'ALLOW_ADMIN_IPS', None) or []
             if allowlist:
                 ip = self._get_client_ip(request)
@@ -17,7 +18,11 @@ class AdminIPAllowlistMiddleware:
         return self.get_response(request)
 
     def _get_client_ip(self, request):
+        remote_addr = request.META.get('REMOTE_ADDR')
         xff = request.META.get('HTTP_X_FORWARDED_FOR')
-        if xff:
+        trusted_proxies = getattr(settings, 'TRUSTED_PROXY_IPS', None) or []
+
+        if xff and remote_addr and remote_addr in trusted_proxies:
             return xff.split(',')[0].strip()
-        return request.META.get('REMOTE_ADDR')
+
+        return remote_addr

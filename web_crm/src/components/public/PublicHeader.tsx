@@ -13,9 +13,10 @@ export function PublicHeader({ active }: { active?: string }) {
     location.pathname.startsWith('/restaurants') ||
     location.pathname.startsWith('/restaurant/');
   const isPricingRoute = location.pathname.startsWith('/pricing');
+  const isContactRoute = location.pathname.startsWith('/contact');
   const currentActive =
     active ??
-    (location.pathname === '/' ? 'home' : isRestaurantRoute ? 'restaurants' : isPricingRoute ? 'pricing' : undefined);
+    (location.pathname === '/' ? 'home' : isRestaurantRoute ? 'restaurants' : isPricingRoute ? 'pricing' : isContactRoute ? 'contact' : undefined);
   const bookingDate = searchParams.get('date');
   const bookingTime = searchParams.get('time');
   const bookingGuests = searchParams.get('guests');
@@ -60,6 +61,14 @@ export function PublicHeader({ active }: { active?: string }) {
               }`}
           >
             Цены
+          </Link>
+          <Link
+            to="/contact"
+            aria-label="public-contact"
+            className={`text-xs font-semibold uppercase tracking-widest transition-colors ${currentActive === 'contact' ? 'text-blue-700' : 'text-slate-500 hover:text-slate-900'
+              }`}
+          >
+            Контакты
           </Link>
           {user && (
             <>

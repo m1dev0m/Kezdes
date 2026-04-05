@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from bookings.models import Booking
-from chat.models import Message
+from chat.models import Conversation, Message
 from restaurants.models import Restaurant
 
 
@@ -72,3 +72,66 @@ class ChatMessagesAPITests(APITestCase):
         self.client.force_authenticate(user=self.customer)
         res = self.client.post("/api/v1/chat/messages/", {"content": "hi"}, format="json")
         self.assertEqual(res.status_code, 400)
+
+    def test_start_direct_conversation_from_booking(self):
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.post(
+            "/api/v1/chat/conversations/start/",
+            {"booking_id": self.booking1.id},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(Conversation.objects.filter(restaurant=self.restaurant, guest=self.customer).exists())
+
+    def test_direct_messages_filter_by_conversation(self):
+        conversation = Conversation.objects.create(restaurant=self.restaurant, guest=self.customer)
+        other_guest = User.objects.create_user("other", "other@test.local", "pass1234")
+        other_conversation = Conversation.objects.create(restaurant=self.restaurant, guest=other_guest)
+        Message.objects.create(conversation=conversation, restaurant=self.restaurant, sender=self.customer, content="main")
+        Message.objects.create(conversation=other_conversation, restaurant=self.restaurant, sender=other_guest, content="other")
+
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.get(f"/api/v1/chat/messages/?conversation={conversation.id}")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["content"], "main")
+
+    def test_mark_read_scoped_to_guest_conversation(self):
+        other_guest = User.objects.create_user("guest2", "guest2@test.local", "pass1234")
+        conversation = Conversation.objects.create(restaurant=self.restaurant, guest=self.customer)
+        other_conversation = Conversation.objects.create(restaurant=self.restaurant, guest=other_guest)
+
+        msg1 = Message.objects.create(
+            conversation=conversation,
+            restaurant=self.restaurant,
+            sender=self.owner,
+            content="to main guest",
+        )
+        msg2 = Message.objects.create(
+            conversation=other_conversation,
+            restaurant=self.restaurant,
+            sender=self.owner,
+            content="to other guest",
+        )
+
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/chat/messages/mark_read/",
+            {"conversation": conversation.id},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+
+        msg1.refresh_from_db()
+        msg2.refresh_from_db()
+        self.assertTrue(msg1.is_read)
+        self.assertFalse(msg2.is_read)
+
+    def test_guest_cannot_mark_read_by_restaurant(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/chat/messages/mark_read/",
+            {"restaurant": self.restaurant.id},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 403)

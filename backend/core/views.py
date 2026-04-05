@@ -9,20 +9,39 @@ from django.db import connections
 from django.db import OperationalError
 from django.db import IntegrityError
 from django.db import transaction
+from django_celery_beat.models import PeriodicTask
+from celery import current_app
 from .models import OTPDeliveryAttempt, PushToken, OTPVerification
+from .permissions import IsGlobalAdmin
+from .viewsets import OptionalPageNumberPagination
 from .serializers import (
     RegisterSerializer,
     CustomTokenObtainPairSerializer,
+    HealthLiveSerializer,
+    HealthReadySerializer,
+    HealthWorkersSerializer,
+    OTPDeliveryAttemptSerializer,
     PushTokenSerializer,
+    SendOTPResponseSerializer,
     SetupRestaurantSerializer,
+    UpdateRoleResponseSerializer,
+    UpdateRoleSerializer,
     UserMeSerializer,
     UserMeUpdateSerializer,
     SendOTPSerializer,
 )
-import random
+import secrets
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
+
+
+REQUIRED_PERIODIC_TASKS = (
+    "Expire stale bookings",
+    "Expire stale waitlist entries",
+    "Auto mark no-shows",
+)
 
 
 def _normalize_email(value: str) -> str:
@@ -82,11 +101,12 @@ class SendOTPView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth'
 
+    @extend_schema(request=SendOTPSerializer, responses=SendOTPResponseSerializer)
     def post(self, request, *args, **kwargs):
         serializer = SendOTPSerializer(data=request.data)
         if serializer.is_valid():
             email = _normalize_email(serializer.validated_data['email'])
-            code = f"{random.randint(100000, 999999)}"
+            code = str(secrets.randbelow(900000) + 100000)
 
             try:
                 with transaction.atomic():
@@ -139,6 +159,28 @@ class SendOTPView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class OTPDeliveryAttemptListView(generics.ListAPIView):
+    serializer_class = OTPDeliveryAttemptSerializer
+    permission_classes = [permissions.IsAuthenticated, IsGlobalAdmin]
+    pagination_class = OptionalPageNumberPagination
+
+    def get_queryset(self):
+        queryset = OTPDeliveryAttempt.objects.all().order_by('-created_at')
+
+        email = (self.request.query_params.get('email') or '').strip()
+        status_param = (self.request.query_params.get('status') or '').strip()
+        provider = (self.request.query_params.get('provider') or '').strip()
+
+        if email:
+            queryset = queryset.filter(email__iexact=email)
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        if provider:
+            queryset = queryset.filter(provider__iexact=provider)
+
+        return queryset
+
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
@@ -185,8 +227,8 @@ class SetupRestaurantView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        if not hasattr(request.user, "profile") or request.user.profile.role not in ("owner",):
-            return Response({"detail": "Only restaurant owners can submit setup."}, status=status.HTTP_403_FORBIDDEN)
+        if not hasattr(request.user, "profile") or request.user.profile.role not in ("owner", "pending"):
+            return Response({"detail": "Only restaurant applicants can submit setup."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
@@ -207,13 +249,24 @@ class SetupRestaurantView(generics.CreateAPIView):
 class UpdateRoleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(request=UpdateRoleSerializer, responses=UpdateRoleResponseSerializer)
     def post(self, request, *args, **kwargs):
         role = request.data.get('role')
         if role not in ('owner', 'customer'):
             return Response({"detail": "Invalid role choice."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        profile = request.user.profile
+
+        if role == 'owner':
+            return Response(
+                {"detail": "Owner access is granted only through the restaurant approval flow."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        profile = getattr(request.user, "profile", None)
+        if profile is None:
+            return Response({"detail": "Profile not found."}, status=status.HTTP_400_BAD_REQUEST)
         profile.role = role
+        if role == 'customer':
+            profile.restaurant = None
         profile.save()
         
         return Response({
@@ -226,6 +279,7 @@ class UpdateRoleView(APIView):
 class HealthLiveView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(responses=HealthLiveSerializer)
     def get(self, request, *args, **kwargs):
         return Response({"status": "ok", "service": "kezdes-api"}, status=status.HTTP_200_OK)
 
@@ -233,6 +287,7 @@ class HealthLiveView(APIView):
 class HealthReadyView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(responses=HealthReadySerializer)
     def get(self, request, *args, **kwargs):
         db_ok = False
         cache_ok = False
@@ -260,6 +315,76 @@ class HealthReadyView(APIView):
                 "components": {
                     "database": "ok" if db_ok else "error",
                     "cache": "ok" if cache_ok else "error",
+                },
+            },
+            status=status_code,
+        )
+
+
+class HealthWorkersView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def _check_periodic_tasks(self):
+        enabled = set(
+            PeriodicTask.objects.filter(
+                name__in=REQUIRED_PERIODIC_TASKS,
+                enabled=True,
+            ).values_list("name", flat=True)
+        )
+        missing = sorted(set(REQUIRED_PERIODIC_TASKS) - enabled)
+        return not missing, missing
+
+    def _check_broker(self):
+        connection = current_app.connection_for_read()
+        try:
+            connection.ensure_connection(max_retries=1)
+            return True
+        finally:
+            try:
+                connection.release()
+            except Exception:
+                pass
+
+    def _check_worker(self):
+        replies = current_app.control.inspect(timeout=1).ping() or {}
+        return bool(replies), sorted(replies.keys())
+
+    @extend_schema(responses=HealthWorkersSerializer)
+    def get(self, request, *args, **kwargs):
+        schedule_ok, missing_tasks = self._check_periodic_tasks()
+
+        broker_state = "skipped" if settings.IS_TESTING else "error"
+        worker_state = "skipped" if settings.IS_TESTING else "error"
+        worker_nodes = []
+
+        if not settings.IS_TESTING:
+            try:
+                broker_ok = self._check_broker()
+                broker_state = "ok" if broker_ok else "error"
+            except Exception:
+                broker_state = "error"
+                broker_ok = False
+
+            if broker_ok:
+                try:
+                    worker_ok, worker_nodes = self._check_worker()
+                    worker_state = "ok" if worker_ok else "error"
+                except Exception:
+                    worker_state = "error"
+
+        ready = schedule_ok and broker_state in {"ok", "skipped"} and worker_state in {"ok", "skipped"}
+        status_code = status.HTTP_200_OK if ready else status.HTTP_503_SERVICE_UNAVAILABLE
+        return Response(
+            {
+                "status": "ok" if ready else "degraded",
+                "components": {
+                    "broker": broker_state,
+                    "worker": worker_state,
+                    "beat_schedule": "ok" if schedule_ok else "error",
+                },
+                "details": {
+                    "worker_nodes": worker_nodes,
+                    "missing_periodic_tasks": missing_tasks,
                 },
             },
             status=status_code,

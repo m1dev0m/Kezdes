@@ -1,11 +1,19 @@
-from core.admin_site import secure_admin_site
+from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from core.views import RegisterView
 urlpatterns = [
-    path(f'{settings.ADMIN_URL}/', secure_admin_site.urls),
+    path(f'{settings.ADMIN_URL}/', admin.site.urls),
+    # Developer-friendly alias: keep the real admin path secret in production, but
+    # allow local access via /admin/ during DEBUG.
+    *(
+        [path('admin/', RedirectView.as_view(url=f'/{settings.ADMIN_URL}/', permanent=False))]
+        if settings.DEBUG
+        else []
+    ),
     path('register/', RegisterView.as_view(), name='register_root'),
     path('api/v1/auth/', include('core.urls')),
     path('api/v1/register/', RegisterView.as_view(), name='register_v1'),
@@ -19,10 +27,13 @@ urlpatterns = [
     path('api/v1/orders/', include('orders.urls')),
     path('api/v1/reports/', include('reports.urls')),
     path('api/v1/automations/', include('automations.urls')),
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+if settings.ENABLE_API_DOCS:
+    urlpatterns += [
+        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+        path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Store, ArrowRight, Loader2 } from 'lucide-react';
 import api from '@/services/api';
@@ -7,12 +7,26 @@ import { useAuth } from '@/modules/auth/logic/AuthContext';
 
 export default function RoleSelection() {
     const [loading, setLoading] = useState<string | null>(null);
-    const { login } = useAuth();
+    const { login, user } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
+        if (user.role === 'pending' && user.restaurant_verified === false && user.restaurant_setup_required === false) {
+            navigate('/register-restaurant/pending', { replace: true });
+        }
+    }, [navigate, user]);
 
     const handleSelectRole = async (role: 'owner' | 'customer') => {
         setLoading(role);
         try {
+            if (role === 'owner') {
+                navigate('/setup-restaurant');
+                return;
+            }
+
             await api.post('/auth/update-role/', { role });
 
             // Refresh user data in context
@@ -22,13 +36,8 @@ export default function RoleSelection() {
                 await login(accessToken, refreshToken);
             }
 
-            toast.success(role === 'owner' ? 'Welcome, Partner' : 'Welcome, Guest');
-
-            if (role === 'owner') {
-                navigate('/setup-restaurant');
-            } else {
-                navigate('/restaurants');
-            }
+            toast.success('Welcome, Guest');
+            navigate('/restaurants');
         } catch (err: any) {
             toast.error(err.response?.data?.detail || 'Failed to set role');
         } finally {

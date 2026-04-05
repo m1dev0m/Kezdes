@@ -50,10 +50,18 @@ export default function GuestLayout() {
 
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2 mr-2">
-              <button className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <button
+                type="button"
+                onClick={() => navigate('/guest/messages')}
+                className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
                 <span className="material-symbols-outlined text-[22px]">notifications</span>
               </button>
-              <button className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <button
+                type="button"
+                onClick={() => navigate('/restaurants')}
+                className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
                 <span className="material-symbols-outlined text-[22px]">search</span>
               </button>
             </div>
@@ -86,9 +94,9 @@ export default function GuestLayout() {
           </div>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">© 2026 Almaty, Kazakhstan • Premium Dining Ecosystem</p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Условия</a>
-            <a href="#" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Приватность</a>
-            <a href="#" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Помощь</a>
+            <Link to="/pricing" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Тарифы</Link>
+            <Link to="/contact" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Контакты</Link>
+            <Link to="/restaurants" className="text-xs font-semibold text-slate-400 hover:text-[#1d4ed8] transition-colors">Рестораны</Link>
           </div>
         </div>
       </footer>

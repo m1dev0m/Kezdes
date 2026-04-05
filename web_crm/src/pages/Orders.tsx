@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     ShoppingBag, Clock, ChevronRight, ChevronLeft,
     Receipt, DollarSign, RefreshCw
@@ -8,6 +8,10 @@ import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import {
+    useRestaurantSubscriptionSummary,
+    type RestaurantSubscriptionSummary,
+} from '@/features/subscription/useRestaurantSubscriptionSummary';
 import { useI18n } from '@/i18n';
 
 interface OrderItem {
@@ -32,9 +36,17 @@ interface Order {
     created_at: string;
 }
 
+function hasFeature(summary: RestaurantSubscriptionSummary | null, key: string): boolean {
+    if (!summary) return false;
+    const flag = summary.feature_flags?.[key];
+    if (typeof flag === 'boolean') return flag;
+    return summary.features?.some((feature) => feature.key === key && feature.enabled) ?? false;
+}
+
 export default function Orders() {
     const { t } = useI18n();
     const navigate = useNavigate();
+    const { summary, loading: subscriptionLoading, error: subscriptionError, reload: reloadSubscription } = useRestaurantSubscriptionSummary();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -44,10 +56,13 @@ export default function Orders() {
     const [totalPages, setTotalPages] = useState(1);
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const pageSize = 20;
+    const canViewOrders = useMemo(() => hasFeature(summary, 'orders_basic'), [summary]);
 
     useEffect(() => {
+        if (subscriptionLoading || !summary) return;
+        if (!canViewOrders) return;
         load();
-    }, [filter, page]);
+    }, [canViewOrders, filter, page, subscriptionLoading, summary]);
 
     const load = async () => {
         setRefreshing(true);
@@ -74,6 +89,75 @@ export default function Orders() {
             setRefreshing(false);
         }
     };
+
+    if (subscriptionLoading && !summary) {
+        return (
+            <div className="space-y-6 pb-12">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="h-7 w-40 animate-pulse rounded-full bg-slate-100" />
+                    <div className="mt-4 h-4 w-72 animate-pulse rounded-full bg-slate-100" />
+                    <div className="mt-8 grid gap-4 md:grid-cols-3">
+                        <div className="h-24 animate-pulse rounded-3xl bg-slate-50" />
+                        <div className="h-24 animate-pulse rounded-3xl bg-slate-50" />
+                        <div className="h-24 animate-pulse rounded-3xl bg-slate-50" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (subscriptionError && !summary) {
+        return (
+            <div className="space-y-6 pb-12">
+                <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>{subscriptionError}</div>
+                        <button
+                            type="button"
+                            onClick={() => void reloadSubscription()}
+                            className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
+                        >
+                            Повторить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (summary && !canViewOrders) {
+        return (
+            <div className="space-y-6 pb-12">
+                <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Orders</div>
+                    <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900">Заказы недоступны на текущем тарифе</h1>
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                        Для работы с заказами нужен тариф Plus или ручное включение флага `orders_basic`.
+                    </p>
+                    <div className="mt-6 flex flex-wrap items-center gap-3">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => navigate('/app/billing')}
+                            className="h-11 rounded-2xl border-slate-200 bg-white px-4 text-slate-700"
+                        >
+                            Открыть подписку
+                        </Button>
+                        {summary.upgrade_cta?.path ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => navigate(summary.upgrade_cta!.path)}
+                                className="h-11 rounded-2xl border-slate-200 bg-white px-4 text-slate-700"
+                            >
+                                {summary.upgrade_cta?.label ?? 'Открыть подписку'}
+                            </Button>
+                        ) : null}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const getStatusStyles = (status: string) => {
         switch (status) {

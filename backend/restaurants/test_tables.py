@@ -383,6 +383,48 @@ class TestTableDelete:
         assert resp.status_code == status.HTTP_204_NO_CONTENT
 
 
+class TestTableBulkDelete:
+
+    @pytest.mark.django_db
+    def test_clear_all_deletes_only_tables_without_active_bookings(
+        self, client, owner, restaurant, other_restaurant, future_date
+    ):
+        active = Table.objects.create(restaurant=restaurant, number="1", seats=4)
+        removable = Table.objects.create(restaurant=restaurant, number="2", seats=2)
+        removable_two = Table.objects.create(restaurant=restaurant, number="3", seats=6)
+        foreign_table = Table.objects.create(restaurant=other_restaurant, number="9", seats=4)
+
+        customer = User.objects.create_user("bulk_cust", "bulk@test.com", "pass")
+        booking = Booking.objects.create(
+            restaurant=restaurant,
+            date=future_date,
+            time=time(19, 0),
+            guests=2,
+            status=Booking.CONFIRMED,
+            user=customer,
+        )
+        booking.tables.set([active])
+
+        client.force_authenticate(user=owner)
+        resp = client.post("/api/v1/tables/clear-all/", format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["deleted_count"] == 2
+        assert resp.data["blocked_count"] == 1
+        assert resp.data["blocked_tables"][0]["id"] == active.id
+        assert not Table.objects.filter(id=removable.id).exists()
+        assert not Table.objects.filter(id=removable_two.id).exists()
+        assert Table.objects.filter(id=active.id).exists()
+        assert Table.objects.filter(id=foreign_table.id).exists()
+
+    @pytest.mark.django_db
+    def test_clear_all_forbidden_for_manager(self, client, manager, restaurant):
+        Table.objects.create(restaurant=restaurant, number="1", seats=4)
+        client.force_authenticate(user=manager)
+        resp = client.post("/api/v1/tables/clear-all/", format="json")
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 5. TENANT ISOLATION
 # ══════════════════════════════════════════════════════════════════════════════

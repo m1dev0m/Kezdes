@@ -1,71 +1,276 @@
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { AlertTriangle, CheckCircle2, Clock3, Filter, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import api from '@/services/api';
+import { extractResults, getApiErrorMessage } from '@/features/reservations/shared';
+
+type OTPAttemptRecord = {
+    id: number;
+    email: string;
+    channel: string;
+    status: string;
+    provider: string;
+    error_message?: string;
+    metadata?: Record<string, unknown>;
+    created_at: string;
+};
+
+type SystemMetrics = {
+    total_restaurants: number;
+    active_restaurants: number;
+    total_users: number;
+    total_bookings: number;
+    bookings_today: number;
+    pending_requests: number;
+};
 
 export default function SystemLogs() {
+    const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+    const [attempts, setAttempts] = useState<OTPAttemptRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'failed'>('all');
+    const [emailFilter, setEmailFilter] = useState('');
+
+    const loadData = useCallback(async () => {
+        setRefreshing(true);
+        setError(null);
+        try {
+            const [metricsResponse, attemptsResponse] = await Promise.all([
+                api.get('/analytics/system/'),
+                api.get('/auth/otp-delivery-attempts/', {
+                    params: {
+                        status: statusFilter === 'all' ? undefined : statusFilter,
+                        email: emailFilter.trim() || undefined,
+                    },
+                }),
+            ]);
+
+            setMetrics(metricsResponse.data);
+            setAttempts(extractResults<OTPAttemptRecord>(attemptsResponse.data));
+        } catch (loadError) {
+            const message = getApiErrorMessage(loadError, 'Не удалось загрузить мониторинг системы.');
+            setError(message);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [emailFilter, statusFilter]);
+
+    useEffect(() => {
+        void loadData();
+    }, [loadData]);
+
+    const stats = useMemo(() => {
+        const sent = attempts.filter((attempt) => attempt.status === 'sent').length;
+        const failed = attempts.filter((attempt) => attempt.status === 'failed').length;
+        const latest = attempts[0] || null;
+        return {
+            sent,
+            failed,
+            total: attempts.length,
+            latest,
+        };
+    }, [attempts]);
+
     return (
-        <div className="space-y-12 italic">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+        <div className="space-y-10">
+            <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
-                    <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-[0.4em] italic leading-none">Core Activity Stream</p>
-                    <h1 className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic leading-[0.9]">System <span className="text-[#0047FF]">Logs</span>.</h1>
+                    <p className="text-[10px] font-black text-[#0047FF] uppercase tracking-[0.4em] leading-none">Monitoring</p>
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900">
+                        OTP / <span className="text-[#0047FF]">Notification</span> Monitor
+                    </h1>
+                    <p className="max-w-3xl text-sm leading-7 text-slate-600">
+                        Здесь видны реальные попытки отправки OTP и общие системные метрики платформы. Это рабочий мониторинг, а не декоративный экран.
+                    </p>
                 </div>
-                <div className="flex gap-4">
-                    <button className="h-14 px-8 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest italic hover:border-[#0047FF] transition-all">
-                        <span className="material-symbols-outlined text-[20px]">filter_list</span> Adjust Scope
+
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        type="button"
+                        onClick={() => void loadData()}
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    >
+                        <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+                        Обновить
+                    </button>
+                    <button className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                        <Filter size={16} />
+                        Scope
                     </button>
                 </div>
             </header>
 
-            <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-slate-950 rounded-[4rem] border border-slate-800/50 shadow-2xl shadow-black/40 overflow-hidden relative"
-            >
-                {/* Visual Glitch/Effect Background */}
-                <div className="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px] opacity-10 pointer-events-none" />
-                <div className="absolute top-0 right-0 size-96 bg-[#0047FF]/10 rounded-full blur-[120px] -mr-48 -mt-48" />
-
-                <div className="p-16 md:p-24 flex flex-col items-center justify-center text-center space-y-12 relative z-10">
-                    <div className="size-32 rounded-[3.5rem] bg-slate-900 border-4 border-slate-800 flex items-center justify-center shadow-2xl group transition-all">
-                        <span className="material-symbols-outlined text-[#0047FF] text-[48px] font-black group-hover:scale-125 transition-transform">terminal</span>
-                    </div>
-
-                    <div className="space-y-6">
-                        <h3 className="text-3xl md:text-4xl font-black text-white uppercase italic tracking-tighter leading-none">Stream Encryption Active</h3>
-                        <p className="text-white/40 text-lg font-medium max-w-lg mx-auto italic leading-relaxed">
-                            System logs are currently restricted or disabled for this clearance level. Initialize a secure handshake with your DevOps terminal to view encrypted platform events.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl pt-10 border-t border-slate-800/50">
-                        <LogService name="Datadog" status="Linked" color="text-purple-500" />
-                        <LogService name="Sentry" status="Active" color="text-rose-500" />
-                        <LogService name="ELK Stack" status="Pending" color="text-emerald-500" />
-                        <LogService name="CloudWatch" status="Syncing" color="text-blue-500" />
-                    </div>
-
-                    <button className="h-20 px-16 bg-[#0047FF] text-white text-[11px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] shadow-2xl shadow-[#0047FF]/20 hover:bg-[#0039cc] active:scale-95 transition-all italic">
-                        Initialize Secure Access
-                    </button>
+            {error ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {error}
                 </div>
-            </motion.div>
+            ) : null}
 
-            <footer className="text-center">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] italic opacity-60">
-                    Proprietary Intelligence Stream © 2026 Kezdes Ops.
-                </p>
-            </footer>
+            <section className="grid gap-4 md:grid-cols-4">
+                <MetricCard icon={<ShieldAlert size={18} />} label="Всего попыток" value={stats.total} />
+                <MetricCard icon={<CheckCircle2 size={18} />} label="Отправлено" value={stats.sent} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+                <MetricCard icon={<AlertTriangle size={18} />} label="Ошибки" value={stats.failed} tone="border-rose-200 bg-rose-50 text-rose-700" />
+                <MetricCard icon={<Clock3 size={18} />} label="Последняя" value={stats.latest ? formatDateTime(stats.latest.created_at) : '—'} />
+            </section>
+
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]"
+            >
+                <section className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-900">OTP delivery attempts</h2>
+                            <p className="mt-1 text-sm text-slate-500">Последние реальные отправки кода подтверждения.</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {(['all', 'sent', 'failed'] as const).map((value) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setStatusFilter(value)}
+                                    className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] transition ${
+                                        statusFilter === value
+                                            ? 'bg-[#1d4ed8] text-white'
+                                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {value === 'all' ? 'Все' : value}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="px-6 py-4">
+                        <label className="relative block">
+                            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                value={emailFilter}
+                                onChange={(event) => setEmailFilter(event.target.value)}
+                                placeholder="Фильтр по email"
+                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+                            />
+                        </label>
+                    </div>
+
+                    <div className="divide-y divide-slate-200">
+                        {loading ? (
+                            <div className="px-6 py-12 text-center text-sm text-slate-500">Загрузка попыток OTP...</div>
+                        ) : attempts.length === 0 ? (
+                            <div className="px-6 py-12 text-center text-sm text-slate-500">
+                                Попыток отправки пока нет. Данные появятся после первого запроса кода.
+                            </div>
+                        ) : (
+                            attempts.slice(0, 10).map((attempt) => (
+                                <div key={attempt.id} className="px-6 py-4">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <div className="text-sm font-semibold text-slate-900">{attempt.email}</div>
+                                            <div className="mt-1 text-xs text-slate-500">
+                                                {attempt.channel} · {attempt.provider}
+                                            </div>
+                                        </div>
+                                        <span
+                                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+                                                attempt.status === 'sent'
+                                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                                    : 'border-rose-200 bg-rose-50 text-rose-700'
+                                            }`}
+                                        >
+                                            {attempt.status}
+                                        </span>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                                        <span>{formatDateTime(attempt.created_at)}</span>
+                                        {attempt.error_message ? <span className="text-rose-600">{attempt.error_message}</span> : <span>Без ошибки</span>}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </section>
+
+                <section className="space-y-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
+                    >
+                        <div className="text-lg font-semibold text-slate-900">System metrics</div>
+                        <div className="mt-1 text-sm text-slate-500">Глобальная картина по платформе.</div>
+                        <div className="mt-5 grid gap-3">
+                            <MetricRow label="Рестораны" value={metrics?.total_restaurants ?? '—'} />
+                            <MetricRow label="Активные рестораны" value={metrics?.active_restaurants ?? '—'} />
+                            <MetricRow label="Всего пользователей" value={metrics?.total_users ?? '—'} />
+                            <MetricRow label="Всего бронирований" value={metrics?.total_bookings ?? '—'} />
+                            <MetricRow label="Бронирований сегодня" value={metrics?.bookings_today ?? '—'} />
+                            <MetricRow label="Pending requests" value={metrics?.pending_requests ?? '—'} />
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-sm"
+                    >
+                        <div className="text-lg font-semibold">Alert stance</div>
+                        <div className="mt-1 text-sm text-white/70">
+                            OTP pipeline is observable. Failed attempts become visible immediately in the list on the left.
+                        </div>
+                        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                            <MiniBadge label="Sent" value={stats.sent} tone="bg-emerald-500/15 text-emerald-300" />
+                            <MiniBadge label="Failed" value={stats.failed} tone="bg-rose-500/15 text-rose-300" />
+                            <MiniBadge label="Latest" value={stats.latest ? 'Fresh' : '—'} tone="bg-slate-700 text-slate-100" />
+                        </div>
+                    </motion.div>
+                </section>
+            </motion.div>
         </div>
     );
 }
 
-function LogService({ name, status, color }: { name: string; status: string; color: string }) {
+function formatDateTime(value?: string | null): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('ru-RU', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+}
+
+function MetricCard({ icon, label, value, tone = 'border-slate-200 bg-white text-slate-700' }: { icon: ReactNode; label: string; value: string | number; tone?: string }) {
     return (
-        <div className="p-6 rounded-3xl bg-slate-900/50 border border-slate-800 hover:border-[#0047FF]/20 transition-all group">
-            <p className="text-[10px] font-black text-white uppercase tracking-widest mb-2 italic leading-none">{name}</p>
-            <div className="flex items-center gap-2 justify-center">
-                <span className={`size-1.5 rounded-full ${color.replace('text-', 'bg-')} animate-pulse`} />
-                <span className={`text-[8px] font-black uppercase tracking-[0.2em] italic ${color}`}>{status}</span>
+        <div className={`rounded-3xl border px-5 py-4 shadow-sm ${tone}`}>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em]">
+                {icon}
+                {label}
             </div>
+            <div className="mt-3 text-3xl font-semibold tracking-tight">{value}</div>
+        </div>
+    );
+}
+
+function MetricRow({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+            <div className="text-sm font-semibold text-slate-900">{value}</div>
+        </div>
+    );
+}
+
+function MiniBadge({ label, value, tone }: { label: string; value: string | number; tone: string }) {
+    return (
+        <div className={`rounded-2xl px-4 py-3 ${tone}`}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-70">{label}</div>
+            <div className="mt-1 text-xl font-semibold tracking-tight">{value}</div>
         </div>
     );
 }

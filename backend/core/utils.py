@@ -9,11 +9,12 @@ def get_user_restaurant(user):
     restaurant = getattr(user, "owned_restaurant", None)
     if restaurant:
         return restaurant
-    if hasattr(user, "profile"):
-        try:
-            return getattr(user.profile, "restaurant", None)
-        except AttributeError:
-            return None
+
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return None
+    if getattr(profile, "is_staff_member", False):
+        return getattr(profile, "restaurant", None)
     return None
 
 

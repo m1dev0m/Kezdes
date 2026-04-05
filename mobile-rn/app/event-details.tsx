@@ -239,7 +239,7 @@ export default function EventDetailsScreen() {
                     <Ionicons name="chatbubble-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
                     <Text style={styles.chatBtnText}>Чат с менеджером</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.mainActionBtn} onPress={() => router.push('/home')}>
+                <TouchableOpacity style={styles.mainActionBtn} onPress={() => router.push('/(tabs)/home')}>
                     <Text style={styles.mainActionBtnText}>Вернуться</Text>
                 </TouchableOpacity>
             </View>

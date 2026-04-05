@@ -7,6 +7,7 @@ from .models import (
     Table,
     Zone,
     Shift,
+    FloorMapShape,
     RestaurantAuditLog,
     RestaurantInvoice,
 )
@@ -20,6 +21,48 @@ class ShiftSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shift
         fields = '__all__'
+
+
+class FloorMapShapeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FloorMapShape
+        fields = [
+            'id',
+            'restaurant',
+            'zone',
+            'name',
+            'shape_type',
+            'x',
+            'y',
+            'width',
+            'height',
+            'rotation',
+            'fill_color',
+            'stroke_color',
+            'text_color',
+            'z_index',
+            'is_visible',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'restaurant', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        for field in ('x', 'y', 'width', 'height', 'rotation'):
+            value = attrs.get(field)
+            if value is None:
+                continue
+            try:
+                attrs[field] = float(value)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({field: f'{field} must be a number.'})
+
+        for field in ('width', 'height'):
+            value = attrs.get(field)
+            if value is not None and value <= 0:
+                raise serializers.ValidationError({field: f'{field} must be > 0.'})
+
+        return attrs
 
 
 class RestaurantRequestSerializer(serializers.ModelSerializer):
@@ -438,6 +481,78 @@ class RestaurantSubscriptionSerializer(serializers.ModelSerializer):
             'label': f'Перейти на {dict(Restaurant.PLAN_CHOICES).get(target_plan, target_plan)}',
             'path': '/pricing',
         }
+
+
+class RestaurantFeatureFlagsSerializer(serializers.ModelSerializer):
+    plan_label = serializers.CharField(source='get_plan_display', read_only=True)
+    payment_status_label = serializers.CharField(source='get_payment_status_display', read_only=True)
+    effective_features = serializers.SerializerMethodField()
+    managed_features = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Restaurant
+        fields = [
+            'id',
+            'name',
+            'plan',
+            'plan_label',
+            'payment_status',
+            'payment_status_label',
+            'feature_flags',
+            'managed_features',
+            'effective_features',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'name',
+            'plan',
+            'plan_label',
+            'payment_status',
+            'payment_status_label',
+            'managed_features',
+            'effective_features',
+            'updated_at',
+        ]
+
+    def get_effective_features(self, obj: Restaurant):
+        keys = [
+            'bookings_basic',
+            'chat_basic',
+            'table_map',
+            'zones',
+            'shifts',
+            'staff_basic',
+            'menu_basic',
+            'orders_basic',
+            'analytics_basic',
+            'analytics_advanced',
+            'automations',
+        ]
+        return [key for key in keys if obj.has_feature(key)]
+
+    def get_managed_features(self, obj: Restaurant):
+        return [
+            {'key': key, 'enabled': value}
+            for key, value in sorted((obj.feature_flags or {}).items(), key=lambda item: str(item[0]))
+            if isinstance(key, str) and key.strip()
+        ]
+
+    def validate_feature_flags(self, value):
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise serializers.ValidationError({'feature_flags': 'feature_flags must be an object.'})
+
+        normalized = {}
+        for raw_key, raw_value in value.items():
+            key = str(raw_key).strip()
+            if not key:
+                raise serializers.ValidationError({'feature_flags': 'feature flag keys must be non-empty strings.'})
+            if not isinstance(raw_value, bool):
+                raise serializers.ValidationError({'feature_flags': {key: 'feature flag values must be boolean.'}})
+            normalized[key] = raw_value
+        return normalized
 
 class RestaurantClaimSerializer(serializers.Serializer):
     restaurant_id = serializers.IntegerField()

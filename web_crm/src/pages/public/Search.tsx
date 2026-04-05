@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
@@ -55,34 +55,52 @@ export default function Search() {
   const [bookingDate, setBookingDate] = useState(searchParams.get('date') ?? getLocalDateString());
   const [bookingTime, setBookingTime] = useState(searchParams.get('time') ?? '19:00');
   const [partySize, setPartySize] = useState(Number(searchParams.get('guests') ?? 2));
+  const requestIdRef = useRef(0);
+  const [serverSearchQuery, setServerSearchQuery] = useState(searchParams.get('q') ?? '');
 
-  const loadRestaurants = useCallback(async () => {
+  const loadRestaurants = useCallback(async (searchTerm = '') => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setPageError(null);
 
     try {
-      const response = await api.get('/restaurants/');
+      const params = new URLSearchParams();
+      if (searchTerm.trim()) {
+        params.set('search', searchTerm.trim());
+      }
+
+      const response = await api.get(`/restaurants/${params.toString() ? `?${params.toString()}` : ''}`);
       const payload = Array.isArray(response.data?.results) ? response.data.results : response.data;
       const items = Array.isArray(payload) ? payload : [];
+
+      if (requestId !== requestIdRef.current) return;
       setRestaurants(items);
+      setServerSearchQuery(searchTerm.trim());
 
       if (!Array.isArray(payload) && !response.data?.results) {
         setPageError('Не удалось разобрать список заведений. Попробуйте обновить страницу.');
       }
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       const message = 'Не удалось загрузить список заведений.';
       setRestaurants([]);
       setPageError(message);
       toast.error(message);
       console.error(error);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    void loadRestaurants();
-  }, [loadRestaurants]);
+    const timeout = window.setTimeout(() => {
+      void loadRestaurants(query);
+    }, query.trim() ? 220 : 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadRestaurants, query]);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
@@ -136,6 +154,7 @@ export default function Search() {
   const featuredRestaurant = visibleRestaurants[0] ?? null;
   const remainingRestaurants = visibleRestaurants.slice(1);
   const hasFilters = Boolean(query.trim()) || activeFilter !== 'Все' || sortMode !== 'recommended';
+  const isServerFiltered = serverSearchQuery.trim().length > 0;
 
   const resultTitle = (() => {
     if (query.trim()) return `Поиск: ${query.trim()}`;
@@ -163,13 +182,20 @@ export default function Search() {
                 разной плотностью, заметным CTA и быстрым сравнением по фото, адресу и времени работы.
               </p>
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                <StatTile label="Результатов" value={visibleRestaurants.length.toString()} />
-                <StatTile label="Дата" value={bookingDate} />
-                <StatTile label="Гостей" value={String(partySize)} />
-              </div>
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  <StatTile label="Результатов" value={visibleRestaurants.length.toString()} />
+                  <StatTile label="Дата" value={bookingDate} />
+                  <StatTile label="Гостей" value={String(partySize)} />
+                </div>
 
-              <div className="mt-8 space-y-3">
+                {isServerFiltered ? (
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
+                    Серверный поиск
+                    <span className="normal-case tracking-normal text-blue-600">по запросу “{serverSearchQuery}”</span>
+                  </div>
+                ) : null}
+
+                <div className="mt-8 space-y-3">
                 <div className="grid gap-3 lg:grid-cols-3">
                   <label className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-600">
                     <CalendarDays size={18} className="text-slate-400" />
@@ -271,7 +297,7 @@ export default function Search() {
                   partySize={partySize}
                 />
               ) : pageError ? (
-                <ErrorPreview error={pageError} onRetry={loadRestaurants} />
+                <ErrorPreview error={pageError} onRetry={() => void loadRestaurants(query)} />
               ) : (
                 <EmptyPreview />
               )}

@@ -1,5 +1,17 @@
 from django.contrib import admin
-from .models import Restaurant, RestaurantRequest, Table, Availability, Review, RestaurantInvoice, RestaurantAuditLog
+from .models import (
+    Restaurant,
+    RestaurantRequest,
+    Table,
+    Availability,
+    Review,
+    RestaurantInvoice,
+    RestaurantAuditLog,
+    OpeningHours,
+    Zone,
+    Shift,
+    FloorMapShape,
+)
 import string
 import random
 from django.contrib.auth.models import User
@@ -69,6 +81,39 @@ class RestaurantAdmin(admin.ModelAdmin):
 class TableAdmin(admin.ModelAdmin):
     list_display = ('number', 'restaurant', 'seats', 'is_active')
     list_filter = ('is_active', 'restaurant')
+    search_fields = ('number', 'restaurant__name')
+
+
+@admin.register(OpeningHours)
+class OpeningHoursAdmin(admin.ModelAdmin):
+    list_display = ('restaurant', 'day_of_week', 'opening_time', 'closing_time', 'is_closed')
+    list_filter = ('day_of_week', 'is_closed', 'restaurant')
+    search_fields = ('restaurant__name',)
+
+
+@admin.register(Zone)
+class ZoneAdmin(admin.ModelAdmin):
+    list_display = ('name', 'restaurant', 'order', 'grid_cols', 'grid_rows')
+    list_filter = ('restaurant',)
+    search_fields = ('name', 'restaurant__name')
+    ordering = ('restaurant', 'order', 'name')
+
+
+@admin.register(Shift)
+class ShiftAdmin(admin.ModelAdmin):
+    list_display = ('name', 'restaurant', 'starts_at', 'ends_at')
+    list_filter = ('restaurant',)
+    search_fields = ('name', 'restaurant__name')
+    ordering = ('restaurant', 'starts_at')
+
+
+@admin.register(FloorMapShape)
+class FloorMapShapeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'restaurant', 'name', 'shape_type', 'z_index', 'is_visible', 'updated_at')
+    list_filter = ('shape_type', 'is_visible', 'restaurant')
+    search_fields = ('name', 'restaurant__name')
+    ordering = ('restaurant', 'z_index', 'id')
+
 
 @admin.register(Availability)
 class AvailabilityAdmin(admin.ModelAdmin):

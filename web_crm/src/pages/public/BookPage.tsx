@@ -62,7 +62,7 @@ export default function BookPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const [restaurant, setRestaurant] = useState<RestaurantRecord | null>(null);
   const [form, setForm] = useState<BookingFormState>(INITIAL_STATE);
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,8 @@ export default function BookPage() {
   const [availabilityRetry, setAvailabilityRetry] = useState(0);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
   const wantsWaitlist =
-    searchParams.get('waitlist') === '1' || Boolean((location.state as { openWaitlist?: boolean } | null)?.openWaitlist);
+    new URLSearchParams(location.search).get('waitlist') === '1' ||
+    Boolean((location.state as { openWaitlist?: boolean } | null)?.openWaitlist);
 
   useEffect(() => {
     if (!id) {
@@ -99,16 +100,32 @@ export default function BookPage() {
   }, [id]);
 
   useEffect(() => {
-    const nextDate = searchParams.get('date');
-    const nextTime = searchParams.get('time');
-    const nextGuests = Number(searchParams.get('guests') ?? form.guests);
-    setForm((current) => ({
-      ...current,
-      date: nextDate || current.date,
-      time: nextTime || current.time,
-      guests: Math.min(20, Math.max(1, nextGuests || current.guests)),
-    }));
-  }, []);
+    const params = new URLSearchParams(location.search);
+    const nextDate = params.get('date');
+    const nextTime = params.get('time');
+    const rawGuests = params.get('guests');
+    const parsedGuests = rawGuests ? Number(rawGuests) : NaN;
+
+    setForm((current) => {
+      const nextGuests = Number.isFinite(parsedGuests) ? parsedGuests : current.guests;
+      const safeGuests = Math.min(20, Math.max(1, nextGuests || current.guests));
+      const nextState = {
+        ...current,
+        date: nextDate || current.date,
+        time: nextTime || current.time,
+        guests: safeGuests,
+      };
+
+      if (
+        nextState.date === current.date &&
+        nextState.time === current.time &&
+        nextState.guests === current.guests
+      ) {
+        return current;
+      }
+      return nextState;
+    });
+  }, [location.search]);
 
   useEffect(() => {
     if (!user) return;
@@ -142,12 +159,15 @@ export default function BookPage() {
 
   useEffect(() => {
     if (!id || !form.date) return;
-    const next = new URLSearchParams(searchParams);
+    const current = new URLSearchParams(location.search);
+    const next = new URLSearchParams(current);
     next.set('date', form.date);
     next.set('time', form.time);
     next.set('guests', String(form.guests));
-    setSearchParams(next, { replace: true });
-  }, [form.date, form.guests, form.time, id, searchParams, setSearchParams]);
+    if (current.toString() !== next.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [form.date, form.guests, form.time, id, location.search, setSearchParams]);
 
   useEffect(() => {
     if (!restaurant?.id || !form.date) return;
@@ -358,6 +378,37 @@ export default function BookPage() {
             >
               Открыть каталог ресторанов
             </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!restaurant) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] px-6 py-10 font-inter text-slate-900">
+        <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center justify-center">
+          <div className="w-full rounded-[32px] border border-rose-200 bg-white p-8 text-center shadow-sm sm:p-10">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-600">Бронирование недоступно</div>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">Этот ресторан сейчас недоступен</h1>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              {screenError || 'Не удалось открыть страницу бронирования. Вернитесь в каталог и выберите другое заведение.'}
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                to="/restaurants"
+                className="inline-flex items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3.5 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-[#1e40af]"
+              >
+                Открыть каталог
+              </Link>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-700 transition hover:bg-slate-50"
+              >
+                Назад
+              </button>
+            </div>
           </div>
         </div>
       </div>

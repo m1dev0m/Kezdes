@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
-from .models import Profile, PushToken, OTPVerification
+from .models import Profile, PushToken, OTPVerification, OTPDeliveryAttempt
 from contractors.models import Contractor
 from django.conf import settings
 
@@ -17,6 +17,71 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
+
+
+class OTPDeliveryAttemptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OTPDeliveryAttempt
+        fields = [
+            'id',
+            'email',
+            'channel',
+            'status',
+            'provider',
+            'error_message',
+            'metadata',
+            'created_at',
+        ]
+
+
+class HealthLiveSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    service = serializers.CharField()
+
+
+class HealthReadyComponentsSerializer(serializers.Serializer):
+    database = serializers.CharField()
+    cache = serializers.CharField()
+
+
+class HealthReadySerializer(serializers.Serializer):
+    status = serializers.CharField()
+    components = HealthReadyComponentsSerializer()
+
+
+class HealthWorkersComponentsSerializer(serializers.Serializer):
+    broker = serializers.CharField()
+    worker = serializers.CharField()
+    beat_schedule = serializers.CharField()
+
+
+class HealthWorkersDetailsSerializer(serializers.Serializer):
+    worker_nodes = serializers.ListField(child=serializers.CharField())
+    missing_periodic_tasks = serializers.ListField(child=serializers.CharField())
+
+
+class HealthWorkersSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    components = HealthWorkersComponentsSerializer()
+    details = HealthWorkersDetailsSerializer()
+
+
+class SendOTPResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    otp_required = serializers.BooleanField()
+    code = serializers.CharField(required=False)
+
+
+class UpdateRoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=("owner", "customer"))
+
+
+class UpdateRoleResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    role = serializers.CharField()
+    message = serializers.CharField()
+
+
 class UserMeSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source='profile.role', read_only=True)
     restaurant = serializers.PrimaryKeyRelatedField(source='profile.restaurant', read_only=True)
@@ -24,12 +89,12 @@ class UserMeSerializer(serializers.ModelSerializer):
     restaurant_verified = serializers.SerializerMethodField()
     restaurant_setup_required = serializers.SerializerMethodField()
 
-    def get_restaurant_verified(self, obj):
+    def get_restaurant_verified(self, obj) -> bool:
         if not hasattr(obj, 'profile'):
             return True
         if obj.profile.restaurant:
             return obj.profile.restaurant.is_verified
-        if obj.profile.role in ['restaurant_admin', 'restaurant_owner', 'owner']:
+        if obj.profile.role in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
             from restaurants.models import RestaurantRequest
             req = RestaurantRequest.objects.filter(owner=obj).order_by('-created_at').first()
             if req:
@@ -37,10 +102,10 @@ class UserMeSerializer(serializers.ModelSerializer):
             return False
         return True
 
-    def get_restaurant_setup_required(self, obj):
+    def get_restaurant_setup_required(self, obj) -> bool:
         if not hasattr(obj, 'profile'):
             return False
-        if obj.profile.role not in ['restaurant_admin', 'restaurant_owner', 'owner']:
+        if obj.profile.role not in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
             return False
         if obj.profile.restaurant:
             return False
@@ -156,11 +221,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         except DjangoValidationError as e:
             raise serializers.ValidationError({"password": list(e.messages)})
 
-        role = attrs.get('role', 'customer')
+        requested_role = attrs.get('role', 'customer')
+        role = requested_role
         role_aliases = {
             'admin': 'global_admin',
-            'restaurant_owner': 'owner',
-            'restaurant_admin': 'owner',
+            'restaurant_owner': 'pending',
+            'restaurant_admin': 'pending',
+            'owner': 'pending',
             'organizer': 'customer',
             'customer': 'customer',
             'pending': 'pending',
@@ -174,7 +241,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         if normalized_role not in allowed_roles:
             raise serializers.ValidationError({"role": "Invalid role."})
         attrs['role'] = normalized_role
-        
+        attrs['requested_role'] = requested_role
+
         # Email OTP Verification
         if getattr(settings, "REQUIRE_EMAIL_OTP", False):
             otp_code = (attrs.get('otp_code') or '').strip()
@@ -196,6 +264,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('otp_code', None)
         role = validated_data.pop('role', 'customer')
+        requested_role = validated_data.pop('requested_role', role)
         phone = validated_data.pop('phone', '')
         first_name = validated_data.pop('first_name', '')
         name = validated_data.pop('name', '')
@@ -222,7 +291,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         if role == 'customer':
             pass
             
-        if role == 'owner' and restaurant_name:
+        owner_requested = requested_role in {'owner', 'restaurant_owner', 'restaurant_admin'}
+
+        if owner_requested and restaurant_name:
             from restaurants.models import RestaurantRequest
             RestaurantRequest.objects.create(
                 owner=user,

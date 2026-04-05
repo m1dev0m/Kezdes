@@ -29,11 +29,39 @@ type ManagedTable = TableRecord & {
   table_type?: 'rectangle' | 'square' | 'circle' | string;
 };
 
+type FloorShapeType = 'rectangle' | 'circle' | 'label' | 'line';
+
+type FloorShape = {
+  id: number;
+  zone?: number | null;
+  name: string;
+  shape_type: FloorShapeType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  fill_color: string;
+  stroke_color: string;
+  text_color: string;
+  z_index: number;
+  is_visible: boolean;
+};
+
 type TableFormState = {
   name: string;
   capacity: number;
   table_type: 'rectangle' | 'square' | 'circle';
   is_active: boolean;
+};
+
+type ShapeFormState = {
+  name: string;
+  shape_type: FloorShapeType;
+  fill_color: string;
+  stroke_color: string;
+  text_color: string;
+  is_visible: boolean;
 };
 
 type FormErrors = {
@@ -48,6 +76,15 @@ const INITIAL_FORM: TableFormState = {
   is_active: true,
 };
 
+const INITIAL_SHAPE_FORM: ShapeFormState = {
+  name: '',
+  shape_type: 'rectangle',
+  fill_color: '#ffffff',
+  stroke_color: '#cbd5e1',
+  text_color: '#0f172a',
+  is_visible: true,
+};
+
 const FLOOR_CANVAS_WIDTH = 960;
 const FLOOR_CANVAS_HEIGHT = 560;
 const FLOOR_GRID = 24;
@@ -58,12 +95,57 @@ const TABLE_PRESETS = {
   circle: { width: 96, height: 96 },
 } as const;
 
+const SHAPE_PRESETS: Record<FloorShapeType, { width: number; height: number; fill: string; stroke: string }> = {
+  rectangle: { width: 180, height: 110, fill: '#ffffff', stroke: '#cbd5e1' },
+  circle: { width: 120, height: 120, fill: '#f8fafc', stroke: '#cbd5e1' },
+  label: { width: 140, height: 44, fill: '#ffffff', stroke: '#ffffff' },
+  line: { width: 180, height: 6, fill: '#94a3b8', stroke: '#94a3b8' },
+};
+
+const FLOOR_TONE_MAP: Record<string, { border: string; bg: string; text: string; shadow: string; accent: string }> = {
+  free: {
+    border: 'border-emerald-200',
+    bg: 'bg-emerald-50/95',
+    text: 'text-emerald-950',
+    shadow: 'shadow-[0_18px_38px_-28px_rgba(16,185,129,0.42)]',
+    accent: 'bg-emerald-500',
+  },
+  reserved: {
+    border: 'border-amber-200',
+    bg: 'bg-amber-50/95',
+    text: 'text-amber-950',
+    shadow: 'shadow-[0_18px_38px_-28px_rgba(245,158,11,0.36)]',
+    accent: 'bg-amber-500',
+  },
+  occupied: {
+    border: 'border-blue-300',
+    bg: 'bg-blue-50/95',
+    text: 'text-blue-950',
+    shadow: 'shadow-[0_18px_38px_-28px_rgba(59,130,246,0.38)]',
+    accent: 'bg-blue-500',
+  },
+  inactive: {
+    border: 'border-slate-200',
+    bg: 'bg-slate-100/95',
+    text: 'text-slate-500',
+    shadow: 'shadow-none',
+    accent: 'bg-slate-400',
+  },
+};
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
 function snapToGrid(value: number): number {
   return Math.round(value / FLOOR_GRID) * FLOOR_GRID;
+}
+
+function normalizeColorInput(value: string | null | undefined, fallback = '#ffffff') {
+  if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) {
+    return value;
+  }
+  return fallback;
 }
 
 function getTablePreset(tableType?: string) {
@@ -86,6 +168,22 @@ function getDefaultTableLayout(tableType: string | undefined, index: number) {
   };
 }
 
+function getDefaultShapeLayout(shapeType: FloorShapeType, index: number) {
+  const preset = SHAPE_PRESETS[shapeType];
+  const columns = 4;
+  const column = index % columns;
+  const row = Math.floor(index / columns);
+  return {
+    x: FLOOR_PADDING + column * 196,
+    y: FLOOR_PADDING + row * 86,
+    width: preset.width,
+    height: preset.height,
+    rotation: 0,
+    fill_color: preset.fill,
+    stroke_color: preset.stroke,
+  };
+}
+
 function fmt(time: string): string {
   return time.slice(0, 5);
 }
@@ -104,8 +202,38 @@ function elapsedLabel(seatedTime: string | null | undefined): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function todayWeekday(): number {
-  return new Date().getDay();
+function getWeekdayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
+function getPreviousWeekdayIndex(weekday: number): number {
+  return weekday === 0 ? 6 : weekday - 1;
+}
+
+function shiftIncludesWeekday(shift: Shift, weekday: number): boolean {
+  return shift.days_of_week.length === 0 || shift.days_of_week.includes(weekday);
+}
+
+function isTimeWithinShift(shift: Shift, weekday: number, minutes: number): boolean {
+  const starts = minutesSinceMidnight(shift.starts_at);
+  const ends = minutesSinceMidnight(shift.ends_at);
+
+  if (ends >= starts) {
+    return shiftIncludesWeekday(shift, weekday) && minutes >= starts && minutes < ends;
+  }
+
+  return (
+    (shiftIncludesWeekday(shift, weekday) && minutes >= starts) ||
+    (shiftIncludesWeekday(shift, getPreviousWeekdayIndex(weekday)) && minutes < ends)
+  );
+}
+
+function getDateWeekday(value: string): number {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return getWeekdayIndex(new Date());
+  }
+  return getWeekdayIndex(date);
 }
 
 function validateTableForm(form: TableFormState): FormErrors {
@@ -113,6 +241,80 @@ function validateTableForm(form: TableFormState): FormErrors {
   if (!form.name.trim()) errors.name = 'Укажите название стола.';
   if (!Number.isFinite(form.capacity) || form.capacity < 1) errors.capacity = 'Вместимость должна быть не меньше 1.';
   return errors;
+}
+
+function validateShapeForm(form: ShapeFormState): FormErrors {
+  const errors: FormErrors = {};
+  if (!form.name.trim()) errors.name = 'Укажите название элемента.';
+  return errors;
+}
+
+function getFloorTone(status: string | undefined, active: boolean) {
+  if (!active) return FLOOR_TONE_MAP.inactive;
+  if (status === 'occupied') return FLOOR_TONE_MAP.occupied;
+  if (status === 'reserved') return FLOOR_TONE_MAP.reserved;
+  return FLOOR_TONE_MAP.free;
+}
+
+function getSeatDotStyles(shape: string, capacity: number) {
+  const slots = Math.max(2, Math.min(8, Math.round(capacity || 2)));
+  const two = [
+    { left: '50%', top: '-6px', transform: 'translateX(-50%)' },
+    { left: '50%', bottom: '-6px', transform: 'translateX(-50%)' },
+  ];
+  const four = [
+    { left: '50%', top: '-6px', transform: 'translateX(-50%)' },
+    { right: '-6px', top: '50%', transform: 'translateY(-50%)' },
+    { left: '50%', bottom: '-6px', transform: 'translateX(-50%)' },
+    { left: '-6px', top: '50%', transform: 'translateY(-50%)' },
+  ];
+  const six = [
+    { left: '50%', top: '-6px', transform: 'translateX(-50%)' },
+    { right: '-6px', top: '28%' },
+    { right: '-6px', bottom: '28%' },
+    { left: '50%', bottom: '-6px', transform: 'translateX(-50%)' },
+    { left: '-6px', bottom: '28%' },
+    { left: '-6px', top: '28%' },
+  ];
+  const eight = [
+    { left: '50%', top: '-6px', transform: 'translateX(-50%)' },
+    { right: '22%', top: '-6px' },
+    { right: '-6px', top: '50%', transform: 'translateY(-50%)' },
+    { right: '22%', bottom: '-6px' },
+    { left: '50%', bottom: '-6px', transform: 'translateX(-50%)' },
+    { left: '22%', bottom: '-6px' },
+    { left: '-6px', top: '50%', transform: 'translateY(-50%)' },
+    { left: '22%', top: '-6px' },
+  ];
+
+  const pool = slots <= 2 ? two : slots <= 4 ? four : slots <= 6 ? six : eight;
+
+  if (shape === 'circle') {
+    return pool.map((style) => ({
+      ...style,
+      boxShadow: '0 0 0 1px rgba(15,23,42,0.08)',
+    }));
+  }
+
+  return pool.map((style) => ({
+    ...style,
+    boxShadow: '0 0 0 1px rgba(15,23,42,0.08)',
+  }));
+}
+
+function SeatDots({ shape, capacity }: { shape: string; capacity: number }) {
+  const dots = getSeatDotStyles(shape, capacity);
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {dots.map((style, index) => (
+        <span
+          key={`${shape}-${capacity}-${index}`}
+          className="absolute size-2 rounded-full bg-white/95 shadow-sm ring-1 ring-slate-900/10"
+          style={style}
+        />
+      ))}
+    </div>
+  );
 }
 
 function TableBadge({
@@ -278,25 +480,36 @@ export default function FloorView() {
   const [activeShiftId, setActiveShiftId] = useState<number | null>(null);
   const [reservations, setReservations] = useState<ReservationRecord[]>([]);
   const [tables, setTables] = useState<ManagedTable[]>([]);
+  const [shapes, setShapes] = useState<FloorShape[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [inFlightId, setInFlightId] = useState<number | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+  const [selectedShapeId, setSelectedShapeId] = useState<number | null>(null);
   const [createForm, setCreateForm] = useState<TableFormState>(INITIAL_FORM);
   const [editForm, setEditForm] = useState<TableFormState>(INITIAL_FORM);
+  const [createShapeForm, setCreateShapeForm] = useState<ShapeFormState>(INITIAL_SHAPE_FORM);
+  const [editShapeForm, setEditShapeForm] = useState<ShapeFormState>(INITIAL_SHAPE_FORM);
   const [createErrors, setCreateErrors] = useState<FormErrors>({});
   const [editErrors, setEditErrors] = useState<FormErrors>({});
+  const [createShapeErrors, setCreateShapeErrors] = useState<FormErrors>({});
+  const [editShapeErrors, setEditShapeErrors] = useState<FormErrors>({});
   const [savingCreate, setSavingCreate] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [savingShapeCreate, setSavingShapeCreate] = useState(false);
+  const [savingShapeEdit, setSavingShapeEdit] = useState(false);
   const [layoutMode, setLayoutMode] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [dirtyLayoutIds, setDirtyLayoutIds] = useState<number[]>([]);
+  const [dirtyShapeIds, setDirtyShapeIds] = useState<number[]>([]);
   const [deleteArmed, setDeleteArmed] = useState(false);
+  const [deleteShapeArmed, setDeleteShapeArmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
-    tableId: number;
+    entityType: 'table' | 'shape';
+    entityId: number;
     offsetX: number;
     offsetY: number;
     width: number;
@@ -305,6 +518,10 @@ export default function FloorView() {
 
   const markLayoutDirty = useCallback((tableId: number) => {
     setDirtyLayoutIds((current) => (current.includes(tableId) ? current : [...current, tableId]));
+  }, []);
+
+  const markShapeDirty = useCallback((shapeId: number) => {
+    setDirtyShapeIds((current) => (current.includes(shapeId) ? current : [...current, shapeId]));
   }, []);
 
   const updateTableDraft = useCallback(
@@ -327,19 +544,37 @@ export default function FloorView() {
     [markLayoutDirty],
   );
 
+  const updateShapeDraft = useCallback(
+    (
+      shapeId: number,
+      updates:
+        | Partial<FloorShape>
+        | ((shape: FloorShape) => Partial<FloorShape>),
+      markDirty = true,
+    ) => {
+      setShapes((current) =>
+        current.map((shape) => {
+          if (shape.id !== shapeId) return shape;
+          const nextUpdates = typeof updates === 'function' ? updates(shape) : updates;
+          return { ...shape, ...nextUpdates };
+        }),
+      );
+      if (markDirty) markShapeDirty(shapeId);
+    },
+    [markShapeDirty],
+  );
+
   useEffect(() => {
     api
       .get('/restaurants/shifts/')
       .then((res) => {
         const data: Shift[] = extractResults(res.data);
         setShifts(data);
-        const now = minutesSinceMidnight(new Date().toTimeString());
-        const weekday = todayWeekday();
+        const nowDate = new Date();
+        const now = minutesSinceMidnight(nowDate.toTimeString());
+        const weekday = getWeekdayIndex(nowDate);
         const active = data.find(
-          (shift) =>
-            (shift.days_of_week.length === 0 || shift.days_of_week.includes(weekday)) &&
-            minutesSinceMidnight(shift.starts_at) <= now &&
-            minutesSinceMidnight(shift.ends_at) >= now,
+          (shift) => isTimeWithinShift(shift, weekday, now),
         );
         setActiveShiftId(active?.id ?? data[0]?.id ?? null);
       })
@@ -350,13 +585,15 @@ export default function FloorView() {
     if (!silent) setRefreshing(true);
     try {
       setError(null);
-      const [bookingsResponse, tablesResponse] = await Promise.all([
+      const [bookingsResponse, tablesResponse, shapesResponse] = await Promise.all([
         api.get(`/bookings/my_restaurant/?date=${date}&ordering=time`),
         api.get('/tables/status/', { params: { date } }),
+        api.get('/restaurants/floor-shapes/'),
       ]);
 
       setReservations(extractResults<ReservationRecord>(bookingsResponse.data));
       setTables(extractResults<ManagedTable>(tablesResponse.data));
+      setShapes(extractResults<FloorShape>(shapesResponse.data));
     } catch (error) {
       setError(getApiErrorMessage(error, 'Не удалось загрузить данные floor view.'));
       if (!silent) {
@@ -404,10 +641,21 @@ export default function FloorView() {
         ),
       );
 
-      updateTableDraft(
-        dragState.tableId,
-        (table) => {
-          if (table.x === nextX && table.y === nextY) return {};
+      if (dragState.entityType === 'table') {
+        updateTableDraft(
+          dragState.entityId,
+          (table) => {
+            if (table.x === nextX && table.y === nextY) return {};
+            return { x: nextX, y: nextY };
+          },
+        );
+        return;
+      }
+
+      updateShapeDraft(
+        dragState.entityId,
+        (shape) => {
+          if (shape.x === nextX && shape.y === nextY) return {};
           return { x: nextX, y: nextY };
         },
       );
@@ -424,7 +672,7 @@ export default function FloorView() {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [layoutMode, updateTableDraft]);
+  }, [layoutMode, updateShapeDraft, updateTableDraft]);
 
   useEffect(() => {
     if (!canManageTables && layoutMode) setLayoutMode(false);
@@ -435,10 +683,11 @@ export default function FloorView() {
   const inShift = useCallback(
     (reservation: ReservationRecord) => {
       if (!activeShift) return true;
+      if (!activeShift.starts_at || !activeShift.ends_at) return true;
       const target = minutesSinceMidnight(reservation.time);
-      return target >= minutesSinceMidnight(activeShift.starts_at) && target < minutesSinceMidnight(activeShift.ends_at);
+      return isTimeWithinShift(activeShift, getDateWeekday(date), target);
     },
-    [activeShift],
+    [activeShift, date],
   );
 
   const waitlist = useMemo(
@@ -458,15 +707,29 @@ export default function FloorView() {
 
   useEffect(() => {
     setSelectedTableId((current) => {
+      if (selectedShapeId) return current;
       if (tables.length === 0) return null;
       if (current && tables.some((table) => table.id === current)) return current;
       return tables[0].id;
     });
-  }, [tables]);
+  }, [selectedShapeId, tables]);
 
   const selectedTable = useMemo(
     () => tables.find((table) => table.id === selectedTableId) ?? null,
     [selectedTableId, tables],
+  );
+
+  useEffect(() => {
+    setSelectedShapeId((current) => {
+      if (shapes.length === 0) return null;
+      if (current && shapes.some((shape) => shape.id === current)) return current;
+      return null;
+    });
+  }, [shapes]);
+
+  const selectedShape = useMemo(
+    () => shapes.find((shape) => shape.id === selectedShapeId) ?? null,
+    [selectedShapeId, shapes],
   );
 
   useEffect(() => {
@@ -490,6 +753,25 @@ export default function FloorView() {
     setEditErrors({});
     setDeleteArmed(false);
   }, [selectedTable]);
+
+  useEffect(() => {
+    if (!selectedShape) {
+      setEditShapeForm(INITIAL_SHAPE_FORM);
+      setDeleteShapeArmed(false);
+      return;
+    }
+
+    setEditShapeForm({
+      name: selectedShape.name,
+      shape_type: selectedShape.shape_type,
+      fill_color: selectedShape.fill_color,
+      stroke_color: selectedShape.stroke_color,
+      text_color: selectedShape.text_color,
+      is_visible: selectedShape.is_visible,
+    });
+    setEditShapeErrors({});
+    setDeleteShapeArmed(false);
+  }, [selectedShape]);
 
   const totalCovers = useMemo(
     () => [...waitlist, ...upcoming, ...seated].reduce((sum, reservation) => sum + reservation.guests, 0),
@@ -516,6 +798,25 @@ export default function FloorView() {
       };
     });
   }, [tables]);
+
+  const shapeCanvas = useMemo(
+    () =>
+      shapes
+        .filter((shape) => shape.is_visible !== false)
+        .map((shape, index) => {
+          const fallbackLayout = getDefaultShapeLayout(shape.shape_type, index);
+          return {
+            ...shape,
+            x: typeof shape.x === 'number' ? shape.x : fallbackLayout.x,
+            y: typeof shape.y === 'number' ? shape.y : fallbackLayout.y,
+            width: typeof shape.width === 'number' ? shape.width : fallbackLayout.width,
+            height: typeof shape.height === 'number' ? shape.height : fallbackLayout.height,
+            rotation: typeof shape.rotation === 'number' ? shape.rotation : 0,
+          };
+        })
+        .sort((left, right) => (left.z_index ?? 1) - (right.z_index ?? 1)),
+    [shapes],
+  );
 
   const handleAction = useCallback(
     async (id: number, action: string) => {
@@ -642,16 +943,118 @@ export default function FloorView() {
     }
   }, [canDeleteTables, deleteArmed, selectedTable, selectedTableId, tables]);
 
+  const handleCreateShape = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!canManageTables) return;
+      const errors = validateShapeForm(createShapeForm);
+      setCreateShapeErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+
+      setSavingShapeCreate(true);
+      try {
+        const layout = getDefaultShapeLayout(createShapeForm.shape_type, shapes.length);
+        const response = await api.post('/restaurants/floor-shapes/', {
+          ...createShapeForm,
+          name: createShapeForm.name.trim(),
+          ...layout,
+          text_color: createShapeForm.text_color,
+          z_index: 1,
+        });
+        const createdShape = response.data as FloorShape;
+        setShapes((current) => [...current, createdShape]);
+        setSelectedShapeId(createdShape.id);
+        setSelectedTableId(null);
+        setCreateShapeForm(INITIAL_SHAPE_FORM);
+        setCreateShapeErrors({});
+        toast.success('Элемент схемы добавлен.');
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, 'Не удалось создать элемент схемы.'));
+      } finally {
+        setSavingShapeCreate(false);
+      }
+    },
+    [canManageTables, createShapeForm, shapes.length],
+  );
+
+  const handleUpdateShape = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!selectedShapeId || !canManageTables) return;
+      const errors = validateShapeForm(editShapeForm);
+      setEditShapeErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+
+      const previousShape = shapes.find((shape) => shape.id === selectedShapeId);
+      if (!previousShape) return;
+
+      const optimisticShape: FloorShape = {
+        ...previousShape,
+        ...editShapeForm,
+        name: editShapeForm.name.trim(),
+      };
+      setShapes((current) => current.map((shape) => (shape.id === selectedShapeId ? optimisticShape : shape)));
+
+      setSavingShapeEdit(true);
+      try {
+        const response = await api.patch(`/restaurants/floor-shapes/${selectedShapeId}/`, {
+          ...editShapeForm,
+          name: editShapeForm.name.trim(),
+        });
+        const updatedShape = response.data as FloorShape;
+        setShapes((current) => current.map((shape) => (shape.id === selectedShapeId ? updatedShape : shape)));
+        setDirtyShapeIds((current) => current.filter((id) => id !== selectedShapeId));
+        toast.success('Элемент схемы обновлён.');
+      } catch (error) {
+        setShapes((current) => current.map((shape) => (shape.id === selectedShapeId ? previousShape : shape)));
+        toast.error(getApiErrorMessage(error, 'Не удалось обновить элемент схемы.'));
+      } finally {
+        setSavingShapeEdit(false);
+      }
+    },
+    [canManageTables, editShapeForm, selectedShapeId, shapes],
+  );
+
+  const handleDeleteShape = useCallback(async () => {
+    if (!selectedShapeId || !selectedShape) return;
+    if (!canManageTables) return;
+
+    if (!deleteShapeArmed) {
+      setDeleteShapeArmed(true);
+      return;
+    }
+
+    const previousShapes = shapes;
+    setSavingShapeEdit(true);
+    setShapes((current) => current.filter((shape) => shape.id !== selectedShapeId));
+    setSelectedShapeId(null);
+
+    try {
+      await api.delete(`/restaurants/floor-shapes/${selectedShapeId}/`);
+      setDirtyShapeIds((current) => current.filter((id) => id !== selectedShapeId));
+      toast.success('Элемент схемы удалён.');
+    } catch (error) {
+      setShapes(previousShapes);
+      setSelectedShapeId(selectedShapeId);
+      toast.error(getApiErrorMessage(error, 'Не удалось удалить элемент схемы.'));
+    } finally {
+      setSavingShapeEdit(false);
+      setDeleteShapeArmed(false);
+    }
+  }, [canManageTables, deleteShapeArmed, selectedShape, selectedShapeId, shapes]);
+
   const handleTablePointerDown = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>, table: ManagedTable) => {
       if (!canManageTables || !layoutMode || !canvasRef.current) return;
       event.preventDefault();
       event.stopPropagation();
       setSelectedTableId(table.id);
+      setSelectedShapeId(null);
 
       const rect = canvasRef.current.getBoundingClientRect();
       dragRef.current = {
-        tableId: table.id,
+        entityType: 'table',
+        entityId: table.id,
         offsetX: event.clientX - rect.left - (table.x ?? FLOOR_PADDING),
         offsetY: event.clientY - rect.top - (table.y ?? FLOOR_PADDING),
         width: table.width ?? getTablePreset(table.table_type).width,
@@ -661,12 +1064,33 @@ export default function FloorView() {
     [canManageTables, layoutMode],
   );
 
+  const handleShapePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>, shape: FloorShape) => {
+      if (!canManageTables || !layoutMode || !canvasRef.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setSelectedShapeId(shape.id);
+      setSelectedTableId(null);
+
+      const rect = canvasRef.current.getBoundingClientRect();
+      dragRef.current = {
+        entityType: 'shape',
+        entityId: shape.id,
+        offsetX: event.clientX - rect.left - shape.x,
+        offsetY: event.clientY - rect.top - shape.y,
+        width: shape.width,
+        height: shape.height,
+      };
+    },
+    [canManageTables, layoutMode],
+  );
+
   const saveLayout = useCallback(async () => {
-    if (!canManageTables || dirtyLayoutIds.length === 0) return;
+    if (!canManageTables || (dirtyLayoutIds.length === 0 && dirtyShapeIds.length === 0)) return;
 
     setLayoutSaving(true);
     try {
-      const responses = await Promise.all(
+      const tableResponses = await Promise.all(
         dirtyLayoutIds.map(async (tableId) => {
           const table = tables.find((entry) => entry.id === tableId);
           if (!table) return null;
@@ -681,21 +1105,49 @@ export default function FloorView() {
         }),
       );
 
-      const persisted = new Map(
-        responses.filter((entry): entry is ManagedTable => entry !== null).map((entry) => [entry.id, entry]),
+      const shapeResponses = await Promise.all(
+        dirtyShapeIds.map(async (shapeId) => {
+          const shape = shapes.find((entry) => entry.id === shapeId);
+          if (!shape) return null;
+          const response = await api.patch(`/restaurants/floor-shapes/${shapeId}/`, {
+            x: shape.x,
+            y: shape.y,
+            width: shape.width,
+            height: shape.height,
+            rotation: shape.rotation,
+            z_index: shape.z_index,
+            is_visible: shape.is_visible,
+            name: shape.name,
+            shape_type: shape.shape_type,
+            fill_color: shape.fill_color,
+            stroke_color: shape.stroke_color,
+            text_color: shape.text_color,
+          });
+          return response.data as FloorShape;
+        }),
       );
-      setTables((current) => current.map((table) => persisted.get(table.id) ?? table));
+
+      const persistedTables = new Map(
+        tableResponses.filter((entry): entry is ManagedTable => entry !== null).map((entry) => [entry.id, entry]),
+      );
+      const persistedShapes = new Map(
+        shapeResponses.filter((entry): entry is FloorShape => entry !== null).map((entry) => [entry.id, entry]),
+      );
+      setTables((current) => current.map((table) => persistedTables.get(table.id) ?? table));
+      setShapes((current) => current.map((shape) => persistedShapes.get(shape.id) ?? shape));
       setDirtyLayoutIds([]);
+      setDirtyShapeIds([]);
       toast.success('Схема зала сохранена.');
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Не удалось сохранить схему зала.'));
     } finally {
       setLayoutSaving(false);
     }
-  }, [canManageTables, dirtyLayoutIds, tables]);
+  }, [canManageTables, dirtyLayoutIds, dirtyShapeIds, shapes, tables]);
 
   const resetLayoutDrafts = useCallback(() => {
     setDirtyLayoutIds([]);
+    setDirtyShapeIds([]);
     void load(true);
   }, [load]);
 
@@ -742,6 +1194,46 @@ export default function FloorView() {
       });
     },
     [canManageTables, selectedTableId, updateTableDraft],
+  );
+
+  const updateSelectedShapeLayout = useCallback(
+    (field: 'x' | 'y' | 'width' | 'height' | 'rotation' | 'z_index', value: number) => {
+      if (!selectedShapeId || !canManageTables) return;
+
+      updateShapeDraft(selectedShapeId, (shape) => {
+        if (field === 'x') {
+          return {
+            x: snapToGrid(clamp(value, FLOOR_PADDING, FLOOR_CANVAS_WIDTH - shape.width - FLOOR_PADDING)),
+          };
+        }
+        if (field === 'y') {
+          return {
+            y: snapToGrid(clamp(value, FLOOR_PADDING, FLOOR_CANVAS_HEIGHT - shape.height - FLOOR_PADDING)),
+          };
+        }
+        if (field === 'width') {
+          const width = clamp(value, shape.shape_type === 'label' ? 90 : 32, 320);
+          return {
+            width,
+            x: clamp(shape.x, FLOOR_PADDING, FLOOR_CANVAS_WIDTH - width - FLOOR_PADDING),
+          };
+        }
+        if (field === 'height') {
+          const height = clamp(value, shape.shape_type === 'line' ? 2 : 24, 240);
+          return {
+            height,
+            y: clamp(shape.y, FLOOR_PADDING, FLOOR_CANVAS_HEIGHT - height - FLOOR_PADDING),
+          };
+        }
+        if (field === 'z_index') {
+          return { z_index: clamp(Math.round(value), 1, 30) };
+        }
+        return {
+          rotation: clamp(value, -180, 180),
+        };
+      });
+    },
+    [canManageTables, selectedShapeId, updateShapeDraft],
   );
 
   const shiftDate = (delta: number) => {
@@ -862,7 +1354,7 @@ export default function FloorView() {
 
           <button
             onClick={() => void load()}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 shadow-sm"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50"
           >
             <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
           </button>
@@ -886,7 +1378,7 @@ export default function FloorView() {
               className="inline-flex items-center gap-2 self-start rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
             >
               <RefreshCw size={14} />
-              Retry
+              Повторить
             </button>
           </div>
         </section>
@@ -903,6 +1395,7 @@ export default function FloorView() {
               <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Свободно {freeTablesCount}</span>
               <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">Бронь {reservedTablesCount}</span>
               <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">Занято {occupiedTablesCount}</span>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Посадочная схема</span>
               <button
                 type="button"
                 onClick={() => navigate('/app/tables')}
@@ -931,16 +1424,16 @@ export default function FloorView() {
                 type="button"
                 aria-label="floor-layout-save"
                 onClick={() => void saveLayout()}
-                disabled={layoutSaving || dirtyLayoutIds.length === 0 || !canManageTables}
+                disabled={layoutSaving || (dirtyLayoutIds.length === 0 && dirtyShapeIds.length === 0) || !canManageTables}
                 className="inline-flex items-center gap-2 rounded-full bg-[#1d4ed8] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
               >
                 <Save size={14} />
-                {layoutSaving ? 'Сохраняем...' : `Сохранить${dirtyLayoutIds.length > 0 ? ` (${dirtyLayoutIds.length})` : ''}`}
+                {layoutSaving ? 'Сохраняем...' : `Сохранить${dirtyLayoutIds.length + dirtyShapeIds.length > 0 ? ` (${dirtyLayoutIds.length + dirtyShapeIds.length})` : ''}`}
               </button>
               <button
                 type="button"
                 onClick={resetLayoutDrafts}
-                disabled={layoutSaving || dirtyLayoutIds.length === 0 || !canManageTables}
+                disabled={layoutSaving || (dirtyLayoutIds.length === 0 && dirtyShapeIds.length === 0) || !canManageTables}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 <RefreshCw size={14} />
@@ -949,51 +1442,123 @@ export default function FloorView() {
             </div>
           </div>
 
-          {tableCanvas.length === 0 ? (
+          {tableCanvas.length === 0 && shapeCanvas.length === 0 ? (
             <div className="flex h-[340px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
-              Добавьте первый стол справа, чтобы построить схему зала.
+              Добавьте столы и элементы справа, чтобы собрать свою схему зала.
             </div>
           ) : (
-            <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="rounded-[32px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.96),_rgba(248,250,252,0.94)_45%,_rgba(241,245,249,0.9)_100%)] p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.45)]">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-slate-500">
                   {layoutMode
-                    ? 'Drag-and-drop включён. Позиция, размер и поворот сохраняются отдельной кнопкой.'
-                    : 'Включите «Редактировать схему», чтобы расставлять столы как на реальном плане зала.'}
+                    ? 'Режим планировки включён. Перетаскивайте столы, меняйте размер и поворот, затем сохраните схему.'
+                    : 'Это рабочая посадочная схема: свободные, зарезервированные и занятые столы видны сразу.'}
                 </div>
-                <div className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm">
-                  Поле {FLOOR_CANVAS_WIDTH}×{FLOOR_CANVAS_HEIGHT}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm">
+                    Поле {FLOOR_CANVAS_WIDTH}×{FLOOR_CANVAS_HEIGHT}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm">
+                    столы и элементы
+                  </span>
                 </div>
+              </div>
+              <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                  <span className="size-2 rounded-full bg-emerald-500" />
+                  Свободен
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                  <span className="size-2 rounded-full bg-amber-500" />
+                  Забронирован
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                  <span className="size-2 rounded-full bg-blue-500" />
+                  За столом
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                  <span className="size-2 rounded-full bg-slate-400" />
+                  Неактивен
+                </span>
               </div>
               <div className="overflow-x-auto">
                 <div
                   ref={canvasRef}
-                  className="relative rounded-[28px] border border-slate-200 bg-white"
+                  className="relative overflow-hidden rounded-[32px] border border-slate-200 bg-[#fbfbf8]"
                   style={{
                     width: FLOOR_CANVAS_WIDTH,
                     height: FLOOR_CANVAS_HEIGHT,
                     backgroundImage:
-                      'linear-gradient(to right, rgba(148,163,184,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.12) 1px, transparent 1px)',
+                      'linear-gradient(to right, rgba(148,163,184,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.10) 1px, transparent 1px), radial-gradient(circle at top left, rgba(219,234,254,0.18), transparent 30%), radial-gradient(circle at bottom right, rgba(254,249,195,0.22), transparent 34%)',
                     backgroundSize: `${FLOOR_GRID}px ${FLOOR_GRID}px`,
                   }}
                 >
-                  <div className="pointer-events-none absolute inset-0 rounded-[28px] border border-dashed border-slate-200" />
-                  <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-slate-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
-                    План зала
-                  </div>
+                  <div className="pointer-events-none absolute inset-0 rounded-[32px] border border-dashed border-slate-200/80" />
+                  {shapeCanvas.map((shape) => {
+                    const selected = shape.id === selectedShapeId;
+                    const isLabel = shape.shape_type === 'label';
+                    const isLine = shape.shape_type === 'line';
+                    return (
+                      <button
+                        key={`shape-${shape.id}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedShapeId(shape.id);
+                          setSelectedTableId(null);
+                        }}
+                        onPointerDown={(event) => handleShapePointerDown(event, shape)}
+                        className={`absolute overflow-hidden text-left transition ${
+                          layoutMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                        } ${
+                          selected ? 'ring-2 ring-blue-300 shadow-[0_16px_36px_-24px_rgba(29,78,216,0.45)]' : ''
+                        } ${shape.shape_type === 'circle' ? 'rounded-full' : isLine ? 'rounded-full' : 'rounded-[26px]'}`}
+                        style={{
+                          left: shape.x,
+                          top: shape.y,
+                          width: shape.width,
+                          height: shape.height,
+                          transform: `rotate(${shape.rotation ?? 0}deg)`,
+                          transformOrigin: 'center',
+                          background: isLabel ? 'transparent' : shape.fill_color,
+                          border: isLabel ? 'none' : `2px solid ${shape.stroke_color}`,
+                          color: shape.text_color,
+                          zIndex: Math.max(1, shape.z_index ?? 1),
+                          touchAction: 'none',
+                        }}
+                      >
+                        {isLine ? (
+                          <span className="block h-full w-full rounded-full" style={{ backgroundColor: shape.fill_color }} />
+                        ) : (
+                          <div className={`flex h-full w-full items-center justify-center px-3 text-center ${isLabel ? 'text-sm font-semibold uppercase tracking-[0.16em]' : 'text-sm font-semibold'}`}>
+                            {shape.name}
+                          </div>
+                        )}
+                        {layoutMode && selected ? (
+                          <div className="absolute bottom-1 right-1 rounded-full bg-slate-950/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+                            Элемент
+                          </div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                   {tableCanvas.map((table) => {
                     const selected = table.id === selectedTableId;
                     const statusMeta = getTableStatusMeta(table.status);
+                    const tone = getFloorTone(table.status, table.is_active !== false);
+                    const seats = Math.max(2, Math.round(getTableCapacity(table) || 2));
                     return (
                       <button
                         key={table.id}
                         type="button"
-                        onClick={() => setSelectedTableId(table.id)}
+                        onClick={() => {
+                          setSelectedTableId(table.id);
+                          setSelectedShapeId(null);
+                        }}
                         onPointerDown={(event) => handleTablePointerDown(event, table)}
-                        className={`absolute flex flex-col justify-between overflow-hidden border p-3 text-left shadow-sm transition ${
+                        className={`absolute flex flex-col justify-between overflow-hidden border p-3 text-left transition ${
                           selected
-                            ? 'z-20 border-blue-300 bg-blue-50 ring-2 ring-blue-200'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                            ? 'z-20 border-blue-300 bg-blue-50 text-slate-900 ring-2 ring-blue-200 shadow-[0_22px_42px_-30px_rgba(29,78,216,0.45)]'
+                            : `${tone.border} ${tone.bg} ${tone.text} ${tone.shadow} hover:brightness-[0.99]`
                         } ${table.shape === 'circle' ? 'rounded-full' : 'rounded-[28px]'} ${
                           layoutMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                         }`}
@@ -1007,33 +1572,41 @@ export default function FloorView() {
                           touchAction: 'none',
                         }}
                       >
+                        <div className={`absolute inset-x-0 top-0 h-1 ${selected ? 'bg-blue-500' : tone.accent}`} />
+                        <SeatDots shape={table.shape} capacity={seats} />
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900">{getTableLabel(table)}</div>
-                            <div className="mt-0.5 text-[11px] text-slate-500">{getTableCapacity(table)} мест</div>
+                            <div className="truncate text-sm font-semibold">{getTableLabel(table)}</div>
+                            <div className="mt-0.5 text-[11px] opacity-70">{getTableCapacity(table)} мест</div>
                           </div>
-                          <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusMeta.className}`}>
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                              table.is_active === false
+                                ? 'border-slate-200 bg-white/70 text-slate-500'
+                                : statusMeta.className
+                            }`}
+                          >
                             {table.is_active === false ? 'Не активен' : statusMeta.label}
                           </span>
                         </div>
 
-                        <div className="space-y-1">
+                        <div className="space-y-1 rounded-2xl bg-white/65 px-2.5 py-2 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.35)] backdrop-blur-[2px]">
                           {table.current_booking ? (
                             <>
-                              <div className="truncate text-sm font-medium text-slate-800">{table.current_booking.guest_name}</div>
+                              <div className="truncate text-sm font-semibold text-slate-900">{table.current_booking.guest_name}</div>
                               <div className="text-[11px] text-slate-500">
                                 {table.current_booking.guests} гостей · {fmt(table.current_booking.time)}
                               </div>
                             </>
                           ) : (
-                            <div className="text-[11px] text-slate-400">Свободен для посадки</div>
+                            <div className="text-[11px] text-slate-500">Свободен для посадки</div>
                           )}
                         </div>
 
                         {layoutMode ? (
-                          <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-slate-900/85 px-2 py-1 text-[10px] font-semibold text-white">
+                          <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-slate-950/90 px-2 py-1 text-[10px] font-semibold text-white shadow-lg">
                             <Move size={12} />
-                            Move
+                            Переместить
                           </div>
                         ) : null}
                       </button>
@@ -1087,6 +1660,176 @@ export default function FloorView() {
             ) : (
               <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
                 Выберите стол на схеме, чтобы редактировать его здесь.
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Выбранный элемент</h2>
+                <p className="mt-1 text-sm text-slate-500">Вход, бар, кухня, перегородки и подписи для своего ресторана.</p>
+              </div>
+              <div className="rounded-2xl bg-slate-100 p-2 text-slate-500">
+                <Pencil size={16} />
+              </div>
+            </div>
+
+            {selectedShape ? (
+              <form onSubmit={handleUpdateShape} className="mt-5 space-y-4" noValidate>
+                <Field
+                  label="Название"
+                  value={editShapeForm.name}
+                  onChange={(value) => {
+                    setEditShapeForm((current) => ({ ...current, name: value }));
+                    if (editShapeErrors.name) setEditShapeErrors((current) => ({ ...current, name: undefined }));
+                    updateShapeDraft(selectedShape.id, { name: value }, false);
+                  }}
+                  error={editShapeErrors.name}
+                  disabled={!canManageTables}
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SelectField
+                    label="Тип"
+                    value={editShapeForm.shape_type}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, shape_type: value as FloorShapeType }));
+                      updateShapeDraft(selectedShape.id, { shape_type: value as FloorShapeType });
+                    }}
+                    options={[
+                      { value: 'rectangle', label: 'Rectangle' },
+                      { value: 'circle', label: 'Circle' },
+                      { value: 'label', label: 'Label' },
+                      { value: 'line', label: 'Line' },
+                    ]}
+                    disabled={!canManageTables}
+                  />
+                  <ToggleField
+                    label="Виден на схеме"
+                    description="Элемент остаётся в базе, но его можно временно скрыть."
+                    checked={editShapeForm.is_visible}
+                    onChange={() => {
+                      setEditShapeForm((current) => ({ ...current, is_visible: !current.is_visible }));
+                      updateShapeDraft(selectedShape.id, { is_visible: !editShapeForm.is_visible });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <MetricCard label="X" value={Math.round(selectedShape.x ?? 0)} />
+                  <MetricCard label="Y" value={Math.round(selectedShape.y ?? 0)} />
+                  <MetricCard label="Поворот" value={`${Math.round(selectedShape.rotation ?? 0)}°`} />
+                  <MetricCard label="Слой" value={selectedShape.z_index ?? 1} />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Ширина"
+                    type="number"
+                    value={String(Math.round(selectedShape.width))}
+                    onChange={(value) => updateSelectedShapeLayout('width', Number(value) || selectedShape.width)}
+                    disabled={!canManageTables}
+                  />
+                  <Field
+                    label="Высота"
+                    type="number"
+                    value={String(Math.round(selectedShape.height))}
+                    onChange={(value) => updateSelectedShapeLayout('height', Number(value) || selectedShape.height)}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <ColorField
+                    label="Fill"
+                    value={editShapeForm.fill_color}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, fill_color: value }));
+                      updateShapeDraft(selectedShape.id, { fill_color: value });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                  <ColorField
+                    label="Stroke"
+                    value={editShapeForm.stroke_color}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, stroke_color: value }));
+                      updateShapeDraft(selectedShape.id, { stroke_color: value });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                  <ColorField
+                    label="Text"
+                    value={editShapeForm.text_color}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, text_color: value }));
+                      updateShapeDraft(selectedShape.id, { text_color: value });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field
+                    label="X"
+                    type="number"
+                    value={String(Math.round(selectedShape.x))}
+                    onChange={(value) => updateSelectedShapeLayout('x', Number(value) || selectedShape.x)}
+                    disabled={!canManageTables}
+                  />
+                  <Field
+                    label="Y"
+                    type="number"
+                    value={String(Math.round(selectedShape.y))}
+                    onChange={(value) => updateSelectedShapeLayout('y', Number(value) || selectedShape.y)}
+                    disabled={!canManageTables}
+                  />
+                  <Field
+                    label="Поворот"
+                    type="number"
+                    value={String(Math.round(selectedShape.rotation))}
+                    onChange={(value) => updateSelectedShapeLayout('rotation', Number(value) || 0)}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Layer"
+                    type="number"
+                    value={String(selectedShape.z_index ?? 1)}
+                    onChange={(value) => updateSelectedShapeLayout('z_index', Number(value) || 1)}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={savingShapeEdit || !canManageTables}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+                  >
+                    <Save size={16} />
+                    {savingShapeEdit ? 'Сохраняем...' : 'Сохранить элемент'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteShape()}
+                    disabled={savingShapeEdit || !canManageTables}
+                    className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition disabled:opacity-50 ${
+                      deleteShapeArmed ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Trash2 size={16} />
+                    {deleteShapeArmed ? 'Подтвердить удаление' : 'Удалить'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+                Выберите элемент на схеме, чтобы менять подписи, цвета и позицию.
               </div>
             )}
           </section>
@@ -1155,6 +1898,77 @@ export default function FloorView() {
                   Доступ только для просмотра. Для изменений нужна роль manager или owner.
                 </div>
               ) : null}
+            </form>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Новый элемент</h2>
+            <p className="mt-1 text-sm text-slate-500">Соберите свою карту зала: вход, кухня, бар, зоны и подписи ресторана.</p>
+
+            <form onSubmit={handleCreateShape} className="mt-5 space-y-4" noValidate>
+              <Field
+                label="Название"
+                value={createShapeForm.name}
+                onChange={(value) => {
+                  setCreateShapeForm((current) => ({ ...current, name: value }));
+                  if (createShapeErrors.name) setCreateShapeErrors((current) => ({ ...current, name: undefined }));
+                }}
+                placeholder="Вход"
+                error={createShapeErrors.name}
+                disabled={!canManageTables}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField
+                  label="Тип"
+                  value={createShapeForm.shape_type}
+                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, shape_type: value as FloorShapeType }))}
+                  options={[
+                    { value: 'rectangle', label: 'Rectangle' },
+                    { value: 'circle', label: 'Circle' },
+                    { value: 'label', label: 'Label' },
+                    { value: 'line', label: 'Line' },
+                  ]}
+                  disabled={!canManageTables}
+                />
+                <ToggleField
+                  label="Показать сразу"
+                  description="Элемент появится на схеме, и его можно будет перетянуть."
+                  checked={createShapeForm.is_visible}
+                  onChange={() => setCreateShapeForm((current) => ({ ...current, is_visible: !current.is_visible }))}
+                  disabled={!canManageTables}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <ColorField
+                  label="Fill"
+                  value={createShapeForm.fill_color}
+                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, fill_color: value }))}
+                  disabled={!canManageTables}
+                />
+                <ColorField
+                  label="Stroke"
+                  value={createShapeForm.stroke_color}
+                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, stroke_color: value }))}
+                  disabled={!canManageTables}
+                />
+                <ColorField
+                  label="Text"
+                  value={createShapeForm.text_color}
+                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, text_color: value }))}
+                  disabled={!canManageTables}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingShapeCreate || !canManageTables}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                <Plus size={16} />
+                {savingShapeCreate ? 'Создание...' : 'Добавить элемент'}
+              </button>
             </form>
           </section>
         </div>
@@ -1446,6 +2260,41 @@ function Field({
         }`}
       />
       {error ? <span className="text-sm text-rose-600">{error}</span> : null}
+    </label>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const inputValue = normalizeColorInput(value);
+  return (
+    <label className="flex flex-col gap-2">
+      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</span>
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+        <input
+          type="color"
+          value={inputValue}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          className="h-9 w-12 cursor-pointer rounded-lg border border-slate-200 bg-white disabled:cursor-not-allowed"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          className="w-full bg-transparent text-sm font-medium text-slate-700 outline-none disabled:cursor-not-allowed"
+        />
+      </div>
     </label>
   );
 }

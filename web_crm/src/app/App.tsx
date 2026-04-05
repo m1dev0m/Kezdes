@@ -35,6 +35,7 @@ const Waitlist = lazy(() => import('@/pages/Waitlist'));
 const Messages = lazy(() => import('@/pages/Messages'));
 const Orders = lazy(() => import('@/pages/Orders'));
 const Pricing = lazy(() => import('@/pages/public/Pricing'));
+const Contact = lazy(() => import('@/pages/public/Contact'));
 const GlobalDashboard = lazy(() => import('@/pages/global_admin/GlobalDashboard'));
 const Requests = lazy(() => import('@/pages/global_admin/Requests'));
 const Restaurants = lazy(() => import('@/pages/global_admin/Restaurants'));
@@ -85,6 +86,7 @@ function App() {
               <Route element={<PublicLayout />}>
                 <Route path="restaurants" element={<Search />} />
                 <Route path="pricing" element={<Pricing />} />
+                <Route path="contact" element={<Contact />} />
                 <Route path="discover" element={<Navigate to="/restaurants" replace />} />
                 <Route path="discover/map" element={<Navigate to="/restaurants" replace />} />
                 <Route path="restaurant/:id" element={<RestaurantPage />} />

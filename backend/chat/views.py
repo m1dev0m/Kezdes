@@ -1,9 +1,40 @@
 from rest_framework import viewsets, permissions, decorators, response
 from django.db.models import Q
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from .models import Message, Conversation
 from .serializers import MessageSerializer, ConversationSerializer
+from bookings.models import Booking
+from core.utils import get_user_restaurant
+
+
+def _is_global_admin(user):
+    profile = getattr(user, "profile", None)
+    return bool(profile and profile.role == "global_admin")
+
+
+def _get_restaurant_scope(user):
+    if _is_global_admin(user):
+        return None, True
+    return get_user_restaurant(user), False
+
+
+def _user_can_access_restaurant(user, restaurant) -> bool:
+    if not user or not user.is_authenticated or not restaurant:
+        return False
+    if _is_global_admin(user):
+        return True
+    scoped_restaurant = get_user_restaurant(user)
+    return bool(scoped_restaurant and scoped_restaurant.id == restaurant.id)
+
+
+def _user_can_access_booking(user, booking) -> bool:
+    if not user or not user.is_authenticated or not booking:
+        return False
+    if booking.user_id == user.id:
+        return True
+    return _user_can_access_restaurant(user, booking.restaurant)
 
 
 class ConversationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -12,13 +43,40 @@ class ConversationViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        # Restaurant side: see all conversations for their restaurant
-        # Guest side: see all conversations for them
-        return Conversation.objects.filter(
-            Q(restaurant__owner=user) | 
-            Q(restaurant__staff__user=user) |
-            Q(guest=user)
-        ).select_related('restaurant', 'guest').distinct().order_by('-updated_at')
+        restaurant, is_global_admin = _get_restaurant_scope(user)
+        qs = Conversation.objects.select_related("restaurant", "guest").order_by("-updated_at")
+        if is_global_admin:
+            return qs
+        filters = Q(guest=user)
+        if restaurant:
+            filters |= Q(restaurant=restaurant)
+        return qs.filter(filters).distinct()
+
+    @decorators.action(detail=False, methods=["post"], url_path="start")
+    def start(self, request):
+        booking_id = request.data.get("booking_id")
+        try:
+            booking_id = int(booking_id)
+        except (TypeError, ValueError):
+            raise ValidationError({"booking_id": "Valid booking_id is required."})
+
+        booking = Booking.objects.select_related("restaurant", "user").filter(id=booking_id).first()
+        if not booking:
+            return response.Response({"detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not _user_can_access_booking(request.user, booking):
+            raise PermissionDenied("You do not have access to this booking.")
+        if not booking.user_id:
+            return response.Response(
+                {"detail": "This booking has no authenticated guest account for direct messaging."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        conversation, _ = Conversation.objects.get_or_create(
+            restaurant_id=booking.restaurant_id,
+            guest_id=booking.user_id,
+        )
+        serializer = self.get_serializer(conversation)
+        return response.Response(serializer.data)
 
 class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
@@ -32,21 +90,30 @@ class MessageViewSet(viewsets.ModelViewSet):
         if not user or not user.is_authenticated:
             return Message.objects.none()
 
-        qs = Message.objects.select_related("booking", "restaurant", "sender", "booking__restaurant").filter(
-            Q(booking__user=user) | 
-            Q(booking__restaurant__owner=user) |
-            Q(restaurant__owner=user) |
-            Q(restaurant__id__in=Message.objects.filter(sender=user).values('restaurant_id')) |
-            Q(sender=user)
-        ).distinct()
+        restaurant, is_global_admin = _get_restaurant_scope(user)
+        qs = Message.objects.select_related(
+            "booking",
+            "restaurant",
+            "sender",
+            "conversation",
+            "booking__restaurant",
+        )
+        if not is_global_admin:
+            filters = Q(sender=user) | Q(booking__user=user) | Q(conversation__guest=user)
+            if restaurant:
+                filters |= (
+                    Q(restaurant=restaurant)
+                    | Q(booking__restaurant=restaurant)
+                    | Q(conversation__restaurant=restaurant)
+                )
+            qs = qs.filter(filters)
+        qs = qs.distinct()
 
         booking_id = self.request.query_params.get("booking")
         if booking_id:
             try:
                 bid = int(booking_id)
-                from bookings.models import Booking
-                from .models import Conversation
-                b = Booking.objects.select_related('restaurant', 'user').filter(id=bid).first()
+                b = Booking.objects.select_related("restaurant", "user").filter(id=bid).first()
                 if b and b.user_id and b.restaurant_id:
                     conv = Conversation.objects.filter(
                         restaurant_id=b.restaurant_id, guest_id=b.user_id
@@ -61,6 +128,13 @@ class MessageViewSet(viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 pass
 
+        conversation_id = self.request.query_params.get("conversation")
+        if conversation_id:
+            try:
+                qs = qs.filter(conversation_id=int(conversation_id))
+            except (TypeError, ValueError):
+                pass
+
         restaurant_id = self.request.query_params.get("restaurant") or self.request.query_params.get("restaurant_id")
         if restaurant_id:
             try:
@@ -71,32 +145,53 @@ class MessageViewSet(viewsets.ModelViewSet):
         return qs.order_by("timestamp", "id")
 
     def perform_create(self, serializer):
-        booking = serializer.validated_data.get('booking') if hasattr(serializer, 'validated_data') else None
-        restaurant = serializer.validated_data.get('restaurant') if hasattr(serializer, 'validated_data') else None
+        booking = serializer.validated_data.get("booking") if hasattr(serializer, "validated_data") else None
+        restaurant = serializer.validated_data.get("restaurant") if hasattr(serializer, "validated_data") else None
+        conversation = serializer.validated_data.get("conversation") if hasattr(serializer, "validated_data") else None
 
-        conversation = None
-        if booking and booking.user_id and booking.restaurant_id:
-            from .models import Conversation
-            conversation, _ = Conversation.objects.get_or_create(restaurant_id=booking.restaurant_id, guest_id=booking.user_id)
+        if booking and not _user_can_access_booking(self.request.user, booking):
+            raise PermissionDenied("You do not have access to this booking.")
+
+        if conversation:
+            if not (
+                conversation.guest_id == self.request.user.id
+                or _user_can_access_restaurant(self.request.user, conversation.restaurant)
+            ):
+                raise PermissionDenied("You do not have access to this conversation.")
+            restaurant = restaurant or conversation.restaurant
+        elif booking and booking.user_id and booking.restaurant_id:
+            conversation, _ = Conversation.objects.get_or_create(
+                restaurant_id=booking.restaurant_id,
+                guest_id=booking.user_id,
+            )
             restaurant = restaurant or booking.restaurant
         elif restaurant:
-            # For direct restaurant chat (guest side) we consider the guest as the sender.
-            from .models import Conversation
-            conversation, _ = Conversation.objects.get_or_create(restaurant_id=restaurant.id, guest_id=self.request.user.id)
+            if _user_can_access_restaurant(self.request.user, restaurant):
+                raise ValidationError(
+                    {"conversation": "Restaurant staff should send direct messages through an existing conversation."}
+                )
+            conversation, _ = Conversation.objects.get_or_create(
+                restaurant_id=restaurant.id,
+                guest_id=self.request.user.id,
+            )
 
         serializer.save(sender=self.request.user, conversation=conversation, restaurant=restaurant)
 
     @decorators.action(detail=False, methods=["get"])
     def unread_count(self, request):
         user = request.user
-        qs = Message.objects.filter(
-            Q(is_read=False) & (
-                Q(booking__user=user) | 
-                Q(booking__restaurant__owner=user) |
-                Q(restaurant__owner=user) |
-                Q(restaurant__id__in=Message.objects.filter(sender=user).values('restaurant_id'))
-            )
-        ).exclude(sender=user).distinct()
+        restaurant, is_global_admin = _get_restaurant_scope(user)
+        qs = Message.objects.filter(is_read=False).exclude(sender=user)
+        if not is_global_admin:
+            filters = Q(booking__user=user) | Q(conversation__guest=user)
+            if restaurant:
+                filters |= (
+                    Q(restaurant=restaurant)
+                    | Q(booking__restaurant=restaurant)
+                    | Q(conversation__restaurant=restaurant)
+                )
+            qs = qs.filter(filters)
+        qs = qs.distinct()
         return response.Response({"unread": qs.count()})
 
     @decorators.action(detail=False, methods=["post"])
@@ -109,17 +204,18 @@ class MessageViewSet(viewsets.ModelViewSet):
         """
         user = request.user
         booking_id = request.data.get("booking")
+        conversation_id = request.data.get("conversation")
         restaurant_id = request.data.get("restaurant") or request.data.get("restaurant_id")
 
         qs = Message.objects.filter(is_read=False).exclude(sender=user)
 
         if booking_id:
             try:
-                from bookings.models import Booking
-                from .models import Conversation
                 b = Booking.objects.select_related('restaurant', 'user').filter(id=int(booking_id)).first()
                 if not b or not b.user_id or not b.restaurant_id:
                     return response.Response({"detail": "Invalid booking"}, status=status.HTTP_400_BAD_REQUEST)
+                if not _user_can_access_booking(user, b):
+                    return response.Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
                 conv = Conversation.objects.filter(restaurant_id=b.restaurant_id, guest_id=b.user_id).first()
                 if not conv:
                     return response.Response({"updated": 0})
@@ -127,6 +223,18 @@ class MessageViewSet(viewsets.ModelViewSet):
                 return response.Response({"updated": updated})
             except (TypeError, ValueError):
                 return response.Response({"detail": "Invalid booking"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if conversation_id:
+            try:
+                conv = Conversation.objects.select_related("restaurant").filter(id=int(conversation_id)).first()
+            except (TypeError, ValueError):
+                conv = None
+            if not conv:
+                return response.Response({"detail": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
+            if not (conv.guest_id == user.id or _user_can_access_restaurant(user, conv.restaurant)):
+                return response.Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+            updated = qs.filter(conversation_id=conv.id).update(is_read=True)
+            return response.Response({"updated": updated})
 
         if restaurant_id:
             try:
@@ -139,13 +247,10 @@ class MessageViewSet(viewsets.ModelViewSet):
             restaurant_obj = Restaurant.objects.filter(id=rid).first()
             if not restaurant_obj:
                 return response.Response({"detail": "Restaurant not found"}, status=status.HTTP_404_NOT_FOUND)
-            is_owner = restaurant_obj.owner_id == user.id
-            is_staff = hasattr(user, 'profile') and getattr(user.profile, 'restaurant_id', None) == rid
-            is_guest = Message.objects.filter(restaurant_id=rid, sender=user).exists()
-            if not (is_owner or is_staff or is_guest):
+            if not _user_can_access_restaurant(user, restaurant_obj):
                 return response.Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
             updated = qs.filter(restaurant_id=rid).update(is_read=True)
             return response.Response({"updated": updated})
 
-        return response.Response({"detail": "booking or restaurant is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return response.Response({"detail": "booking, conversation or restaurant is required"}, status=status.HTTP_400_BAD_REQUEST)

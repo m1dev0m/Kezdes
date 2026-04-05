@@ -26,6 +26,7 @@ export default function RestaurantPendingApproval() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const safeGetToken = (key: string) => {
     try {
@@ -56,11 +57,14 @@ export default function RestaurantPendingApproval() {
         return;
       }
 
+      setStatusError(null);
       setLastCheck(new Date());
     } catch (err: any) {
       if (err?.response?.status === 404) {
         navigate('/setup-restaurant');
+        return;
       }
+      setStatusError(err?.response?.data?.detail || 'Не удалось проверить статус заявки. Попробуйте ещё раз.');
     } finally {
       setChecking(false);
     }
@@ -136,6 +140,11 @@ export default function RestaurantPendingApproval() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              {statusError ? (
+                <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700">
+                  {statusError}
+                </div>
+              ) : null}
               {lastCheck
                 ? `Последняя проверка: ${lastCheck.toLocaleTimeString()}`
                 : 'Статус обновляется автоматически каждые 15 секунд.'}

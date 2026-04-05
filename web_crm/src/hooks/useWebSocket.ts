@@ -14,6 +14,28 @@ interface UseWebSocketReturn {
     lastMessage: any | null;
 }
 
+function isLocalLikeHostname(hostname: string) {
+    return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '0.0.0.0' ||
+        /^10\./.test(hostname) ||
+        /^192\.168\./.test(hostname) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+    );
+}
+
+function getDefaultWebSocketBaseUrl() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const devPorts = new Set(['3000', '4173', '5173', '5174', '5175']);
+
+    if (isLocalLikeHostname(window.location.hostname) || devPorts.has(window.location.port)) {
+        return `${protocol}//${window.location.hostname}:8000`;
+    }
+
+    return `${protocol}//${window.location.host}`;
+}
+
 export function useWebSocket({
     url,
     enabled = true,
@@ -40,8 +62,7 @@ export function useWebSocket({
                 token = null;
             }
         }
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.hostname}:8000`;
+        const host = (import.meta.env.VITE_WS_URL || getDefaultWebSocketBaseUrl()).replace(/\/+$/, '');
         const normalized = url.replace(/^\/+/, '');
         const separator = normalized.includes('?') ? '&' : '?';
         return `${host}/${normalized}${token ? `${separator}token=${token}` : ''}`;

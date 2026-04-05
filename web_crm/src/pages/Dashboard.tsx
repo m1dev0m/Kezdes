@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarClock, CheckCircle2, CreditCard, DoorClosed, RefreshCw } from 'lucide-react';
+import { ArrowRight, CalendarClock, CheckCircle2, Clock3, CreditCard, DoorClosed, RefreshCw, Users } from 'lucide-react';
 import api from '@/services/api';
 import { useRestaurantSubscriptionSummary } from '@/features/subscription/useRestaurantSubscriptionSummary';
 import { extractResults, getApiErrorMessage, getLocalDateString, getReservationStatusMeta } from '@/features/reservations/shared';
@@ -21,6 +21,21 @@ type DashboardTable = {
   is_active?: boolean;
 };
 
+type DashboardShift = {
+  id: number;
+  name: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  days_of_week?: number[] | null;
+};
+
+function formatShiftClock(value?: string | null) {
+  if (!value || typeof value !== 'string') return '—';
+  const trimmed = value.trim();
+  if (!trimmed) return '—';
+  return trimmed.slice(0, 5);
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { summary } = useRestaurantSubscriptionSummary();
@@ -28,19 +43,40 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bookings, setBookings] = useState<DashboardBooking[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<DashboardBooking[]>([]);
   const [tables, setTables] = useState<DashboardTable[]>([]);
+  const [activeShift, setActiveShift] = useState<DashboardShift | null>(null);
+  const [shiftBookings, setShiftBookings] = useState<DashboardBooking[]>([]);
 
   const fetchData = useCallback(async () => {
     setRefreshing(true);
     try {
       const today = getLocalDateString();
-      const [bookingsResponse, tablesResponse] = await Promise.all([
+      const [shiftsResponse, bookingsResponse, tablesResponse, pendingResponse] = await Promise.all([
+        api.get('/restaurants/shifts/').catch(() => ({ data: [] })),
         api.get(`/bookings/my_restaurant/?date=${today}&ordering=time`),
         api.get('/tables/status/').catch(() => api.get('/tables/')),
+        api.get('/bookings/my_restaurant/?status=pending,payment_pending&ordering=date,time&page_size=6').catch(() => ({ data: [] })),
       ]);
 
+      const shiftsData = extractResults<DashboardShift>(shiftsResponse.data);
+      const currentShift = getCurrentShift(shiftsData);
+      setActiveShift(currentShift);
       setBookings(extractResults<DashboardBooking>(bookingsResponse.data));
       setTables(extractResults<DashboardTable>(tablesResponse.data));
+      setPendingRequests(extractResults<DashboardBooking>(pendingResponse.data));
+      if (currentShift) {
+        try {
+          const shiftBookingsResponse = await api.get(
+            `/bookings/my_restaurant/?date=${today}&ordering=time&shift=${currentShift.id}`,
+          );
+          setShiftBookings(extractResults<DashboardBooking>(shiftBookingsResponse.data));
+        } catch {
+          setShiftBookings([]);
+        }
+      } else {
+        setShiftBookings([]);
+      }
       setError(null);
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, 'Не удалось загрузить данные дашборда.'));
@@ -84,6 +120,41 @@ export default function Dashboard() {
       activeToday,
     };
   }, [bookings, tables]);
+
+  const shiftStats = useMemo(() => {
+    const bookingsInShift = activeShift ? shiftBookings : bookings;
+    const activeBookings = bookingsInShift.filter(
+      (booking) => !['cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'rejected', 'completed', 'no_show'].includes(booking.status),
+    );
+    const upcomingBookings = bookingsInShift.filter((booking) => {
+      if (!booking.time) return false;
+      const [hours, minutes] = booking.time.split(':').map(Number);
+      const slot = new Date();
+      slot.setHours(hours, minutes, 0, 0);
+      const diffMinutes = (slot.getTime() - Date.now()) / 60000;
+      return diffMinutes >= 0 && diffMinutes <= 120;
+    });
+
+    return {
+      bookingsInShift,
+      activeBookings,
+      upcomingBookings,
+    };
+  }, [activeShift, bookings, shiftBookings]);
+
+  const pendingStats = useMemo(() => {
+    const sorted = [...pendingRequests].sort((a, b) => {
+      const left = `${a.date || ''} ${a.time || ''}`;
+      const right = `${b.date || ''} ${b.time || ''}`;
+      return left.localeCompare(right);
+    });
+
+    return {
+      total: sorted.length,
+      urgent: sorted.filter((booking) => booking.status === 'payment_pending').length,
+      items: sorted,
+    };
+  }, [pendingRequests]);
 
   if (loading && bookings.length === 0) {
     return (
@@ -138,6 +209,190 @@ export default function Dashboard() {
           actionLabel="Открыть заказы"
           onAction={() => navigate('/app/orders')}
         />
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <CalendarClock size={14} />
+              Запросы на бронь
+            </div>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+              {pendingStats.total > 0 ? `${pendingStats.total} ожидают ответа` : 'Нет новых запросов'}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+              Клиентские брони и запросы на оплату показываются здесь первыми, чтобы менеджер видел их сразу после входа.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/app/bookings')}
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Все заявки
+            <ArrowRight size={16} />
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-semibold text-slate-900">Последние заявки</div>
+            <div className="mt-4 space-y-3">
+              {pendingStats.items.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">
+                  Новые клиентские запросы появятся здесь после публикации брони.
+                </div>
+              ) : (
+                pendingStats.items.slice(0, 5).map((booking) => {
+                  const statusMeta = getReservationStatusMeta(booking.status as any);
+                  return (
+                    <button
+                      key={booking.id}
+                      type="button"
+                      onClick={() => navigate(`/app/bookings?id=${booking.id}`)}
+                      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:bg-slate-50"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900">
+                          {booking.time?.slice(0, 5) || '—'} · {booking.user_name || 'Гость'}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {booking.date} · {booking.guests} гостей · {booking.table_number ? `Стол ${booking.table_number}` : 'без стола'}
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold ${statusMeta.className}`}>
+                        {statusMeta.label}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-4">
+            <div className="text-sm font-semibold text-slate-900">Что важно сейчас</div>
+            <div className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+              <p>Запросы с оплатой требуют первоочередной реакции, чтобы не потерять бронь.</p>
+              <p>Новые заявки лучше открывать прямо отсюда — без лишнего перехода в длинный список.</p>
+              <p>Если запросов нет, блок остаётся пустым и не перегружает главную страницу.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <Clock3 size={14} />
+              Сменный срез
+            </div>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+              {activeShift ? activeShift.name : 'Смены не настроены'}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+              {activeShift
+                ? `${isShiftActiveNow(activeShift) ? 'Сейчас активна' : 'Ближайшая'} смена ${formatShiftClock(activeShift.starts_at)} — ${formatShiftClock(activeShift.ends_at)}. ` +
+                  `В этом окне ${shiftStats.activeBookings.length} активных броней и ${shiftStats.upcomingBookings.length} гостей в ближайшие 2 часа.`
+                : 'Добавьте смены в разделе зала, чтобы быстро видеть текущую нагрузку и ближайшие брони по времени.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/app/floor')}
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Открыть схему зала
+            <ArrowRight size={16} />
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <StatCard
+            icon={<Clock3 size={18} />}
+            label="Брони в смене"
+            value={String(shiftStats.bookingsInShift.length)}
+            description="Все записи в текущем оконном срезе"
+            tone="bg-slate-100 text-slate-700"
+          />
+          <StatCard
+            icon={<CheckCircle2 size={18} />}
+            label="Активные сейчас"
+            value={String(shiftStats.activeBookings.length)}
+            description="Брони, которые ещё не завершены"
+            tone="bg-emerald-50 text-emerald-600"
+          />
+          <StatCard
+            icon={<Users size={18} />}
+            label="Скоро придут"
+            value={String(shiftStats.upcomingBookings.length)}
+            description="Гости в горизонте ближайших 2 часов"
+            tone="bg-amber-50 text-amber-600"
+          />
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="text-sm font-semibold text-slate-900">Сводка смены</div>
+            <div className="mt-4 space-y-3">
+              <SnapshotRow label="Активная смена" value={activeShift?.name || '—'} />
+              <SnapshotRow
+                label="Время"
+                value={activeShift ? `${formatShiftClock(activeShift.starts_at)} — ${formatShiftClock(activeShift.ends_at)}` : '—'}
+              />
+              <SnapshotRow
+                label="Дни недели"
+                value={activeShift?.days_of_week?.length ? activeShift.days_of_week.join(', ') : 'все дни'}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Ближайшие брони смены</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">Первые записи текущего окна</div>
+              </div>
+              <button type="button" onClick={() => navigate('/app/bookings')} className="text-sm font-semibold text-[#1d4ed8]">
+                Все брони
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {shiftStats.bookingsInShift.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                  В этой смене пока нет бронирований.
+                </div>
+              ) : (
+                shiftStats.bookingsInShift.slice(0, 4).map((booking) => {
+                  const statusMeta = getReservationStatusMeta(booking.status as any);
+                  return (
+                    <button
+                      key={booking.id}
+                      type="button"
+                      onClick={() => navigate(`/app/bookings?id=${booking.id}`)}
+                      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:bg-white"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900">
+                          {booking.time?.slice(0, 5) || '—'} · {booking.user_name || 'Гость'}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {booking.guests} гостей · {booking.table_number ? `Стол ${booking.table_number}` : 'без стола'}
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${statusMeta.className}`}>
+                        {statusMeta.label}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
       </section>
 
       {summary ? (
@@ -403,6 +658,70 @@ function QuickAction({
       <button type="button" onClick={onAction} className="mt-3 text-sm font-semibold text-[#1d4ed8]">
         {actionLabel}
       </button>
+    </div>
+  );
+}
+
+function isShiftActiveNow(shift: DashboardShift) {
+  if (!shift?.starts_at || !shift?.ends_at) return false;
+  const now = new Date();
+  const weekday = (now.getDay() + 6) % 7;
+  const shiftDays = shift.days_of_week || [];
+  const coversToday = shiftDays.length === 0 || shiftDays.includes(weekday);
+  if (!coversToday) return false;
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const [startHours, startMinutes] = shift.starts_at.split(':').map(Number);
+  const [endHours, endMinutes] = shift.ends_at.split(':').map(Number);
+  const starts = (startHours || 0) * 60 + (startMinutes || 0);
+  const ends = (endHours || 0) * 60 + (endMinutes || 0);
+  if (ends >= starts) return currentMinutes >= starts && currentMinutes <= ends;
+  return currentMinutes >= starts || currentMinutes <= ends;
+}
+
+function getCurrentShift(shifts: DashboardShift[]) {
+  if (shifts.length === 0) return null;
+  const safeShifts = shifts.filter((shift) => Boolean(shift?.starts_at) && Boolean(shift?.ends_at));
+  if (safeShifts.length === 0) return null;
+  const now = new Date();
+  const weekday = (now.getDay() + 6) % 7;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const toMinutes = (value: string | null | undefined) => {
+    if (!value) return null;
+    const [hours, minutes] = value.split(':').map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
+  };
+
+  const active = safeShifts.find((shift) => {
+    const shiftDays = shift.days_of_week || [];
+    const coversToday = shiftDays.length === 0 || shiftDays.includes(weekday);
+    if (!coversToday) return false;
+
+    const starts = toMinutes(shift.starts_at);
+    const ends = toMinutes(shift.ends_at);
+    if (starts === null || ends === null) return false;
+    if (ends >= starts) return currentMinutes >= starts && currentMinutes <= ends;
+    return currentMinutes >= starts || currentMinutes <= ends;
+  });
+
+  if (active) return active;
+
+  return (
+    safeShifts
+      .filter((shift) => {
+        const shiftDays = shift.days_of_week || [];
+        return shiftDays.length === 0 || shiftDays.includes(weekday);
+      })
+      .sort((left, right) => String(left.starts_at).localeCompare(String(right.starts_at)))[0] || null
+  );
+}
+
+function SnapshotRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+      <div className="text-sm font-semibold text-slate-900">{value}</div>
     </div>
   );
 }

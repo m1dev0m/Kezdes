@@ -88,7 +88,7 @@ export default function RestaurantRegistration() {
                 toast.error('Authentication handshake failed.');
                 return;
             }
-            navigate('/pending-approval');
+            navigate('/register-restaurant/pending');
         } catch (err: any) {
             toast.error(err.response?.data?.detail || err.message || 'Transmission error.');
             setError(err.response?.data?.detail || err.message || 'Transmission error.');

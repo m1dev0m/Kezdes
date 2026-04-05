@@ -101,6 +101,26 @@ class AuthenticationAPITest(APITestCase):
         self.assertIn('access', response.data)
 
 
+class UpdateRoleSecurityAPITest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='roleuser',
+            email='roleuser@example.com',
+            password='rolepass123'
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_user_cannot_self_assign_owner_role(self):
+        self.user.profile.role = 'customer'
+        self.user.profile.save(update_fields=['role'])
+
+        response = self.client.post('/api/v1/auth/update-role/', {'role': 'owner'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.role, 'customer')
+
+
 class RegistrationAPITest(APITestCase):
     def test_registration_success(self):
         response = self.client.post('/api/v1/auth/register/', {
@@ -226,6 +246,83 @@ class OTPAuthenticationAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         user = User.objects.get(username='testing_no_otp_user')
         self.assertEqual(user.profile.role, 'customer')
+
+
+class OTPDeliveryAttemptMonitorAPITest(APITestCase):
+    def setUp(self):
+        self.global_admin = User.objects.create_user(
+            username='otp_global_admin',
+            email='otp-global-admin@example.com',
+            password='admin-pass-123',
+        )
+        self.global_admin.profile.role = 'global_admin'
+        self.global_admin.profile.save()
+
+        self.owner = User.objects.create_user(
+            username='otp_owner',
+            email='otp-owner@example.com',
+            password='owner-pass-123',
+        )
+        self.owner.profile.role = 'owner'
+        self.owner.profile.save()
+
+    def test_non_global_admin_cannot_access_attempts(self):
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.get('/api/v1/auth/otp-delivery-attempts/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_global_admin_sees_paginated_attempts(self):
+        OTPDeliveryAttempt.objects.create(
+            email='first@example.com',
+            status=OTPDeliveryAttempt.STATUS_FAILED,
+            provider='smtp',
+            error_message='smtp down',
+        )
+        OTPDeliveryAttempt.objects.create(
+            email='second@example.com',
+            status=OTPDeliveryAttempt.STATUS_SENT,
+            provider='django_mail',
+            metadata={'attempt': 2},
+        )
+
+        self.client.force_authenticate(user=self.global_admin)
+        response = self.client.get('/api/v1/auth/otp-delivery-attempts/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('count', response.data)
+        self.assertIn('results', response.data)
+        self.assertEqual(response.data['count'], 2)
+
+        results = response.data['results']
+        self.assertEqual(results[0]['email'], 'second@example.com')
+        self.assertEqual(results[0]['status'], OTPDeliveryAttempt.STATUS_SENT)
+        self.assertEqual(results[0]['provider'], 'django_mail')
+        self.assertIn('created_at', results[0])
+        self.assertEqual(results[1]['email'], 'first@example.com')
+        self.assertEqual(results[1]['error_message'], 'smtp down')
+
+    def test_global_admin_can_filter_attempts(self):
+        OTPDeliveryAttempt.objects.create(
+            email='filter-one@example.com',
+            status=OTPDeliveryAttempt.STATUS_FAILED,
+            provider='smtp',
+            error_message='first error',
+        )
+        OTPDeliveryAttempt.objects.create(
+            email='filter-two@example.com',
+            status=OTPDeliveryAttempt.STATUS_SENT,
+            provider='django_mail',
+        )
+
+        self.client.force_authenticate(user=self.global_admin)
+        response = self.client.get('/api/v1/auth/otp-delivery-attempts/?status=failed')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['email'], 'filter-one@example.com')
+        self.assertEqual(response.data['results'][0]['status'], OTPDeliveryAttempt.STATUS_FAILED)
 
 
 class UserProfileContractAPITest(APITestCase):

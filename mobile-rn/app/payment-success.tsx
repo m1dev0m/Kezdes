@@ -46,7 +46,7 @@ export default function PaymentSuccessScreen() {
 
                 <TouchableOpacity
                     style={styles.secondaryBtn}
-                    onPress={() => router.replace('/home')}
+                    onPress={() => router.replace('/(tabs)/home')}
                 >
                     <Text style={styles.secondaryBtnText}>На главную</Text>
                 </TouchableOpacity>

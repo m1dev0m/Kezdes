@@ -13,6 +13,10 @@ import {
 import { BarChart3, CalendarRange, RefreshCw, Repeat, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
+import {
+  useRestaurantSubscriptionSummary,
+  type RestaurantSubscriptionSummary,
+} from '@/features/subscription/useRestaurantSubscriptionSummary';
 import { getApiErrorMessage } from '@/features/reservations/shared';
 
 type AnalyticsData = {
@@ -31,11 +35,20 @@ type AnalyticsData = {
   retention_30_days?: number;
 };
 
+function hasFeature(summary: RestaurantSubscriptionSummary | null, key: string): boolean {
+  if (!summary) return false;
+  const flag = summary.feature_flags?.[key];
+  if (typeof flag === 'boolean') return flag;
+  return summary.features?.some((feature) => feature.key === key && feature.enabled) ?? false;
+}
+
 export default function Analytics() {
+  const { summary, loading: subscriptionLoading, error: subscriptionError, reload: reloadSubscription } = useRestaurantSubscriptionSummary();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canViewAnalytics = useMemo(() => hasFeature(summary, 'analytics_basic'), [summary]);
 
   const loadAnalytics = useCallback(async () => {
     setRefreshing(true);
@@ -54,8 +67,57 @@ export default function Analytics() {
   }, []);
 
   useEffect(() => {
+    if (subscriptionLoading || !summary) return;
+    if (!canViewAnalytics) return;
     void loadAnalytics();
-  }, [loadAnalytics]);
+  }, [canViewAnalytics, loadAnalytics, subscriptionLoading, summary]);
+
+  if (subscriptionLoading && !summary) {
+    return (
+      <div className="space-y-8 pb-10">
+        <div className="h-24 animate-pulse rounded-3xl bg-slate-50" />
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="h-28 animate-pulse rounded-3xl bg-slate-50" />
+          <div className="h-28 animate-pulse rounded-3xl bg-slate-50" />
+          <div className="h-28 animate-pulse rounded-3xl bg-slate-50" />
+          <div className="h-28 animate-pulse rounded-3xl bg-slate-50" />
+        </div>
+      </div>
+    );
+  }
+
+  if (subscriptionError && !summary) {
+    return (
+      <div className="space-y-8 pb-10">
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>{subscriptionError}</div>
+            <button
+              type="button"
+              onClick={() => void reloadSubscription()}
+              className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (summary && !canViewAnalytics) {
+    return (
+      <div className="space-y-8 pb-10">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Analytics</div>
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900">Аналитика недоступна на текущем тарифе</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+            Для операционной аналитики нужен тариф Plus или ручное включение флага `analytics_basic`.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const kpis = useMemo(() => {
     if (!data) return [];

@@ -366,6 +366,47 @@ class Zone(models.Model):
     def __str__(self):
         return f"{self.name} - {self.restaurant.name}"
 
+
+class FloorMapShape(models.Model):
+    SHAPE_RECTANGLE = 'rectangle'
+    SHAPE_CIRCLE = 'circle'
+    SHAPE_LABEL = 'label'
+    SHAPE_LINE = 'line'
+    SHAPE_CHOICES = [
+        (SHAPE_RECTANGLE, 'Rectangle'),
+        (SHAPE_CIRCLE, 'Circle'),
+        (SHAPE_LABEL, 'Label'),
+        (SHAPE_LINE, 'Line'),
+    ]
+
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='floor_shapes')
+    zone = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True, related_name='floor_shapes')
+    name = models.CharField(max_length=100, blank=True, default='')
+    shape_type = models.CharField(max_length=20, choices=SHAPE_CHOICES, default=SHAPE_RECTANGLE)
+    x = models.FloatField(default=24.0)
+    y = models.FloatField(default=24.0)
+    width = models.FloatField(default=140.0)
+    height = models.FloatField(default=80.0)
+    rotation = models.FloatField(default=0.0)
+    fill_color = models.CharField(max_length=20, default='#F8FAFC')
+    stroke_color = models.CharField(max_length=20, default='#CBD5E1')
+    text_color = models.CharField(max_length=20, default='#334155')
+    z_index = models.IntegerField(default=0)
+    is_visible = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['z_index', 'id']
+        indexes = [
+            models.Index(fields=['restaurant', 'z_index']),
+            models.Index(fields=['restaurant', 'is_visible']),
+        ]
+
+    def __str__(self):
+        title = self.name or self.get_shape_type_display()
+        return f"{self.restaurant.name} · {title}"
+
 class Table(models.Model):
     TABLE_TYPE_CHOICES = [
         ('rectangle', 'Прямоугольный'),

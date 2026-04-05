@@ -33,6 +33,7 @@ export default function Register() {
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [otpEmail, setOtpEmail] = useState('');
   const [debugOtpCode, setDebugOtpCode] = useState('');
+  const [otpRequired, setOtpRequired] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -84,19 +85,43 @@ export default function Register() {
     setOtpSending(true);
     try {
       const res = await api.post('/auth/send-otp/', { email });
+      const nextOtpRequired = res.data?.otp_required !== false;
+      setOtpRequired(nextOtpRequired);
       setDebugOtpCode(typeof res.data?.code === 'string' ? res.data.code : '');
       toast.success(res.data?.detail || 'Код отправлен на email');
       setOtpEmail(email);
       setOtpCooldown(60);
-      setStep(2);
+      setStep(nextOtpRequired ? 2 : 3);
+      return nextOtpRequired;
     } catch (error: any) {
       toast.error(getApiErrorMessage(error?.response?.data, 'Не удалось отправить код'));
+      return null;
     } finally {
       setOtpSending(false);
     }
   };
 
-  const handleInitialSubmit = (event: React.FormEvent) => {
+  const registerAndLogin = async (otpCode?: string) => {
+    await api.post('/auth/register/', {
+      username: formData.username.trim(),
+      email: normalizedEmail,
+      password: formData.password,
+      password2: formData.password2,
+      phone: formData.phone.trim(),
+      ...(otpCode ? { otp_code: otpCode.trim() } : {}),
+    });
+
+    const loginResponse = await api.post('/auth/login/', {
+      username: formData.username.trim(),
+      password: formData.password,
+    });
+
+    await login(loginResponse.data.access, loginResponse.data.refresh);
+    toast.success('Добро пожаловать в Kezdes');
+    navigate('/role-selection');
+  };
+
+  const handleInitialSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (
       !formData.username.trim() ||
@@ -116,35 +141,29 @@ export default function Register() {
       toast.error(`Подождите ${otpCooldown} сек, прежде чем запрашивать новый код`);
       return;
     }
-    void sendOtp();
+    const nextOtpRequired = await sendOtp();
+    if (nextOtpRequired === false) {
+      setLoading(true);
+      try {
+        await registerAndLogin();
+      } catch (error: any) {
+        toast.error(getApiErrorMessage(error?.response?.data, 'Ошибка регистрации'));
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!formData.otp_code.trim()) {
+    if (otpRequired && !formData.otp_code.trim()) {
       toast.error('Введите код подтверждения');
       return;
     }
 
     setLoading(true);
     try {
-      await api.post('/auth/register/', {
-        username: formData.username.trim(),
-        email: normalizedEmail,
-        password: formData.password,
-        password2: formData.password2,
-        phone: formData.phone.trim(),
-        otp_code: formData.otp_code.trim(),
-      });
-
-      const loginResponse = await api.post('/auth/login/', {
-        username: formData.username.trim(),
-        password: formData.password,
-      });
-
-      await login(loginResponse.data.access, loginResponse.data.refresh);
-      toast.success('Добро пожаловать в Kezdes');
-      navigate('/role-selection');
+      await registerAndLogin(formData.otp_code);
     } catch (error: any) {
       toast.error(getApiErrorMessage(error?.response?.data, 'Ошибка регистрации'));
     } finally {

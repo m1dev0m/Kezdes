@@ -140,7 +140,7 @@ export default function WizardScreen() {
                 if (__DEV__) {
                     console.warn("Cant go back, pushing to home");
                 }
-                router.push('/home');
+                router.push('/(tabs)/home');
             }
         }
     };

@@ -43,7 +43,11 @@ export function getPostAuthRedirectPath(user?: AuthRouteUser | null): string {
 
   if (isRestaurantRole(role)) {
     if (role !== 'worker' && !user?.restaurant_verified) {
-      return user?.restaurant_setup_required ? '/setup-restaurant' : '/register-restaurant/pending';
+      // Only owners should be sent to restaurant setup. Other staff roles cannot submit setup.
+      if (role === 'owner' && user?.restaurant_setup_required) {
+        return '/setup-restaurant';
+      }
+      return '/register-restaurant/pending';
     }
 
     return '/app/dashboard';

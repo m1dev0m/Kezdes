@@ -1,8 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarCheck2, ChartColumnBig, CircleUserRound, DoorClosed, Phone, Users } from 'lucide-react';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { PublicHeader } from '@/components/public/PublicHeader';
+import { getLocalDateString } from '@/features/reservations/shared';
 
 const FEATURES = [
   {
@@ -62,6 +63,19 @@ const PRICING_CARDS = [
 
 export default function Welcome() {
   const { user, logout } = useAuth();
+  const [bookingDate, setBookingDate] = useState(getLocalDateString());
+  const [bookingTime, setBookingTime] = useState('19:00');
+  const [guests, setGuests] = useState(2);
+
+  const quickBookingHref = useMemo(
+    () =>
+      `/restaurants?${new URLSearchParams({
+        date: bookingDate,
+        time: bookingTime,
+        guests: String(Math.max(1, guests || 1)),
+      }).toString()}`,
+    [bookingDate, bookingTime, guests],
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -109,6 +123,51 @@ export default function Welcome() {
                     className="inline-flex min-w-[180px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                   >
                     Найти ресторан
+                  </Link>
+                </div>
+
+                <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Запрос брони</div>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">Открыть бронирование сразу с главной</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Клиент выбирает дату, время и количество гостей здесь, а дальше сразу попадает в список ресторанов с нужным контекстом.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_120px]">
+                    <label className="space-y-1">
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Дата</span>
+                      <input
+                        type="date"
+                        value={bookingDate}
+                        onChange={(event) => setBookingDate(event.target.value)}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Время</span>
+                      <input
+                        type="time"
+                        value={bookingTime}
+                        onChange={(event) => setBookingTime(event.target.value)}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Гости</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={guests}
+                        onChange={(event) => setGuests(Math.max(1, Number(event.target.value) || 1))}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#1d4ed8] focus:ring-4 focus:ring-blue-50"
+                      />
+                    </label>
+                  </div>
+                  <Link
+                    to={quickBookingHref}
+                    className="mt-4 inline-flex min-w-[220px] items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+                  >
+                    Показать рестораны
                   </Link>
                 </div>
               </div>

@@ -435,14 +435,29 @@ def update_availability_on_booking_change(sender, instance, **kwargs):
     Automatically updates the daily Availability record when a booking is made or changed.
     This ensures that the 'available_seats' at the daily level reflects confirmed reservations.
     """
-    restaurant = instance.restaurant
+    restaurant_id = getattr(instance, 'restaurant_id', None)
     date = instance.date
-    
+    origin = kwargs.get('origin')
+
+    origin_model = getattr(getattr(origin, "_meta", None), "model", None)
+    queryset_model = getattr(origin, "model", None)
+    if origin_model is Restaurant or queryset_model is Restaurant or isinstance(origin, Restaurant):
+        return
+
+    if not restaurant_id or not date:
+        return
+
+    # On restaurant deletion Django cascades to bookings first, and this signal can
+    # still run while the parent restaurant row is already gone. In that case there
+    # is nothing left to recalculate.
+    restaurant = Restaurant.objects.filter(pk=restaurant_id).first()
+    if restaurant is None:
+        return
+
     total_capacity = restaurant.tables.filter(is_active=True).aggregate(Sum('seats'))['seats__sum'] or 0
-    
-    
+
     booked_guests = Booking.objects.filter(
-        restaurant=restaurant,
+        restaurant_id=restaurant_id,
         date=date,
         status__in=[Booking.PENDING, Booking.CONFIRMED]
     ).aggregate(Sum('guests'))['guests__sum'] or 0

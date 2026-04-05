@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
 from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+
+logger = logging.getLogger(__name__)
 
 
 @database_sync_to_async
@@ -24,7 +28,10 @@ class QueryStringJWTAuthMiddleware(BaseMiddleware):
         if token:
             try:
                 scope['user'] = await _get_user_for_token(token)
+            except (InvalidToken, TokenError):
+                scope["user"] = AnonymousUser()
             except Exception:
-                pass
+                logger.exception("WebSocket JWT auth failed")
+                scope["user"] = AnonymousUser()
 
         return await super().__call__(scope, receive, send)

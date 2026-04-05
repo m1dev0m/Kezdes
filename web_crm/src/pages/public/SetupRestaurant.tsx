@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, MapPinned, Store } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { Logo } from '@/components/ui/Logo';
+import { useAuth } from '@/modules/auth/logic/AuthContext';
+import { normalizeUserRole } from '@/modules/auth/logic/roles';
 
 const CITY_OPTIONS = [
   { value: 'Алматы', label: 'Алматы', lat: 43.2389, lng: 76.8897 },
@@ -31,6 +33,7 @@ const STEP_META: Record<Exclude<FlowStep, 'intro'>, { index: number; total: numb
 };
 
 export default function SetupRestaurant() {
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<FlowStep>('intro');
@@ -39,6 +42,32 @@ export default function SetupRestaurant() {
     city: 'Алматы',
     address: '',
   });
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const role = normalizeUserRole(user.role);
+
+  // Prevent "fatal" navigation loops / blank pages when this route is reached by mistake.
+  // Setup is only valid for owners who still need to submit the restaurant application.
+  if (user.restaurant_verified) {
+    return <Navigate to="/app/dashboard" replace />;
+  }
+  if (role !== 'owner' && role !== 'pending') {
+    return <Navigate to="/register-restaurant/pending" replace />;
+  }
+  if (user.restaurant_setup_required !== true) {
+    return <Navigate to="/register-restaurant/pending" replace />;
+  }
 
   const selectedCity = useMemo(
     () => CITY_OPTIONS.find((city) => city.value === formData.city) ?? CITY_OPTIONS[0],

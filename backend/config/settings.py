@@ -8,29 +8,52 @@ env = environ.Env(
     DEBUG=(bool, True)
 )
 
+IS_TESTING = (
+    "pytest" in sys.modules
+    or os.environ.get("PYTEST_CURRENT_TEST") is not None
+    or any("pytest" in arg for arg in sys.argv)
+    or os.environ.get("TEST_ENV") == "true"
+)
+
+# Keep test runs stable even if the surrounding environment exports non-boolean DEBUG values
+# (e.g. DEBUG=release in some deployment environments).
+if IS_TESTING:
+    os.environ["DEBUG"] = "True"
+    os.environ.setdefault("SECRET_KEY", "django-insecure-test-key-change-me-2026")
+
 def _load_env_file():
-    # Skip loading .env during pytest — tests set their own env vars
-    if 'pytest' in sys.modules or 'pytest' in sys.argv[0] if sys.argv else False:
-        return
     env_file_path = os.path.join(BASE_DIR, '.env')
     _debug = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
     if os.path.exists(env_file_path):
-        # Read repo-local .env, then force DEBUG from that file to win over
-        # any ambient DEBUG env var (some environments set DEBUG=release).
         environ.Env.read_env(env_file_path)
-        try:
-            with open(env_file_path, 'r', encoding='utf-8') as fh:
-                for raw_line in fh:
-                    line = raw_line.strip()
-                    if not line or line.startswith('#') or '=' not in line:
-                        continue
-                    key, value = line.split('=', 1)
-                    if key.strip() == 'DEBUG':
-                        os.environ['DEBUG'] = value.strip().strip('"').strip("'")
-                        break
-        except OSError:
-            pass
-    elif not _debug:
+        # django-environ doesn't override existing env vars; some hosting setups export
+        # non-boolean DEBUG values (e.g. DEBUG=release) which would otherwise be parsed
+        # as False. If a repo-local `.env` exists, prefer its DEBUG value for stability.
+        raw_debug = os.environ.get("DEBUG")
+        valid_debug_values = {
+            "true",
+            "false",
+            "1",
+            "0",
+            "yes",
+            "no",
+            "on",
+            "off",
+        }
+        if raw_debug and raw_debug.lower() not in valid_debug_values:
+            try:
+                with open(env_file_path, "r", encoding="utf-8") as handle:
+                    for raw_line in handle:
+                        line = raw_line.strip()
+                        if not line or line.startswith("#") or "=" not in line:
+                            continue
+                        key, value = line.split("=", 1)
+                        if key.strip() == "DEBUG":
+                            os.environ["DEBUG"] = value.strip().strip('"').strip("'")
+                            break
+            except OSError:
+                pass
+    elif not _debug and not IS_TESTING:
         raise ValueError('.env file is required when DEBUG=False')
 
 _load_env_file()
@@ -48,12 +71,27 @@ if not DEBUG and len(JWT_SIGNING_KEY) < 32:
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'testserver'])
 TWOGIS_API_KEY = env('TWOGIS_API_KEY', default='')
+CSRF_TRUSTED_ORIGINS = env.list(
+    'CSRF_TRUSTED_ORIGINS',
+    default=[
+        'http://localhost:3000',
+        'http://localhost:5000',
+        'http://localhost:5173',
+        'http://localhost:5175',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5175',
+        'https://kezdes.kz',
+        'https://www.kezdes.kz',
+    ],
+)
+ENABLE_API_DOCS = env.bool('ENABLE_API_DOCS', default=DEBUG)
 
 ADMIN_URL = env('ADMIN_URL', default='secure-super-admin-9481')
 ALLOW_ADMIN_IPS = env.list('ALLOW_ADMIN_IPS', default=[])
+TRUSTED_PROXY_IPS = env.list('TRUSTED_PROXY_IPS', default=[])
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'core.admin_config.KezdesAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -112,9 +150,9 @@ DATABASES = {
 }
 
 ASGI_APPLICATION = 'config.asgi.application'
-
-IS_TESTING = "test" in sys.argv or "pytest" in sys.modules or os.environ.get("TEST_ENV") == "true"
 REDIS_URL = env("REDIS_URL", default=None)
+if not DEBUG and not REDIS_URL:
+    raise ValueError('REDIS_URL is required when DEBUG=False')
 
 if IS_TESTING or DEBUG:
     CACHES = {
@@ -128,21 +166,29 @@ if IS_TESTING or DEBUG:
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         }
     }
+    CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=REDIS_URL or "redis://127.0.0.1:6379/0")
 else:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": REDIS_URL or "redis://127.0.0.1:6379/1",
+            "LOCATION": REDIS_URL,
         }
     }
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
-                'hosts': [REDIS_URL or 'redis://127.0.0.1:6379/0'],
+                'hosts': [REDIS_URL],
             },
         }
     }
+    CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=REDIS_URL)
+    if not CELERY_BROKER_URL:
+        raise ValueError('CELERY_BROKER_URL is required when DEBUG=False')
+CELERY_BEAT_SCHEDULER = env(
+    'CELERY_BEAT_SCHEDULER',
+    default='django_celery_beat.schedulers:DatabaseScheduler',
+)
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
@@ -167,9 +213,14 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'same-origin'
+
+USE_X_FORWARDED_HOST = env.bool('USE_X_FORWARDED_HOST', default=not DEBUG)
+if env.bool('USE_X_FORWARDED_PROTO', default=not DEBUG):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 LANGUAGE_CODE = 'ru-ru'
-TIME_ZONE = 'UTC'
+TIME_ZONE = env('TIME_ZONE', default='Asia/Almaty')
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
@@ -240,7 +291,9 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    # NOTE: BLACKLIST_AFTER_ROTATION requires the token blacklist app + DB migrations.
+    # In this repo it may not be installed in all environments, so we default to stability.
+    'BLACKLIST_AFTER_ROTATION': 'rest_framework_simplejwt.token_blacklist' in INSTALLED_APPS,
     'UPDATE_LAST_LOGIN': True,
     'SIGNING_KEY': JWT_SIGNING_KEY,
 }

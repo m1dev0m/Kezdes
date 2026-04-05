@@ -2,10 +2,26 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from django.contrib.auth.models import User
 from restaurants.models import RestaurantRequest
 
 
 class SetupRestaurantFlowTests(APITestCase):
+    def test_owner_like_registration_stays_pending_until_approval(self):
+        register_payload = {
+            "username": "pending_owner_user",
+            "email": "pending_owner_user@test.local",
+            "password": "Str0ng!Pass#2026",
+            "password2": "Str0ng!Pass#2026",
+            "role": "restaurant_admin",
+        }
+
+        reg = self.client.post(reverse("register"), register_payload, format="json")
+
+        self.assertEqual(reg.status_code, status.HTTP_201_CREATED, reg.data)
+        user = User.objects.get(username="pending_owner_user")
+        self.assertEqual(user.profile.role, "pending")
+
     def test_two_step_restaurant_onboarding_flow(self):
         register_payload = {
             "username": "rest_setup_user",
@@ -27,6 +43,7 @@ class SetupRestaurantFlowTests(APITestCase):
 
         me_before = self.client.get(reverse("user_me"))
         self.assertEqual(me_before.status_code, status.HTTP_200_OK)
+        self.assertEqual(me_before.data.get("role"), "pending")
         self.assertFalse(me_before.data.get("restaurant_verified", True))
         self.assertTrue(me_before.data.get("restaurant_setup_required", False))
 
@@ -45,5 +62,6 @@ class SetupRestaurantFlowTests(APITestCase):
 
         me_after = self.client.get(reverse("user_me"))
         self.assertEqual(me_after.status_code, status.HTTP_200_OK)
+        self.assertEqual(me_after.data.get("role"), "pending")
         self.assertFalse(me_after.data.get("restaurant_verified", True))
         self.assertFalse(me_after.data.get("restaurant_setup_required", True))

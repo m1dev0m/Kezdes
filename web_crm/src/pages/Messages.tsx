@@ -71,6 +71,7 @@ export default function MessagesPage() {
     const fetchSeqRef = useRef(0);
     const appliedInitialSelectionRef = useRef(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [startingDirectThread, setStartingDirectThread] = useState(false);
 
     const fetchAll = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
         try {
@@ -193,13 +194,47 @@ export default function MessagesPage() {
                 return;
             }
 
-            if (conv.restaurant) {
-                await api.post('/chat/messages/mark_read/', { restaurant: conv.restaurant });
-            }
+            await api.post('/chat/messages/mark_read/', { conversation: conv.targetId });
         } catch {
             // Marking read is best-effort; the chat must remain usable even if the badge update fails.
         }
     }, []);
+
+    const handleStartDirectThread = useCallback(async () => {
+        if (!selectedConv?.booking) return;
+        setStartingDirectThread(true);
+        try {
+            const response = await api.post('/chat/conversations/start/', { booking_id: selectedConv.booking.id });
+            const conversationData = response.data as {
+                id: number;
+                guest_name?: string;
+                restaurant?: number | null;
+                last_message?: { content?: string; timestamp?: string };
+                updated_at?: string;
+            };
+            const nextConversation: Conversation = {
+                id: `c-${conversationData.id}`,
+                type: 'direct',
+                targetId: conversationData.id,
+                title: conversationData.guest_name || selectedConv.title || 'Guest',
+                subtitle: 'Прямая связь',
+                lastMessage: conversationData.last_message?.content,
+                timestamp: conversationData.last_message?.timestamp || conversationData.updated_at || new Date().toISOString(),
+                guestName: conversationData.guest_name || selectedConv.guestName,
+                restaurant: conversationData.restaurant ?? selectedConv.restaurant ?? null,
+            };
+            setConversations((current) => {
+                const withoutDuplicate = current.filter((conversation) => conversation.id !== nextConversation.id);
+                return [nextConversation, ...withoutDuplicate];
+            });
+            setSelectedConv(nextConversation);
+            toast.success('Открыт прямой диалог.');
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Не удалось открыть прямой диалог.'));
+        } finally {
+            setStartingDirectThread(false);
+        }
+    }, [selectedConv]);
 
     useEffect(() => {
         if (selectedConv) {
@@ -427,8 +462,18 @@ export default function MessagesPage() {
                                     onClick={() => navigate(`/app/bookings?id=${selectedConv.booking?.id}`)}
                                     className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
                                 >
-                                    Open booking
+                                    Открыть бронь
                                 </button>
+                                {hasRestaurantRole ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleStartDirectThread()}
+                                        disabled={startingDirectThread}
+                                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+                                    >
+                                        {startingDirectThread ? 'ОТКРЫВАЕМ...' : 'ПРЯМОЙ ДИАЛОГ'}
+                                    </button>
+                                ) : null}
 
                                 {hasRestaurantRole && selectedConv.booking.status === 'pending' && (
                                     <div className="flex items-center gap-1.5 ml-2">

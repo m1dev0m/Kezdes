@@ -16,7 +16,7 @@ from rest_framework import status
 
 from .models import Booking, ReservationHistory, WaitlistEntry
 from .services import BookingService, WaitlistService
-from restaurants.models import Restaurant, Table, OpeningHours
+from restaurants.models import Restaurant, Table, OpeningHours, Availability
 
 
 def _tomorrow():
@@ -120,6 +120,24 @@ class BookingModelTests(TestCase):
         self.assertTrue(booking.is_active)
         booking.status = Booking.CANCELLED_BY_USER
         self.assertFalse(booking.is_active)
+
+    def test_deleting_restaurant_with_bookings_does_not_recreate_availability(self):
+        booking_date = _tomorrow()
+        Booking.objects.create(
+            user=self.user,
+            restaurant=self.restaurant,
+            table=self.table,
+            date=booking_date,
+            time=time(19, 0),
+            guests=2,
+            status=Booking.PENDING,
+        )
+
+        restaurant_id = self.restaurant.id
+        self.restaurant.delete()
+
+        self.assertFalse(Restaurant.objects.filter(id=restaurant_id).exists())
+        self.assertFalse(Availability.objects.filter(restaurant_id=restaurant_id).exists())
 
 
 class BookingServiceTests(TestCase):
@@ -825,7 +843,8 @@ class BookingContractReliabilityTests(TestCase):
 
         Table.objects.create(restaurant=self.restaurant, number="R1", seats=4, is_active=True)
 
-    def test_create_manual_requires_explicit_guest_contact(self):
+    def test_create_manual_allows_walkin_without_guest_contact(self):
+        """Walk-in bookings without user_name/user_phone are allowed (anonymous walk-ins)."""
         self.client.force_authenticate(user=self.owner)
         response = self.client.post(
             "/api/v1/bookings/create_manual/",
@@ -834,14 +853,11 @@ class BookingContractReliabilityTests(TestCase):
                 "date": str(_tomorrow()),
                 "time": "18:30",
                 "guests": 2,
-                # no user_name/user_phone
+                # no user_name/user_phone — valid for anonymous walk-in
             },
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        errors = response.data.get("errors", {})
-        self.assertIn("user_name", errors)
-        self.assertIn("user_phone", errors)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_available_slots_returns_stable_shape(self):
         self.client.force_authenticate(user=self.customer)

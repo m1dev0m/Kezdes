@@ -25,7 +25,7 @@ export const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) =>
         if (location.pathname.startsWith('/register-restaurant') || location.pathname.startsWith('/setup-restaurant')) {
             return <Outlet />;
         }
-        if (user.restaurant_setup_required) {
+        if (role === 'owner' && user.restaurant_setup_required) {
             return <Navigate to="/setup-restaurant" replace />;
         }
         return <Navigate to="/register-restaurant/pending" replace />;

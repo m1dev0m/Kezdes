@@ -296,17 +296,12 @@ class AdminBookingSerializer(serializers.ModelSerializer):
                 {"duration_minutes": "Длительность должна быть от 15 до 480 минут (8 часов)."}
             )
 
-        # Manual bookings must include explicit guest contact details.
-        # Prevents creating unreachable reservations via implicit defaults.
-        user_name = (attrs.get('user_name') or '').strip()
-        user_phone = (attrs.get('user_phone') or '').strip()
-        errors = {}
-        if not user_name:
-            errors['user_name'] = "Укажите имя гостя для ручного бронирования."
-        if not user_phone:
-            errors['user_phone'] = "Укажите телефон гостя для ручного бронирования."
-        if errors:
-            raise serializers.ValidationError(errors)
+        # user_name and user_phone are optional for walk-in bookings
+        # (e.g. admin creates a booking for an anonymous walk-in guest)
+        if 'user_name' in attrs and attrs['user_name']:
+            attrs['user_name'] = attrs['user_name'].strip()
+        if 'user_phone' in attrs and attrs['user_phone']:
+            attrs['user_phone'] = attrs['user_phone'].strip()
 
         from .services import BookingService
         if not BookingService.is_within_operating_hours(restaurant, booking_date, start_time, duration):
