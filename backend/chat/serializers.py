@@ -11,6 +11,14 @@ class ConversationSerializer(serializers.ModelSerializer):
         fields = ['id', 'restaurant', 'restaurant_name', 'guest', 'guest_name', 'last_message', 'updated_at']
 
     def get_last_message(self, obj):
+        annotated_content = getattr(obj, 'last_message_content', None)
+        if annotated_content is not None:
+            return {
+                'content': annotated_content,
+                'timestamp': getattr(obj, 'last_message_timestamp', None),
+                'sender': getattr(obj, 'last_message_sender_id', None),
+                'is_read': getattr(obj, 'last_message_is_read', None),
+            }
         last = obj.messages.order_by('-timestamp').first()
         if last:
             return {

@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from django.contrib.auth.models import User
+from core.models import Profile
 from restaurants.models import RestaurantRequest
 
 
@@ -65,3 +66,23 @@ class SetupRestaurantFlowTests(APITestCase):
         self.assertEqual(me_after.data.get("role"), "pending")
         self.assertFalse(me_after.data.get("restaurant_verified", True))
         self.assertFalse(me_after.data.get("restaurant_setup_required", True))
+
+    def test_setup_restaurant_with_missing_profile_is_handled(self):
+        user = User.objects.create_user(
+            username="no_profile_setup",
+            email="no_profile_setup@test.local",
+            password="Str0ng!Pass#2026",
+        )
+        Profile.objects.filter(user=user).delete()
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(
+            reverse("setup_restaurant"),
+            {
+                "restaurant_name": "No Profile Restaurant",
+                "city": "Алматы",
+                "address": "Абая 2",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

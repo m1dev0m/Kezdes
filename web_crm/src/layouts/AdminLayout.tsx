@@ -52,7 +52,7 @@ const NAV: NavSection[] = [
       { path: '/app/bookings', label: 'Бронирования', icon: CalendarDays },
       { path: '/app/floor', label: 'Схема зала', icon: LayoutGrid },
       { path: '/app/tables', label: 'Столы', icon: Table2 },
-      { path: '/app/waitlist', label: 'Waitlist', icon: ListOrdered },
+      { path: '/app/waitlist', label: 'Лист ожидания', icon: ListOrdered },
       { path: '/app/calendar', label: 'Календарь', icon: CalendarDays },
       { path: '/app/messages', label: 'Сообщения', icon: MessageSquare },
       { path: '/app/orders', label: 'Заказы', icon: ShoppingBag },
@@ -75,7 +75,7 @@ const HEADER_META: HeaderMeta[] = [
   { match: '/app/bookings', title: 'Бронирования', description: 'Живая очередь подтверждений, посадки и завершения визита', icon: CalendarDays },
   { match: '/app/floor', title: 'Схема зала', description: 'Операционный центр для столов, посадки и статусов в реальном времени', icon: LayoutGrid },
   { match: '/app/tables', title: 'Столы', description: 'Создание, редактирование и управление столами ресторана', icon: Table2 },
-  { match: '/app/waitlist', title: 'Waitlist', description: 'Лист ожидания, обратные звонки и перевод в бронь', icon: ListOrdered },
+  { match: '/app/waitlist', title: 'Лист ожидания', description: 'Лист ожидания, обратные звонки и перевод в бронь', icon: ListOrdered },
   { match: '/app/calendar', title: 'Календарь', description: 'Тот же инвентарь броней, но в формате таймлайна по дням', icon: CalendarDays },
   { match: '/app/messages', title: 'Сообщения', description: 'Диалоги с гостями, связанные с бронями и сервисом', icon: MessageSquare },
   { match: '/app/orders', title: 'Заказы', description: 'Предзаказы и подтверждённые чеки, привязанные к сервису ресторана', icon: ShoppingBag },
@@ -121,10 +121,17 @@ export default function AdminLayout() {
     if (!name) return 'U';
     return name.charAt(0).toUpperCase();
   };
+  const mobileNavItems = [
+    { path: '/app/dashboard', label: 'Панель', icon: LayoutDashboard },
+    { path: '/app/bookings', label: 'Брони', icon: CalendarDays },
+    { path: '/app/floor', label: 'Зал', icon: LayoutGrid },
+    { path: '/app/waitlist', label: 'Очередь', icon: ListOrdered },
+    { path: '/app/messages', label: 'Чат', icon: MessageSquare },
+  ];
 
   return (
-    <div className="flex h-[100dvh] bg-[#f3f6fa] font-inter text-slate-900 overflow-hidden">
-      <aside className="w-[244px] shrink-0 border-r border-slate-200 bg-[#f8fafc] flex flex-col h-full">
+    <div className="flex h-[100dvh] flex-col bg-[#f3f6fa] font-inter text-slate-900 overflow-hidden lg:flex-row">
+      <aside className="hidden h-full w-[244px] shrink-0 flex-col border-r border-slate-200 bg-[#f8fafc] lg:flex">
         <div className="h-[72px] px-8 flex items-center border-b border-slate-200">
           <Link to="/app/dashboard" className="transition-transform active:scale-95">
             <Logo variant="admin" className="h-7" />
@@ -204,20 +211,21 @@ export default function AdminLayout() {
       </aside>
 
       <main className="min-w-0 flex-1 flex flex-col overflow-hidden">
-        <header className="h-[72px] shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-md px-6 lg:px-10 flex items-center justify-between z-40">
-          <div className="flex items-center gap-3">
+        <header className="shrink-0 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur-md sm:px-6 lg:h-[72px] lg:px-10 lg:py-0 flex flex-col gap-3 justify-center z-40">
+          <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700">
               <HeaderIcon size={18} />
             </div>
-            <div>
-              <span className="text-sm font-semibold text-slate-900 uppercase tracking-widest">{headerMeta.title}</span>
-              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-[0.18em]">
+            <div className="min-w-0">
+              <span className="block truncate text-sm font-semibold uppercase tracking-widest text-slate-900">{headerMeta.title}</span>
+              <p className="hidden text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500 sm:block">
                 {headerMeta.description}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {summary ? (
               <button
                 type="button"
@@ -235,20 +243,21 @@ export default function AdminLayout() {
               type="button"
               onClick={() => navigate('/app/bookings/new')}
               aria-label="admin-header-new-booking"
-              className="hidden sm:inline-flex h-10 items-center gap-2 rounded-xl bg-[#1d4ed8] px-4 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-[#1e40af]"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1d4ed8] px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#1e40af] sm:px-4 sm:text-xs"
             >
               <Plus size={14} />
-              Новая бронь
+              <span className="hidden sm:inline">Новая бронь</span>
+              <span className="sm:hidden">Новая</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/app/calendar')}
               aria-label="admin-header-open-calendar"
-              className="p-2 text-slate-400 hover:text-slate-900 transition-colors"
+              className="p-2 text-slate-400 transition-colors hover:text-slate-900"
             >
               <CalendarDays size={20} />
             </button>
-            <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+            <div className="mx-1 hidden h-4 w-[1px] bg-slate-200 sm:block" />
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right hidden sm:block">
                 <div className="text-xs font-bold text-slate-900 leading-none">{user?.username}</div>
@@ -259,14 +268,53 @@ export default function AdminLayout() {
               </div>
             </div>
           </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar lg:hidden">
+            {mobileNavItems.map((item) => {
+              const active = isActive(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                    active ? 'bg-blue-50 text-blue-700' : 'border border-slate-200 bg-white text-slate-600'
+                  }`}
+                >
+                  <item.icon size={14} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar lg:px-10">
+        <div className="flex-1 overflow-y-auto px-4 py-5 custom-scrollbar sm:px-6 lg:px-10 lg:py-8 pb-24 lg:pb-8">
           <div className="mx-auto w-full max-w-[1240px]">
             <Outlet />
           </div>
         </div>
       </main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-xl grid-cols-5 gap-1">
+          {mobileNavItems.map((item) => {
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
+                  active ? 'bg-blue-50 text-blue-700' : 'text-slate-500'
+                }`}
+              >
+                <item.icon size={18} />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

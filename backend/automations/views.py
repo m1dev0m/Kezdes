@@ -9,6 +9,7 @@ class AutomationLogViewSet(viewsets.ReadOnlyModelViewSet):
     required_feature = "automations"
 
     def get_queryset(self):
+        from core.utils import get_user_restaurant
         return AutomationLog.objects.filter(
-            restaurant=self.request.user.profile.restaurant
+            restaurant=get_user_restaurant(self.request.user)
         ).select_related('restaurant')

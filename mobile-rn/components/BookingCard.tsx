@@ -14,20 +14,23 @@ const statusMap = {
 
 interface BookingCardProps {
     booking: any;
+    isTablet?: boolean;
     onAction: (id: string | number, action: 'confirm' | 'reject') => void;
+    onSeat: (id: string | number) => void;
     onPatchStatus: (id: string | number, status: 'no_show' | 'complete') => void;
     onChat: (id: string | number, name: string) => void;
     onEdit: (id: string | number) => void;
     onDetails: (id: string | number) => void;
 }
 
-const BookingCard = memo(({ booking: b, onAction, onPatchStatus, onChat, onEdit, onDetails }: BookingCardProps) => {
+const BookingCard = memo(({ booking: b, isTablet = false, onAction, onSeat, onPatchStatus, onChat, onEdit, onDetails }: BookingCardProps) => {
     const status = statusMap[b.status as keyof typeof statusMap] || statusMap.pending;
     const isPending = b.status === 'pending';
     const isActive = b.status === 'approved' || b.status === 'confirmed';
+    const isSeated = b.status === 'seated';
 
     return (
-        <View style={styles.card}>
+        <View style={[styles.card, isTablet && styles.cardTablet]}>
             <View style={styles.cardHeader}>
                 <Text style={styles.timeLabel}>{b.time ? b.time.substring(0, 5) : '--:--'} • СЕГОДНЯ</Text>
                 <View style={[styles.statusBadge, { backgroundColor: status.bg, borderColor: status.border }]}>
@@ -74,7 +77,7 @@ const BookingCard = memo(({ booking: b, onAction, onPatchStatus, onChat, onEdit,
                 )}
             </View>
 
-            <View style={styles.actions}>
+            <View style={[styles.actions, isTablet && styles.actionsTablet]}>
                 {isPending ? (
                     <>
                         <TouchableOpacity style={styles.btnOutline} onPress={() => onAction(b.id, 'reject')}>
@@ -88,6 +91,15 @@ const BookingCard = memo(({ booking: b, onAction, onPatchStatus, onChat, onEdit,
                     <>
                         <TouchableOpacity style={styles.btnOutline} onPress={() => onPatchStatus(b.id, 'no_show')}>
                             <Text style={styles.btnOutlineText}>No-show</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.btnPrimary} onPress={() => onSeat(b.id)}>
+                            <Text style={styles.btnPrimaryText}>Посадить</Text>
+                        </TouchableOpacity>
+                    </>
+                ) : isSeated ? (
+                    <>
+                        <TouchableOpacity style={styles.btnOutline} onPress={() => onChat(b.id, b.user_name || b.customer_name)}>
+                            <Text style={styles.btnOutlineText}>Чат</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.btnPrimary} onPress={() => onPatchStatus(b.id, 'complete')}>
                             <Text style={styles.btnPrimaryText}>Завершить</Text>
@@ -123,6 +135,10 @@ const styles = StyleSheet.create({
         elevation: 3,
         borderWidth: 1,
         borderColor: '#f1f5f9',
+    },
+    cardTablet: {
+        minHeight: 250,
+        padding: 20,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -218,6 +234,9 @@ const styles = StyleSheet.create({
     actions: {
         flexDirection: 'row',
         gap: 12,
+    },
+    actionsTablet: {
+        marginTop: 'auto',
     },
     btnOutline: {
         flex: 1,

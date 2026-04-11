@@ -130,7 +130,7 @@ function getReservationAccentClass(status: string) {
 
 export default function Bookings() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reservations, setReservations] = useState<ReservationRecord[]>([]);
   const [selectedReservationId, setSelectedReservationId] = useState<number | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilterMode>('today');
@@ -155,6 +155,38 @@ export default function Bookings() {
   const hasDeepLink = Boolean(searchParams.get('id'));
   const useFullDataset = hasSearch || hasDeepLink;
   const hasActiveFilters = hasSearch || timeFilter !== 'today' || statusFilter !== 'all';
+  const effectiveTimeFilter = statusFilter === 'pending' ? 'all' : timeFilter;
+
+  const syncSearchParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const next = new URLSearchParams(searchParams);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (!value) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      });
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const openManualBooking = useCallback(() => {
+    setManualBookingOpen(true);
+    syncSearchParams({ new: '1' });
+  }, [syncSearchParams]);
+
+  const closeManualBooking = useCallback(() => {
+    setManualBookingOpen(false);
+    syncSearchParams({ new: null });
+  }, [syncSearchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setManualBookingOpen(true);
+    }
+  }, [searchParams]);
 
   const parseReservationsResponse = useCallback((payload: unknown) => {
     if (Array.isArray(payload)) {
@@ -185,7 +217,7 @@ export default function Bookings() {
     setRefreshing(true);
 
     try {
-      const serverFilters = buildTimeFilterParams(timeFilter);
+      const serverFilters = buildTimeFilterParams(effectiveTimeFilter);
       const statusQuery = getStatusFilterQuery(statusFilter);
       const pageSize = useFullDataset ? SEARCH_PAGE_SIZE : PAGE_SIZE;
       const fetchPage = async (pageNumber: number) => {
@@ -258,7 +290,7 @@ export default function Bookings() {
         setRefreshing(false);
       }
     }
-  }, [parseReservationsResponse, searchParams, statusFilter, timeFilter, useFullDataset]);
+  }, [effectiveTimeFilter, parseReservationsResponse, searchParams, statusFilter, useFullDataset]);
   useEffect(() => {
     void loadReservations(currentPage);
     const intervalId = window.setInterval(() => {
@@ -295,9 +327,9 @@ export default function Bookings() {
       })
       .filter((reservation) => {
         if (reservation.id === deepLinkedReservationId) return true;
-        if (timeFilter === 'all') return true;
-        if (timeFilter === 'today') return reservation.date === today;
-        if (timeFilter === 'upcoming') return getReservationDateTime(reservation.date, reservation.time) >= now;
+        if (effectiveTimeFilter === 'all') return true;
+        if (effectiveTimeFilter === 'today') return reservation.date === today;
+        if (effectiveTimeFilter === 'upcoming') return getReservationDateTime(reservation.date, reservation.time) >= now;
 
         const slot = getReservationDateTime(reservation.date, reservation.time);
         const diffMinutes = (slot.getTime() - now.getTime()) / 60000;
@@ -314,14 +346,14 @@ export default function Bookings() {
           String(reservation.id).includes(searchValue)
         );
       });
-  }, [reservations, search, statusFilter, timeFilter]);
+  }, [effectiveTimeFilter, reservations, search, statusFilter]);
 
   const statusCards = useMemo(
     () => [
       {
         key: 'pending' as const,
         label: 'Ожидание',
-        description: 'Новые заявки и лист ожидания',
+        description: 'Новые заявки на подтверждение',
         count: reservations.filter((reservation) => normalizeStatus(reservation.status) === 'pending').length,
       },
       {
@@ -593,17 +625,17 @@ export default function Bookings() {
     <div className="flex h-full flex-col">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Reservations</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Бронирования</h1>
           <p className="mt-2 text-sm text-slate-600">Подтверждение, посадка и завершение брони без перезагрузки страницы.</p>
         </div>
         <button
           type="button"
-          onClick={() => setManualBookingOpen(true)}
+          onClick={openManualBooking}
           aria-label="reservations-manual-create"
           className="inline-flex items-center gap-2 rounded-2xl bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
         >
           <Plus size={16} />
-          New booking
+          Новая бронь
         </button>
       </div>
 
@@ -860,12 +892,10 @@ export default function Bookings() {
                                 reservation={reservation}
                                 busy={isBusy}
                                 onConfirm={() => void handleConfirm(reservation)}
-                                onAssignTable={() => void handleAssignTable(reservation)}
                                 onSeat={() => void handleSeat(reservation)}
                                 onCancel={() => void handleCancel(reservation)}
                                 onComplete={() => void handleComplete(reservation)}
                                 onNoShow={() => void handleNoShow(reservation)}
-                                onMessage={() => handleMessageGuest(reservation)}
                               />
                             </div>
                           </td>
@@ -946,14 +976,14 @@ export default function Bookings() {
 
                 <div className="space-y-8">
                   <section>
-                    <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Reservation info</p>
+                    <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Информация о брони</p>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                      <DetailItem label="Date & time" value={getDateTimeLabel(selectedReservation.date, selectedReservation.time)} />
-                      <DetailItem label="Guests" value={`${selectedReservation.guests}`} />
-                      <DetailItem label="Table" value={getTableLabel(selectedReservation)} />
-                      <DetailItem label="Status" value={getStatusSummary(selectedReservation.status)} />
+                      <DetailItem label="Дата и время" value={getDateTimeLabel(selectedReservation.date, selectedReservation.time)} />
+                      <DetailItem label="Гости" value={`${selectedReservation.guests}`} />
+                      <DetailItem label="Стол" value={getTableLabel(selectedReservation)} />
+                      <DetailItem label="Статус" value={getStatusSummary(selectedReservation.status)} />
                       <DetailItem label="Тип" value={getStatusTypeMeta(selectedReservation.status).label} />
-                      <DetailItem label="Channel" value={getReservationSourceLabel(selectedReservation.source)} />
+                      <DetailItem label="Канал" value={getReservationSourceLabel(selectedReservation.source)} />
                     </div>
                   </section>
 
@@ -978,7 +1008,7 @@ export default function Bookings() {
 
                   {['pending', 'approved', 'confirmed'].includes(selectedReservation.status) ? (
                     <section>
-                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Smart seating</p>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Подбор стола</p>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                         {smartTablesLoading ? (
                           <div className="text-sm text-slate-500">Подбираем лучший стол...</div>
@@ -1008,16 +1038,27 @@ export default function Bookings() {
 
                   {selectedReservation.special_requests ? (
                     <section>
-                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Notes</p>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Комментарий</p>
                       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
                         {selectedReservation.special_requests}
                       </div>
                     </section>
                   ) : null}
 
+                  {['approved', 'confirmed'].includes(selectedReservation.status) ? (
+                    <section>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Следующий шаг</p>
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900">
+                        {selectedReservation.table_id
+                          ? 'Стол уже назначен. Теперь можно быстро посадить гостя.'
+                          : 'Сначала назначьте стол, если хотите контролировать посадку по схеме зала.'}
+                      </div>
+                    </section>
+                  ) : null}
+
                   {selectedReservation.history && selectedReservation.history.length > 0 ? (
                     <section>
-                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Timeline</p>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">История</p>
                       <div className="space-y-4">
                         {selectedReservation.history.slice(0, 4).map((entry) => (
                           <div key={entry.id} className="flex gap-3">
@@ -1051,7 +1092,7 @@ export default function Bookings() {
                     aria-label={`reservation-confirm-selected-${selectedReservation.id}`}
                     className="rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                   >
-                    Confirm
+                    Подтвердить
                   </button>
                 ) : null}
 
@@ -1063,7 +1104,7 @@ export default function Bookings() {
                     aria-label={`reservation-assign-table-${selectedReservation.id}`}
                     className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                   >
-                    {selectedReservation.table_id ? 'Move table' : 'Assign table'}
+                    {selectedReservation.table_id ? 'Пересадить' : 'Назначить стол'}
                   </button>
                 ) : null}
 
@@ -1075,7 +1116,7 @@ export default function Bookings() {
                     aria-label={`reservation-seat-selected-${selectedReservation.id}`}
                     className="rounded-xl bg-[#1d4ed8] py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
                   >
-                    Seat guest
+                    Посадить гостя
                   </button>
                 ) : null}
 
@@ -1087,7 +1128,7 @@ export default function Bookings() {
                     aria-label={`reservation-no-show-${selectedReservation.id}`}
                     className="rounded-xl border border-amber-200 bg-white py-3 text-sm font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-50"
                   >
-                    No show
+                    Неявка
                   </button>
                 ) : null}
 
@@ -1099,7 +1140,7 @@ export default function Bookings() {
                     aria-label={`reservation-cancel-selected-${selectedReservation.id}`}
                     className="rounded-xl border border-rose-200 bg-white py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
                   >
-                    Cancel
+                    Отменить
                   </button>
                 ) : null}
 
@@ -1111,7 +1152,7 @@ export default function Bookings() {
                     aria-label={`reservation-complete-selected-${selectedReservation.id}`}
                     className="col-span-2 rounded-xl bg-[#1d4ed8] py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
                   >
-                    Complete service
+                    Завершить визит
                   </button>
                 ) : null}
               </div>
@@ -1122,11 +1163,11 @@ export default function Bookings() {
               <p className="text-sm">Выберите бронь, чтобы увидеть детали и быстрые действия.</p>
               <button
                 type="button"
-                onClick={() => setManualBookingOpen(true)}
+                onClick={openManualBooking}
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
               >
                 <Plus size={14} />
-                Create manual booking
+                Создать бронь
               </button>
             </div>
           )}
@@ -1148,9 +1189,9 @@ export default function Bookings() {
 
       <ManualBookingForm
         isOpen={manualBookingOpen}
-        onClose={() => setManualBookingOpen(false)}
+        onClose={closeManualBooking}
         onSuccess={() => {
-          setManualBookingOpen(false);
+          closeManualBooking();
           void loadReservations(currentPage);
         }}
       />
@@ -1165,6 +1206,7 @@ function ActionIcon({
   disabled,
   onClick,
   icon,
+  withText = false,
 }: {
   label: string;
   title: string;
@@ -1172,6 +1214,7 @@ function ActionIcon({
   disabled: boolean;
   onClick: () => void;
   icon: string;
+  withText?: boolean;
 }) {
   const toneClass =
     tone === 'emerald'
@@ -1187,11 +1230,14 @@ function ActionIcon({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`rounded-lg p-2 transition ${toneClass} disabled:opacity-50`}
+      className={`inline-flex items-center gap-2 rounded-lg transition disabled:opacity-50 ${
+        withText ? `px-3 py-2 text-xs font-semibold uppercase tracking-wide ${toneClass}` : `p-2 ${toneClass}`
+      }`}
       title={title}
       disabled={disabled}
     >
       <span className="material-symbols-outlined text-[18px]">{icon}</span>
+      {withText ? <span>{title}</span> : null}
     </button>
   );
 }
@@ -1200,52 +1246,35 @@ function ReservationActions({
   reservation,
   busy,
   onConfirm,
-  onAssignTable,
   onSeat,
   onCancel,
   onComplete,
   onNoShow,
-  onMessage,
 }: {
   reservation: ReservationRecord;
   busy: boolean;
   onConfirm: () => void;
-  onAssignTable: () => void;
   onSeat: () => void;
   onCancel: () => void;
   onComplete: () => void;
   onNoShow: () => void;
-  onMessage: () => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center justify-end gap-1.5">
       {reservation.status === 'pending' ? (
-        <ActionIcon label={`reservation-confirm-${reservation.id}`} title="Confirm" tone="emerald" disabled={busy} onClick={onConfirm} icon="check" />
-      ) : null}
-      {['approved', 'confirmed', 'seated'].includes(reservation.status) ? (
-        <ActionIcon
-          label={`reservation-assign-table-${reservation.id}`}
-          title={reservation.table_id ? 'Move table' : 'Assign table'}
-          tone="slate"
-          disabled={busy}
-          onClick={onAssignTable}
-          icon="table_restaurant"
-        />
+        <>
+          <ActionIcon label={`reservation-confirm-${reservation.id}`} title="Подтвердить" tone="emerald" disabled={busy} onClick={onConfirm} icon="check" withText />
+          <ActionIcon label={`reservation-cancel-${reservation.id}`} title="Отменить" tone="rose" disabled={busy} onClick={onCancel} icon="close" />
+        </>
       ) : null}
       {['approved', 'confirmed'].includes(reservation.status) ? (
-        <ActionIcon label={`reservation-seat-${reservation.id}`} title="Seat guest" tone="blue" disabled={busy} onClick={onSeat} icon="chair" />
-      ) : null}
-      {['pending', 'approved', 'confirmed'].includes(reservation.status) ? (
-        <ActionIcon label={`reservation-cancel-${reservation.id}`} title="Cancel" tone="rose" disabled={busy} onClick={onCancel} icon="close" />
+        <>
+          <ActionIcon label={`reservation-seat-${reservation.id}`} title="Посадить" tone="blue" disabled={busy} onClick={onSeat} icon="chair" withText />
+          <ActionIcon label={`reservation-no-show-${reservation.id}`} title="Неявка" tone="slate" disabled={busy} onClick={onNoShow} icon="person_off" />
+        </>
       ) : null}
       {reservation.status === 'seated' ? (
-        <ActionIcon label={`reservation-complete-${reservation.id}`} title="Complete service" tone="emerald" disabled={busy} onClick={onComplete} icon="flag" />
-      ) : null}
-      {['approved', 'confirmed'].includes(reservation.status) ? (
-        <ActionIcon label={`reservation-no-show-${reservation.id}`} title="No show" tone="slate" disabled={busy} onClick={onNoShow} icon="person_off" />
-      ) : null}
-      {reservation.user ? (
-        <ActionIcon label={`reservation-chat-${reservation.id}`} title="Chat with guest" tone="slate" disabled={busy} onClick={onMessage} icon="forum" />
+        <ActionIcon label={`reservation-complete-${reservation.id}`} title="Завершить" tone="blue" disabled={busy} onClick={onComplete} icon="flag" withText />
       ) : null}
     </div>
   );
@@ -1294,7 +1323,7 @@ function TablePicker({
       <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{mode === 'seat' ? 'Choose a table' : 'Assign a table'}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{mode === 'seat' ? 'Выберите стол' : 'Назначьте стол'}</h2>
             <p className="text-sm text-slate-500">
               {getReservationName(reservation)} · {reservation.guests} guests
             </p>
@@ -1336,7 +1365,7 @@ function TablePicker({
                     {getTableLabel(table)}
                   </div>
                   <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {getTableCapacity(table)} seats
+                    {getTableCapacity(table)} мест
                   </div>
                 </button>
               ))}
@@ -1351,7 +1380,7 @@ function TablePicker({
             aria-label="table-picker-cancel"
             className="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-600 transition hover:text-slate-900"
           >
-            Cancel
+            Отмена
           </button>
           <button
             type="button"
@@ -1360,7 +1389,7 @@ function TablePicker({
             aria-label="table-picker-confirm"
             className="rounded-xl bg-[#1d4ed8] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
           >
-            {mode === 'seat' ? 'Seat guest' : 'Save table'}
+            {mode === 'seat' ? 'Посадить гостя' : 'Сохранить стол'}
           </button>
         </div>
       </div>

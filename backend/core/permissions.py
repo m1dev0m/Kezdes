@@ -1,9 +1,8 @@
 from rest_framework import permissions
+from core.utils import get_user_profile
 
 def _get_profile(user):
-    if user and user.is_authenticated and hasattr(user, 'profile'):
-        return user.profile
-    return None
+    return get_user_profile(user)
 
 class IsRestaurantAdmin(permissions.BasePermission):
     """Allows access only to restaurant owners."""

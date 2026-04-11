@@ -21,7 +21,7 @@ from core.permissions import (
     IsRestaurantOrGlobalAdmin,
     IsRestaurantStaff,
 )
-from core.models import Profile
+from core.utils import get_user_profile
 from orders.models import MenuCategory, MenuItem
 from orders.serializers import PublicMenuCategorySerializer, PublicMenuItemSerializer
 from core.responses import api_error
@@ -34,6 +34,7 @@ from .serializers import (
     RestaurantFeatureFlagsSerializer,
     RestaurantInvoiceSerializer,
     RestaurantRequestSerializer,
+    RestaurantListSerializer,
     RestaurantSerializer,
     RestaurantSubscriptionSerializer,
     ReviewSerializer,
@@ -50,11 +51,7 @@ from core.viewsets import OptionalPaginationMixin, TenantModelViewSet
 
 
 class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
-    queryset = Restaurant.objects.select_related("owner").prefetch_related(
-        "operating_hours",
-        "tables",
-        Prefetch("reviews", queryset=Review.objects.select_related("user")),
-    )
+    queryset = Restaurant.objects.select_related("owner")
     serializer_class = RestaurantSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter]
@@ -68,11 +65,15 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
-        queryset = Restaurant.objects.select_related("owner").prefetch_related(
-            "operating_hours",
-            "tables",
-            Prefetch("reviews", queryset=Review.objects.select_related("user")),
-        )
+        if self.action == "list":
+            queryset = Restaurant.objects.select_related("owner")
+        else:
+            queryset = Restaurant.objects.select_related("owner").prefetch_related(
+                "operating_hours",
+                "tables",
+                "availabilities",
+                Prefetch("reviews", queryset=Review.objects.select_related("user")),
+            )
         user = self.request.user
 
         if self.action == "list":
@@ -88,33 +89,51 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if city:
             queryset = queryset.filter(city__icontains=city)
 
-        from django.db.models import Avg, Count
-        queryset = queryset.annotate(
-            priority=Case(
-                When(
-                    is_claimed=True,
-                    owner__isnull=False,
-                    average_price__isnull=False,
-                    capacity__isnull=False,
-                    then=Value(1),
+        if self.action == "list":
+            from django.db.models import Avg, Count
+            queryset = queryset.annotate(
+                priority=Case(
+                    When(
+                        is_claimed=True,
+                        owner__isnull=False,
+                        average_price__isnull=False,
+                        capacity__isnull=False,
+                        then=Value(1),
+                    ),
+                    default=Value(2),
+                    output_field=IntegerField(),
                 ),
-                default=Value(2),
-                output_field=IntegerField(),
-            ),
-            calculated_rating=Avg('reviews__rating'),
-            total_reviews=Count('reviews')
-        ).order_by("priority", "-calculated_rating")
+                calculated_rating=Avg('reviews__rating'),
+                total_reviews=Count('reviews')
+            ).order_by("priority", "-calculated_rating")
 
         return queryset.distinct()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return RestaurantListSerializer
+        return RestaurantSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        if request.query_params.get("no_pagination") == "true":
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         if not instance.is_verified:
             is_owner = request.user.is_authenticated and instance.owner == request.user
+            profile = get_user_profile(request.user) if request.user.is_authenticated else None
             is_global_admin = (
                 request.user.is_authenticated
-                and getattr(request.user, "profile", None)
-                and request.user.profile.role == "global_admin"
+                and bool(profile and profile.role == "global_admin")
             )
             if not is_owner and not is_global_admin:
                 return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
@@ -223,16 +242,17 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 .prefetch_related(
                     "operating_hours",
                     "tables",
+                    "availabilities",
                     Prefetch("reviews", queryset=Review.objects.select_related("user")),
                 )
                 .get(slug=slug)
             )
             if not restaurant.is_verified:
                 is_owner = request.user.is_authenticated and restaurant.owner == request.user
+                profile = get_user_profile(request.user) if request.user.is_authenticated else None
                 is_global_admin = (
                     request.user.is_authenticated
-                    and getattr(request.user, "profile", None)
-                    and request.user.profile.role == "global_admin"
+                    and bool(profile and profile.role == "global_admin")
                 )
                 if not is_owner and not is_global_admin:
                     return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
@@ -256,7 +276,8 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         restaurant = self.get_object()
         if restaurant.is_claimed:
             return api_error("Already claimed", status.HTTP_400_BAD_REQUEST)
-        if getattr(request.user, "profile", None) and request.user.profile.role not in ("restaurant_admin", "restaurant_owner", "owner"):
+        profile = get_user_profile(request.user)
+        if profile and profile.role not in ("restaurant_admin", "restaurant_owner", "owner"):
             return api_error("Only restaurant admins can claim venues", status.HTTP_403_FORBIDDEN)
         restaurant.owner = request.user
         restaurant.is_claimed = True
@@ -270,8 +291,10 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             avail = restaurant.availabilities.all()
             serializer = AvailabilitySerializer(avail, many=True)
             return Response(serializer.data)
-        if restaurant.owner != request.user:
-            return api_error("Not owner", status.HTTP_403_FORBIDDEN)
+        from core.utils import get_user_restaurant
+        user_rest = get_user_restaurant(request.user)
+        if not user_rest or user_rest.id != restaurant.id:
+            return api_error("Not authorized", status.HTTP_403_FORBIDDEN)
         serializer = AvailabilitySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(restaurant=restaurant)
@@ -341,7 +364,7 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _is_global_admin(self, user):
-        profile = getattr(user, 'profile', None)
+        profile = get_user_profile(user)
         return bool(profile and profile.role == 'global_admin')
 
     def get_permissions(self):
@@ -379,9 +402,10 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             return api_error("User with this email already exists. Please log in.", status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.create_user(username=username, email=email, password=password)
-        if hasattr(user, 'profile'):
-            user.profile.role = 'pending'
-            user.profile.save(update_fields=['role'])
+        profile = get_user_profile(user)
+        if profile:
+            profile.role = 'pending'
+            profile.save(update_fields=['role'])
 
         instance = serializer.save(owner=user, admin_username=username)
 
@@ -394,8 +418,9 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         user = self.request.user
-        if user and user.is_authenticated and hasattr(user, 'profile'):
-            context["restaurant"] = getattr(user.profile, "restaurant", None)
+        if user and user.is_authenticated:
+            profile = get_user_profile(user)
+            context["restaurant"] = getattr(profile, "restaurant", None) if profile else None
         else:
             context["restaurant"] = None
         return context
@@ -503,6 +528,29 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
     ordering_fields = ['name', 'capacity', 'created_at']
     ordering = ['name']
 
+    @staticmethod
+    def _build_table_status_maps(active_bookings):
+        table_status_map: dict[int, str] = {}
+        table_booking_map: dict[int, dict] = {}
+
+        for booking in active_bookings:
+            status_val = "occupied" if booking.is_checked_in else "reserved"
+            booking_data = {
+                "id": booking.id,
+                "guest_name": booking.user_name or (booking.user.get_full_name() if booking.user else "Гость"),
+                "guests": booking.guests,
+                "time": str(booking.time),
+                "duration_minutes": booking.duration_minutes,
+            }
+            if booking.table_id:
+                table_status_map[booking.table_id] = status_val
+                table_booking_map[booking.table_id] = booking_data
+            for table in booking.tables.all():
+                table_status_map[table.id] = status_val
+                table_booking_map[table.id] = booking_data
+
+        return table_status_map, table_booking_map
+
     def get_queryset(self):
         user = self.request.user
         from core.utils import get_user_restaurant
@@ -518,6 +566,33 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         if zone_id:
             qs = qs.filter(zone_id=zone_id)
         return qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.action not in {'list', 'status'}:
+            return context
+
+        user = getattr(self.request, 'user', None)
+        from core.utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
+        if not restaurant:
+            return context
+
+        target_dt = timezone.now()
+        active_bookings = (
+            Booking.objects.filter(
+                restaurant=restaurant,
+                status__in=Booking.ACTIVE_STATUSES,
+                start_datetime__lte=target_dt,
+                end_datetime__gt=target_dt,
+            )
+            .select_related('user')
+            .prefetch_related('tables')
+            .distinct()
+        )
+        table_status_map, _ = self._build_table_status_maps(active_bookings)
+        context['table_status_map'] = table_status_map
+        return context
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -662,7 +737,7 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
             raise PermissionDenied("This table does not belong to your restaurant.")
 
     def _can_delete_tables(self, user) -> bool:
-        profile = getattr(user, "profile", None)
+        profile = get_user_profile(user)
         if profile is None:
             return False
         return bool(getattr(profile, "is_owner", False) or getattr(profile, "is_global_admin", False))
@@ -697,7 +772,7 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
     @action(detail=False, methods=["get"])
     def status(self, request):
         # Tenant enforced by get_queryset from TenantModelViewSet
-        tables = self.get_queryset().select_related('restaurant')
+        tables = self.get_queryset()
 
         user = self.request.user
         from core.utils import get_user_restaurant
@@ -726,33 +801,18 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
             status__in=Booking.ACTIVE_STATUSES,
             start_datetime__lte=target_dt,
             end_datetime__gt=target_dt
-        ).prefetch_related('tables')
+        ).select_related('user').prefetch_related('tables')
 
-        table_status_map: dict[int, str] = {}
-        table_booking_map: dict[int, dict] = {}
-        for booking in active_bookings:
-            status_val = "occupied" if booking.is_checked_in else "reserved"
-            booking_data = {
-                "id": booking.id,
-                "guest_name": booking.user_name or (booking.user.get_full_name() if booking.user else "Гость"),
-                "guests": booking.guests,
-                "time": str(booking.time),
-                "duration_minutes": booking.duration_minutes
-            }
-            if booking.table_id:
-                table_status_map[booking.table_id] = status_val
-                table_booking_map[booking.table_id] = booking_data
-            for t in booking.tables.all():
-                table_status_map[t.id] = status_val
-                table_booking_map[t.id] = booking_data
-
-        response_data = []
-        for table in tables:
-            row = TableSerializer(table).data
-            row["status"] = table_status_map.get(table.id, "free")
+        table_status_map, table_booking_map = self._build_table_status_maps(active_bookings)
+        serializer = TableAPISerializer(
+            tables,
+            many=True,
+            context={**self.get_serializer_context(), "table_status_map": table_status_map},
+        )
+        response_data = serializer.data
+        for row in response_data:
             if row["status"] != "free":
-                row["current_booking"] = table_booking_map.get(table.id)
-            response_data.append(row)
+                row["current_booking"] = table_booking_map.get(row["id"])
         return Response(response_data)
 
     @action(detail=True, methods=["patch"])
@@ -771,9 +831,11 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         return Response(TableSerializer(table).data)
 
 
+from core.permissions import CanEditRestaurant
+
 class StaffViewSet(viewsets.ModelViewSet):
     serializer_class = StaffSerializer
-    permission_classes = [permissions.IsAuthenticated, HasRestaurantFeature]
+    permission_classes = [permissions.IsAuthenticated, CanEditRestaurant, HasRestaurantFeature]
     required_feature = "staff_basic"
 
     def get_queryset(self):
@@ -805,8 +867,10 @@ class StaffViewSet(viewsets.ModelViewSet):
             )
             raise ValidationError({"detail": message})
         staff_user = serializer.save()
-        staff_user.profile.restaurant = restaurant
-        staff_user.profile.save()
+        staff_profile = get_user_profile(staff_user)
+        if staff_profile:
+            staff_profile.restaurant = restaurant
+            staff_profile.save()
         log_restaurant_event(
             restaurant,
             actor=user,
@@ -814,7 +878,7 @@ class StaffViewSet(viewsets.ModelViewSet):
             target_type='staff',
             target_id=staff_user.id,
             summary=f"Добавлен сотрудник {staff_user.username}.",
-            payload={'role': staff_user.profile.role},
+            payload={'role': getattr(staff_profile, 'role', None)},
         )
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -839,7 +903,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if not restaurant_id:
             restaurant_id = self.request.data.get('restaurant')
             
-        restaurant = Restaurant.objects.get(id=restaurant_id)
+        try:
+            restaurant = Restaurant.objects.get(id=restaurant_id)
+        except Restaurant.DoesNotExist:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"restaurant": "Invalid restaurant ID."})
 
         booking_id = self.request.data.get('booking_id')
         booking = None
@@ -876,13 +944,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
         user = request.user
         
         is_restaurant_admin = False
-        if hasattr(user, 'profile'):
-            if user.profile.role in ('restaurant_admin', 'restaurant_owner', 'manager') and instance.restaurant.owner == user:
+        profile = get_user_profile(user)
+        if profile:
+            if profile.role in ('restaurant_admin', 'restaurant_owner', 'manager') and instance.restaurant.owner == user:
                 is_restaurant_admin = True
-            elif getattr(user.profile, 'restaurant', None) == instance.restaurant:
+            elif getattr(profile, 'restaurant', None) == instance.restaurant:
                 is_restaurant_admin = True
                 
-        if not is_restaurant_admin and not getattr(user.profile, 'role', '') == 'global_admin':
+        if not is_restaurant_admin and not getattr(profile, 'role', '') == 'global_admin':
             return Response({"detail": "Only restaurant staff can reply to reviews."}, status=status.HTTP_403_FORBIDDEN)
             
         return super().partial_update(request, *args, **kwargs)
@@ -895,13 +964,13 @@ class ZoneViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
             return [permissions.IsAuthenticatedOrReadOnly()]
-        return [permissions.IsAuthenticated(), HasRestaurantFeature()]
+        return [permissions.IsAuthenticated(), CanManageTables(), HasRestaurantFeature()]
 
     def get_queryset(self):
         qs = Zone.objects.all()
         restaurant_id = self.request.query_params.get('restaurant_id')
         user = self.request.user
-        profile = getattr(user, "profile", None) if user and user.is_authenticated else None
+        profile = get_user_profile(user) if user and user.is_authenticated else None
         is_global_admin = bool(profile and profile.role == "global_admin")
 
         if is_global_admin:
@@ -951,9 +1020,13 @@ class ZoneViewSet(viewsets.ModelViewSet):
 
 class FloorMapShapeViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = FloorMapShapeSerializer
-    permission_classes = [permissions.IsAuthenticated, HasRestaurantFeature]
     required_feature = "table_map"
     queryset = FloorMapShape.objects.select_related('restaurant', 'zone')
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated(), HasRestaurantFeature()]
+        return [permissions.IsAuthenticated(), CanManageTables(), HasRestaurantFeature()]
 
     def get_queryset(self):
         user = self.request.user
@@ -999,13 +1072,13 @@ class ShiftViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
             return [permissions.IsAuthenticatedOrReadOnly()]
-        return [permissions.IsAuthenticated(), HasRestaurantFeature()]
+        return [permissions.IsAuthenticated(), CanManageTables(), HasRestaurantFeature()]
 
     def get_queryset(self):
         qs = Shift.objects.all()
         restaurant_id = self.request.query_params.get('restaurant_id')
         user = self.request.user
-        profile = getattr(user, "profile", None) if user and user.is_authenticated else None
+        profile = get_user_profile(user) if user and user.is_authenticated else None
         is_global_admin = bool(profile and profile.role == "global_admin")
 
         if is_global_admin:

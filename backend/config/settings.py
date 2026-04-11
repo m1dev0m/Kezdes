@@ -12,6 +12,7 @@ IS_TESTING = (
     "pytest" in sys.modules
     or os.environ.get("PYTEST_CURRENT_TEST") is not None
     or any("pytest" in arg for arg in sys.argv)
+    or sys.argv[1:2] == ["test"]
     or os.environ.get("TEST_ENV") == "true"
 )
 
@@ -23,7 +24,6 @@ if IS_TESTING:
 
 def _load_env_file():
     env_file_path = os.path.join(BASE_DIR, '.env')
-    _debug = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
     if os.path.exists(env_file_path):
         environ.Env.read_env(env_file_path)
         # django-environ doesn't override existing env vars; some hosting setups export
@@ -53,8 +53,6 @@ def _load_env_file():
                             break
             except OSError:
                 pass
-    elif not _debug and not IS_TESTING:
-        raise ValueError('.env file is required when DEBUG=False')
 
 _load_env_file()
 DEBUG = env('DEBUG')
@@ -70,6 +68,9 @@ if not DEBUG and len(JWT_SIGNING_KEY) < 32:
     raise ValueError('JWT_SIGNING_KEY must be at least 32 characters when DEBUG=False')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'testserver'])
+if DEBUG:
+    # Allow any Host header in local/dev so devices on the same Wi-Fi can reach the server.
+    ALLOWED_HOSTS = ['*']
 TWOGIS_API_KEY = env('TWOGIS_API_KEY', default='')
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
@@ -314,3 +315,9 @@ GLOBAL_ADMIN_EMAIL = env('GLOBAL_ADMIN_EMAIL', default='admin@kezdes.kz')
 # can register users without having to seed OTP state.
 REQUIRE_EMAIL_OTP = env('REQUIRE_EMAIL_OTP', default='False' if DEBUG else 'True').lower() == 'true' and not IS_TESTING
 OTP_EXPIRE_MINUTES = int(env('OTP_EXPIRE_MINUTES', default=10))
+
+if not DEBUG:
+    if not ALLOWED_HOSTS or '*' in ALLOWED_HOSTS:
+        raise ValueError('ALLOWED_HOSTS must be explicitly configured when DEBUG=False')
+    if CORS_ALLOW_ALL_ORIGINS:
+        raise ValueError('CORS_ALLOW_ALL_ORIGINS must be False when DEBUG=False')

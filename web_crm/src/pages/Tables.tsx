@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
@@ -11,61 +11,9 @@ import {
   type TableRecord,
 } from '@/features/reservations/shared';
 
-type ViewMode = 'list' | 'floorplan';
-
 type ManagedTable = TableRecord & {
   table_type?: 'rectangle' | 'square' | 'circle' | string;
 };
-
-// ── Floor plan constants ──────────────────────────────────────────────────────
-const FP_WIDTH = 800;
-const FP_HEIGHT = 600;
-const FP_GRID = 20;
-const FP_PAD = 12;
-
-const TABLE_PRESETS: Record<string, { width: number; height: number }> = {
-  rectangle: { width: 120, height: 70 },
-  square: { width: 80, height: 80 },
-  circle: { width: 80, height: 80 },
-};
-
-function fpPreset(tableType?: string) {
-  return TABLE_PRESETS[tableType ?? 'square'] ?? TABLE_PRESETS.square;
-}
-
-function fpSnap(value: number) {
-  return Math.round(value / FP_GRID) * FP_GRID;
-}
-
-function fpClamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function fpDefaultPos(index: number, tableType?: string) {
-  const preset = fpPreset(tableType);
-  const cols = 5;
-  const col = index % cols;
-  const row = Math.floor(index / cols);
-  return {
-    x: FP_PAD + col * 152,
-    y: FP_PAD + row * 108,
-    width: preset.width,
-    height: preset.height,
-  };
-}
-
-function fpBorderClass(status?: string, isActive?: boolean) {
-  if (isActive === false) return 'border-slate-300 bg-slate-100';
-  if (status === 'reserved') return 'border-amber-400 bg-amber-50';
-  if (status === 'occupied') return 'border-blue-400 bg-blue-50';
-  return 'border-emerald-400 bg-emerald-50';
-}
-
-function fpShapeClass(tableType?: string) {
-  if (tableType === 'circle') return 'rounded-full';
-  if (tableType === 'rectangle') return 'rounded-lg';
-  return 'rounded-md';
-}
 
 type TableFormState = {
   name: string;
@@ -111,7 +59,6 @@ export default function Tables() {
   const canManage = role === 'owner' || role === 'manager' || role === 'global_admin';
   const canDelete = role === 'owner' || role === 'global_admin';
 
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [tables, setTables] = useState<ManagedTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,9 +74,7 @@ export default function Tables() {
   const [createErrors, setCreateErrors] = useState<FormErrors>({});
   const [editErrors, setEditErrors] = useState<FormErrors>({});
 
-  // Floor plan drag state
-  const canvasRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ tableId: number; offsetX: number; offsetY: number; width: number; height: number } | null>(null);
+
 
   const loadTables = useCallback(async () => {
     setRefreshing(true);
@@ -151,49 +96,7 @@ export default function Tables() {
     void loadTables();
   }, [loadTables]);
 
-  // Floor plan pointer events
-  useEffect(() => {
-    if (viewMode !== 'floorplan') {
-      dragRef.current = null;
-      return;
-    }
 
-    const handlePointerMove = (event: PointerEvent) => {
-      const drag = dragRef.current;
-      const canvas = canvasRef.current;
-      if (!drag || !canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const nextX = fpSnap(fpClamp(event.clientX - rect.left - drag.offsetX, FP_PAD, FP_WIDTH - drag.width - FP_PAD));
-      const nextY = fpSnap(fpClamp(event.clientY - rect.top - drag.offsetY, FP_PAD, FP_HEIGHT - drag.height - FP_PAD));
-      setTables((current) =>
-        current.map((t) => {
-          if (t.id !== drag.tableId) return t;
-          if (t.x === nextX && t.y === nextY) return t;
-          return { ...t, x: nextX, y: nextY };
-        }),
-      );
-    };
-
-    const handlePointerUp = async () => {
-      const drag = dragRef.current;
-      dragRef.current = null;
-      if (!drag) return;
-      const table = tables.find((t) => t.id === drag.tableId);
-      if (!table) return;
-      try {
-        await api.patch(`/tables/${drag.tableId}/`, { x: table.x ?? FP_PAD, y: table.y ?? FP_PAD });
-      } catch {
-        // silently ignore position save errors
-      }
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-  }, [viewMode, tables]);
 
   useEffect(() => {
     setSelectedTableId((current) => {
@@ -241,20 +144,7 @@ export default function Tables() {
     };
   }, [tables]);
 
-  const floorPlanTables = useMemo(
-    () =>
-      tables.map((table, index) => {
-        const fallback = fpDefaultPos(index, table.table_type);
-        return {
-          ...table,
-          x: typeof table.x === 'number' ? table.x : fallback.x,
-          y: typeof table.y === 'number' ? table.y : fallback.y,
-          width: table.width ?? fallback.width,
-          height: table.height ?? fallback.height,
-        };
-      }),
-    [tables],
-  );
+
 
   const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -464,30 +354,12 @@ export default function Tables() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Схема зала</p>
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Tables</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Столы</h1>
               <p className="text-sm text-slate-600">Столы, вместимость и текущая доступность для бронирований.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* View mode toggle */}
-              <div className="flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  <span className="material-symbols-outlined text-[16px] align-middle mr-1">list</span>
-                  Список
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('floorplan')}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${viewMode === 'floorplan' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  <span className="material-symbols-outlined text-[16px] align-middle mr-1">grid_view</span>
-                  Floor Plan
-                </button>
-              </div>
+
               <button
                 type="button"
                 onClick={() => void loadTables()}
@@ -564,82 +436,7 @@ export default function Tables() {
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-        {viewMode === 'floorplan' ? (
-          <section className="xl:col-span-2 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Floor Plan</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {canManage ? 'Перетащите столы, чтобы изменить их расположение.' : 'Схема расположения столов.'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
-                <span className="flex items-center gap-1.5"><span className="inline-block size-3 rounded-sm border-2 border-emerald-400 bg-emerald-50" />Свободен</span>
-                <span className="flex items-center gap-1.5"><span className="inline-block size-3 rounded-sm border-2 border-amber-400 bg-amber-50" />Бронь</span>
-                <span className="flex items-center gap-1.5"><span className="inline-block size-3 rounded-sm border-2 border-blue-400 bg-blue-50" />Занят</span>
-              </div>
-            </div>
-            <div
-              ref={canvasRef}
-              className="relative overflow-hidden rounded-2xl border border-slate-200"
-              style={{
-                width: FP_WIDTH,
-                maxWidth: '100%',
-                height: FP_HEIGHT,
-                backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
-                backgroundSize: `${FP_GRID}px ${FP_GRID}px`,
-                backgroundColor: '#f8fafc',
-              }}
-            >
-              {floorPlanTables.map((table) => {
-                const borderBg = fpBorderClass(table.status, table.is_active);
-                const shape = fpShapeClass(table.table_type);
-                const label = getTableLabel(table);
-                const capacity = getTableCapacity(table);
-                return (
-                  <button
-                    key={table.id}
-                    type="button"
-                    onPointerDown={(event) => {
-                      if (!canManage) return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      const canvas = canvasRef.current;
-                      if (!canvas) return;
-                      const rect = canvas.getBoundingClientRect();
-                      dragRef.current = {
-                        tableId: table.id,
-                        offsetX: event.clientX - rect.left - (table.x ?? FP_PAD),
-                        offsetY: event.clientY - rect.top - (table.y ?? FP_PAD),
-                        width: table.width ?? fpPreset(table.table_type).width,
-                        height: table.height ?? fpPreset(table.table_type).height,
-                      };
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: table.x,
-                      top: table.y,
-                      width: table.width,
-                      height: table.height,
-                      transform: table.rotation ? `rotate(${table.rotation}deg)` : undefined,
-                      cursor: canManage ? 'grab' : 'default',
-                      touchAction: 'none',
-                    }}
-                    className={`flex flex-col items-center justify-center border-2 select-none transition-shadow hover:shadow-md ${borderBg} ${shape}`}
-                  >
-                    <span className="text-xs font-semibold text-slate-800 leading-tight truncate px-1 max-w-full">{label === '—' ? `#${table.id}` : label}</span>
-                    <span className="text-[10px] text-slate-500 mt-0.5">{capacity} мест</span>
-                  </button>
-                );
-              })}
-              {tables.length === 0 ? (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
-                  Столы ещё не добавлены
-                </div>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
+
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6">
             <h2 className="text-lg font-semibold tracking-tight text-slate-900">

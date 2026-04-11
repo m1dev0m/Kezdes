@@ -154,6 +154,12 @@ function getTablePreset(tableType?: string) {
   return TABLE_PRESETS.rectangle;
 }
 
+function getTableTypeLabel(tableType?: string) {
+  if (tableType === 'circle') return 'Круглый';
+  if (tableType === 'square') return 'Квадратный';
+  return 'Прямоугольный';
+}
+
 function getDefaultTableLayout(tableType: string | undefined, index: number) {
   const preset = getTablePreset(tableType);
   const columns = 5;
@@ -1480,6 +1486,22 @@ export default function FloorView() {
                   <span className="size-2 rounded-full bg-slate-400" />
                   Неактивен
                 </span>
+                {canManageTables ? (
+                  <>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                      <span className="inline-flex h-3 w-3 rounded-sm border border-slate-400 bg-slate-100" />
+                      Квадратный
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                      <span className="inline-flex h-2.5 w-4 rounded-sm border border-slate-400 bg-slate-100" />
+                      Прямоугольный
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                      <span className="inline-flex h-3 w-3 rounded-full border border-slate-400 bg-slate-100" />
+                      Круглый
+                    </span>
+                  </>
+                ) : null}
               </div>
               <div className="overflow-x-auto">
                 <div
@@ -1555,13 +1577,14 @@ export default function FloorView() {
                           setSelectedShapeId(null);
                         }}
                         onPointerDown={(event) => handleTablePointerDown(event, table)}
-                        className={`absolute flex flex-col justify-between overflow-hidden border p-3 text-left transition ${
+                        className={`group absolute flex flex-col justify-between overflow-hidden border p-3 text-left transition ${
                           selected
                             ? 'z-20 border-blue-300 bg-blue-50 text-slate-900 ring-2 ring-blue-200 shadow-[0_22px_42px_-30px_rgba(29,78,216,0.45)]'
                             : `${tone.border} ${tone.bg} ${tone.text} ${tone.shadow} hover:brightness-[0.99]`
                         } ${table.shape === 'circle' ? 'rounded-full' : 'rounded-[28px]'} ${
                           layoutMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                         }`}
+                        title={`${getTableLabel(table)} · ${getTableCapacity(table)} мест · ${getTableTypeLabel(table.table_type)}${table.current_booking ? ` · ${table.current_booking.guest_name}` : ''}`}
                         style={{
                           left: table.x,
                           top: table.y,
@@ -1609,6 +1632,16 @@ export default function FloorView() {
                             Переместить
                           </div>
                         ) : null}
+
+                        {!layoutMode ? (
+                          <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-44 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 text-[11px] text-slate-700 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                            <div className="font-semibold text-slate-900">{getTableLabel(table)}</div>
+                            <div className="mt-1">{getTableTypeLabel(table.table_type)} · {getTableCapacity(table)} мест</div>
+                            <div className="mt-1 text-slate-500">
+                              {table.current_booking ? `${table.current_booking.guest_name} · ${fmt(table.current_booking.time)}` : 'Свободен для новой посадки'}
+                            </div>
+                          </div>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -1631,12 +1664,12 @@ export default function FloorView() {
             </div>
 
             {selectedTable ? (
-              <div className="mt-5 space-y-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Стол</div>
+                <div className="mt-5 space-y-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Стол</div>
                   <div className="mt-2 text-xl font-semibold text-slate-900">{getTableLabel(selectedTable)}</div>
-                  <div className="mt-1 text-sm text-slate-500">{getTableCapacity(selectedTable)} мест · {selectedTable.table_type || 'square'}</div>
-                </div>
+                  <div className="mt-1 text-sm text-slate-500">{getTableCapacity(selectedTable)} мест · {getTableTypeLabel(selectedTable.table_type)}</div>
+                  </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Статус</div>
@@ -1839,6 +1872,33 @@ export default function FloorView() {
             <p className="mt-1 text-sm text-slate-500">Быстро добавьте стол на схему. Полный список и управление — в разделе «Столы».</p>
 
             <form onSubmit={handleCreateTable} className="mt-5 space-y-4" noValidate>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {[
+                  { value: 'square', label: 'Квадрат', description: 'Для компактных столов на 2-4 гостя.' },
+                  { value: 'rectangle', label: 'Прямоугольный', description: 'Удобно для основной посадки и сдвига столов.' },
+                  { value: 'circle', label: 'Круглый', description: 'Подходит для мягкой посадки и VIP-зон.' },
+                ].map((preset) => {
+                  const active = createForm.table_type === preset.value;
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setCreateForm((current) => ({ ...current, table_type: preset.value as TableFormState['table_type'] }))}
+                      title={preset.description}
+                      disabled={!canManageTables}
+                      className={`rounded-2xl border px-4 py-3 text-left transition ${
+                        active
+                          ? 'border-blue-200 bg-blue-50 text-blue-900'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      } disabled:opacity-50`}
+                    >
+                      <div className="text-sm font-semibold">{preset.label}</div>
+                      <div className="mt-1 text-xs text-slate-500">{preset.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
               <Field
                 label="Название"
                 value={createForm.name}
@@ -1868,9 +1928,9 @@ export default function FloorView() {
                   value={createForm.table_type}
                   onChange={(value) => setCreateForm((current) => ({ ...current, table_type: value as TableFormState['table_type'] }))}
                   options={[
-                    { value: 'square', label: 'Square' },
-                    { value: 'rectangle', label: 'Rectangle' },
-                    { value: 'circle', label: 'Round' },
+                    { value: 'square', label: 'Квадрат' },
+                    { value: 'rectangle', label: 'Прямоугольный' },
+                    { value: 'circle', label: 'Круглый' },
                   ]}
                   disabled={!canManageTables}
                 />
@@ -2044,9 +2104,9 @@ export default function FloorView() {
                   value={editForm.table_type}
                   onChange={(value) => setEditForm((current) => ({ ...current, table_type: value as TableFormState['table_type'] }))}
                   options={[
-                    { value: 'square', label: 'Square' },
-                    { value: 'rectangle', label: 'Rectangle' },
-                    { value: 'circle', label: 'Round' },
+                    { value: 'square', label: 'Квадрат' },
+                    { value: 'rectangle', label: 'Прямоугольный' },
+                    { value: 'circle', label: 'Круглый' },
                   ]}
                   disabled={!canManageTables}
                 />

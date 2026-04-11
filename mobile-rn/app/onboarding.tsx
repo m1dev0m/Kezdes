@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Dimensions, StatusBar, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Dimensions, StatusBar, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useTranslation } from '../lib/useTranslation';
 import { Logo } from '../components/ui/Logo';
@@ -62,7 +62,7 @@ export default function OnboardingScreen() {
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.startButton} onPress={handleStart} activeOpacity={0.8}>
                     <Text style={styles.startButtonText}>{t('welcome.start')}</Text>
-                    <MaterialIcons name="arrow-forward" size={20} color="#fff" />
+                    <Ionicons name="chevron-forward" size={20} color="#fff" />
                 </TouchableOpacity>
 
                 <View style={styles.loginHintContainer}>

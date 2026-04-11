@@ -7,11 +7,11 @@ export default function PublicLayout() {
         <div className="min-h-screen bg-[#f6f5f8] flex flex-col font-inter">
             <PublicHeader />
 
-            <main className="flex-1 w-full pt-32">
+            <main className="flex-1 w-full pt-[122px] sm:pt-[132px]">
                 <Outlet />
             </main>
 
-            <footer className="border-t border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+            <footer className="border-t border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 sm:px-6 sm:py-10">
                 <p className="flex items-center justify-center gap-2">
                     <span>Powered by</span>
                     <span className="inline-flex items-center"><Logo className="h-4" /></span>

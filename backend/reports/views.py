@@ -5,26 +5,39 @@ from rest_framework.views import APIView
 
 from bookings.models import Booking
 from crm.models import Customer
-from core.utils import get_user_restaurant, auto_adjust_column_width, create_excel_response
+from core.utils import (
+    get_user_profile,
+    get_user_restaurant,
+    auto_adjust_column_width,
+    create_excel_response,
+)
+
+from core.permissions import CanViewCustomers, IsRestaurantStaff
 
 
 class BookingsExcelReportView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRestaurantStaff]
 
     def get(self, request):
         restaurant = get_user_restaurant(request.user)
         if not restaurant:
             return HttpResponse("Unauthorized", status=403)
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Bookings"
+        wb = openpyxl.Workbook(write_only=True)
+        ws = wb.create_sheet(title="Bookings")
         headers = ["ID", "Date", "Time", "Guests", "Customer Name", "Phone", "Status", "Table"]
         ws.append(headers)
-        bookings = Booking.objects.filter(restaurant=restaurant).select_related("user", "table").order_by("-date", "-time")
+        
+        bookings = (
+            Booking.objects.filter(restaurant=restaurant)
+            .select_related("user", "user__profile", "table")
+            .order_by("-date", "-time")
+        ).iterator(chunk_size=2000)
+        
         for b in bookings:
             customer_name = b.user_name or (b.user.get_full_name().strip() if b.user else "") or (b.user.username if b.user else "") or "Guest"
-            customer_phone = b.user_phone or (getattr(b.user.profile, "phone", "") if b.user and hasattr(b.user, "profile") else "") or ""
+            user_profile = get_user_profile(b.user) if b.user else None
+            customer_phone = b.user_phone or (getattr(user_profile, "phone", "") if user_profile else "") or ""
             ws.append([
                 b.id,
                 b.date.strftime("%Y-%m-%d") if b.date else "",
@@ -35,24 +48,25 @@ class BookingsExcelReportView(APIView):
                 b.status,
                 str(b.table.number) if b.table else "",
             ])
-        auto_adjust_column_width(ws)
+            
         return create_excel_response(wb, "Bookings_Report.xlsx")
 
 
 class CustomersExcelReportView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewCustomers]
 
     def get(self, request):
         restaurant = get_user_restaurant(request.user)
         if not restaurant:
             return HttpResponse("Unauthorized", status=403)
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Customers"
+        wb = openpyxl.Workbook(write_only=True)
+        ws = wb.create_sheet(title="Customers")
         headers = ["ID", "Name", "Phone", "Email", "Visits Count", "Total Spent", "Notes Count", "Last Note"]
         ws.append(headers)
-        customers = Customer.objects.filter(restaurant=restaurant).prefetch_related("internal_notes").order_by("-visits_count")
+        
+        customers = Customer.objects.filter(restaurant=restaurant).prefetch_related("internal_notes").order_by("-visits_count").iterator(chunk_size=2000)
+        
         for c in customers:
             notes = list(c.internal_notes.all())
             last_note = max(notes, key=lambda n: n.created_at).content if notes else ""
@@ -66,21 +80,20 @@ class CustomersExcelReportView(APIView):
                 len(notes),
                 last_note,
             ])
-        auto_adjust_column_width(ws)
+            
         return create_excel_response(wb, "Customers_Report.xlsx")
 
 
 class AnalyticsExcelReportView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRestaurantStaff]
 
     def get(self, request):
         restaurant = get_user_restaurant(request.user)
         if not restaurant:
             return HttpResponse("Unauthorized", status=403)
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Analytics Overview"
+        wb = openpyxl.Workbook(write_only=True)
+        ws = wb.create_sheet(title="Analytics Overview")
         headers = ["Metric", "Value"]
         ws.append(headers)
         total_bookings = Booking.objects.filter(restaurant=restaurant, status="completed").count()
@@ -91,5 +104,4 @@ class AnalyticsExcelReportView(APIView):
         ws.append(["Total Customers", total_customers])
         ws.append(["Average Check", avg_check])
         ws.append(["Estimated Revenue", total_revenue])
-        auto_adjust_column_width(ws)
         return create_excel_response(wb, "Analytics_Report.xlsx")

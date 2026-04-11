@@ -212,23 +212,23 @@ export default function Register() {
           </div>
         </section>
 
-        <section className="flex items-center justify-center px-6 py-10 sm:px-10">
+        <section className="flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10 lg:px-10">
           <div className="w-full max-w-[580px]">
             <Link to="/" className="inline-flex items-center gap-3 lg:hidden">
               <Logo className="h-9" />
             </Link>
 
-            <div className="mt-8 rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.35)] sm:p-10 lg:p-8 transition-all duration-500">
+            <div className="mt-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.35)] transition-all duration-500 sm:mt-8 sm:rounded-[32px] sm:p-8 lg:p-8">
               <div className="max-w-md">
-                <h2 className="text-4xl font-black tracking-tight text-slate-900">{isOtpStep ? 'Подтверждение' : 'Регистрация'}</h2>
-                <p className="mt-4 text-sm font-medium leading-7 text-slate-500 uppercase tracking-wider">
+                <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{isOtpStep ? 'Подтверждение' : 'Регистрация'}</h2>
+                <p className="mt-3 text-xs font-medium leading-6 text-slate-500 uppercase tracking-wider sm:mt-4 sm:text-sm sm:leading-7">
                   {isOtpStep ? `Мы отправили код на ${formData.email}` : 'Заполните данные ниже, чтобы создать аккаунт.'}
                 </p>
               </div>
 
               {!isOtpStep ? (
-                <form className="mt-10 space-y-6" onSubmit={handleInitialSubmit}>
-                  <div className="grid gap-6 md:grid-cols-2">
+                <form className="mt-7 space-y-5 sm:mt-10 sm:space-y-6" onSubmit={handleInitialSubmit}>
+                  <div className="grid gap-5 md:grid-cols-2 sm:gap-6">
                     <Field
                       label="Логин"
                       icon={<UserRound size={18} />}
@@ -255,7 +255,7 @@ export default function Register() {
                     onChange={setField('phone')}
                   />
 
-                  <div className="grid gap-6 md:grid-cols-2">
+                  <div className="grid gap-5 md:grid-cols-2 sm:gap-6">
                     <Field
                       label="Пароль"
                       icon={<LockKeyhole size={18} />}
@@ -292,7 +292,7 @@ export default function Register() {
                   </button>
                 </form>
               ) : (
-                <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
+                <form className="mt-7 space-y-5 sm:mt-10 sm:space-y-6" onSubmit={handleSubmit}>
                   {debugOtpCode ? (
                     <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
                       Dev OTP code: <span className="font-bold tracking-[0.2em]">{debugOtpCode}</span>

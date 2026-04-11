@@ -589,6 +589,9 @@ class WaitlistEntry(models.Model):
 
     @property
     def contact_phone(self) -> str | None:
-        if self.user_id and hasattr(self.user, 'profile'):
-            return self.user.profile.phone or None
+        if self.user_id:
+            from core.utils import get_user_profile
+            profile = get_user_profile(self.user)
+            if profile and profile.phone:
+                return profile.phone
         return self.guest_phone

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/colors';
 
@@ -191,7 +191,7 @@ export default function SearchScreen() {
                     <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.chip} onPress={openResults}>
-                    <MaterialIcons name="payments" size={16} color={colors.primary} />
+                    <Ionicons name="card-outline" size={16} color={colors.primary} />
                     <Text style={styles.chipText}>Средний чек</Text>
                     <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -216,7 +216,7 @@ export default function SearchScreen() {
                             </View>
                         </View>
                         <View style={styles.bannerRight}>
-                            <MaterialIcons name="restaurant" size={64} color="rgba(255,255,255,0.9)" />
+                            <Ionicons name="restaurant-outline" size={64} color="rgba(255,255,255,0.9)" />
                         </View>
                     </LinearGradient>
                 </TouchableOpacity>
@@ -258,7 +258,7 @@ export default function SearchScreen() {
                                         imageStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, resizeMode: 'cover' }}
                                     >
                                         <View style={styles.ratingBadge}>
-                                            <MaterialIcons name="star" size={14} color="#f59e0b" style={{ marginRight: 2 }} />
+                                            <Ionicons name="star-outline" size={14} color="#f59e0b" style={{ marginRight: 2 }} />
                                             <Text style={styles.ratingText}>4.9</Text>
                                         </View>
                                     </ImageBackground>
@@ -269,12 +269,12 @@ export default function SearchScreen() {
 
                                         <View style={styles.venueSpecs}>
                                             <View style={styles.specItem}>
-                                                <MaterialIcons name="groups" size={18} color="#4361ee" />
+                                                <Ionicons name="people" size={18} color="#4361ee" />
                                                 <Text style={styles.specText}>До {item.capacity || '?'} чел.</Text>
                                             </View>
                                             {item.average_price ? (
                                                 <View style={styles.specItem}>
-                                                    <MaterialIcons name="payments" size={18} color="#4361ee" />
+                                                    <Ionicons name="card-outline" size={18} color="#4361ee" />
                                                     <Text style={styles.specText}>{Number(item.average_price).toLocaleString('ru-RU')} ₸</Text>
                                                 </View>
                                             ) : null}

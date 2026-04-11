@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
 import { updateMyRestaurant, fetchMyRestaurant, createRestaurantApplication } from '../../lib/api';
@@ -322,7 +322,7 @@ export default function RestaurantSetupScreen() {
                                 style={styles.manageTablesBtn}
                                 onPress={() => router.push('/admin/tables')}
                             >
-                                <MaterialCommunityIcons name="table-furniture" size={24} color="#4300FF" />
+                                <Ionicons name="grid-outline" size={24} color="#4300FF" />
                                 <View style={{ flex: 1, marginLeft: 12 }}>
                                     <Text style={styles.manageTablesTitle}>Управление столами</Text>
                                     <Text style={styles.manageTablesSub}>Добавьте или измените схему столов</Text>

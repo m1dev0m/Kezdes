@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction, IntegrityError
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Q, Prefetch, Exists, OuterRef, Count, BooleanField
 from django.db.models import Case, When, Value, IntegerField
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -13,6 +13,7 @@ import json
 import logging
 from core.responses import api_error
 from core.permissions import IsRestaurantAdmin, CanManageReservations
+from core.utils import get_user_profile
 
 logger = logging.getLogger(__name__)
 from .serializers import (
@@ -20,10 +21,12 @@ from .serializers import (
     AdminBookingSerializer,
     BookingAdminUpdateSerializer,
     PublicBookingSerializer,
+    BookingListSerializer,
 )
 from .waitlist_serializers import WaitlistEntrySerializer
-from .models import Booking, WaitlistEntry
-from restaurants.models import Table, Restaurant
+from .models import Booking, WaitlistEntry, ReservationHistory
+from restaurants.models import Table, Restaurant, Review
+from orders.models import Order
 from .services import WaitlistService, BookingService
 from .engine import StatusMachine
 from core.notifications import NotificationService
@@ -46,6 +49,11 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         'table__number',
     ]
     ordering = ['-date', '-time']
+
+    def get_serializer_class(self):
+        if self.action in ('list', 'my_restaurant'):
+            return BookingListSerializer
+        return super().get_serializer_class()
 
     def get_permissions(self):
         if self.action == 'create':
@@ -126,6 +134,31 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 fields[key] = payload[key]
         return fields
 
+    @staticmethod
+    def _history_prefetch():
+        return Prefetch(
+            'history',
+            queryset=ReservationHistory.objects.select_related(
+                'actor',
+                'from_table',
+                'to_table',
+            ).order_by('-changed_at'),
+        )
+
+    def _optimized_booking_queryset(self, queryset, *, include_history=False, include_order_prefetch=False):
+        prefetches = ['tables']
+        if include_history:
+            prefetches.append(self._history_prefetch())
+        if include_order_prefetch:
+            prefetches.append('orders')
+
+        return queryset.select_related(
+            'restaurant', 'user', 'user__profile', 'table'
+        ).prefetch_related(*prefetches).annotate(
+            has_preorder=Exists(Order.objects.filter(reservation=OuterRef('pk'))),
+            orders_count=Count('orders'),
+        )
+
     def _apply_common_filters(self, qs, request):
         status_param = request.query_params.get('status')
         if status_param:
@@ -200,6 +233,9 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 serializer = self.get_serializer(page, many=True)
                 return self.get_paginated_response(serializer.data)
 
+        # Hard cap: prevent unbounded serialization when clients omit pagination params.
+        # 2000 rows is well above any single-restaurant daily volume.
+        qs = qs[:2000]
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
@@ -368,28 +404,59 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         user = self.request.user
         if not user or not user.is_authenticated:
             return Booking.objects.none()
-        if not hasattr(user, 'profile'):
+        profile = get_user_profile(user)
+        if not profile:
             return Booking.objects.none()
+        include_history = self.action not in {'list', 'my_restaurant'}
+        include_order_prefetch = self.action not in {'list', 'my_restaurant'}
 
         # Mandatory tenant isolation for staff
-        if user.profile.is_staff_member:
+        if profile.is_staff_member:
             from core.utils import get_user_restaurant
             user_rest = get_user_restaurant(user)
             if not user_rest:
                 return Booking.objects.none()
-            return Booking.objects.filter(
-                restaurant=user_rest
-            ).select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders').order_by('-date', '-time')
+            return self._optimized_booking_queryset(
+                Booking.objects.filter(restaurant=user_rest),
+                include_history=include_history,
+                include_order_prefetch=include_order_prefetch,
+            ).order_by('-date', '-time')
 
         # Guest logic
-        if user.profile.role in ('customer', 'organizer'):
-            return Booking.objects.filter(user=user).select_related('restaurant', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
+        if profile.role in ('customer', 'organizer'):
+            return self._optimized_booking_queryset(
+                Booking.objects.filter(user=user),
+                include_history=include_history,
+                include_order_prefetch=include_order_prefetch,
+            ).order_by('-created_at')
 
         # Global admin (platform level)
-        if user.profile.role == 'global_admin':
-            return Booking.objects.all().select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
+        if profile.role == 'global_admin':
+            return self._optimized_booking_queryset(
+                Booking.objects.all(),
+                include_history=include_history,
+                include_order_prefetch=include_order_prefetch,
+            ).order_by('-created_at')
 
-        return Booking.objects.filter(user=user).select_related('restaurant', 'table').prefetch_related('history', 'tables', 'orders').order_by('-created_at')
+        return self._optimized_booking_queryset(
+            Booking.objects.filter(user=user),
+            include_history=include_history,
+            include_order_prefetch=include_order_prefetch,
+        ).order_by('-created_at')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        request = getattr(self, 'request', None)
+        user = getattr(request, 'user', None)
+        serializer_class = self.get_serializer_class()
+        if (
+            user and user.is_authenticated
+            and serializer_class in {BookingSerializer, PublicBookingSerializer}
+        ):
+            context['reviewed_restaurant_ids'] = set(
+                Review.objects.filter(user_id=user.id).values_list('restaurant_id', flat=True)
+            )
+        return context
 
     def list(self, request, *args, **kwargs):
         qs = self._apply_common_filters(self.get_queryset(), request)
@@ -521,10 +588,12 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def _is_restaurant_staff(self, request, booking):
         """Check if user is restaurant staff for this booking's restaurant."""
         user = request.user
-        if not user or not user.is_authenticated or not hasattr(user, 'profile'):
+        if not user or not user.is_authenticated:
             return False
 
-        profile = user.profile
+        profile = get_user_profile(user)
+        if not profile:
+            return False
         if profile.is_global_admin:
             return True
 
@@ -647,13 +716,16 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if not restaurant:
             return Response({"detail": "No restaurant associated with this user."}, status=status.HTTP_400_BAD_REQUEST)
         
-        qs = Booking.objects.filter(restaurant=restaurant).select_related('restaurant', 'user', 'table').prefetch_related('history', 'tables', 'orders')
-        qs = qs.annotate(
+        qs = self._optimized_booking_queryset(
+            Booking.objects.filter(restaurant=restaurant),
+            include_history=False,
+            include_order_prefetch=False,
+        ).annotate(
             _pending_first=Case(
                 When(status=Booking.PENDING, then=Value(0)),
                 default=Value(1),
                 output_field=IntegerField(),
-            )
+            ),
         ).order_by('_pending_first', '-date', '-time')
 
         qs = self._apply_common_filters(qs, request)
@@ -851,8 +923,9 @@ class BookingViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 
                 customer_phone = booking.user_phone
                 if not customer_phone and booking.user:
-                    if hasattr(booking.user, 'profile'):
-                        customer_phone = booking.user.profile.phone
+                    profile = get_user_profile(booking.user)
+                    if profile and profile.phone:
+                        customer_phone = profile.phone
 
                 if customer_phone:
                     CRMService.record_visit(
@@ -1332,7 +1405,9 @@ class WaitlistViewSet(viewsets.ModelViewSet):
         from core.utils import get_user_restaurant
         user_restaurant = get_user_restaurant(user)
         
-        if getattr(user.profile, 'role', '') != 'global_admin':
+        user_profile = get_user_profile(user)
+        user_role = getattr(user_profile, 'role', '')
+        if user_role != 'global_admin':
              if user_restaurant:
                   from django.db.models import Q
                   qs = qs.filter(Q(restaurant=user_restaurant) | Q(user=user))
@@ -1342,6 +1417,9 @@ class WaitlistViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
+        profile = get_user_profile(user)
+        if profile and (getattr(profile, 'is_staff_member', False) or getattr(profile, 'is_global_admin', False)):
+            user = None
         serializer.save(user=user)
 
     @action(detail=True, methods=['post'], url_path='convert-to-reservation', permission_classes=[permissions.IsAuthenticated])
@@ -1352,7 +1430,8 @@ class WaitlistViewSet(viewsets.ModelViewSet):
         user = self.request.user
         from core.utils import get_user_restaurant
         user_restaurant = get_user_restaurant(user)
-        if getattr(user.profile, 'role', '') != 'global_admin' and user_restaurant != entry.restaurant:
+        user_profile = get_user_profile(user)
+        if getattr(user_profile, 'role', '') != 'global_admin' and user_restaurant != entry.restaurant:
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
             
         duration = getattr(entry.restaurant, 'turnover_default_min', 85)
@@ -1384,7 +1463,15 @@ class WaitlistViewSet(viewsets.ModelViewSet):
                 entry.promoted_booking = booking
                 entry.save()
 
-                return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+                response_data = BookingSerializer(booking, context={'request': request}).data
+                response_data.update(
+                    {
+                        'booking_id': booking.id,
+                        'waitlist_id': entry.id,
+                        'redirect_to': f"/app/bookings?id={booking.id}",
+                    }
+                )
+                return Response(response_data, status=status.HTTP_201_CREATED)
         except IntegrityError:
             return api_error("Не удалось создать бронирование.", status.HTTP_409_CONFLICT)
         finally:

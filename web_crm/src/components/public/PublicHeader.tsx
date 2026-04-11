@@ -1,3 +1,4 @@
+import { Menu } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
@@ -30,10 +31,16 @@ export function PublicHeader({ active }: { active?: string }) {
       }).toString()}`
     : '/restaurants';
   const bookingContextSummary = [bookingDate || 'Сегодня', bookingTime || 'Время', bookingGuests ? `${bookingGuests} гостей` : 'Гости'].join(' · ');
+  const publicLinks = [
+    { to: '/', label: 'Главная', key: 'home' },
+    { to: '/restaurants', label: 'Рестораны', key: 'restaurants' },
+    { to: '/pricing', label: 'Цены', key: 'pricing' },
+    { to: '/contact', label: 'Контакты', key: 'contact' },
+  ];
 
   return (
     <header className="fixed top-0 left-0 right-0 z-[100] border-b border-slate-200 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1280px] items-center justify-between px-6 py-4 sm:px-8">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
         <Link to="/" aria-label="public-home" className="flex items-center gap-4 group transition-transform active:scale-95">
           <Logo className="h-8 sm:h-9" />
         </Link>
@@ -97,22 +104,23 @@ export function PublicHeader({ active }: { active?: string }) {
           )}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {!user ? (
             <>
               <Link
                 to="/login"
                 aria-label="public-login"
-                className="rounded-2xl border border-slate-200 bg-white px-6 py-3 text-xs font-semibold uppercase tracking-widest text-slate-700 transition hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700 transition hover:bg-slate-50 sm:rounded-2xl sm:px-6 sm:py-3 sm:text-xs"
               >
                 Войти
               </Link>
               <Link
                 to="/register"
                 aria-label="public-register"
-                className="hidden sm:inline-flex rounded-2xl bg-[#1d4ed8] px-8 py-3.5 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-[#1e40af]"
+                className="inline-flex rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#1e40af] sm:rounded-2xl sm:px-8 sm:py-3.5 sm:text-xs"
               >
-                Регистрация
+                <span className="hidden sm:inline">Регистрация</span>
+                <span className="sm:hidden">Старт</span>
               </Link>
             </>
           ) : (
@@ -132,9 +140,39 @@ export function PublicHeader({ active }: { active?: string }) {
         </div>
       </div>
 
+      <div className="border-t border-slate-200/80 bg-white/90 lg:hidden">
+        <div className="mx-auto flex max-w-[1280px] items-center gap-2 overflow-x-auto no-scrollbar px-4 py-2.5 sm:px-6">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <Menu size={12} />
+            Разделы
+          </span>
+          {publicLinks.map((item) => (
+            <Link
+              key={item.key}
+              to={item.to}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                currentActive === item.key
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'border border-slate-200 bg-white text-slate-600'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+          {user ? (
+            <Link
+              to={isAdmin ? '/app/dashboard' : '/guest/dashboard'}
+              className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+            >
+              {isAdmin ? 'Кабинет' : 'Мои брони'}
+            </Link>
+          ) : null}
+        </div>
+      </div>
+
       {showBookingContext ? (
         <div className="border-t border-slate-200/80 bg-white/90">
-          <div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-6 py-3 text-sm sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-4 py-3 text-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
               <span className="rounded-full bg-blue-50 px-3 py-1.5 text-blue-700">Контекст поиска</span>
               <span className="hidden sm:inline text-slate-400">Сохраняется при переходах</span>

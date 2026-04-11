@@ -77,6 +77,8 @@ export default function BookPage() {
   const wantsWaitlist =
     new URLSearchParams(location.search).get('waitlist') === '1' ||
     Boolean((location.state as { openWaitlist?: boolean } | null)?.openWaitlist);
+  const profilePhone = user?.phone || user?.profile?.phone || '';
+  const usesProfilePhone = Boolean(user && profilePhone);
 
   useEffect(() => {
     if (!id) {
@@ -131,14 +133,14 @@ export default function BookPage() {
     if (!user) return;
 
     const preferredName = getPreferredGuestName(user);
-    const preferredPhone = user.phone || user.profile?.phone || '';
+    const preferredPhone = profilePhone;
 
     setForm((current) => ({
       ...current,
       name: current.name || preferredName,
       phone: current.phone || preferredPhone,
     }));
-  }, [user]);
+  }, [profilePhone, user]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -186,10 +188,6 @@ export default function BookPage() {
         });
         const slots = Array.isArray(response.data?.slots) ? response.data.slots : [];
         setAvailableSlots(slots);
-
-        if (slots.length > 0 && !slots.includes(form.time) && !wantsWaitlist) {
-          setForm((current) => ({ ...current, time: slots[0] }));
-        }
       } catch (error) {
         setAvailableSlots([]);
         setAvailabilityError(getApiErrorMessage(error, 'Не удалось загрузить доступные слоты.'));
@@ -214,6 +212,7 @@ export default function BookPage() {
   );
   const resolvedRestaurantId = restaurant?.id ?? (id && /^\d+$/.test(id) ? Number(id) : null);
   const restaurantLinkId = restaurant?.id ?? id ?? '';
+  const resolvedPhone = (usesProfilePhone ? profilePhone : form.phone).trim();
 
   const updateField = <K extends keyof BookingFormState>(key: K, value: BookingFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -239,7 +238,8 @@ export default function BookPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const errors = validateForm(form);
+    const nextForm = usesProfilePhone ? { ...form, phone: resolvedPhone } : form;
+    const errors = validateForm(nextForm);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0 || !resolvedRestaurantId || !restaurant) {
       setScreenError('Проверьте форму и исправьте отмеченные поля.');
@@ -260,7 +260,7 @@ export default function BookPage() {
         time: form.time,
         guests: form.guests,
         user_name: form.name.trim(),
-        user_phone: form.phone.trim(),
+        user_phone: resolvedPhone,
         event_type: 'other',
       });
 
@@ -273,7 +273,7 @@ export default function BookPage() {
         time: form.time,
         guests: form.guests,
         guestName: form.name.trim(),
-        phone: form.phone.trim(),
+        phone: resolvedPhone,
         status: response.data.status || 'pending',
         publicToken: response.data.public_token,
         referenceCode: buildReservationReference('BK', response.data.id, form.date, form.time, confirmationRestaurantId),
@@ -284,13 +284,14 @@ export default function BookPage() {
         window.sessionStorage.setItem(`kezdes:reservation-success:${confirmationRestaurantId}`, payload);
         window.sessionStorage.setItem(`kezdes:booking-success:${confirmationRestaurantId}`, payload);
       }
-      persistGuestContact(form.name, form.phone);
+      persistGuestContact(form.name, resolvedPhone);
 
       navigate(`/restaurant/${confirmationRestaurantId}/success`, {
         state: successState,
       });
     } catch (submitError) {
-      setScreenError(getApiErrorMessage(submitError, 'Не удалось создать бронирование.'));
+      const message = getApiErrorMessage(submitError, 'Не удалось создать бронирование.');
+      setScreenError(message);
     } finally {
       setLoading(false);
     }
@@ -298,7 +299,8 @@ export default function BookPage() {
 
   const handleJoinWaitlist = async () => {
     if (!resolvedRestaurantId || !restaurant) return;
-    const errors = validateForm(form);
+    const nextForm = usesProfilePhone ? { ...form, phone: resolvedPhone } : form;
+    const errors = validateForm(nextForm);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       setScreenError('Проверьте форму перед добавлением в лист ожидания.');
@@ -307,13 +309,13 @@ export default function BookPage() {
 
     const waitlistRedirectState = {
       date: form.date,
-      time: form.time,
-      guests: form.guests,
-      restaurantId: restaurant.id,
-      restaurantName: restaurant.name,
-      reservationKind: 'waitlist' as const,
-      phone: form.phone.trim(),
-    };
+        time: form.time,
+        guests: form.guests,
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name,
+        reservationKind: 'waitlist' as const,
+        phone: resolvedPhone,
+      };
 
     setJoiningWaitlist(true);
     try {
@@ -323,7 +325,7 @@ export default function BookPage() {
         time: form.time,
         guests: form.guests,
         guest_name: form.name.trim(),
-        guest_phone: form.phone.trim(),
+        guest_phone: resolvedPhone,
         guest_email: user?.email || undefined,
       });
       const waitlistId = response.data?.id;
@@ -342,7 +344,7 @@ export default function BookPage() {
         window.sessionStorage.setItem(`kezdes:reservation-success:${restaurant.id}`, payload);
         window.sessionStorage.setItem(`kezdes:waitlist-success:${restaurant.id}`, payload);
       }
-      persistGuestContact(form.name, form.phone);
+      persistGuestContact(form.name, resolvedPhone);
 
       navigate(`/restaurant/${restaurant.id}/success`, {
         state: successState,
@@ -364,11 +366,11 @@ export default function BookPage() {
 
   if (!id) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] px-6 py-10 font-inter text-slate-900">
+      <div className="min-h-screen bg-[#f8fafc] px-4 py-6 font-inter text-slate-900 sm:px-6 sm:py-10">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center justify-center">
-          <div className="w-full rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm sm:p-10 text-center">
+          <div className="w-full rounded-[28px] border border-slate-200 bg-white p-5 text-center shadow-sm sm:rounded-[32px] sm:p-8 sm:text-left sm:shadow-sm md:text-center lg:text-center">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Бронирование</div>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">Выберите ресторан для брони</h1>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Выберите ресторан для брони</h1>
             <p className="mt-4 text-sm leading-7 text-slate-600">
               Укажите конкретное заведение на странице каталога. После этого откроется форма бронирования с датой, временем и контактами.
             </p>
@@ -386,11 +388,11 @@ export default function BookPage() {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] px-6 py-10 font-inter text-slate-900">
+      <div className="min-h-screen bg-[#f8fafc] px-4 py-6 font-inter text-slate-900 sm:px-6 sm:py-10">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center justify-center">
-          <div className="w-full rounded-[32px] border border-rose-200 bg-white p-8 text-center shadow-sm sm:p-10">
+          <div className="w-full rounded-[28px] border border-rose-200 bg-white p-5 text-center shadow-sm sm:rounded-[32px] sm:p-8">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-600">Бронирование недоступно</div>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">Этот ресторан сейчас недоступен</h1>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Этот ресторан сейчас недоступен</h1>
             <p className="mt-4 text-sm leading-7 text-slate-600">
               {screenError || 'Не удалось открыть страницу бронирования. Вернитесь в каталог и выберите другое заведение.'}
             </p>
@@ -416,7 +418,7 @@ export default function BookPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] px-6 py-10 font-inter text-slate-900">
+    <div className="min-h-screen bg-[#f8fafc] px-4 py-6 font-inter text-slate-900 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-[1160px]">
         <Link
           to={`/restaurant/${restaurantLinkId}`}
@@ -427,12 +429,12 @@ export default function BookPage() {
           Назад к ресторану
         </Link>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
+        <div className="mt-6 grid gap-5 lg:mt-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-8">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[32px] sm:p-8 lg:order-1">
             <div className="max-w-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Бронирование</div>
-              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">Забронируйте столик</h1>
-              <p className="mt-4 text-sm leading-7 text-slate-600">
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Забронируйте столик</h1>
+              <p className="mt-3 text-sm leading-6 text-slate-600 sm:mt-4 sm:leading-7">
                 Дата, время, количество гостей и контактные данные. Без регистрации и без лишних шагов.
               </p>
             </div>
@@ -441,7 +443,7 @@ export default function BookPage() {
               <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{screenError}</div>
             ) : null}
 
-            <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+            <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-4 sm:mt-6 sm:p-5">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 <TimerReset size={14} className="text-slate-400" />
                 Доступность на выбранную дату
@@ -465,7 +467,13 @@ export default function BookPage() {
                   </button>
                 </div>
               ) : availableSlots.length > 0 ? (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 space-y-3">
+                  {!availableSlots.includes(form.time) && !wantsWaitlist ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      На выбранное время сейчас нет слота. Выберите одно из доступных времен ниже.
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
                   {availableSlots.map((slot) => (
                     <button
                       key={slot}
@@ -478,6 +486,7 @@ export default function BookPage() {
                       {slot}
                     </button>
                   ))}
+                  </div>
                 </div>
               ) : (
                 <div className="mt-4 space-y-3">
@@ -488,7 +497,7 @@ export default function BookPage() {
               )}
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-6" noValidate>
+            <form onSubmit={handleSubmit} className="mt-6 space-y-5 sm:mt-8 sm:space-y-6" noValidate>
               <div className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Быстрый выбор</div>
                 <div className="flex flex-wrap gap-2">
@@ -566,15 +575,26 @@ export default function BookPage() {
                 error={fieldErrors.name}
               />
 
-              <Field
-                label="Телефон"
-                name="phone"
-                icon={<Phone size={18} />}
-                value={form.phone}
-                onChange={(event) => updateField('phone', event.target.value)}
-                placeholder="+7 (___) ___ __ __"
-                error={fieldErrors.phone}
-              />
+              {usesProfilePhone ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Телефон</label>
+                  <div className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900">
+                    <Phone size={18} className="text-slate-400" />
+                    <span>{resolvedPhone}</span>
+                  </div>
+                  <div className="text-sm text-slate-500">Номер берём из вашего профиля.</div>
+                </div>
+              ) : (
+                <Field
+                  label="Телефон"
+                  name="phone"
+                  icon={<Phone size={18} />}
+                  value={form.phone}
+                  onChange={(event) => updateField('phone', event.target.value)}
+                  placeholder="+7 (___) ___ __ __"
+                  error={fieldErrors.phone}
+                />
+              )}
 
               <button
                 type="submit"
@@ -609,10 +629,10 @@ export default function BookPage() {
             </form>
           </div>
 
-          <div className="space-y-5">
-            <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="space-y-4 lg:order-2 lg:space-y-5">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[32px] sm:p-8">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Ресторан</div>
-              <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{restaurant?.name || 'Ресторан'}</div>
+              <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{restaurant?.name || 'Ресторан'}</div>
               <div className="mt-4 space-y-4">
                 <SummaryRow label="Адрес" value={restaurant?.address || 'Адрес не указан'} />
                 <SummaryRow
@@ -623,7 +643,7 @@ export default function BookPage() {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[32px] sm:p-8">
               <div className="text-xl font-semibold tracking-tight text-slate-900">Что произойдёт дальше</div>
               <div className="mt-5 space-y-4">
                 {[

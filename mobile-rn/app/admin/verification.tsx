@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
 export default function AdminVerificationScreen() {
@@ -53,7 +53,7 @@ export default function AdminVerificationScreen() {
                 <View style={styles.docsSection}>
                     <Text style={styles.sectionTitle}>Загруженные документы</Text>
                     <View style={styles.docItem}>
-                        <MaterialCommunityIcons name="file-document-outline" size={24} color={colors.muted} />
+                        <MaterialIcons name="description" size={24} color={colors.muted} />
                         <Text style={styles.docName}>Свидетельство о регистрации.pdf</Text>
                         <Ionicons name="checkmark" size={20} color="#16a34a" />
                     </View>

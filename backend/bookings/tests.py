@@ -17,6 +17,7 @@ from rest_framework import status
 from .models import Booking, ReservationHistory, WaitlistEntry
 from .services import BookingService, WaitlistService
 from restaurants.models import Restaurant, Table, OpeningHours, Availability
+from core.models import Profile
 
 
 def _tomorrow():
@@ -414,6 +415,22 @@ class BookingAPITests(TestCase):
         self.assertTrue(public_detail.data["can_review"])
         self.assertEqual(public_detail.data["rebook_payload"]["booking_id"], booking_id)
 
+    def test_my_restaurant_does_not_crash_when_customer_profile_missing(self):
+        """Serializer should handle missing booking.user.profile safely."""
+        res = self._create_booking()
+        booking_id = res.data["id"]
+        booking = Booking.objects.get(id=booking_id)
+        booking.status = Booking.COMPLETED
+        booking.save(update_fields=["status"])
+
+        Profile.objects.filter(user=self.customer).delete()
+
+        self.client.force_authenticate(user=self.owner)
+        detail = self.client.get(f"/api/v1/bookings/{booking_id}/")
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail.data["id"], booking_id)
+        self.assertIn("rebook_payload", detail.data)
+
     def test_double_confirm_fails(self):
         """Confirming an already confirmed booking should fail."""
         res = self._create_booking()
@@ -601,6 +618,57 @@ class BookingAPITests(TestCase):
             "user_phone": "+77000000000",
         }, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+    def test_staff_can_create_walk_in_waitlist_entry(self):
+        """Restaurant staff should be able to create an anonymous walk-in waitlist entry through the existing waitlist endpoint."""
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(
+            "/api/v1/bookings/waitlist/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "time": "18:30",
+                "guests": 2,
+                "guest_name": "Walk-in Guest",
+                "guest_phone": "+77001112233",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        entry = WaitlistEntry.objects.get(id=response.data["id"])
+        self.assertEqual(entry.restaurant_id, self.restaurant.id)
+        self.assertIsNone(entry.user_id)
+        self.assertEqual(entry.guest_name, "Walk-in Guest")
+        self.assertEqual(entry.guest_phone, "+77001112233")
+
+    def test_waitlist_convert_returns_redirect_context(self):
+        """Converting a waitlist entry should return enough context for the frontend to redirect to the created booking."""
+        self.client.force_authenticate(user=self.owner)
+        create_res = self.client.post(
+            "/api/v1/bookings/waitlist/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "time": "18:45",
+                "guests": 2,
+                "guest_name": "Walk-in Guest",
+                "guest_phone": "+77003334455",
+            },
+            format="json",
+        )
+        self.assertEqual(create_res.status_code, status.HTTP_201_CREATED)
+
+        entry_id = create_res.data["id"]
+        convert_res = self.client.post(f"/api/v1/bookings/waitlist/{entry_id}/convert-to-reservation/")
+        self.assertEqual(convert_res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(convert_res.data["id"], convert_res.data["booking_id"])
+        self.assertEqual(convert_res.data["waitlist_id"], entry_id)
+        self.assertEqual(convert_res.data["redirect_to"], f"/app/bookings?id={convert_res.data['booking_id']}")
+        self.assertIn("public_token", convert_res.data)
+
+        booking = Booking.objects.get(id=convert_res.data["booking_id"])
+        self.assertEqual(convert_res.data["public_token"], booking.public_token)
 
 
 @override_settings(

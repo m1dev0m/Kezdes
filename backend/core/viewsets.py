@@ -3,7 +3,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from .models import Profile
+from .utils import get_user_profile
 
 
 class OptionalPageNumberPagination(PageNumberPagination):
@@ -22,6 +22,8 @@ class OptionalPaginationMixin:
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         if 'page' not in request.query_params and 'page_size' not in request.query_params:
+            # Enforce global hard-cap to prevent memory exhaust
+            queryset = queryset[:2000]
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         page = self.paginate_queryset(queryset)
@@ -38,20 +40,16 @@ class TenantModelViewSet(viewsets.ModelViewSet):
     Ensures that users can only access data belonging to their assigned restaurant.
     """
     def get_queryset(self):
-        return self.queryset.filter(
-            restaurant=self.request.user.profile.restaurant
-        )
+        user = getattr(self.request, 'user', None)
+        profile = get_user_profile(user)
+        restaurant = getattr(profile, 'restaurant', None)
+        if restaurant is None:
+            return self.queryset.none()
+        return self.queryset.filter(restaurant=restaurant)
 
     def perform_create(self, serializer):
         user = self.request.user
-        profile = None
-        if hasattr(user, 'profile'):
-            try:
-                profile = user.profile
-            except Profile.DoesNotExist:
-                profile = None
-            except AttributeError:
-                profile = None
+        profile = get_user_profile(user)
         
         restaurant = getattr(user, 'owned_restaurant', None)
         if not restaurant and profile:

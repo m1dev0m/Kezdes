@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 interface MenuItemCardProps {
@@ -18,8 +18,8 @@ const MenuItemCard = memo(({ item, onToggle }: MenuItemCardProps) => {
     return (
         <View style={[styles.card, !item.is_available && styles.cardDisabled]}>
             <View style={styles.iconContainer}>
-                <MaterialCommunityIcons
-                    name="food"
+                <MaterialIcons
+                    name="restaurant-menu"
                     size={28}
                     color={item.is_available ? colors.primary : colors.muted}
                 />

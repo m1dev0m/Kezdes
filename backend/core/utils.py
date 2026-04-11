@@ -1,5 +1,27 @@
 import openpyxl
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
+
+
+def get_user_profile(user):
+    """
+    Safely resolve user's profile.
+    Returns None when profile is missing instead of raising.
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return None
+    try:
+        profile = user.profile
+    except (AttributeError, ObjectDoesNotExist):
+        return None
+    if profile is None or getattr(profile, "pk", None) is None:
+        return None
+    from core.models import Profile
+    if not Profile.objects.filter(pk=profile.pk, user_id=user.id).exists():
+        cache_name = getattr(Profile.user.field, "cache_name", "profile")
+        user.__dict__.pop(cache_name, None)
+        return None
+    return profile
 
 
 def get_user_restaurant(user):
@@ -10,7 +32,7 @@ def get_user_restaurant(user):
     if restaurant:
         return restaurant
 
-    profile = getattr(user, "profile", None)
+    profile = get_user_profile(user)
     if not profile:
         return None
     if getattr(profile, "is_staff_member", False):

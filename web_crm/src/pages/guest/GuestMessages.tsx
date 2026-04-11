@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Send, Search, Calendar, RefreshCw,
@@ -8,6 +8,7 @@ import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 interface Message {
     id: number;
@@ -25,6 +26,7 @@ interface Conversation {
     id: string; // "b-ID" for booking, "r-ID" for restaurant direct
     type: 'booking' | 'restaurant';
     targetId: number;
+    restaurantId: number | null;
     title: string;
     subtitle?: string;
     lastMessage?: string;
@@ -34,6 +36,17 @@ interface Conversation {
     bookingGuests?: number;
     bookingStatus?: string;
 }
+
+type RealtimeChatMessage = {
+    id: number;
+    content: string;
+    sender: number;
+    sender_name?: string;
+    timestamp: string;
+    booking_id?: number | null;
+    conversation_id?: number | null;
+    restaurant_id?: number | null;
+};
 
 export default function GuestMessages() {
     const { user } = useAuth();
@@ -54,23 +67,13 @@ export default function GuestMessages() {
     const archivedStatuses = new Set(['completed', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'rejected', 'no_show']);
     const [conversationError, setConversationError] = useState<string | null>(null);
     const [messageError, setMessageError] = useState<string | null>(null);
+    const activeRestaurantId = selectedConv?.restaurantId ?? null;
 
     useEffect(() => {
         fetchData();
         const interval = setInterval(fetchData, 10000); // Poll conversations every 10s
         return () => clearInterval(interval);
     }, []);
-
-    useEffect(() => {
-        if (selectedConv) {
-            fetchMessages(selectedConv);
-            if (pollRef.current) clearInterval(pollRef.current);
-            pollRef.current = setInterval(() => fetchMessages(selectedConv), 3000); // Poll messages every 3s
-        }
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current);
-        };
-    }, [selectedConv]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -106,6 +109,7 @@ export default function GuestMessages() {
                     id,
                     type: 'booking',
                     targetId: b.id,
+                    restaurantId: b.restaurant ?? null,
                     title: b.restaurant_name,
                     subtitle: `Reservation #${b.id}`,
                     bookingDate: b.date,
@@ -124,6 +128,7 @@ export default function GuestMessages() {
                         id,
                         type: m.booking ? 'booking' : 'restaurant',
                         targetId: (m.booking || m.restaurant) as number,
+                        restaurantId: m.restaurant,
                         title: m.restaurant_name || 'Restaurant',
                         subtitle: m.booking ? `Reservation #${m.booking}` : 'Direct Message',
                         lastMessage: m.content,
@@ -184,12 +189,52 @@ export default function GuestMessages() {
         }
     };
 
+    const handleRealtimeMessage = useCallback((payload: RealtimeChatMessage) => {
+        if (!payload?.restaurant_id || !activeRestaurantId || payload.restaurant_id !== activeRestaurantId) {
+            return;
+        }
+
+        void fetchData();
+
+        if (!selectedConv) {
+            return;
+        }
+
+        const matchesSelectedConversation = selectedConv.type === 'booking'
+            ? payload.booking_id === selectedConv.targetId
+            : payload.restaurant_id === selectedConv.restaurantId;
+
+        if (matchesSelectedConversation) {
+            void fetchMessages(selectedConv);
+        }
+    }, [activeRestaurantId, fetchData, fetchMessages, selectedConv]);
+
+    const { sendMessage: wsSend, isConnected } = useWebSocket({
+        url: activeRestaurantId ? `ws/chat/${activeRestaurantId}/` : '',
+        enabled: Boolean(activeRestaurantId),
+        onMessage: handleRealtimeMessage,
+    });
+
+    useEffect(() => {
+        if (selectedConv) {
+            fetchMessages(selectedConv);
+            if (pollRef.current) clearInterval(pollRef.current);
+            if (!isConnected) {
+                pollRef.current = setInterval(() => fetchMessages(selectedConv), 3000); // Poll messages every 3s
+            }
+        }
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current);
+        };
+    }, [isConnected, selectedConv]);
+
     const handleSend = async () => {
         if (!newMsg.trim() || !selectedConv) return;
 
+        const toSend = newMsg.trim();
         const optimistic: Message = {
             id: Date.now(),
-            content: newMsg.trim(),
+            content: toSend,
             timestamp: new Date().toISOString(),
             sender: user?.id ?? 0,
             sender_name: user?.username || '',
@@ -199,18 +244,27 @@ export default function GuestMessages() {
             is_read: false,
         };
 
-        setMessages(prev => [...prev, optimistic]);
-        const toSend = newMsg.trim();
+        if (!(isConnected && activeRestaurantId)) {
+            setMessages(prev => [...prev, optimistic]);
+        }
         setNewMsg('');
         setSending(true);
 
         try {
-            const payload = selectedConv.type === 'booking'
-                ? { booking: selectedConv.targetId, content: toSend }
-                : { restaurant: selectedConv.targetId, content: toSend };
+            if (isConnected && activeRestaurantId) {
+                wsSend(
+                    selectedConv.type === 'booking'
+                        ? { message: toSend, booking_id: selectedConv.targetId }
+                        : { message: toSend }
+                );
+            } else {
+                const payload = selectedConv.type === 'booking'
+                    ? { booking: selectedConv.targetId, content: toSend }
+                    : { restaurant: selectedConv.targetId, content: toSend };
 
-            await api.post('/chat/messages/', payload);
-            await fetchMessages(selectedConv);
+                await api.post('/chat/messages/', payload);
+                await fetchMessages(selectedConv);
+            }
         } catch {
             setMessages(prev => prev.filter(m => m.id !== optimistic.id));
             setNewMsg(toSend);

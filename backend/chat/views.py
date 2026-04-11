@@ -1,16 +1,19 @@
 from rest_framework import viewsets, permissions, decorators, response
-from django.db.models import Q
+from django.db.models import OuterRef, Q, Subquery
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 from .models import Message, Conversation
 from .serializers import MessageSerializer, ConversationSerializer
 from bookings.models import Booking
-from core.utils import get_user_restaurant
+from core.utils import get_user_restaurant, get_user_profile
+from core.viewsets import OptionalPaginationMixin
 
 
 def _is_global_admin(user):
-    profile = getattr(user, "profile", None)
+    profile = get_user_profile(user)
     return bool(profile and profile.role == "global_admin")
 
 
@@ -37,6 +40,32 @@ def _user_can_access_booking(user, booking) -> bool:
     return _user_can_access_restaurant(user, booking.restaurant)
 
 
+def _broadcast_message(message: Message) -> None:
+    if not message.restaurant_id or not message.conversation_id:
+        return
+    channel_layer = get_channel_layer()
+    if channel_layer is None:
+        return
+    group_send = getattr(channel_layer, "group_send", None)
+    if group_send is None:
+        group_send = lambda *args, **kwargs: None
+    payload = {
+        "type": "chat.message",
+        "message": {
+            "id": message.id,
+            "content": message.content,
+            "sender": message.sender_id,
+            "sender_name": getattr(message.sender, "username", ""),
+            "timestamp": message.timestamp.isoformat(),
+            "booking_id": message.booking_id,
+            "conversation_id": message.conversation_id,
+            "restaurant_id": message.restaurant_id,
+        },
+    }
+    async_to_sync(group_send)(f"chat_restaurant_{message.restaurant_id}", payload)
+    async_to_sync(group_send)(f"chat_user_{message.conversation.guest_id}", payload)
+
+
 class ConversationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ConversationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -44,7 +73,13 @@ class ConversationViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         restaurant, is_global_admin = _get_restaurant_scope(user)
-        qs = Conversation.objects.select_related("restaurant", "guest").order_by("-updated_at")
+        latest_message = Message.objects.filter(conversation_id=OuterRef("pk")).order_by("-timestamp", "-id")
+        qs = Conversation.objects.select_related("restaurant", "guest").annotate(
+            last_message_content=Subquery(latest_message.values("content")[:1]),
+            last_message_timestamp=Subquery(latest_message.values("timestamp")[:1]),
+            last_message_sender_id=Subquery(latest_message.values("sender_id")[:1]),
+            last_message_is_read=Subquery(latest_message.values("is_read")[:1]),
+        ).order_by("-updated_at")
         if is_global_admin:
             return qs
         filters = Q(guest=user)
@@ -78,7 +113,7 @@ class ConversationViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(conversation)
         return response.Response(serializer.data)
 
-class MessageViewSet(viewsets.ModelViewSet):
+class MessageViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -176,6 +211,8 @@ class MessageViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save(sender=self.request.user, conversation=conversation, restaurant=restaurant)
+        if serializer.instance is not None:
+            _broadcast_message(serializer.instance)
 
     @decorators.action(detail=False, methods=["get"])
     def unread_count(self, request):
@@ -250,7 +287,9 @@ class MessageViewSet(viewsets.ModelViewSet):
             if not _user_can_access_restaurant(user, restaurant_obj):
                 return response.Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
-            updated = qs.filter(restaurant_id=rid).update(is_read=True)
-            return response.Response({"updated": updated})
+            return response.Response(
+                {"detail": "Use booking or conversation to mark messages as read."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return response.Response({"detail": "booking, conversation or restaurant is required"}, status=status.HTTP_400_BAD_REQUEST)

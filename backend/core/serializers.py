@@ -7,6 +7,7 @@ from django.db.models import Q
 from .models import Profile, PushToken, OTPVerification, OTPDeliveryAttempt
 from contractors.models import Contractor
 from django.conf import settings
+from .utils import get_user_profile
 
 
 def _normalize_email(value: str) -> str:
@@ -16,7 +17,7 @@ def _normalize_email(value: str) -> str:
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        fields = ['id', 'username', 'first_name', 'last_name']
 
 
 class OTPDeliveryAttemptSerializer(serializers.ModelSerializer):
@@ -83,18 +84,31 @@ class UpdateRoleResponseSerializer(serializers.Serializer):
 
 
 class UserMeSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source='profile.role', read_only=True)
-    restaurant = serializers.PrimaryKeyRelatedField(source='profile.restaurant', read_only=True)
-    phone = serializers.CharField(source='profile.phone', read_only=True)
+    role = serializers.SerializerMethodField()
+    restaurant = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
     restaurant_verified = serializers.SerializerMethodField()
     restaurant_setup_required = serializers.SerializerMethodField()
 
+    def get_role(self, obj):
+        profile = get_user_profile(obj)
+        return profile.role if profile else None
+
+    def get_restaurant(self, obj):
+        profile = get_user_profile(obj)
+        return profile.restaurant_id if profile else None
+
+    def get_phone(self, obj):
+        profile = get_user_profile(obj)
+        return profile.phone if profile else ""
+
     def get_restaurant_verified(self, obj) -> bool:
-        if not hasattr(obj, 'profile'):
+        profile = get_user_profile(obj)
+        if not profile:
             return True
-        if obj.profile.restaurant:
-            return obj.profile.restaurant.is_verified
-        if obj.profile.role in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
+        if profile.restaurant:
+            return profile.restaurant.is_verified
+        if profile.role in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
             from restaurants.models import RestaurantRequest
             req = RestaurantRequest.objects.filter(owner=obj).order_by('-created_at').first()
             if req:
@@ -103,11 +117,12 @@ class UserMeSerializer(serializers.ModelSerializer):
         return True
 
     def get_restaurant_setup_required(self, obj) -> bool:
-        if not hasattr(obj, 'profile'):
+        profile = get_user_profile(obj)
+        if not profile:
             return False
-        if obj.profile.role not in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
+        if profile.role not in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
             return False
-        if obj.profile.restaurant:
+        if profile.restaurant:
             return False
         from restaurants.models import RestaurantRequest
         has_request = RestaurantRequest.objects.filter(owner=obj).exists()
@@ -147,7 +162,7 @@ class UserMeUpdateSerializer(serializers.Serializer):
         return value
 
     def update(self, instance, validated_data):
-        profile = instance.profile
+        profile = get_user_profile(instance)
         user_fields = []
 
         for field in ('username', 'email', 'first_name', 'last_name'):
@@ -158,7 +173,7 @@ class UserMeUpdateSerializer(serializers.Serializer):
         if user_fields:
             instance.save(update_fields=user_fields)
 
-        if 'phone' in validated_data:
+        if 'phone' in validated_data and profile:
             profile.phone = validated_data['phone'] or ''
             profile.save(update_fields=['phone'])
 
@@ -283,10 +298,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=first_name
         )
         
-        profile = user.profile
-        profile.role = role
-        profile.phone = phone
-        profile.save()
+        profile = get_user_profile(user)
+        if profile:
+            profile.role = role
+            profile.phone = phone
+            profile.save()
 
         if role == 'customer':
             pass
@@ -369,8 +385,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             if user:
                 attrs["username"] = user.username
         data = super().validate(attrs)
-        if self.user and hasattr(self.user, 'profile'):
-            data['role'] = self.user.profile.role
+        if self.user:
+            profile = get_user_profile(self.user)
+            data['role'] = profile.role if profile else 'customer'
         return data
 class PushTokenSerializer(serializers.ModelSerializer):
     class Meta:

@@ -17,6 +17,7 @@ from rest_framework import status
 
 from bookings.models import Booking
 from restaurants.models import Restaurant, Table
+from core.models import Profile
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -250,6 +251,14 @@ class TestTableRead:
         data = resp.data if isinstance(resp.data, list) else resp.data.get("results", [])
         assert len(data) == 1
         assert data[0]["name"] == "1"
+
+    @pytest.mark.django_db
+    def test_list_with_missing_profile_returns_forbidden_not_500(self, client, owner, restaurant):
+        Table.objects.create(restaurant=restaurant, number="1", seats=4)
+        Profile.objects.filter(user=owner).delete()
+        client.force_authenticate(user=owner)
+        resp = client.get("/api/v1/tables/")
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -36,6 +36,17 @@ function getDefaultWebSocketBaseUrl() {
     return `${protocol}//${window.location.host}`;
 }
 
+function shouldIgnoreLoopbackWsUrl(value?: string | null) {
+    if (!value) return false;
+
+    try {
+        const parsed = new URL(value, window.location.origin);
+        return !isLocalLikeHostname(window.location.hostname) && isLocalLikeHostname(parsed.hostname);
+    } catch {
+        return false;
+    }
+}
+
 export function useWebSocket({
     url,
     enabled = true,
@@ -62,7 +73,12 @@ export function useWebSocket({
                 token = null;
             }
         }
-        const host = (import.meta.env.VITE_WS_URL || getDefaultWebSocketBaseUrl()).replace(/\/+$/, '');
+        const configuredWsHost = import.meta.env.VITE_WS_URL || '';
+        const host = (
+            shouldIgnoreLoopbackWsUrl(configuredWsHost)
+                ? getDefaultWebSocketBaseUrl()
+                : configuredWsHost || getDefaultWebSocketBaseUrl()
+        ).replace(/\/+$/, '');
         const normalized = url.replace(/^\/+/, '');
         const separator = normalized.includes('?') ? '&' : '?';
         return `${host}/${normalized}${token ? `${separator}token=${token}` : ''}`;

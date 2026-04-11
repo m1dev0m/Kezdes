@@ -3,21 +3,24 @@ import { Platform, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useResponsive } from '../../hooks/useResponsive';
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
+    const { isTablet } = useResponsive();
 
     return (
         <Tabs screenOptions={{
             headerShown: false,
             tabBarActiveTintColor: '#0047FF', // deep blue
             tabBarInactiveTintColor: '#94a3b8', // soft gray
+            tabBarLabelPosition: isTablet ? 'beside-icon' : 'below-icon',
             tabBarStyle: {
                 backgroundColor: '#ffffff',
                 borderTopWidth: 0,
-                height: 65 + insets.bottom,
+                height: (isTablet ? 72 : 65) + insets.bottom,
                 paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-                paddingTop: 10,
+                paddingTop: isTablet ? 8 : 10,
                 ...Platform.select({
                     ios: {
                         shadowColor: '#000',
@@ -35,7 +38,7 @@ export default function TabLayout() {
                 }),
             },
             tabBarLabelStyle: {
-                fontSize: 11,
+                fontSize: isTablet ? 12 : 11,
                 fontWeight: '600',
                 marginTop: 4,
             }
@@ -68,6 +71,19 @@ export default function TabLayout() {
                         <Ionicons name="person-outline" size={24} color={color} />
                     ),
                 }}
+            />
+            <Tabs.Screen
+                name="messages"
+                options={{
+                    title: 'Сообщения',
+                    tabBarIcon: ({ color }) => (
+                        <Ionicons name="chatbubble-ellipses-outline" size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="qr"
+                options={{ href: null }}
             />
         </Tabs>
     );

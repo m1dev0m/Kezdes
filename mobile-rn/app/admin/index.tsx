@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
+import { useResponsive } from '../../hooks/useResponsive';
 import { fetchMyRestaurant, fetchMyRestaurantBookings, updateBookingStatus, fetchMyRestaurantApplication } from '../../lib/api';
 
 type RestaurantState = 'loading' | 'ready' | 'pending' | 'needs_setup' | 'error';
@@ -12,19 +13,25 @@ type RestaurantState = 'loading' | 'ready' | 'pending' | 'needs_setup' | 'error'
 export default function AdminDashboardScreen() {
     const router = useRouter();
     const { user } = useAuth();
+    const { isTablet, horizontalPadding, contentMaxWidth } = useResponsive();
     const [restaurant, setRestaurant] = useState<any>(null);
     const [bookings, setBookings] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [restaurantState, setRestaurantState] = useState<RestaurantState>('loading');
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-    const initData = useCallback(async () => {
+    const initData = useCallback(async (refresh = false) => {
         const access = user?.access;
         if (!access) {
             return;
         }
 
-        setIsLoading(true);
+        if (refresh) {
+            setIsRefreshing(true);
+        } else {
+            setIsLoading(true);
+        }
         setRestaurantState('loading');
         setStatusMessage(null);
         try {
@@ -58,6 +65,7 @@ export default function AdminDashboardScreen() {
             }
         } finally {
             setIsLoading(false);
+            setIsRefreshing(false);
         }
     }, [router, user?.access]);
 
@@ -75,7 +83,7 @@ export default function AdminDashboardScreen() {
             fetchMyRestaurantBookings(access)
                 .then(setBookings)
                 .catch(e => console.error('Polling error:', e));
-        }, 3000);
+        }, 15000);
 
         return () => clearInterval(interval);
     }, [initData, user?.access]);
@@ -126,10 +134,10 @@ export default function AdminDashboardScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
                 <View style={styles.headerLeft}>
                     <View style={styles.rIconBox}>
-                        <MaterialCommunityIcons name="silverware-fork-knife" size={20} color="#4300FF" />
+                        <Ionicons name="restaurant-outline" size={20} color="#4300FF" />
                     </View>
                     <View>
                         <Text style={styles.rName}>{restaurant?.name || 'Grand Cafe'}</Text>
@@ -145,7 +153,13 @@ export default function AdminDashboardScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <ScrollView
+                contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding }]}
+                refreshControl={
+                    <RefreshControl refreshing={isRefreshing} onRefresh={() => initData(true)} />
+                }
+            >
+                <View style={[styles.contentInner, { maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%' }]}>
                 <Text style={styles.greetingTitle}>Привет, Админ! 👋</Text>
                 <Text style={styles.greetingSub}>{greetingSub}</Text>
 
@@ -179,7 +193,7 @@ export default function AdminDashboardScreen() {
 
                 {restaurantState === 'ready' ? (
                     <>
-                        <View style={styles.kpiRow}>
+                        <View style={[styles.kpiRow, isTablet && styles.kpiRowTablet]}>
                             <View style={[styles.kpiCard, styles.kpiCardWhite]}>
                                 <Text style={styles.kpiLabel}>СЕГОДНЯ</Text>
                                 <View style={styles.kpiValRow}>
@@ -207,6 +221,24 @@ export default function AdminDashboardScreen() {
                             <Text style={styles.sectionTitle}>Новые запросы</Text>
                             <TouchableOpacity onPress={() => router.push('/admin/bookings')}>
                                 <Text style={styles.sectionLink}>Все ›</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={[styles.quickActionsRow, isTablet && styles.quickActionsRowTablet]}>
+                            <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/admin/tables')}>
+                                <Ionicons name="grid-outline" size={20} color={colors.primary} />
+                                <Text style={styles.quickActionTitle}>Столы</Text>
+                                <Text style={styles.quickActionText}>Список и редактирование</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/admin/calendar')}>
+                                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                                <Text style={styles.quickActionTitle}>Календарь</Text>
+                                <Text style={styles.quickActionText}>Быстрый просмотр смены</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/admin/messages')}>
+                                <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.primary} />
+                                <Text style={styles.quickActionTitle}>Сообщения</Text>
+                                <Text style={styles.quickActionText}>Переписка с гостями</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -273,7 +305,7 @@ export default function AdminDashboardScreen() {
                         </View>
                     </View>
                 )}
-
+                </View>
             </ScrollView>
         </SafeAreaView>
     );
@@ -290,7 +322,8 @@ const styles = StyleSheet.create({
     notifBtn: { position: 'relative', width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
     notifBadge: { position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', borderWidth: 1, borderColor: '#f4f5f9' },
 
-    content: { paddingHorizontal: 20, paddingBottom: 100 },
+    content: { paddingBottom: 100 },
+    contentInner: { width: '100%' },
     greetingTitle: { fontSize: 24, fontWeight: '800', color: colors.text, marginTop: 12 },
     greetingSub: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: 24 },
 
@@ -307,7 +340,8 @@ const styles = StyleSheet.create({
     noticePrimaryBtn: { flex: 1, backgroundColor: '#4300FF', paddingVertical: 12, borderRadius: 30, alignItems: 'center' },
     noticePrimaryText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
-    kpiRow: { flexDirection: 'row', gap: 8, marginBottom: 32 },
+    kpiRow: { flexDirection: 'column', gap: 10, marginBottom: 32 },
+    kpiRowTablet: { flexDirection: 'row', gap: 12 },
     kpiCard: { flex: 1, padding: 16, borderRadius: 32, borderCurve: 'continuous', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
     kpiCardWhite: { backgroundColor: '#ffffff' },
     kpiCardPurple: { backgroundColor: '#4300FF' },
@@ -320,6 +354,11 @@ const styles = StyleSheet.create({
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
     sectionLink: { fontSize: 14, fontWeight: '600', color: '#4300FF' },
+    quickActionsRow: { flexDirection: 'column', gap: 12, marginBottom: 24 },
+    quickActionsRowTablet: { flexDirection: 'row' },
+    quickActionCard: { flex: 1, backgroundColor: '#ffffff', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: '#f1f5f9' },
+    quickActionTitle: { marginTop: 12, fontSize: 14, fontWeight: '800', color: colors.text },
+    quickActionText: { marginTop: 4, fontSize: 12, lineHeight: 18, color: colors.textSecondary },
 
     emptyStateCard: { backgroundColor: '#ffffff', borderRadius: 28, borderWidth: 1, borderColor: '#f1f5f9', padding: 20, marginBottom: 24 },
     emptyStateTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 8 },

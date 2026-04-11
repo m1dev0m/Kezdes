@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Copy, RefreshCw, Sparkles } from 'lucide-react';
+import { Copy, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 import api from '@/services/api';
-import { extractResults, getApiErrorMessage } from '@/features/reservations/shared';
+import { useAuth } from '@/modules/auth/logic/AuthContext';
+import { extractResults, getApiErrorMessage, getLocalDateString } from '@/features/reservations/shared';
 
 type WaitlistRecord = {
   id: number;
@@ -27,6 +29,15 @@ type WaitlistRecord = {
   notified_at?: string | null;
 };
 
+type WaitlistCreateForm = {
+  guest_name: string;
+  guest_phone: string;
+  guest_email: string;
+  date: string;
+  time: string;
+  guests: number;
+};
+
 function formatDate(value: string) {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
@@ -43,7 +54,7 @@ function getWaitlistStatusLabel(status: string) {
       return 'Ожидает слот';
     case 'notified':
       return 'Уведомлён';
-    case 'converted':
+    case 'promoted':
       return 'Переведён в бронь';
     case 'expired':
       return 'Истёк';
@@ -55,11 +66,25 @@ function getWaitlistStatusLabel(status: string) {
 }
 
 export default function Waitlist() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [entries, setEntries] = useState<WaitlistRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createForm, setCreateForm] = useState<WaitlistCreateForm>({
+    guest_name: '',
+    guest_phone: '',
+    guest_email: '',
+    date: getLocalDateString(),
+    time: '19:00',
+    guests: 2,
+  });
+
+  const restaurantId = user?.owned_restaurant?.id ?? user?.restaurant ?? null;
 
   const loadEntries = useCallback(async () => {
     setRefreshing(true);
@@ -93,9 +118,16 @@ export default function Waitlist() {
   const handleConvert = async (entry: WaitlistRecord) => {
     setBusyId(entry.id);
     try {
-      await api.post(`/bookings/waitlist/${entry.id}/convert-to-reservation/`);
+      const response = await api.post(`/bookings/waitlist/${entry.id}/convert-to-reservation/`);
       toast.success('Запись из листа ожидания переведена в бронь.');
       await loadEntries();
+      const bookingId = response.data?.booking_id ?? response.data?.id;
+      const redirectTo = response.data?.redirect_to;
+      if (redirectTo) {
+        navigate(redirectTo);
+      } else if (bookingId) {
+        navigate(`/app/bookings?id=${bookingId}`);
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Не удалось перевести запись в бронь.'));
     } finally {
@@ -113,26 +145,83 @@ export default function Waitlist() {
     }
   };
 
+  const handleCreateWaitlist = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!restaurantId) {
+      toast.error('Не удалось определить ресторан для этой учётной записи.');
+      return;
+    }
+    if (!createForm.guest_name.trim() || !createForm.guest_phone.trim()) {
+      toast.error('Укажите имя и телефон гостя.');
+      return;
+    }
+
+    setCreateLoading(true);
+    try {
+      await api.post('/bookings/waitlist/', {
+        restaurant: restaurantId,
+        guest_name: createForm.guest_name.trim(),
+        guest_phone: createForm.guest_phone.trim(),
+        guest_email: createForm.guest_email.trim() || undefined,
+        date: createForm.date,
+        time: createForm.time,
+        guests: Math.max(1, createForm.guests),
+      });
+      toast.success('Гость добавлен в лист ожидания.');
+      setCreateOpen(false);
+      setCreateForm({
+        guest_name: '',
+        guest_phone: '',
+        guest_email: '',
+        date: getLocalDateString(),
+        time: '19:00',
+        guests: 2,
+      });
+      await loadEntries();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Не удалось добавить гостя в лист ожидания.'));
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Лист ожидания</div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Лист ожидания</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-              Здесь видно, кому уже можно предложить слот, какие столы подходят лучше всего и кого можно быстро перевести в бронь.
-            </p>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Живая очередь и резерв</div>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Очередь (Waitlist)</h1>
+            <div className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 space-y-2">
+              <p>
+                Используйте очередь для гостей, которые пришли без предупреждения (walk-in) и ждут столик прямо сейчас, 
+                либо для гостей, которые хотят попасть к вам в уже полностью занятое время.
+              </p>
+              <p>
+                Как только подходящий стол освободится, система подскажет вам об этом. Вы сможете перевести запись из очереди в полноценную бронь в один клик.
+              </p>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => void loadEntries()}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-            Обновить
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#1e40af]"
+            >
+              <Plus size={16} />
+              Добавить в очередь
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadEntries()}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+              Обновить
+            </button>
+          </div>
         </div>
       </section>
 
@@ -148,8 +237,8 @@ export default function Waitlist() {
         ) : null}
 
         <div className="border-b border-slate-200 px-6 py-5">
-          <div className="text-lg font-semibold tracking-tight text-slate-900">Операционный waitlist</div>
-          <div className="mt-1 text-sm text-slate-500">Автопредложение слотов уже работает на backend; здесь видны реальные кандидаты и столы для посадки.</div>
+          <div className="text-lg font-semibold tracking-tight text-slate-900">Операционный лист ожидания</div>
+          <div className="mt-1 text-sm text-slate-500">Здесь видно, кому уже можно предложить слот и какие столы подходят лучше всего.</div>
         </div>
 
         <div className="overflow-x-auto">
@@ -167,13 +256,13 @@ export default function Waitlist() {
               {loading ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-14 text-center text-sm text-slate-500">
-                    Загрузка waitlist...
+                    Загрузка листа ожидания...
                   </td>
                 </tr>
               ) : entries.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-14 text-center text-sm text-slate-500">
-                    Активных записей в листе ожидания пока нет.
+                    Активных записей пока нет.
                   </td>
                 </tr>
               ) : (
@@ -184,9 +273,7 @@ export default function Waitlist() {
                       <td className="px-6 py-4 align-top">
                         <div className="text-sm font-semibold text-slate-900">{entry.contact_name || entry.user_name || 'Гость'}</div>
                         <div className="mt-1 text-xs text-slate-500">{entry.guests} гостей</div>
-                        {entry.notified_at ? (
-                          <div className="mt-2 text-xs text-amber-600">Уведомление отправлено</div>
-                        ) : null}
+                        {entry.notified_at ? <div className="mt-2 text-xs text-amber-600">Уведомление отправлено</div> : null}
                       </td>
                       <td className="px-6 py-4 align-top">
                         <div className="text-sm font-medium text-slate-700">{formatDate(entry.date)}</div>
@@ -246,6 +333,119 @@ export default function Waitlist() {
           </table>
         </div>
       </section>
+
+      {createOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/35 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50 px-6 py-5">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Добавить гостя в лист ожидания</h2>
+                <p className="mt-1 text-sm text-slate-500">Для walk-in гостя или звонка, когда слота на нужное время пока нет.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(false)}
+                className="rounded-full p-1.5 text-slate-400 transition hover:bg-white hover:text-slate-700"
+                aria-label="waitlist-create-close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateWaitlist} className="space-y-4 p-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-2 text-sm sm:col-span-2">
+                  <span className="font-medium text-slate-700">Имя гостя</span>
+                  <input
+                    value={createForm.guest_name}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, guest_name: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+                    placeholder="Например, Алия"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm">
+                  <span className="font-medium text-slate-700">Телефон</span>
+                  <input
+                    value={createForm.guest_phone}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, guest_phone: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+                    placeholder="+7 700 000 00 00"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm">
+                  <span className="font-medium text-slate-700">Гости</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={createForm.guests}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({ ...current, guests: Math.min(20, Math.max(1, Number(event.target.value) || 1)) }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm">
+                  <span className="font-medium text-slate-700">Дата</span>
+                  <input
+                    type="date"
+                    min={getLocalDateString()}
+                    value={createForm.date}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, date: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm">
+                  <span className="font-medium text-slate-700">Время</span>
+                  <input
+                    type="time"
+                    value={createForm.time}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, time: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm sm:col-span-2">
+                  <span className="font-medium text-slate-700">Email</span>
+                  <input
+                    type="email"
+                    value={createForm.guest_email}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, guest_email: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1d4ed8] focus:bg-white"
+                    placeholder="Необязательно"
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={createLoading}
+                  className="rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+                >
+                  {createLoading ? 'Добавляем...' : 'Добавить в лист ожидания'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

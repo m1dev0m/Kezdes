@@ -38,6 +38,7 @@ class MvpSmokeFlowTests(APITestCase):
             format="json",
         )
         self.assertEqual(reg_owner.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(reg_owner.data["user"]["role"], "pending")
         owner_token = self._login("owner_smoke@test.local", "owner-pass-123")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {owner_token}")
 

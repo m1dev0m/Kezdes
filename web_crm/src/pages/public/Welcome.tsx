@@ -46,17 +46,10 @@ const FOOTER_INFO = [
 
 const PRICING_CARDS = [
   {
-    title: 'Для гостей',
-    price: 'Бесплатно',
-    description: 'Поиск ресторанов, бронирование столика и личный кабинет без абонентской платы.',
-    ctaLabel: 'Забронировать',
-    to: '/restaurants',
-  },
-  {
-    title: 'Для ресторанов',
-    price: 'от 16990 ₸',
-    description: 'CRM, столы, бронирования и гостевая база для ежедневной работы ресторана.',
-    ctaLabel: 'Посмотреть тарифы',
+    title: 'Единый тариф для ресторана',
+    price: '27 990 ₸ / месяц',
+    description: 'Kezdes Plus включает CRM, столы, бронирования, аналитику и работу команды без выбора между планами.',
+    ctaLabel: 'Посмотреть тариф',
     to: '/pricing',
   },
 ];
@@ -95,23 +88,23 @@ export default function Welcome() {
     <div className="min-h-screen bg-[#f8fafc] font-inter text-slate-900">
       <PublicHeader active="home" />
 
-      <main className="pt-28">
+      <main className="pt-8 sm:pt-10">
         <section className="border-b border-slate-200 bg-white">
-          <div className="mx-auto grid max-w-[1280px] gap-8 px-6 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+          <div className="mx-auto grid max-w-[1280px] gap-6 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-8 lg:py-14">
             <div className="flex items-center">
               <div className="max-w-[580px]">
                 <div className="inline-flex rounded-full bg-blue-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
                   Kezdes for restaurants
                 </div>
-                <h1 className="mt-6 text-5xl font-semibold leading-tight tracking-tight text-slate-900">
+                <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
                   Бронирования и работа зала в одном строгом интерфейсе
                 </h1>
-                <p className="mt-5 text-base leading-8 text-slate-600">
+                <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base sm:leading-8">
                   Kezdes помогает ресторану быстро принимать бронирования, видеть свободные столы, вести базу гостей и
                   удерживать операционный порядок в течение смены.
                 </p>
 
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-6 grid gap-3 sm:flex sm:flex-row">
                   <Link
                     to="/register?mode=restaurant"
                     className="inline-flex min-w-[180px] items-center justify-center rounded-2xl bg-[#1d4ed8] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
@@ -126,9 +119,9 @@ export default function Welcome() {
                   </Link>
                 </div>
 
-                <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                <div className="mt-6 rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Запрос брони</div>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">Открыть бронирование сразу с главной</h2>
+                  <h2 className="mt-2 text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">Открыть бронирование сразу с главной</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     Клиент выбирает дату, время и количество гостей здесь, а дальше сразу попадает в список ресторанов с нужным контекстом.
                   </p>
@@ -177,7 +170,7 @@ export default function Welcome() {
               <img
                 src="https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1400&q=80"
                 alt="Restaurant dining room"
-                className="h-[320px] w-full rounded-[28px] border border-slate-200 object-cover"
+                className="h-[240px] w-full rounded-[24px] border border-slate-200 object-cover sm:h-[320px] sm:rounded-[28px]"
               />
               <div className="grid gap-4 sm:grid-cols-3">
                 <LandingStat icon={<CalendarCheck2 size={18} />} label="CRM flow" value="Create → confirm → seat" />
@@ -188,7 +181,7 @@ export default function Welcome() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-[1280px] px-6 py-14 lg:px-8">
+        <section className="mx-auto max-w-[1280px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
           <div className="max-w-2xl">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">О продукте</div>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">Нужные блоки для MVP ресторана</h2>
@@ -197,7 +190,7 @@ export default function Welcome() {
             </p>
           </div>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-3 sm:mt-8 sm:gap-5">
             {FEATURES.map((feature) => (
               <div key={feature.title} className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="inline-flex rounded-2xl bg-blue-50 p-3 text-blue-700">{feature.icon}</div>
@@ -209,7 +202,7 @@ export default function Welcome() {
         </section>
 
         <section className="border-y border-slate-200 bg-white">
-          <div className="mx-auto max-w-[1280px] px-6 py-14 lg:px-8">
+          <div className="mx-auto max-w-[1280px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
             <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Как это выглядит</div>
@@ -295,13 +288,13 @@ export default function Welcome() {
           <div className="mx-auto max-w-[1280px] px-6 py-14 lg:px-8">
             <div className="max-w-2xl">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Цены</div>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">Прозрачные тарифы для двух сценариев</h2>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">Единый тариф Kezdes Plus</h2>
               <p className="mt-4 text-sm leading-7 text-slate-600">
-                Для обычных пользователей сервис бесплатный. Для ресторанов рабочий тариф начинается от 16990 ₸ в месяц.
+                Один тариф для ресторанов — 27 990 ₸ в месяц. Для гостей сервис остаётся бесплатным.
               </p>
             </div>
 
-            <div className="mt-8 grid gap-5 md:grid-cols-2">
+            <div className="mt-8 grid gap-5 md:grid-cols-1">
               {PRICING_CARDS.map((card) => (
                 <div key={card.title} className="rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{card.title}</div>

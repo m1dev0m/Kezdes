@@ -25,8 +25,8 @@ export default function GuestLayout() {
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0F0F23] font-inter text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-100/50">
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#0F0F23]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-6 py-4 sm:px-8">
-          <div className="flex items-center gap-10">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+          <div className="flex items-center gap-4 lg:gap-10">
             <Link to="/" className="flex items-center gap-2 group transition-transform active:scale-95">
               <Logo className="h-8 sm:h-9" />
             </Link>
@@ -48,7 +48,7 @@ export default function GuestLayout() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden sm:flex items-center gap-2 mr-2">
               <button
                 type="button"
@@ -66,7 +66,7 @@ export default function GuestLayout() {
               </button>
             </div>
 
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2 pl-3 sm:gap-3 sm:pl-4 border-l border-slate-200 dark:border-slate-800">
               <div className="flex flex-col text-right hidden md:block">
                 <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{user?.username || 'Guest'}</span>
                 <button onClick={handleLogout} className="text-[10px] font-semibold text-[#1d4ed8] hover:underline mt-0.5">Выйти</button>
@@ -83,11 +83,11 @@ export default function GuestLayout() {
         </div>
       </header>
 
-      <main className="w-full transition-all duration-300">
+      <main className="w-full pb-24 transition-all duration-300 md:pb-0">
         <Outlet />
       </main>
 
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F0F23] py-12 px-6">
+      <footer className="hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F0F23] px-6 py-12 md:block">
         <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
             <Logo className="h-7" />
@@ -100,6 +100,26 @@ export default function GuestLayout() {
           </div>
         </div>
       </footer>
+
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-xl grid-cols-5 gap-1">
+          {NAV_ITEMS.map((item) => {
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
+                  active ? 'bg-blue-50 text-[#1d4ed8]' : 'text-slate-500'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

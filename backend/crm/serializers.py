@@ -50,8 +50,11 @@ class CustomerSerializer(serializers.ModelSerializer):
         return 'regular'
 
     def get_notes(self, obj):
-        notes = obj.internal_notes.order_by('-updated_at').values_list('content', flat=True)
-        return '\n\n'.join(notes) if notes else ''
+        # Use .all() to preserve the prefetch cache; .order_by() would invalidate it
+        # and cause a per-row DB query (N+1).
+        all_notes = obj.internal_notes.all()
+        sorted_notes = sorted(all_notes, key=lambda n: n.updated_at, reverse=True)
+        return '\n\n'.join(n.content for n in sorted_notes) if sorted_notes else ''
 
 
 class LeadSerializer(serializers.ModelSerializer):

@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, RefreshControl, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
 import { fetchTables, createTable, updateTable, deleteTable } from '../../lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useResponsive } from '../../hooks/useResponsive';
 
 export default function AdminTablesScreen() {
     const { user } = useAuth();
     const router = useRouter();
+    const { isTablet, horizontalPadding, contentMaxWidth } = useResponsive();
     const [tables, setTables] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingTable, setEditingTable] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -19,18 +22,23 @@ export default function AdminTablesScreen() {
     const [number, setNumber] = useState('');
     const [seats, setSeats] = useState('');
     const [tableType, setTableType] = useState('rectangle');
+    const [isActive, setIsActive] = useState(true);
 
     useEffect(() => {
         if (user?.access) loadData();
     }, [user]);
 
-    const loadData = async () => {
+    const loadData = async (refresh = false) => {
         const token = user?.access;
         if (!token) {
             setIsLoading(false);
             return;
         }
-        setIsLoading(true);
+        if (refresh) {
+            setIsRefreshing(true);
+        } else {
+            setIsLoading(true);
+        }
         try {
             const data = await fetchTables(token);
             setTables(data || []);
@@ -39,6 +47,7 @@ export default function AdminTablesScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить список столов.');
         } finally {
             setIsLoading(false);
+            setIsRefreshing(false);
         }
     };
 
@@ -47,6 +56,7 @@ export default function AdminTablesScreen() {
         setNumber('');
         setSeats('');
         setTableType('rectangle');
+        setIsActive(true);
         setIsModalVisible(true);
     };
 
@@ -55,6 +65,7 @@ export default function AdminTablesScreen() {
         setNumber(table.number);
         setSeats(table.seats.toString());
         setTableType(table.table_type || 'rectangle');
+        setIsActive(table.is_active !== false);
         setIsModalVisible(true);
     };
 
@@ -102,7 +113,7 @@ export default function AdminTablesScreen() {
                 number,
                 seats: parseInt(seats),
                 table_type: tableType,
-                is_active: true
+                is_active: isActive
             };
 
             if (editingTable) {
@@ -122,9 +133,9 @@ export default function AdminTablesScreen() {
 
     const renderTableIcon = (type: string) => {
         switch (type) {
-            case 'circle': return <MaterialCommunityIcons name="circle-outline" size={24} color={colors.primary} />;
-            case 'square': return <MaterialCommunityIcons name="minus-box-outline" size={24} color={colors.primary} />;
-            default: return <MaterialCommunityIcons name="rectangle-outline" size={24} color={colors.primary} />;
+            case 'circle': return <Ionicons name="ellipse-outline" size={24} color={colors.primary} />;
+            case 'square': return <Ionicons name="square-outline" size={24} color={colors.primary} />;
+            default: return <MaterialIcons name="crop-16-9" size={24} color={colors.primary} />;
         }
     };
 
@@ -138,7 +149,7 @@ export default function AdminTablesScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
@@ -150,9 +161,19 @@ export default function AdminTablesScreen() {
 
             <FlatList
                 data={tables}
+                numColumns={isTablet ? 2 : 1}
+                key={isTablet ? 'tablet' : 'phone'}
                 keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[styles.listContent, { paddingHorizontal: horizontalPadding, maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%' }]}
+                refreshControl={
+                    <RefreshControl refreshing={isRefreshing} onRefresh={() => loadData(true)} />
+                }
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={7}
+                removeClippedSubviews
                 renderItem={({ item }) => (
+                    <View style={[styles.tableCardWrap, isTablet && styles.tableCardWrapTablet]}>
                     <View style={styles.tableCard}>
                         <View style={styles.tableInfo}>
                             <View style={styles.iconContainer}>
@@ -160,7 +181,7 @@ export default function AdminTablesScreen() {
                             </View>
                             <View>
                                 <Text style={styles.tableNumber}>Стол №{item.number}</Text>
-                                <Text style={styles.tableSeats}>{item.seats} мест</Text>
+                                <Text style={styles.tableSeats}>{item.seats} мест {item.is_active === false ? '· Неактивен' : ''}</Text>
                             </View>
                         </View>
                         <View style={styles.actions}>
@@ -172,10 +193,11 @@ export default function AdminTablesScreen() {
                             </TouchableOpacity>
                         </View>
                     </View>
+                    </View>
                 )}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <MaterialCommunityIcons name="table-furniture" size={64} color={colors.muted} />
+                        <Ionicons name="grid-outline" size={64} color={colors.muted} />
                         <Text style={styles.emptyText}>У вас пока нет добавленных столов</Text>
                         <TouchableOpacity style={styles.setupBtn} onPress={handleAdd}>
                             <Text style={styles.setupBtnText}>Добавить первый стол</Text>
@@ -189,7 +211,7 @@ export default function AdminTablesScreen() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.modalOverlay}
                 >
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, isTablet && styles.modalContentTablet]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>{editingTable ? 'Редактировать стол' : 'Добавить стол'}</Text>
                             <TouchableOpacity onPress={() => setIsModalVisible(false)}>
@@ -242,6 +264,19 @@ export default function AdminTablesScreen() {
                                 </View>
                             </View>
 
+                            <View style={[styles.inputGroup, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }]}>
+                                <View>
+                                    <Text style={styles.label}>Активен для смены</Text>
+                                    <Text style={{ fontSize: 11, color: colors.muted, marginLeft: 4, marginTop: 2, maxWidth: 220 }}>Если выключить, стол не будет доступен для посадки.</Text>
+                                </View>
+                                <Switch
+                                    value={isActive}
+                                    onValueChange={setIsActive}
+                                    trackColor={{ false: '#e2e8f0', true: colors.primary }}
+                                    thumbColor="#fff"
+                                />
+                            </View>
+
                             <TouchableOpacity
                                 style={[styles.saveBtn, isSaving && { opacity: 0.7 }]}
                                 onPress={handleSave}
@@ -263,11 +298,13 @@ export default function AdminTablesScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f4f5f9' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#fff' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20, backgroundColor: '#fff' },
     backBtn: { width: 40, height: 40, justifyContent: 'center' },
     headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
     addBtn: { width: 40, height: 40, alignItems: 'flex-end', justifyContent: 'center' },
-    listContent: { padding: 20 },
+    listContent: { paddingVertical: 20, paddingBottom: 120 },
+    tableCardWrap: { width: '100%' },
+    tableCardWrapTablet: { width: '50%', paddingHorizontal: 6 },
     tableCard: { backgroundColor: '#fff', borderRadius: 32, padding: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
     tableInfo: { flexDirection: 'row', alignItems: 'center', gap: 16 },
     iconContainer: { width: 48, height: 48, borderRadius: 40, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
@@ -281,6 +318,7 @@ const styles = StyleSheet.create({
     setupBtnText: { color: '#fff', fontWeight: '700' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
+    modalContentTablet: { alignSelf: 'center', width: '100%', maxWidth: 680, borderRadius: 32, marginBottom: 32 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
     form: { gap: 20 },

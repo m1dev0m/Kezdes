@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { RangeSlider } from '@react-native-assets/slider';
 import { colors } from '../theme/colors';
 
@@ -149,8 +149,8 @@ export default function WizardScreen() {
         <View style={styles.header}>
             <View style={styles.headerTop}>
                 <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
-                    <MaterialIcons
-                        name={step === 1 ? "close" : "chevron-left"}
+                    <Ionicons
+                        name={step === 1 ? "close" : "chevron-back"}
                         size={28}
                         color="#0f172a"
                     />
@@ -199,7 +199,7 @@ export default function WizardScreen() {
                                         activeOpacity={0.8}
                                     >
                                         <View style={[styles.typeIconBox, { backgroundColor: type.bgColor }]}>
-                                            <MaterialIcons name={type.icon as any} size={32} color={colors.primary} />
+                                            <Ionicons name={type.icon as any} size={32} color={colors.primary} />
                                         </View>
                                         <Text style={styles.typeLabel}>{type.label}</Text>
                                     </TouchableOpacity>
@@ -221,7 +221,7 @@ export default function WizardScreen() {
 
                         <View style={styles.dateSelectorCard}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                <MaterialIcons name="calendar-today" size={24} color="#0047FF" />
+                                <Ionicons name="calendar-outline" size={24} color="#0047FF" />
                                 <Text style={styles.dateSelectorText}>{formatDateShort(date)}</Text>
                             </View>
                             <TouchableOpacity style={styles.editDateBtn} onPress={() => setShowCalendar(true)}>
@@ -263,7 +263,7 @@ export default function WizardScreen() {
                     <View style={styles.stickyFooter}>
                         <TouchableOpacity style={styles.mainActionBtn} activeOpacity={0.9} onPress={handleNext}>
                             <Text style={styles.mainActionBtnText}>Продолжить</Text>
-                            <MaterialIcons name="arrow-forward" size={18} color="#fff" />
+                            <Ionicons name="chevron-forward" size={18} color="#fff" />
                         </TouchableOpacity>
                         {renderBottomProgress()}
                     </View>
@@ -311,7 +311,7 @@ export default function WizardScreen() {
                     <View style={styles.stickyFooter}>
                         <TouchableOpacity style={styles.mainActionBtn} activeOpacity={0.9} onPress={handleNext}>
                             <Text style={styles.mainActionBtnText}>Создать событие</Text>
-                            <MaterialIcons name="arrow-forward" size={18} color="#fff" />
+                            <Ionicons name="chevron-forward" size={18} color="#fff" />
                         </TouchableOpacity>
                         {renderBottomProgress()}
                     </View>
@@ -348,7 +348,7 @@ export default function WizardScreen() {
                                     >
                                         <View style={styles.addonToggleLeft}>
                                             <View style={[styles.addonToggleIconBox, isSelected && styles.addonToggleIconBoxActive]}>
-                                                <MaterialIcons name={addon.icon as any} size={24} color={isSelected ? colors.primary : colors.textSecondary} />
+                                                <Ionicons name={addon.icon as any} size={24} color={isSelected ? colors.primary : colors.textSecondary} />
                                             </View>
                                             <View>
                                                 <Text style={styles.addonToggleName}>{addon.name}</Text>
@@ -356,7 +356,7 @@ export default function WizardScreen() {
                                             </View>
                                         </View>
                                         <View style={styles.checkboxOuter}>
-                                            {isSelected && <MaterialIcons name="check" size={16} color="#fff" />}
+                                            {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
                                         </View>
                                     </TouchableOpacity>
                                 );
@@ -378,7 +378,7 @@ export default function WizardScreen() {
                         </View>
 
                         <View style={styles.infoNote}>
-                            <MaterialIcons name="info" size={20} color={colors.primary} style={{ marginTop: 2 }} />
+                            <Ionicons name="information-circle" size={20} color={colors.primary} style={{ marginTop: 2 }} />
                             <Text style={styles.infoNoteText}>
                                 Ваши заметки помогут ресторану подготовиться к вашему бизнес-мероприятию на высшем уровне.
                             </Text>
@@ -389,7 +389,7 @@ export default function WizardScreen() {
                     <View style={styles.stickyFooter}>
                         <TouchableOpacity style={styles.mainActionBtn} activeOpacity={0.9} onPress={handleNext}>
                             <Text style={styles.mainActionBtnText}>Далее</Text>
-                            <MaterialIcons name="arrow-forward" size={18} color="#fff" />
+                            <Ionicons name="chevron-forward" size={18} color="#fff" />
                         </TouchableOpacity>
                         {renderBottomProgress()}
                     </View>
@@ -400,7 +400,7 @@ export default function WizardScreen() {
                 <View style={styles.bottomNavCta}>
                     <TouchableOpacity style={styles.mainActionBtn} activeOpacity={0.9} onPress={handleNext}>
                         <Text style={styles.mainActionBtnText}>Продолжить</Text>
-                        <MaterialIcons name="arrow-forward" size={18} color="#fff" />
+                        <Ionicons name="chevron-forward" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
             )}
@@ -411,7 +411,7 @@ export default function WizardScreen() {
                         <View style={styles.calendarModalHeader}>
                             <Text style={styles.calendarModalTitle}>Выберите дату</Text>
                             <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                                <MaterialIcons name="close" size={24} color={colors.text} />
+                                <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
                         </View>
 
@@ -433,13 +433,13 @@ export default function WizardScreen() {
                                 <>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                         <TouchableOpacity onPress={() => changeMonth(-1)}>
-                                            <MaterialIcons name="chevron-left" size={28} color="#0f172a" />
+                                            <Ionicons name="chevron-back" size={28} color="#0f172a" />
                                         </TouchableOpacity>
                                         <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a' }}>
                                             {monthNames[month]} {year}
                                         </Text>
                                         <TouchableOpacity onPress={() => changeMonth(1)}>
-                                            <MaterialIcons name="chevron-right" size={28} color="#0f172a" />
+                                            <Ionicons name="chevron-forward" size={28} color="#0f172a" />
                                         </TouchableOpacity>
                                     </View>
 

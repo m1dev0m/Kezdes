@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 from restaurants.models import Restaurant
 from bookings.models import Booking
 from .models import MenuCategory, MenuItem, Order, OrderItem
+from core.models import Profile
 
 
 class OrderFlowTests(TestCase):
@@ -14,6 +15,8 @@ class OrderFlowTests(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username="u1", password="pass12345")
         self.client.force_authenticate(self.user)
+
+        self.staff = User.objects.create_user(username="staff1", password="pass12345")
 
         self.r1 = Restaurant.objects.create(
             name="R1",
@@ -29,6 +32,12 @@ class OrderFlowTests(TestCase):
             longitude=Decimal("76.889701"),
             capacity=100,
         )
+        self.r1.owner = self.staff
+        self.r1.plan = Restaurant.PLAN_PLUS
+        self.r1.feature_flags = {"orders_basic": True}
+        self.r1.save(update_fields=["owner", "plan", "feature_flags"])
+        self.staff.profile.role = "owner"
+        self.staff.profile.save(update_fields=["role"])
 
         self.cat = MenuCategory.objects.create(restaurant=self.r1, name="Main", order=1, is_active=True)
         self.item1 = MenuItem.objects.create(
@@ -109,3 +118,15 @@ class OrderFlowTests(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.status, Order.Status.CANCELLED)
 
+    def test_customer_cannot_access_my_restaurant_orders(self):
+        res = self.client.get("/api/v1/orders/my_restaurant/")
+        self.assertEqual(res.status_code, 403)
+
+    def test_owner_can_access_my_restaurant_orders(self):
+        owner_client = APIClient()
+        owner_client.force_authenticate(self.staff)
+        Order.objects.create(user=self.user, restaurant=self.r1, status=Order.Status.DRAFT)
+        res = owner_client.get("/api/v1/orders/my_restaurant/")
+        self.assertEqual(res.status_code, 200)
+        payload = res.data.get("results", res.data)
+        self.assertEqual(len(payload), 1)

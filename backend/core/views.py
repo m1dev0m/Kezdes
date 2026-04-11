@@ -35,6 +35,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
+from .utils import get_user_profile
 
 
 REQUIRED_PERIODIC_TASKS = (
@@ -211,7 +212,7 @@ class RegisterView(generics.CreateAPIView):
                         "user": {
                             "username": user.username,
                             "email": user.email,
-                            "role": user.profile.role,
+                            "role": getattr(get_user_profile(user), "role", "customer"),
                         },
                         "message": "User registered successfully",
                     },
@@ -227,7 +228,8 @@ class SetupRestaurantView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        if not hasattr(request.user, "profile") or request.user.profile.role not in ("owner", "pending"):
+        profile = get_user_profile(request.user)
+        if not profile or profile.role not in ("owner", "pending"):
             return Response({"detail": "Only restaurant applicants can submit setup."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = self.get_serializer(data=request.data, context={"request": request})
@@ -261,7 +263,7 @@ class UpdateRoleView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        profile = getattr(request.user, "profile", None)
+        profile = get_user_profile(request.user)
         if profile is None:
             return Response({"detail": "Profile not found."}, status=status.HTTP_400_BAD_REQUEST)
         profile.role = role
@@ -322,7 +324,7 @@ class HealthReadyView(APIView):
 
 
 class HealthWorkersView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated, IsGlobalAdmin]
 
     def _check_periodic_tasks(self):
         enabled = set(

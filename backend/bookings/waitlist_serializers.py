@@ -64,6 +64,12 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
+        profile = None
+        if user and user.is_authenticated and hasattr(user, 'profile'):
+            profile = user.profile
+
+        is_staff_actor = bool(profile and (getattr(profile, 'is_staff_member', False) or getattr(profile, 'is_global_admin', False)))
+
         if not user or not user.is_authenticated:
             guest_name = (attrs.get('guest_name') or '').strip()
             guest_phone = (attrs.get('guest_phone') or '').strip()
@@ -71,6 +77,15 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'guest_name': 'Укажите имя для листа ожидания.'})
             if not guest_phone:
                 raise serializers.ValidationError({'guest_phone': 'Укажите телефон для листа ожидания.'})
+            attrs['guest_name'] = guest_name
+            attrs['guest_phone'] = guest_phone
+        elif is_staff_actor:
+            guest_name = (attrs.get('guest_name') or '').strip()
+            guest_phone = (attrs.get('guest_phone') or '').strip()
+            if not guest_name:
+                raise serializers.ValidationError({'guest_name': 'Укажите имя гостя для листа ожидания.'})
+            if not guest_phone:
+                raise serializers.ValidationError({'guest_phone': 'Укажите телефон гостя для листа ожидания.'})
             attrs['guest_name'] = guest_name
             attrs['guest_phone'] = guest_phone
         else:

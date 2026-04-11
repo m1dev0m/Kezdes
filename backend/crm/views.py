@@ -9,13 +9,14 @@ import csv
 
 from .models import Customer, CustomerNote, Visit, Lead
 from .serializers import CustomerSerializer, CustomerNoteSerializer, VisitSerializer, LeadSerializer
-from core.utils import get_user_restaurant
+from core.utils import get_user_restaurant, get_user_profile
 from core.viewsets import OptionalPaginationMixin
+from core.permissions import CanViewCustomers
 
 
 class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewCustomers]
     filter_backends = [filters.SearchFilter, OrderingFilter]
     search_fields = ['name', 'phone', 'email', 'tags']
     ordering_fields = ['last_visit', 'visits_count', 'total_spent', 'created_at', 'name']
@@ -23,7 +24,7 @@ class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Customer.objects.filter(
-            restaurant=self.request.user.profile.restaurant
+            restaurant=get_user_restaurant(self.request.user)
         ).select_related('restaurant').prefetch_related('visit_history', 'internal_notes')
 
     def perform_create(self, serializer):
@@ -111,19 +112,21 @@ class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         from crm.services import normalize_phone
         
         customer_phone_normalized = normalize_phone(customer.phone)
+        phone_suffix = customer_phone_normalized[-7:] if len(customer_phone_normalized) >= 7 else customer_phone_normalized
+
         qs = (
             Booking.objects.filter(
                 restaurant=customer.restaurant,
             )
             .exclude(user_phone__isnull=True)
             .exclude(user_phone__exact='')
+            .filter(user_phone__endswith=phone_suffix)
             .select_related('restaurant', 'table', 'user')
-            .prefetch_related('tables')
-            .order_by('-date', '-time')[:100]
+            .order_by('-date', '-time')
         )
         
         data = []
-        for b in qs:
+        for b in qs.iterator():
             booking_phone_normalized = normalize_phone(b.user_phone)
             if booking_phone_normalized == customer_phone_normalized:
                 tables = []
@@ -152,15 +155,17 @@ class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                     'guest_name': b.user_name or (b.user.get_full_name() if b.user else None),
                     'guest_phone': b.user_phone,
                 })
+                if len(data) >= 100:
+                    break
         return Response(data)
 
 class CustomerNoteViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerNoteSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewCustomers]
 
     def get_queryset(self):
         return CustomerNote.objects.filter(
-            customer__restaurant=self.request.user.profile.restaurant
+            customer__restaurant=get_user_restaurant(self.request.user)
         ).select_related('customer', 'author')
 
     def perform_create(self, serializer):
@@ -168,11 +173,11 @@ class CustomerNoteViewSet(viewsets.ModelViewSet):
 
 class VisitViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = VisitSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewCustomers]
 
     def get_queryset(self):
         return Visit.objects.filter(
-            customer__restaurant=self.request.user.profile.restaurant
+            customer__restaurant=get_user_restaurant(self.request.user)
         ).select_related('customer', 'booking')
 
 
@@ -183,14 +188,20 @@ class LeadViewSet(viewsets.ModelViewSet):
     serializer_class = LeadSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
     def get_queryset(self):
         # Only staff should be able to list leads; anonymous can only create.
         user = self.request.user
         if not user.is_authenticated:
             return Lead.objects.none()
-        if not hasattr(user, "profile"):
+        profile = get_user_profile(user)
+        if not profile:
             return Lead.objects.none()
-        role = user.profile.role
+        role = profile.role
         if role == "global_admin":
             return Lead.objects.all()
         if role in ("owner", "restaurant_admin"):

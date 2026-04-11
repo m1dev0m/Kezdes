@@ -27,6 +27,11 @@ class CrmAccessTests(APITestCase):
         self.staff.profile.restaurant = self.restaurant
         self.staff.profile.save()
 
+        self.host = User.objects.create_user(username="crm_host", password="pwd-123")
+        self.host.profile.role = "host"
+        self.host.profile.restaurant = self.restaurant
+        self.host.profile.save()
+
         self.other = User.objects.create_user(username="crm_other", password="pwd-123")
         self.other.profile.role = "customer"
         self.other.profile.save()
@@ -63,7 +68,14 @@ class CrmAccessTests(APITestCase):
         self.client.force_authenticate(self.other)
         customers_res = self.client.get("/api/v1/crm/customers/")
         notes_res = self.client.get("/api/v1/crm/notes/")
-        self.assertEqual(customers_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(notes_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(customers_res.data), 0)
-        self.assertEqual(len(notes_res.data), 0)
+        self.assertEqual(customers_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(notes_res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_host_cannot_access_crm_customer_lists(self):
+        self.client.force_authenticate(self.host)
+        customers_res = self.client.get("/api/v1/crm/customers/")
+        notes_res = self.client.get("/api/v1/crm/notes/")
+        visits_res = self.client.get("/api/v1/crm/visits/")
+        self.assertEqual(customers_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(notes_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(visits_res.status_code, status.HTTP_403_FORBIDDEN)

@@ -12,6 +12,7 @@ from django.db.models import Sum, Avg, Count, Q
 from core.permissions import IsGlobalAdmin
 from core.responses import api_error
 from datetime import datetime
+from core.utils import get_user_restaurant
 
 
 class DashboardAnalyticsView(APIView):
@@ -20,11 +21,7 @@ class DashboardAnalyticsView(APIView):
     def get(self, request):
         user = request.user
 
-        restaurant = None
-        if hasattr(user, 'owned_restaurant'):
-            restaurant = user.owned_restaurant
-        elif hasattr(user, 'profile') and getattr(user.profile, 'restaurant', None):
-            restaurant = user.profile.restaurant
+        restaurant = get_user_restaurant(user)
 
         if not restaurant:
             return api_error("No associated restaurant.", 403)

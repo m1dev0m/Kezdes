@@ -57,6 +57,17 @@ function normalizeBaseUrl(value?: string | null) {
     return value?.trim().replace(/\/+$/, '') || null;
 }
 
+function shouldIgnoreLoopbackApiUrl(value: string | null) {
+    if (!value || typeof window === 'undefined') return false;
+
+    try {
+        const parsed = new URL(value, window.location.origin);
+        return !isLocalLikeHostname(window.location.hostname) && isLocalLikeHostname(parsed.hostname);
+    } catch {
+        return false;
+    }
+}
+
 function getDefaultApiBaseUrl() {
     if (typeof window === 'undefined') return 'http://localhost:8000/api/v1';
     const { hostname, origin, port, protocol } = window.location;
@@ -69,8 +80,12 @@ function getDefaultApiBaseUrl() {
     return `${origin.replace(/\/+$/, '')}/api/v1`;
 }
 
+const configuredApiBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_URL);
+
 const api = axios.create({
-    baseURL: normalizeBaseUrl(import.meta.env.VITE_API_URL) || getDefaultApiBaseUrl(),
+    baseURL: shouldIgnoreLoopbackApiUrl(configuredApiBaseUrl)
+        ? getDefaultApiBaseUrl()
+        : configuredApiBaseUrl || getDefaultApiBaseUrl(),
     headers: {
         'Content-Type': 'application/json',
     },

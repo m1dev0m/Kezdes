@@ -23,12 +23,24 @@ interface RestaurantSettings {
   turnover_default_min?: number;
 }
 
+const DGIS_API_KEY = (import.meta.env.VITE_DGIS_API_KEY as string | undefined)?.trim() || '';
+const DGIS_SUGGEST_URL = 'https://catalog.api.2gis.com/3.0/suggests';
+
+type AddressSuggestion = {
+  id: string;
+  label: string;
+  point?: { lat: number; lon: number };
+};
+
 export default function Settings() {
   const { user } = useAuth();
   const [tab, setTab] = useState<'business' | 'operational' | 'account'>('business');
   const [loading, setLoading] = useState(false);
   const [restaurant, setRestaurant] = useState<RestaurantSettings | null>(null);
   const [loadingData, setLoadingData] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
 
   const loadRestaurant = useCallback(async () => {
     setLoadingData(true);
@@ -45,6 +57,79 @@ export default function Settings() {
   useEffect(() => {
     void loadRestaurant();
   }, [loadRestaurant]);
+
+  useEffect(() => {
+    if (tab !== 'business') return;
+    const address = restaurant?.address?.trim() || '';
+    if (address.length < 3) {
+      setAddressSuggestions([]);
+      setAddressError(null);
+      setAddressLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      if (!DGIS_API_KEY) {
+        setAddressSuggestions([]);
+        setAddressError(null);
+        setAddressLoading(false);
+        return;
+      }
+      setAddressLoading(true);
+      setAddressError(null);
+      try {
+        const params = new URLSearchParams({
+          key: DGIS_API_KEY,
+          q: address,
+          suggest_type: 'address',
+          locale: 'ru_KZ',
+          fields: 'items.full_address_name,items.address,items.point',
+        });
+        const response = await fetch(`${DGIS_SUGGEST_URL}?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`2GIS error ${response.status}`);
+        }
+        const data = await response.json();
+        const items = data?.result?.items ?? data?.items ?? [];
+        const suggestions: AddressSuggestion[] = items
+          .map((item: any, index: number) => {
+            const label =
+              item?.full_address_name ||
+              item?.address?.name ||
+              item?.name ||
+              item?.suggested_text ||
+              '';
+            if (!label) return null;
+            const point = item?.point || item?.address?.point || item?.geometry?.centroid;
+            const normalizedPoint =
+              point && typeof point.lat === 'number' && typeof point.lon === 'number'
+                ? { lat: point.lat, lon: point.lon }
+                : undefined;
+            return {
+              id: String(item?.id ?? `${index}-${label}`),
+              label,
+              point: normalizedPoint,
+            };
+          })
+          .filter(Boolean) as AddressSuggestion[];
+        setAddressSuggestions(suggestions);
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          setAddressError('Не удалось получить подсказки адреса');
+        }
+      } finally {
+        setAddressLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [restaurant?.address, tab]);
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -141,6 +226,34 @@ export default function Settings() {
                 <Field label="Phone" type="tel" value={restaurant.phone || ''} onChange={(v) => update('phone', v)} icon={<Phone size={18} />} />
                 <div className="md:col-span-2">
                   <Field label="Address" value={restaurant.address || ''} onChange={(v) => update('address', v)} icon={<MapPin size={18} />} />
+                  {addressLoading ? (
+                    <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      Ищем подходящие адреса...
+                    </div>
+                  ) : null}
+                  {addressError ? (
+                    <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
+                      {addressError}
+                    </div>
+                  ) : null}
+                  {addressSuggestions.length > 0 ? (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      {addressSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          type="button"
+                          onClick={() => {
+                            update('address', suggestion.label);
+                            setAddressSuggestions([]);
+                          }}
+                          className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 last:border-b-0"
+                        >
+                          <MapPin size={16} className="text-slate-400" />
+                          <span>{suggestion.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

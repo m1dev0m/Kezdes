@@ -1,0 +1,16 @@
+{
+  "name": "Kezdes CRM",
+  "short_name": "Kezdes",
+  "description": "CRM для бронирований, столов и работы хоста в ресторане.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    {
+      "src": "/Kezdes_client_logo.png",
+      "sizes": "1024x524",
+      "type": "image/png"
+    }
+  ]
+}

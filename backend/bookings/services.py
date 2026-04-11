@@ -252,9 +252,8 @@ class BookingService:
 
         for existing in user_same_restaurant:
             raise DjangoValidationError(
-                {"time": f"У вас уже есть активная бронь на пересекающееся время "
-                         f"в этом ресторане (статус: {existing.get_status_display()}). "
-                         f"Отмените её перед созданием новой."}
+                {"time": "У вас уже есть активная бронь в этом ресторане. "
+                         "Чтобы забронировать снова, отмените предыдущую бронь."}
             )
 
         # 3. User-specific overlap check (other restaurants)
@@ -354,8 +353,10 @@ class BookingService:
                 try:
                     from crm.services import CRMService
                     customer_phone = booking_data.get('user_phone')
-                    if not customer_phone and user and hasattr(user, 'profile'):
-                        customer_phone = user.profile.phone
+                    if not customer_phone and user:
+                        from core.utils import get_user_profile
+                        _prof = get_user_profile(user)
+                        customer_phone = getattr(_prof, 'phone', None) if _prof else None
                     if customer_phone:
                         CRMService.ensure_customer(
                             restaurant=restaurant,

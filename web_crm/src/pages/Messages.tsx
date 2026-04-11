@@ -11,6 +11,7 @@ import { isRestaurantRole } from '@/modules/auth/logic/roles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { extractResults, getApiErrorMessage } from '@/features/reservations/shared';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 interface Message {
     id: number;
@@ -48,6 +49,17 @@ interface Conversation {
     restaurant?: number | null;
 }
 
+type RealtimeChatMessage = {
+    id: number;
+    content: string;
+    sender: number;
+    sender_name?: string;
+    timestamp: string;
+    booking_id?: number | null;
+    conversation_id?: number | null;
+    restaurant_id?: number | null;
+};
+
 export default function MessagesPage() {
     const { t } = useI18n();
     const { user } = useAuth();
@@ -72,6 +84,8 @@ export default function MessagesPage() {
     const appliedInitialSelectionRef = useRef(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [startingDirectThread, setStartingDirectThread] = useState(false);
+    const activeRestaurantId = selectedConv?.restaurant ?? selectedConv?.booking?.restaurant ?? user?.restaurant ?? null;
+    const hasRestaurantRole = isRestaurantRole(user?.role);
 
     const fetchAll = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
         try {
@@ -236,23 +250,6 @@ export default function MessagesPage() {
         }
     }, [selectedConv]);
 
-    useEffect(() => {
-        if (selectedConv) {
-            activeConvIdRef.current = selectedConv.id;
-            fetchMessages(selectedConv);
-            void markConversationRead(selectedConv);
-            if (pollRef.current) clearInterval(pollRef.current);
-            pollRef.current = setInterval(() => fetchMessages(selectedConv), 3000);
-        }
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current);
-        };
-    }, [selectedConv, markConversationRead]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
     const fetchMessages = async (conv: Conversation) => {
         const seq = ++fetchSeqRef.current;
         try {
@@ -275,6 +272,52 @@ export default function MessagesPage() {
         }
     };
 
+    const handleRealtimeMessage = useCallback((payload: RealtimeChatMessage) => {
+        if (!payload?.restaurant_id || !activeRestaurantId || payload.restaurant_id !== activeRestaurantId) {
+            return;
+        }
+
+        void fetchAll({ silent: true });
+
+        if (!selectedConv) {
+            return;
+        }
+
+        const matchesSelectedConversation = selectedConv.type === 'booking'
+            ? payload.booking_id === selectedConv.targetId
+            : payload.conversation_id === selectedConv.targetId;
+
+        if (matchesSelectedConversation) {
+            void fetchMessages(selectedConv);
+            void markConversationRead(selectedConv);
+        }
+    }, [activeRestaurantId, fetchAll, fetchMessages, markConversationRead, selectedConv]);
+
+    const { sendMessage: wsSend, isConnected } = useWebSocket({
+        url: activeRestaurantId ? `ws/chat/${activeRestaurantId}/` : '',
+        enabled: hasRestaurantRole && Boolean(activeRestaurantId),
+        onMessage: handleRealtimeMessage,
+    });
+
+    useEffect(() => {
+        if (selectedConv) {
+            activeConvIdRef.current = selectedConv.id;
+            void fetchMessages(selectedConv);
+            void markConversationRead(selectedConv);
+            if (pollRef.current) clearInterval(pollRef.current);
+            if (!isConnected) {
+                pollRef.current = setInterval(() => void fetchMessages(selectedConv), 3000);
+            }
+        }
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current);
+        };
+    }, [isConnected, selectedConv, markConversationRead]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
     const handleBookingAction = async (action: 'confirm' | 'reject') => {
         if (!selectedConv?.booking) return;
         setActionLoading(action);
@@ -296,12 +339,20 @@ export default function MessagesPage() {
         setSending(true);
 
         try {
-            const payload = selectedConv.type === 'booking'
-                ? { booking: selectedConv.targetId, content: toSend }
-                : { conversation: selectedConv.targetId, content: toSend };
+            if (isConnected && activeRestaurantId) {
+                wsSend(
+                    selectedConv.type === 'booking'
+                        ? { message: toSend, booking_id: selectedConv.targetId }
+                        : { message: toSend, conversation_id: selectedConv.targetId }
+                );
+            } else {
+                const payload = selectedConv.type === 'booking'
+                    ? { booking: selectedConv.targetId, content: toSend }
+                    : { conversation: selectedConv.targetId, content: toSend };
 
-            await api.post('/chat/messages/', payload);
-            await fetchMessages(selectedConv);
+                await api.post('/chat/messages/', payload);
+                await fetchMessages(selectedConv);
+            }
         } catch {
             toast.error('Ошибка при отправке');
             setNewMsg(toSend);
@@ -314,7 +365,6 @@ export default function MessagesPage() {
         !search || `${c.title} ${c.subtitle || ''} ${c.lastMessage || ''}`.toLowerCase().includes(search.toLowerCase())
     );
 
-    const hasRestaurantRole = isRestaurantRole(user?.role);
     const bookingCount = conversations.filter((conversation) => conversation.type === 'booking').length;
     const directCount = conversations.filter((conversation) => conversation.type === 'direct').length;
 
@@ -350,7 +400,7 @@ export default function MessagesPage() {
                             {directCount} direct
                         </span>
                         <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                            live thread
+                            {isConnected ? 'realtime' : 'polling'}
                         </span>
                     </div>
                 </div>

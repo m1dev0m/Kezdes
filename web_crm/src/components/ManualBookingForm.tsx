@@ -165,8 +165,8 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
           >
             <div className="flex items-start justify-between border-b border-slate-100 bg-[#FDFBF7] px-6 py-5">
               <div>
-                <h2 className="text-lg font-black italic text-[#1A3C34]">New Table Request</h2>
-                <p className="mt-1 text-sm text-slate-500">Manual booking for walk-ins, calls, or concierge requests.</p>
+                <h2 className="text-lg font-black italic text-[#1A3C34]">Новая бронь</h2>
+                <p className="mt-1 text-sm text-slate-500">Быстрое создание брони для walk-in гостей и звонков.</p>
               </div>
               <button
                 type="button"
@@ -181,7 +181,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
             <form onSubmit={handleSubmit} className="space-y-4 p-6">
               {!restaurantId ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  This account is not linked to a restaurant. Table availability cannot be loaded until the restaurant is connected.
+                  Аккаунт не привязан к ресторану. Проверьте настройки доступа и ресторанный профиль.
                 </div>
               ) : null}
 
@@ -193,7 +193,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Guest name</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Имя гостя</label>
                   <div className="relative">
                     <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
                     <input
@@ -207,7 +207,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Phone</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Телефон</label>
                   <input
                     required
                     value={formData.user_phone}
@@ -218,7 +218,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Guests</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Гости</label>
                   <input
                     required
                     min={1}
@@ -235,7 +235,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Date</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Дата</label>
                   <input
                     required
                     value={formData.date}
@@ -246,7 +246,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Time</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Время</label>
                   <input
                     required
                     value={formData.time}
@@ -257,7 +257,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Duration</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Длительность</label>
                   <select
                     value={formData.duration_minutes}
                     onChange={(event) =>
@@ -270,14 +270,14 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                   >
                     {[60, 90, 120, 150, 180].map((minutes) => (
                       <option key={minutes} value={minutes}>
-                        {minutes} minutes
+                        {minutes} мин
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Status</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Статус</label>
                   <select
                     value={formData.status}
                     onChange={(event) =>
@@ -288,44 +288,44 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                     }
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 outline-none transition focus:border-[#1d4ed8] focus:bg-white focus:ring-4 focus:ring-blue-50"
                   >
-                    <option value="confirmed">Confirmed</option>
-                    <option value="pending">Pending</option>
+                    <option value="confirmed">Подтверждена</option>
+                    <option value="pending">Ожидает подтверждения</option>
                   </select>
                 </div>
 
                 <div className="col-span-2 space-y-2">
-                  <label className="block text-xs font-semibold uppercase text-slate-500">Table (optional)</label>
+                  <label className="block text-xs font-semibold uppercase text-slate-500">Стол</label>
                   <select
                     value={formData.table_id}
                     onChange={(event) => setFormData((current) => ({ ...current, table_id: event.target.value }))}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 outline-none transition focus:border-[#1d4ed8] focus:bg-white focus:ring-4 focus:ring-blue-50"
                   >
-                    <option value="">Auto-assign</option>
+                    <option value="">Подобрать автоматически</option>
                     {filteredTables.map((table) => (
                       <option key={table.id} value={table.id}>
-                        {getTableLabel(table)} ({getTableCapacity(table)} seats)
+                        {getTableLabel(table)} ({getTableCapacity(table)} мест)
                       </option>
                     ))}
                   </select>
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>
                       {loadingTables || loadingAvailability
-                        ? 'Checking available tables...'
+                        ? 'Проверяем доступные столы...'
                         : filteredTables.length > 0
-                          ? `${filteredTables.length} tables match this party size`
-                          : 'No matching tables for this party size'}
+                          ? `${filteredTables.length} столов подходят по размеру`
+                          : 'Нет подходящих столов для такого количества гостей'}
                     </span>
                     {restaurantId ? <span>Restaurant #{restaurantId}</span> : null}
                   </div>
                 </div>
 
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Special requests</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Комментарий</label>
                   <textarea
                     value={formData.special_requests}
                     onChange={(event) => setFormData((current) => ({ ...current, special_requests: event.target.value }))}
                     rows={3}
-                    placeholder="Birthday cake, quiet corner, high chair, etc."
+                    placeholder="Например: день рождения, тихий стол, детский стул"
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1d4ed8] focus:bg-white focus:ring-4 focus:ring-blue-50"
                   />
                 </div>
@@ -335,7 +335,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                 disabled={submitting}
                 className="w-full rounded-xl bg-[#1A3C34] py-4 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-[#1A3C34]/10 transition hover:bg-[#234e44] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {submitting ? 'Processing...' : 'Complete Reservation'}
+                {submitting ? 'Создаём бронь...' : 'Создать бронь'}
               </button>
             </form>
           </motion.div>

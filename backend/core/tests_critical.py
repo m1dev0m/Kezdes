@@ -97,9 +97,8 @@ class CriticalFlowsTestCase(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + login_res.data['access'])
         response = self.client.get('/api/v1/restaurants/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        names = [r['name'] for r in response.data]  
-        if 'results' in response.data:
-            names = [r['name'] for r in response.data['results']]
+        payload = response.data.get('results', response.data) if isinstance(response.data, dict) else response.data
+        names = [r['name'] for r in payload]
         self.assertIn("R1", names)
         self.assertIn("R2", names)
         login_res1 = self.client.post(reverse('token_obtain_pair'), {"username": "u1", "password": "123"})

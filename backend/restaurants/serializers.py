@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from core.utils import get_user_profile
 from .models import (
     Restaurant,
     Availability,
@@ -115,8 +116,9 @@ class TableSerializer(serializers.ModelSerializer):
             if request and hasattr(request, 'user'):
                 user = request.user
                 restaurant = getattr(user, 'owned_restaurant', None)
-                if not restaurant and hasattr(user, 'profile'):
-                    restaurant = getattr(user.profile, 'restaurant', None)
+                if not restaurant:
+                    profile = get_user_profile(user)
+                    restaurant = getattr(profile, 'restaurant', None) if profile else None
             if restaurant:
                 qs = Table.objects.filter(restaurant=restaurant, number=number)
                 if self.instance:
@@ -175,6 +177,10 @@ class TableAPISerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "status"]
 
     def get_status(self, obj):
+        table_status_map = self.context.get("table_status_map")
+        if table_status_map is not None:
+            return table_status_map.get(obj.id, "free")
+
         from bookings.models import Booking
         from django.db.models import Q
         from django.utils import timezone
@@ -250,8 +256,9 @@ class TableAPISerializer(serializers.ModelSerializer):
             if request and hasattr(request, 'user'):
                 user = request.user
                 restaurant = getattr(user, 'owned_restaurant', None)
-                if not restaurant and hasattr(user, 'profile'):
-                    restaurant = getattr(user.profile, 'restaurant', None)
+                if not restaurant:
+                    profile = get_user_profile(user)
+                    restaurant = getattr(profile, 'restaurant', None) if profile else None
             if restaurant:
                 qs = Table.objects.filter(restaurant=restaurant, number=str(name).strip())
                 if self.instance:
@@ -345,6 +352,39 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'phone', 'image_url', 'image', 'photo_url', 'source', 'is_claimed', 'is_verified',
             'capacity', 'average_price', 'rating', 'price_level', 'plan', 'payment_status', 'views_count', 'availabilities',
             'reviews', 'tables', 'floor', 'entrance', 'extra_address_info', 'city', 'status',
+            'deposit_min_guests', 'deposit_amount_per_guest',
+            'slug', 'turnover_default_min', 'has_namazhana', 'has_parking', 'has_kids_zone',
+            'has_wifi', 'has_terrace', 'deposit_required', 'birthday_service_available',
+            'wheelchair_accessible', 'max_party_size', 'current_period_starts_at', 'current_period_ends_at', 'grace_until',
+        ]
+        read_only_fields = ['views_count', 'rating', 'plan', 'payment_status', 'current_period_starts_at', 'current_period_ends_at', 'grace_until', 'status']
+
+    def get_photo_url(self, obj):
+        request = self.context.get('request')
+        if obj.image:
+            url = obj.image.url
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        return obj.image_url or None
+
+
+class RestaurantListSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for discovery/search list endpoints.
+    Intentionally excludes heavy nested relations (tables/reviews/availabilities).
+    """
+    photo_url = serializers.SerializerMethodField()
+    plan = serializers.CharField(read_only=True)
+    payment_status = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Restaurant
+        fields = [
+            'id', 'name', 'description', 'address', 'latitude', 'longitude',
+            'phone', 'image_url', 'image', 'photo_url', 'source', 'is_claimed', 'is_verified',
+            'capacity', 'average_price', 'rating', 'price_level', 'plan', 'payment_status', 'views_count',
+            'floor', 'entrance', 'extra_address_info', 'city', 'status',
             'deposit_min_guests', 'deposit_amount_per_guest',
             'slug', 'turnover_default_min', 'has_namazhana', 'has_parking', 'has_kids_zone',
             'has_wifi', 'has_terrace', 'deposit_required', 'birthday_service_available',
@@ -572,14 +612,18 @@ class StaffSerializer(serializers.ModelSerializer):
         role = profile_data.get('role', 'manager')
         password = validated_data.pop('password')
         user = User.objects.create_user(**validated_data, password=password)
-        user.profile.role = role
-        user.profile.save()
+        profile = get_user_profile(user)
+        if profile:
+            profile.role = role
+            profile.save()
         return user
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
         if 'role' in profile_data:
-            instance.profile.role = profile_data['role']
-            instance.profile.save()
+            profile = get_user_profile(instance)
+            if profile:
+                profile.role = profile_data['role']
+                profile.save()
         if 'password' in validated_data:
             instance.set_password(validated_data.pop('password'))
         for attr, value in validated_data.items():

@@ -1,141 +1,234 @@
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { PRICING_PLANS } from './pricing/pricingPlans';
-import { PricingCard } from './pricing/PricingCard';
 import { PublicHeader } from '@/components/public/PublicHeader';
-import { Zap, Shield, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { PRICING_PLANS } from './pricing/pricingPlans';
+
+const VALUE_POINTS = [
+  {
+    title: 'Только бронирование и зал',
+    text: 'Без кассы, склада и бухгалтерских блоков: продукт не перегружен лишними экранами.',
+  },
+  {
+    title: 'Просто обучить персонал',
+    text: 'Хост и администратор начинают работать быстрее, потому что логика сценариев короче и понятнее.',
+  },
+  {
+    title: 'Один тариф без конструктора',
+    text: '27 990 ₸ / месяц за полный набор для бронирования, столов и работы с гостями.',
+  },
+];
+
+const FIT_POINTS = [
+  'Ресторанам с фокусом на бронях и посадке',
+  'Небольшим и средним командам зала',
+  'Быстрому запуску без тяжелого внедрения',
+];
+
+const NOT_FIT_POINTS = [
+  'Тем, кому нужен полный POS-контур',
+  'Сложный складской и финансовый учет',
+  'Большая ERP-автоматизация кухни и закупа',
+];
+
+const COMPARISON_ROWS = [
+  {
+    product: 'Kezdes Plus',
+    purpose: 'reservation CRM',
+    complexity: 'low complexity',
+    bestFor: 'small and medium restaurants',
+    pricing: '27 990 ₸ / month',
+  },
+  {
+    product: 'iiko',
+    purpose: 'full restaurant automation',
+    complexity: 'high complexity',
+    bestFor: 'restaurants needing POS + stock + finance + staff systems',
+    pricing: 'from 27 300 ₸+ / month or custom implementation cost',
+  },
+  {
+    product: 'LIKO / local systems',
+    purpose: 'restaurant automation / custom setup',
+    complexity: 'medium to high complexity',
+    bestFor: 'businesses needing broader operations setup',
+    pricing: 'price on request / custom',
+  },
+];
 
 export default function Pricing() {
-    const plans = PRICING_PLANS.filter((plan) => plan.id === 'pro' || plan.id === 'business');
+  const plan = PRICING_PLANS.find((item) => item.id === 'plus');
+  if (!plan) return null;
+  const formattedPrice = new Intl.NumberFormat('ru-RU').format(plan.price);
 
-    if (plans.length !== 2) {
-        return null;
-    }
+  return (
+    <div className="min-h-screen bg-[#f6f8fc] text-slate-900">
+      <PublicHeader active="pricing" />
 
-    return (
-        <div className="min-h-screen bg-white dark:bg-slate-950 font-sans selection:bg-[#1d4ed8]/10 overflow-x-hidden">
-            <PublicHeader active="pricing" />
+      <main className="mx-auto max-w-6xl px-6 pb-20 pt-24">
+        <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white">
+          <div className="absolute -left-20 -top-20 h-60 w-60 rounded-full bg-[#1d4ed8]/10 blur-3xl" />
+          <div className="absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#0f172a]/6 blur-3xl" />
+          <div className="relative grid gap-8 p-8 sm:p-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">Kezdes Plus</p>
+              <h1 className="mt-3 max-w-3xl border-l-4 border-[#1d4ed8] pl-4 text-4xl font-black leading-tight tracking-tight sm:text-5xl">
+                Управляйте бронями и посадкой в одном рабочем контуре
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
+                Если вам нужна именно система бронирования и работы с залом, Kezdes Plus проще и понятнее, чем большие
+                системы автоматизации.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">резервы</span>
+                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">столы</span>
+                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">очередь</span>
+                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">гости</span>
+              </div>
+            </div>
 
-            <section className="pt-44 pb-18 px-6 text-center relative overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[#1d4ed8]/5 blur-[120px] rounded-full pointer-events-none"></div>
+            <div className="rounded-2xl border border-[#1d4ed8]/30 bg-[#1d4ed8] p-6 text-white shadow-xl shadow-[#1d4ed8]/20">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-100">Единый тариф</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight">Kezdes Plus</h2>
+              <div className="mt-4 flex items-end gap-2">
+                <p className="text-5xl font-black tracking-tight">{formattedPrice}</p>
+                <p className="pb-1 text-xl font-bold text-blue-100">{plan.currencySymbol}</p>
+              </div>
+              <p className="mt-1 text-sm font-medium text-blue-100">{plan.periodLabel}</p>
+              <p className="mt-4 text-sm leading-6 text-blue-50">{plan.tagline}</p>
+              <Link
+                to={plan.cta.to}
+                className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-[#1d4ed8] transition hover:bg-blue-50"
+              >
+                {plan.cta.label}
+              </Link>
+              <p className="mt-3 text-center text-xs text-blue-100">Запуск без сложного внедрения и долгого обучения</p>
+            </div>
+          </div>
+        </section>
 
-                <div className="max-w-4xl mx-auto relative z-10 space-y-8">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#1d4ed8]/5 text-[#1d4ed8] text-[11px] font-bold uppercase tracking-widest mb-4 shadow-sm border border-[#1d4ed8]/10"
-                    >
-                        <Zap size={14} fill="currentColor" /> Доступен 14-дневный тестовый период
-                    </motion.div>
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="grid gap-4 text-sm sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Запуск</p>
+              <p className="mt-1 text-lg font-black text-slate-900">Быстрее</p>
+              <p className="mt-1 leading-6 text-slate-600">Команда осваивает процесс хоста без долгого онбординга.</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Операции</p>
+              <p className="mt-1 text-lg font-black text-slate-900">Проще</p>
+              <p className="mt-1 leading-6 text-slate-600">Только бронирование, столы и очередь, без тяжелых модулей.</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Стоимость</p>
+              <p className="mt-1 text-lg font-black text-slate-900">Прозрачно</p>
+              <p className="mt-1 leading-6 text-slate-600">Один тариф: 27 990 ₸ / месяц без конструктора цен.</p>
+            </div>
+          </div>
+        </section>
 
-                    <h1 className="text-5xl md:text-6xl font-bold text-slate-900 dark:text-white tracking-tight leading-[1.08]">
-                        Два тарифа:
-                        <span className="block text-[#1d4ed8]">Plus и Kezdes Pro</span>
-                    </h1>
-                    <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl mx-auto">
-                        Базовый тариф Plus подходит для ежедневной работы ресторана.
-                        Kezdes Pro — следующий уровень для роста, команды и нескольких локаций.
-                    </p>
+        <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-8 sm:p-10">
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Что входит в Kezdes Plus</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+                Полный набор для ежедневной операционной работы с бронями и столами.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {plan.features.map((feature) => (
+                  <div
+                    key={feature}
+                    className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                  >
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1d4ed8]" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-                    <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
-                        <Badge label="2 тарифа" accent icon={Shield} />
-                        <Badge label="Plus — 17 000 ₸" icon={CheckCircle2} />
-                        <Badge label="14 дней бесплатно" icon={Zap} />
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-600">Почему проще</h3>
+                <div className="mt-4 space-y-3">
+                  {VALUE_POINTS.map((point) => (
+                    <div key={point.title}>
+                      <p className="text-sm font-semibold text-slate-900">{point.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">{point.text}</p>
                     </div>
+                  ))}
                 </div>
-            </section>
+              </div>
 
-            <section className="px-6 pb-24 relative z-10">
-                <div className="max-w-6xl mx-auto">
-                    <div className="text-center space-y-4">
-                        <span className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                            Тарифы Kezdes
-                        </span>
-                        <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">Выберите формат работы</h2>
-                        <p className="mx-auto max-w-2xl text-base leading-7 text-slate-600">
-                            Plus — для быстрого старта. Kezdes Pro — для расширенной операционной модели.
-                        </p>
-                    </div>
-                    <div className="mt-12 grid gap-8 lg:grid-cols-2 items-stretch">
-                        {plans.map((plan, index) => (
-                            <PricingCard key={plan.id} plan={plan} index={index} />
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="px-6 py-20">
-                <div className="mx-auto flex max-w-4xl flex-col items-center rounded-[2rem] border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
-                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">Нужен запуск для сети или нескольких локаций?</h3>
-                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                        Начните с Plus, а когда потребуется расширенный контур, переходите на Kezdes Pro.
-                    </p>
-                    <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                        <Link to="/register?mode=restaurant">
-                            <Button size="lg">Подключить ресторан</Button>
-                        </Link>
-                        <Link to="/restaurants">
-                            <Button variant="outline" size="lg">Посмотреть заведения</Button>
-                        </Link>
-                    </div>
-                </div>
-            </section>
-
-            <footer className="bg-white dark:bg-slate-950 py-20 px-6 border-t border-slate-100 dark:border-slate-900">
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
-                    <div className="md:col-span-5 space-y-6">
-                        <div className="flex items-center gap-3">
-                            <div className="size-11 rounded-xl bg-[#1d4ed8] text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-[#1d4ed8]/20">K</div>
-                            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">Kezdes</span>
-                        </div>
-                        <p className="text-slate-500 dark:text-slate-400 text-base font-medium leading-relaxed max-w-md">
-                            На странице оставлены только 2 тарифа: Plus и Kezdes Pro.
-                        </p>
-                    </div>
-
-                    <div className="md:col-span-3 space-y-6">
-                        <h4 className="text-[10px] font-bold tracking-[0.3em] text-slate-400 uppercase">Разделы</h4>
-                        <ul className="space-y-4 text-[13px] font-semibold text-slate-600 dark:text-slate-400">
-                            <li><Link to="/" className="hover:text-[#1d4ed8] transition-all">Главная</Link></li>
-                            <li><Link to="/restaurants" className="hover:text-[#1d4ed8] transition-all">Рестораны</Link></li>
-                            <li><Link to="/pricing" className="hover:text-[#1d4ed8] transition-all">Цены</Link></li>
-                        </ul>
-                    </div>
-
-                    <div className="md:col-span-4 space-y-6">
-                        <h4 className="text-[10px] font-bold tracking-[0.3em] text-slate-400 uppercase">Старт</h4>
-                        <ul className="space-y-4 text-[13px] font-semibold text-slate-600 dark:text-slate-400">
-                            <li><Link to="/register?mode=restaurant" className="hover:text-[#1d4ed8] transition-all">Подключить ресторан</Link></li>
-                            <li><Link to="/register" className="hover:text-[#1d4ed8] transition-all">Регистрация пользователя</Link></li>
-                            <li><Link to="/login" className="hover:text-[#1d4ed8] transition-all">Войти</Link></li>
-                        </ul>
-                    </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">Подходит</p>
+                  <ul className="mt-3 space-y-2">
+                    {FIT_POINTS.map((item) => (
+                      <li key={item} className="text-sm text-emerald-900">{item}</li>
+                    ))}
+                  </ul>
                 </div>
 
-                <div className="max-w-6xl mx-auto border-t border-slate-100 dark:border-slate-900 pt-10 flex flex-col sm:flex-row items-center justify-between gap-6 opacity-60">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        © 2026 KEZDES OPERATIONAL SYSTEMS. ВСЕ ПРАВА ЗАЩИЩЕНЫ.
-                    </p>
-                    <div className="flex gap-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        <Link to="/pricing" className="hover:text-[#1d4ed8] transition-all">Тарифы</Link>
-                        <Link to="/restaurants" className="hover:text-[#1d4ed8] transition-all">Рестораны</Link>
-                        <Link to="/login" className="hover:text-[#1d4ed8] transition-all">Вход</Link>
-                    </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Не цель продукта</p>
+                  <ul className="mt-3 space-y-2">
+                    {NOT_FIT_POINTS.map((item) => (
+                      <li key={item} className="text-sm text-amber-900">{item}</li>
+                    ))}
+                  </ul>
                 </div>
-            </footer>
-        </div>
-    );
-}
+              </div>
+            </div>
+          </div>
+        </section>
 
-function Badge({ label, accent, icon: Icon }: { label: string; accent?: boolean; icon: any }) {
-    return (
-        <span className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm ${accent
-            ? 'border border-[#1d4ed8]/20 bg-[#1d4ed8]/5 text-[#1d4ed8]'
-            : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400'
-            }`}>
-            <Icon size={14} className={accent ? 'text-[#1d4ed8]' : 'text-slate-400'} />
-            {label}
-        </span>
-    );
+        <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-8 sm:p-10">
+          <h3 className="text-2xl font-black tracking-tight sm:text-3xl">Чем Kezdes Plus отличается от сложных систем</h3>
+          <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600">
+            Если вам нужна именно система бронирования и работы с залом, Kezdes Plus проще и понятнее, чем большие
+            системы автоматизации.
+          </p>
+
+          <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">Product</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">Main purpose</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">Complexity</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">Best for</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">Pricing</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {COMPARISON_ROWS.map((row) => (
+                  <tr
+                    key={row.product}
+                    className={row.product === 'Kezdes Plus' ? 'bg-[#f1f6ff]' : 'odd:bg-white even:bg-slate-50/40'}
+                  >
+                    <td className="px-4 py-4 text-sm font-semibold text-slate-900">{row.product}</td>
+                    <td className="px-4 py-4 text-sm text-slate-700">{row.purpose}</td>
+                    <td className="px-4 py-4 text-sm text-slate-700">{row.complexity}</td>
+                    <td className="px-4 py-4 text-sm text-slate-700">{row.bestFor}</td>
+                    <td className="px-4 py-4 text-sm text-slate-700">{row.pricing}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="max-w-2xl text-sm leading-6 text-slate-600">
+              Kezdes Plus не заменяет полную автоматизацию, а закрывает конкретный операционный слой ресторана:
+              бронирование, посадку и работу с гостями.
+            </p>
+            <Link
+              to={plan.cta.to}
+              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#1d4ed8] px-5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
+            >
+              Попробовать Kezdes Plus
+            </Link>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
 }

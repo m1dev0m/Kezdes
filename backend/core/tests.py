@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 from django.test.utils import CaptureQueriesContext
 from unittest.mock import patch
 from core.models import OTPDeliveryAttempt, Profile, PushToken, OTPVerification
+from core.serializers import UserSerializer
 from restaurants.models import Restaurant, Review, Table
 
 
@@ -27,6 +28,18 @@ class ProfileModelTest(TestCase):
 
     def test_profile_str(self):
         self.assertEqual(str(self.user.profile), f'{self.user.username} - Гость')
+
+
+class UserSerializerExposureTests(TestCase):
+    def test_user_serializer_does_not_expose_email(self):
+        user = User.objects.create_user(
+            username="serializer_user",
+            email="serializer_user@example.com",
+            password="serializer-pass-123",
+        )
+        data = UserSerializer(user).data
+        self.assertNotIn("email", data)
+        self.assertEqual(set(data.keys()), {"id", "username", "first_name", "last_name"})
 
 
 class PushTokenModelTest(TestCase):
@@ -425,18 +438,31 @@ class RestaurantListContractAPITest(APITestCase):
             comment='Great',
         )
 
-    def test_restaurant_list_returns_nested_tables_and_reviews(self):
+    def test_restaurant_list_is_lightweight_and_paginated_by_default(self):
         with CaptureQueriesContext(connection) as queries:
             response = self.client.get('/api/v1/restaurants/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertLessEqual(len(queries), 6)
+        self.assertIn('results', response.data)
 
-        payload = response.data['results'] if isinstance(response.data, dict) else response.data
+        payload = response.data['results']
         restaurant = next(item for item in payload if item['id'] == self.restaurant.id)
-        self.assertEqual(len(restaurant['tables']), 1)
-        self.assertEqual(len(restaurant['reviews']), 1)
-        self.assertEqual(restaurant['reviews'][0]['user_name'], self.viewer.username)
+        self.assertNotIn('tables', restaurant)
+        self.assertNotIn('reviews', restaurant)
+        self.assertNotIn('availabilities', restaurant)
+
+    def test_restaurant_detail_keeps_nested_tables_and_reviews(self):
+        response = self.client.get(f'/api/v1/restaurants/{self.restaurant.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['tables']), 1)
+        self.assertEqual(len(response.data['reviews']), 1)
+        self.assertEqual(response.data['reviews'][0]['user_name'], self.viewer.username)
+
+    def test_restaurant_list_no_pagination_keeps_legacy_mode(self):
+        response = self.client.get('/api/v1/restaurants/?no_pagination=true')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
 
 
 class RestaurantBySlugContractAPITest(APITestCase):

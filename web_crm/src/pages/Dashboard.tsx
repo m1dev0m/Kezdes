@@ -201,7 +201,7 @@ export default function Dashboard() {
           title="Новая бронь"
           description="Создать бронирование вручную без лишних переходов между разделами."
           actionLabel="Создать бронь"
-          onAction={() => navigate('/app/bookings/new')}
+          onAction={() => navigate('/app/bookings?new=1')}
         />
         <QuickAction
           title="Заказы"
@@ -484,7 +484,7 @@ export default function Dashboard() {
               title="На сегодня пока нет бронирований"
               description="Создайте первую бронь вручную или дождитесь новых заявок с публичной страницы."
               actionLabel="Создать бронь"
-              onAction={() => navigate('/app/bookings/new')}
+              onAction={() => navigate('/app/bookings?new=1')}
             />
           ) : (
             <div className="overflow-x-auto">
@@ -571,7 +571,7 @@ export default function Dashboard() {
                     title="Создать бронь"
                     description="Если тестируете продукт, создайте первую бронь вручную и проверьте flow."
                     actionLabel="Новая бронь"
-                    onAction={() => navigate('/app/bookings/new')}
+                    onAction={() => navigate('/app/bookings?new=1')}
                   />
                 </>
               )}

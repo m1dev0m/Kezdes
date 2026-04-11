@@ -1,6 +1,5 @@
 import { Stack, useGlobalSearchParams, useSegments, useRouter } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { View, ActivityIndicator } from 'react-native';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -85,21 +84,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-    const [fontsLoaded] = useFonts({
-        Inter_400Regular,
-        Inter_500Medium,
-        Inter_600SemiBold,
-        Inter_700Bold,
-    });
-
-    if (!fontsLoaded) {
-        return (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8F9FE' }}>
-                <ActivityIndicator size="large" color="#4F46E5" />
-            </View>
-        );
-    }
-
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>

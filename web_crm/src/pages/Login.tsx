@@ -106,22 +106,22 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="flex items-center justify-center px-6 py-10 sm:px-10 bg-[#f7f7f5]">
+        <section className="flex items-center justify-center bg-[#f7f7f5] px-4 py-6 sm:px-6 sm:py-10 lg:px-10">
           <div className="w-full max-w-[480px]">
             <Link to="/" className="inline-flex items-center gap-3 lg:hidden">
               <Logo variant="admin" className="h-9" />
             </Link>
 
-            <div className="mt-8 rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.35)] sm:p-10 lg:p-8">
+            <div className="mt-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.35)] sm:mt-8 sm:rounded-[32px] sm:p-8 lg:p-8">
               <div className="max-w-xs">
                 <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Вход</div>
-                <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-900">Вход в рабочее пространство</h2>
-                <p className="mt-4 text-sm leading-7 text-slate-600">
+                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Вход в рабочее пространство</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600 sm:mt-4 sm:leading-7">
                   Используйте данные вашей команды, чтобы открыть административную панель ресторана.
                 </p>
               </div>
 
-              <form className="mt-10 space-y-6" onSubmit={handleLogin}>
+              <form className="mt-7 space-y-5 sm:mt-10 sm:space-y-6" onSubmit={handleLogin}>
                 <Field
                   label="Логин"
                   name="username"
@@ -172,11 +172,11 @@ export default function Login() {
                 </button>
               </form>
 
-              <div className="mt-8 rounded-2xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm text-slate-600">
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm text-slate-600 sm:mt-8">
                 Вход для владельцев, администраторов, менеджеров зала и хостов.
               </div>
 
-              <div className="mt-8 border-t border-slate-200 pt-6 text-sm text-slate-600">
+              <div className="mt-6 border-t border-slate-200 pt-5 text-sm text-slate-600 sm:mt-8 sm:pt-6">
                 Нет аккаунта?
                 <Link to="/register" className="ml-1 font-bold text-[#1d4ed8] hover:underline">
                   Зарегистрировать ресторан

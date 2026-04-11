@@ -22,6 +22,7 @@ from .serializers import (
 
 from core.viewsets import TenantModelViewSet, OptionalPaginationMixin
 from core.permissions import HasRestaurantFeature
+from core.utils import get_user_profile, get_user_restaurant
 
 class AdminMenuCategoryViewSet(TenantModelViewSet):
     queryset = MenuCategory.objects.all()
@@ -49,9 +50,10 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _has_staff_order_access(self, user) -> bool:
-        if not hasattr(user, 'profile') or user.profile.role not in ('owner', 'manager', 'host'):
+        profile = get_user_profile(user)
+        if not profile or profile.role not in ('owner', 'manager', 'host'):
             return False
-        restaurant = user.profile.restaurant
+        restaurant = get_user_restaurant(user)
         return bool(restaurant and restaurant.has_feature('orders_basic'))
 
     def get_queryset(self):
@@ -64,7 +66,7 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         # Support both customer view and staff view
         if self._has_staff_order_access(user):
             return Order.objects.filter(
-                restaurant=user.profile.restaurant
+                restaurant=get_user_restaurant(user)
             ).select_related("restaurant", "reservation", "user").prefetch_related("items__menu_item").order_by("-created_at")
         
         # Default behavior: user's own orders (customer view)
@@ -81,10 +83,10 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         Orders for the restaurant managed/owned by the user.
         """
         user = request.user
-        restaurant = getattr(user, 'owned_restaurant', None)
-        if not restaurant and hasattr(user, 'profile'):
-            restaurant = user.profile.restaurant
-        
+        restaurant = get_user_restaurant(user)
+
+        if not self._has_staff_order_access(user):
+            return Response({"detail": "Недостаточно прав для просмотра заказов ресторана."}, status=status.HTTP_403_FORBIDDEN)
         if not restaurant:
             return Response({"detail": "No restaurant associated with this user."}, status=status.HTTP_404_NOT_FOUND)
         if not restaurant.has_feature('orders_basic'):

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -7,33 +7,95 @@ import { colors } from '../../theme/colors';
 
 import { useAuth } from '../../lib/auth-context';
 import { fetchMyRestaurantBookings } from '../../lib/api';
+import { useResponsive } from '../../hooks/useResponsive';
 
-const { width } = Dimensions.get('window');
-const HOURS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00'];
-const ROOMS = ['VIP 1', 'Зал 1', 'Веранда', 'Бар'];
-const TABS = ['Все залы', 'VIP 1', 'Зал 1', 'Веранда', 'Бар'];
+const START_HOUR = 9;
+const END_HOUR = 23;
 
 export default function AdminCalendarScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const [selectedTab, setSelectedTab] = useState('Все залы');
+    const { isTablet, horizontalPadding, contentMaxWidth } = useResponsive();
+    const [selectedTab, setSelectedTab] = useState('Все столы');
     const [viewMode, setViewMode] = useState('День');
     const [bookings, setBookings] = useState<any[]>([]);
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const loadBookings = React.useCallback(async (refresh = false) => {
+        const token = user?.access;
+        if (!token) {
+            setIsLoading(false);
+            return;
+        }
+
+        if (refresh) {
+            setIsRefreshing(true);
+        } else {
+            setIsLoading(true);
+        }
+
+        try {
+            const data = await fetchMyRestaurantBookings(token);
+            setBookings((data || []) as any[]);
+        } catch (error) {
+            console.error('Calendar bookings load error:', error);
+        } finally {
+            setIsLoading(false);
+            setIsRefreshing(false);
+        }
+    }, [user?.access]);
 
     React.useEffect(() => {
-        if (user?.access) {
-            fetchMyRestaurantBookings(user.access).then((b: any) => setBookings(b || [])).catch(console.error);
-        }
-    }, [user]);
+        loadBookings();
+    }, [loadBookings]);
+
+    const hours = useMemo(() => {
+        return Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => {
+            const hour = START_HOUR + index;
+            return `${hour.toString().padStart(2, '0')}:00`;
+        });
+    }, []);
+
+    const tableTabs = useMemo(() => {
+        const uniqueTableLabels = Array.from(
+            new Set(
+                bookings
+                    .map((booking) => booking.table_number || booking.table || booking.table_id)
+                    .filter(Boolean)
+                    .map((value) => `Стол ${value}`)
+            )
+        );
+        return ['Все столы', ...uniqueTableLabels];
+    }, [bookings]);
+
+    const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+    const visibleBookings = useMemo(() => {
+        return bookings.filter((booking) => {
+            const isCalendarStatus = ['confirmed', 'approved', 'pending', 'seated'].includes(booking.status);
+            if (!isCalendarStatus || booking.date !== todayStr) {
+                return false;
+            }
+
+            if (selectedTab === 'Все столы') {
+                return true;
+            }
+
+            const bookingTableLabel = booking.table_number || booking.table || booking.table_id;
+            return `Стол ${bookingTableLabel}` === selectedTab;
+        });
+    }, [bookings, selectedTab, todayStr]);
 
     const getBookingStyle = (booking: any, allBookings: any[]) => {
         const [hours, mins] = booking.time.split(':').map(Number);
-        const offsetMinutes = (hours - 9) * 60 + (mins || 0);
-        const top = (offsetMinutes / 60) * 80;
+        const slotHeight = isTablet ? 88 : 76;
+        const offsetMinutes = (hours - START_HOUR) * 60 + (mins || 0);
+        const top = Math.max(0, (offsetMinutes / 60) * slotHeight);
 
         const duration = (booking.duration_minutes ? booking.duration_minutes / 60 : (booking.duration_hours || 2));
-        const height = duration * 80;
+        const height = Math.max(slotHeight * 0.9, duration * slotHeight);
 
         const overlaps = allBookings.filter(b =>
             b.id !== booking.id &&
@@ -52,9 +114,20 @@ export default function AdminCalendarScreen() {
         router.push('/admin/add-booking' as any);
     };
 
+    if (isLoading) {
+        return (
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.loadingState}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.loadingText}>Загружаем календарь смены</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
                 <View style={styles.headerLeft}>
                     <Ionicons name="calendar-clear" size={24} color={colors.primary} />
                     <View style={{ marginLeft: 12 }}>
@@ -77,7 +150,7 @@ export default function AdminCalendarScreen() {
                 </View>
             </View>
 
-            <View style={styles.viewModeSwitcher}>
+            <View style={[styles.viewModeSwitcher, { marginHorizontal: horizontalPadding, maxWidth: isTablet ? 420 : undefined, alignSelf: isTablet ? 'center' : undefined }]}>
                 {['День', 'Неделя', 'Месяц'].map(mode => (
                     <TouchableOpacity
                         key={mode}
@@ -91,8 +164,8 @@ export default function AdminCalendarScreen() {
             </View>
 
             <View style={styles.roomTabs}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
-                    {TABS.map(tab => (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: horizontalPadding }}>
+                    {tableTabs.map(tab => (
                         <TouchableOpacity
                             key={tab}
                             style={[styles.roomTabItem, selectedTab === tab && styles.roomTabItemActive]}
@@ -104,20 +177,27 @@ export default function AdminCalendarScreen() {
                 </ScrollView>
             </View>
 
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: horizontalPadding }}
+                refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadBookings(true)} />}
+            >
+            <View style={[styles.calendarShell, { minWidth: isTablet ? Math.min(contentMaxWidth, 980) : 720 }]}>
             <View style={styles.gridHeaderRow}>
                 <View style={styles.timeAxisHeader}>
                     <Ionicons name="time-outline" size={16} color={colors.muted} />
                 </View>
                 <View style={styles.gridColumnHeader}>
-                    <Text style={styles.colTopText}>VIP 1</Text>
+                    <Text style={styles.colTopText}>ЗАЛ</Text>
                     <Text style={styles.colBotText}>Стол 1</Text>
                 </View>
                 <View style={styles.gridColumnHeader}>
-                    <Text style={styles.colTopText}>VIP 1</Text>
+                    <Text style={styles.colTopText}>ЗАЛ</Text>
                     <Text style={styles.colBotText}>Стол 2</Text>
                 </View>
                 <View style={styles.gridColumnHeader}>
-                    <Text style={styles.colTopText}>ЗАЛ 1</Text>
+                    <Text style={styles.colTopText}>ЗАЛ</Text>
                     <Text style={styles.colBotText}>Стол 3</Text>
                 </View>
             </View>
@@ -125,7 +205,7 @@ export default function AdminCalendarScreen() {
             <ScrollView style={styles.gridScroll} contentContainerStyle={{ paddingBottom: 100 }}>
                 <View style={styles.gridBody}>
                     <View style={styles.timeAxisColumn}>
-                        {HOURS.map((h, i) => (
+                        {hours.map((h, i) => (
                             <View key={i} style={styles.timeAxisCell}>
                                 <Text style={styles.timeAxisText}>{h}</Text>
                             </View>
@@ -134,7 +214,7 @@ export default function AdminCalendarScreen() {
 
                     <View style={styles.columnsContainer}>
                         <View style={styles.gridLinesAbs} pointerEvents="none">
-                            {HOURS.map((_, i) => (
+                            {hours.map((_, i) => (
                                 <View key={i} style={styles.gridLineHorizontal} />
                             ))}
                             <View style={styles.gridLineVertical} />
@@ -142,7 +222,7 @@ export default function AdminCalendarScreen() {
                             <View style={[styles.gridLineVertical, { left: '66.66%' }]} />
                         </View>
 
-                        {bookings.filter(b => b.status === 'confirmed' || b.status === 'pending' || b.status === 'approved').map((booking, idx, array) => {
+                        {visibleBookings.map((booking, idx, array) => {
                             const { top, left, height, width } = getBookingStyle(booking, array);
                             const isPending = booking.status === 'pending';
                             const blockStyle = isPending ? styles.bgGray : (idx % 2 === 0 ? styles.bgBlue : styles.bgYellow);
@@ -186,16 +266,29 @@ export default function AdminCalendarScreen() {
                                 </TouchableOpacity>
                             );
                         })}
+
+                        {visibleBookings.length === 0 ? (
+                            <View style={styles.emptyCalendarState}>
+                                <Ionicons name="calendar-outline" size={36} color={colors.muted} />
+                                <Text style={styles.emptyCalendarTitle}>На сегодня активных броней нет</Text>
+                                <Text style={styles.emptyCalendarText}>Потяни вниз для обновления или добавь новую бронь.</Text>
+                            </View>
+                        ) : null}
                     </View>
                 </View>
             </ScrollView>
+            </View>
+            </ScrollView>
 
             {selectedBooking && (
-                <View style={[styles.floatingActionBox, { bottom: 100 }]}>
+                <View style={[styles.floatingActionBox, { bottom: 100, left: isTablet ? Math.max(horizontalPadding, (contentMaxWidth - 560) / 2) : 20, right: isTablet ? Math.max(horizontalPadding, (contentMaxWidth - 560) / 2) : 20 }]}>
                     <View style={styles.fabAvatar}><Ionicons name="person" size={16} color="#fff" /></View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.fabTitle}>{selectedBooking.user_name || 'Гость'}</Text>
-                        <Text style={styles.fabSub}>{selectedBooking.time} - {selectedBooking.guests} чел.</Text>
+                        <Text style={styles.fabSub}>
+                            {selectedBooking.time} · {selectedBooking.guests} чел.
+                            {selectedBooking.table_number ? ` · Стол ${selectedBooking.table_number}` : ''}
+                        </Text>
                     </View>
                     <TouchableOpacity
                         style={styles.fabIconBtn}
@@ -221,6 +314,8 @@ export default function AdminCalendarScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#ffffff' },
+    loadingState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+    loadingText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
     headerLeft: { flexDirection: 'row', alignItems: 'center' },
     headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 2 },
@@ -238,6 +333,7 @@ const styles = StyleSheet.create({
     roomTabText: { fontSize: 14, fontWeight: '600', color: colors.muted },
     roomTabTextActive: { color: colors.primary },
 
+    calendarShell: { width: '100%', alignSelf: 'center' },
     gridHeaderRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: '#fafafa' },
     timeAxisHeader: { width: 60, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 1, borderRightColor: colors.border },
     gridColumnHeader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 1, borderRightColor: colors.border },
@@ -247,13 +343,16 @@ const styles = StyleSheet.create({
     gridScroll: { flex: 1, backgroundColor: '#ffffff' },
     gridBody: { flexDirection: 'row', position: 'relative' },
     timeAxisColumn: { width: 60, borderRightWidth: 1, borderRightColor: colors.border },
-    timeAxisCell: { height: 80, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 8 },
+    timeAxisCell: { height: 88, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 8 },
     timeAxisText: { fontSize: 12, color: colors.muted, fontWeight: '500' },
     columnsContainer: { flex: 1, position: 'relative' },
 
     gridLinesAbs: { ...StyleSheet.absoluteFillObject },
-    gridLineHorizontal: { height: 80, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    gridLineHorizontal: { height: 88, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
     gridLineVertical: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: '#f1f5f9' },
+    emptyCalendarState: { position: 'absolute', left: 24, right: 24, top: 32, alignItems: 'center', gap: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 24, paddingVertical: 24, paddingHorizontal: 20 },
+    emptyCalendarTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+    emptyCalendarText: { fontSize: 13, lineHeight: 19, color: colors.textSecondary, textAlign: 'center' },
 
     bookingBlock: {
         position: 'absolute', borderRadius: 40, padding: 12, marginHorizontal: 4, marginTop: 4,

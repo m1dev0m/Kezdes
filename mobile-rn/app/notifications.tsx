@@ -55,7 +55,7 @@ export default function NotificationsScreen() {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <ImageBackground
-                source={{ uri: 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=600&auto=format&fit=crop' }}
+                source={require('../assets/images/featured_2.jpg')}
                 style={styles.bgImage}
                 blurRadius={20}
             >

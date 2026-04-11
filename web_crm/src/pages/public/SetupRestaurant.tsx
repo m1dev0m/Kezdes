@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, MapPinned, Store } from 'lucide-react';
@@ -23,6 +23,15 @@ const CITY_OPTIONS = [
 
 type FlowStep = 'intro' | 'name' | 'name-confirm' | 'city' | 'address' | 'address-confirm' | 'submit';
 
+const DGIS_API_KEY = (import.meta.env.VITE_DGIS_API_KEY as string | undefined)?.trim() || '';
+const DGIS_SUGGEST_URL = 'https://catalog.api.2gis.com/3.0/suggests';
+
+type AddressSuggestion = {
+  id: string;
+  label: string;
+  point?: { lat: number; lon: number };
+};
+
 const STEP_META: Record<Exclude<FlowStep, 'intro'>, { index: number; total: number; label: string }> = {
   name: { index: 1, total: 3, label: 'Название' },
   'name-confirm': { index: 1, total: 3, label: 'Название' },
@@ -42,6 +51,10 @@ export default function SetupRestaurant() {
     city: 'Алматы',
     address: '',
   });
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressPoint, setAddressPoint] = useState<{ lat: number; lon: number } | null>(null);
 
   if (authLoading) {
     return (
@@ -74,12 +87,86 @@ export default function SetupRestaurant() {
     [formData.city],
   );
 
+  useEffect(() => {
+    if (step !== 'address') return;
+    if (!DGIS_API_KEY) {
+      setAddressSuggestions([]);
+      setAddressError(null);
+      setAddressLoading(false);
+      return;
+    }
+    const query = formData.address.trim();
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setAddressError(null);
+      setAddressLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setAddressLoading(true);
+      setAddressError(null);
+      try {
+        const params = new URLSearchParams({
+          key: DGIS_API_KEY,
+          q: `${selectedCity.value} ${query}`,
+          suggest_type: 'address',
+          locale: 'ru_KZ',
+          fields: 'items.full_address_name,items.address,items.point',
+          location: `${selectedCity.lng},${selectedCity.lat}`,
+        });
+        const response = await fetch(`${DGIS_SUGGEST_URL}?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`2GIS error ${response.status}`);
+        }
+        const data = await response.json();
+        const items = data?.result?.items ?? data?.items ?? [];
+        const suggestions: AddressSuggestion[] = items
+          .map((item: any, index: number) => {
+            const label =
+              item?.full_address_name ||
+              item?.address?.name ||
+              item?.name ||
+              item?.suggested_text ||
+              '';
+            if (!label) return null;
+            const point = item?.point || item?.address?.point || item?.geometry?.centroid;
+            const normalizedPoint =
+              point && typeof point.lat === 'number' && typeof point.lon === 'number'
+                ? { lat: point.lat, lon: point.lon }
+                : undefined;
+            return {
+              id: String(item?.id ?? `${index}-${label}`),
+              label,
+              point: normalizedPoint,
+            };
+          })
+          .filter(Boolean) as AddressSuggestion[];
+        setAddressSuggestions(suggestions);
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          setAddressError('Не удалось получить подсказки адреса');
+        }
+      } finally {
+        setAddressLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [formData.address, selectedCity, step]);
+
   const goToNameConfirm = () => {
     if (!formData.name.trim()) {
       toast.error('Введите название ресторана');
       return;
     }
-    setStep('name-confirm');
+    setStep('city');
   };
 
   const goToAddressConfirm = () => {
@@ -87,7 +174,7 @@ export default function SetupRestaurant() {
       toast.error('Введите адрес ресторана');
       return;
     }
-    setStep('address-confirm');
+    setStep('submit');
   };
 
   const handleSubmit = async () => {
@@ -98,8 +185,8 @@ export default function SetupRestaurant() {
         city: selectedCity.value,
         address: formData.address.trim(),
         phone: '',
-        lat: selectedCity.lat,
-        lng: selectedCity.lng,
+        lat: addressPoint?.lat ?? selectedCity.lat,
+        lng: addressPoint?.lon ?? selectedCity.lng,
       });
       toast.success('Заявка на ресторан отправлена');
       navigate('/register-restaurant/pending');
@@ -124,10 +211,10 @@ export default function SetupRestaurant() {
                 Onboarding ресторана
               </div>
               <h1 className="mt-8 text-5xl font-black leading-[1.02] tracking-tight text-slate-900">
-                Сначала подтверждаем базовые данные, потом отправляем заявку
+                Сначала указываем базовые данные, потом отправляем заявку
               </h1>
               <p className="mt-6 max-w-lg text-base leading-8 text-slate-600">
-                Название, город и адрес проходят через отдельные шаги подтверждения. Это снижает ошибки ещё до модерации.
+                Укажите название, город и адрес ресторана. После этого заявка уйдёт на проверку.
               </p>
             </div>
           </div>
@@ -191,9 +278,9 @@ export default function SetupRestaurant() {
               {step === 'name-confirm' ? (
                 <ConfirmationStep
                   stepLabel="Проверка названия"
-                  title="Вы уверены, что название указано правильно?"
+                  title="Проверьте название перед сохранением"
                   value={formData.name.trim()}
-                  hint="Название будет использоваться в заявке, каталоге и дальнейшей настройке ресторана."
+                  hint="Название используется в заявке, каталоге и в интерфейсе ресторана."
                   onEdit={() => setStep('name')}
                   onConfirm={() => setStep('city')}
                 />
@@ -240,9 +327,41 @@ export default function SetupRestaurant() {
                     label="Адрес ресторана"
                     placeholder="Улица, дом, этаж или ориентир"
                     value={formData.address}
-                    onChange={(value) => setFormData((current) => ({ ...current, address: value }))}
+                    onChange={(value) => {
+                      setAddressPoint(null);
+                      setFormData((current) => ({ ...current, address: value }));
+                    }}
                     icon={<MapPinned size={18} />}
                   />
+                  {addressLoading ? (
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      Ищем подходящие адреса...
+                    </div>
+                  ) : null}
+                  {addressError ? (
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
+                      {addressError}
+                    </div>
+                  ) : null}
+                  {addressSuggestions.length > 0 ? (
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      {addressSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData((current) => ({ ...current, address: suggestion.label }));
+                            setAddressPoint(suggestion.point ?? null);
+                            setAddressSuggestions([]);
+                          }}
+                          className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 last:border-b-0"
+                        >
+                          <MapPinned size={16} className="text-slate-400" />
+                          <span>{suggestion.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <PrimaryButton onClick={goToAddressConfirm}>Продолжить</PrimaryButton>
                 </StepShell>
               ) : null}
@@ -250,9 +369,9 @@ export default function SetupRestaurant() {
               {step === 'address-confirm' ? (
                 <ConfirmationStep
                   stepLabel="Проверка адреса"
-                  title="Адрес указан правильно?"
+                  title="Проверьте адрес перед отправкой"
                   value={`${selectedCity.value}, ${formData.address.trim()}`}
-                  hint="Если адрес неточный, заявку придётся исправлять вручную. Лучше подтвердить его сейчас."
+                  hint="Если адрес неточный, заявку придётся исправлять вручную. Лучше уточнить его сейчас."
                   onEdit={() => setStep('address')}
                   onConfirm={() => setStep('submit')}
                 />
@@ -441,7 +560,7 @@ function ConfirmationStep({
           onClick={onConfirm}
           className="inline-flex h-14 items-center justify-center rounded-2xl bg-[#1d4ed8] text-[12px] font-black uppercase tracking-widest text-white transition hover:bg-[#1e40af]"
         >
-          Да, я уверен
+          Подтвердить
         </button>
       </div>
     </div>

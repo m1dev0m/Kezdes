@@ -14,7 +14,6 @@ const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Bookings = lazy(() => import('@/pages/Bookings'));
-const CreateReservation = lazy(() => import('@/pages/CreateReservation'));
 const Customers = lazy(() => import('@/pages/Customers'));
 const CustomerDetail = lazy(() => import('@/pages/CustomerDetail'));
 const Settings = lazy(() => import('@/pages/Settings'));
@@ -125,7 +124,7 @@ function App() {
                   <Route index element={<Navigate to="/app/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="bookings" element={<Bookings />} />
-                  <Route path="bookings/new" element={<CreateReservation />} />
+                  <Route path="bookings/new" element={<Navigate to="/app/bookings?new=1" replace />} />
                   <Route path="floor" element={<FloorView />} />
                   <Route path="calendar" element={<Calendar />} />
                   <Route path="waitlist" element={<Waitlist />} />

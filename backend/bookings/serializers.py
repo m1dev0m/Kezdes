@@ -2,9 +2,17 @@ from rest_framework import serializers
 from datetime import datetime, timedelta, date
 from .models import Booking, ReservationHistory
 from restaurants.models import Review
+from core.utils import get_user_profile
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _prefetched_related_items(instance, relation_name):
+    cache = getattr(instance, "_prefetched_objects_cache", {})
+    if relation_name not in cache:
+        return None
+    return cache[relation_name]
 
 
 class ReservationHistorySerializer(serializers.ModelSerializer):
@@ -71,6 +79,9 @@ class PublicBookingSerializer(serializers.ModelSerializer):
             return False
         if obj.status != Booking.COMPLETED:
             return False
+        reviewed_restaurant_ids = self.context.get('reviewed_restaurant_ids')
+        if reviewed_restaurant_ids is not None:
+            return obj.restaurant_id not in reviewed_restaurant_ids
         return not Review.objects.filter(restaurant_id=obj.restaurant_id, user_id=obj.user_id).exists()
 
     def get_rebook_payload(self, obj: Booking):
@@ -168,8 +179,9 @@ class BookingSerializer(serializers.ModelSerializer):
 
         if instance.user:
             data['user_name'] = instance.user.get_full_name() or instance.user.username or data.get('user_name')
-            if hasattr(instance.user, 'profile') and instance.user.profile.phone:
-                data['user_phone'] = instance.user.profile.phone
+            profile = getattr(instance.user, 'profile', None)
+            if profile and profile.phone:
+                data['user_phone'] = profile.phone
 
         return data
 
@@ -183,12 +195,25 @@ class BookingSerializer(serializers.ModelSerializer):
         return obj.table_id
 
     def get_table_ids(self, obj: Booking):
+        prefetched_tables = _prefetched_related_items(obj, 'tables')
+        if prefetched_tables is not None:
+            return [table.id for table in prefetched_tables]
         return list(obj.tables.values_list('id', flat=True))
 
     def get_has_preorder(self, obj: Booking):
+        if hasattr(obj, 'has_preorder'):
+            return obj.has_preorder
+        prefetched_orders = _prefetched_related_items(obj, 'orders')
+        if prefetched_orders is not None:
+            return bool(prefetched_orders)
         return obj.orders.exists()
 
     def get_orders_count(self, obj: Booking):
+        if hasattr(obj, 'orders_count'):
+            return obj.orders_count
+        prefetched_orders = _prefetched_related_items(obj, 'orders')
+        if prefetched_orders is not None:
+            return len(prefetched_orders)
         return obj.orders.count()
 
     def get_can_review(self, obj: Booking):
@@ -198,6 +223,9 @@ class BookingSerializer(serializers.ModelSerializer):
             return False
         if obj.status != Booking.COMPLETED:
             return False
+        reviewed_restaurant_ids = self.context.get('reviewed_restaurant_ids')
+        if reviewed_restaurant_ids is not None:
+            return obj.restaurant_id not in reviewed_restaurant_ids
         return not Review.objects.filter(restaurant_id=obj.restaurant_id, user_id=obj.user_id).exists()
 
     def get_rebook_payload(self, obj: Booking):
@@ -211,6 +239,22 @@ class BookingSerializer(serializers.ModelSerializer):
             'duration_minutes': obj.duration_minutes,
             'public_token': obj.public_token,
         }
+
+
+class BookingListSerializer(BookingSerializer):
+    """
+    Lightweight serializer for list endpoints.
+    Excludes heavy nested structures like `history` and computed relations like `can_review`.
+    """
+    class Meta(BookingSerializer.Meta):
+        fields = [
+            'id', 'public_token', 'user', 'user_name', 'user_phone', 'restaurant', 'restaurant_name',
+            'date', 'time', 'duration_minutes', 'guests', 'event_type', 'event_title',
+            'status', 'status_display', 'source', 'created_at',
+            'table_number', 'table_ids', 'has_preorder', 'orders_count',
+            'reservation_date', 'reservation_time', 'customer_id', 'table_id',
+            'is_checked_in', 'check_in_time',
+        ]
 
 
 class AdminBookingSerializer(serializers.ModelSerializer):

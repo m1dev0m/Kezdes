@@ -3,6 +3,7 @@ import logging
 from django.conf import settings
 from django.db import transaction
 from .models import Restaurant
+from core.utils import get_user_profile
 logger = logging.getLogger(__name__)
 class TwoGISService:
     BASE_URL = "https://catalog.api.2gis.com/3.0/items"
@@ -117,10 +118,11 @@ class RestaurantService:
                 username = user.username
 
             # 2. Update role
-            if hasattr(user, 'profile'):
-                if user.profile.role not in ('restaurant_admin', 'restaurant_owner', 'owner'):
-                    user.profile.role = 'owner'
-                user.profile.save()
+            profile = get_user_profile(user)
+            if profile:
+                if profile.role not in ('restaurant_admin', 'restaurant_owner', 'owner'):
+                    profile.role = 'owner'
+                profile.save()
 
             # 3. Create or verify restaurant
             restaurant = Restaurant.objects.filter(owner=user).first()
@@ -145,9 +147,10 @@ class RestaurantService:
                 restaurant.phone = req.phone
                 restaurant.save()
 
-            if hasattr(user, 'profile'):
-                user.profile.restaurant = restaurant
-                user.profile.save()
+            profile = get_user_profile(user)
+            if profile:
+                profile.restaurant = restaurant
+                profile.save()
 
             # Trigger notification
             try:
