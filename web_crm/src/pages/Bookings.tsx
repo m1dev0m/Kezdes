@@ -964,7 +964,9 @@ export default function Bookings() {
                     </span>
                     {selectedReservation.user && (
                       <button
+                        type="button"
                         onClick={() => handleMessageGuest(selectedReservation)}
+                        aria-label={`reservation-chat-${selectedReservation.id}`}
                         className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
                       >
                         <span className="material-symbols-outlined text-[14px]">forum</span>

@@ -568,6 +568,42 @@ class BookingAPITests(TestCase):
         booking = Booking.objects.get(id=booking_id)
         self.assertEqual(booking.status, Booking.NO_SHOW)
 
+    def test_reassign_table_booking(self):
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        replacement_table = Table.objects.create(
+            restaurant=self.restaurant,
+            number="B2",
+            seats=4,
+            is_active=True,
+        )
+
+        self.client.force_authenticate(user=self.owner)
+        confirm_res = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
+
+        reassign_res = self.client.post(
+            f"/api/v1/bookings/{booking_id}/reassign_table/",
+            {"table_id": replacement_table.id},
+            format="json",
+        )
+        self.assertEqual(reassign_res.status_code, status.HTTP_200_OK)
+
+        booking = Booking.objects.get(id=booking_id)
+        self.assertEqual(booking.table_id, replacement_table.id)
+        self.assertEqual(list(booking.tables.values_list("id", flat=True)), [replacement_table.id])
+
+    def test_smart_tables_returns_suggestions(self):
+        res = self._create_booking()
+        booking_id = res.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        smart_res = self.client.get(f"/api/v1/bookings/{booking_id}/smart_tables/")
+        self.assertEqual(smart_res.status_code, status.HTTP_200_OK)
+        self.assertIn("suggested_tables", smart_res.data)
+        self.assertIn("turnover_minutes", smart_res.data)
+
     def test_list_filters_by_time_and_table(self):
         """List endpoint supports filtering by time range and table."""
         # Create base table and an extra table so that we can

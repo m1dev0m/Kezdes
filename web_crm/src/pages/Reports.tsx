@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/i18n';
 
+import api from '@/services/api';
+
 export default function Reports() {
     const { t } = useI18n();
 
@@ -17,15 +19,35 @@ export default function Reports() {
 
     const [generating, setGenerating] = useState<string | null>(null);
 
-    const handleDownload = (id: string, name: string) => {
+    const handleDownload = async (id: string, name: string) => {
         setGenerating(id);
-        setTimeout(() => {
-            setGenerating(null);
+        try {
+            let endpoint = '';
+            let filename = '';
+            if (id === 'bookings') { endpoint = '/reports/bookings/excel/'; filename = 'bookings_report.xlsx'; }
+            else if (id === 'customers') { endpoint = '/reports/customers/excel/'; filename = 'customers_report.xlsx'; }
+            else if (id === 'revenue' || id === 'performance' || id === 'growth' || id === 'occupancy') { endpoint = '/reports/analytics/excel/'; filename = 'analytics_report.xlsx'; }
+            else return;
+
+            const response = await api.get(endpoint, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            
             toast.success(`${name} ${t('reports.reportGenerated')}`, {
                 icon: '📊',
                 style: { backgroundColor: '#0047FF', color: '#fff', fontWeight: 900, borderRadius: '20px' }
             });
-        }, 1200);
+        } catch (error) {
+            console.error("Download failed", error);
+            toast.error(t('reports.errorGenerating') || 'Failed to download report');
+        } finally {
+            setGenerating(null);
+        }
     };
 
     return (

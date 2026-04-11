@@ -541,6 +541,21 @@ class StatusMachine:
                 from_table=old_table,
                 to_table=booking.table,
             )
+            
+            import logging
+            logger = logging.getLogger('bookings.transitions')
+            logger.info(
+                "Booking transition",
+                extra={
+                    "event": "booking_status_transition",
+                    "booking_id": booking.id,
+                    "restaurant_id": booking.restaurant_id,
+                    "from_status": old_status,
+                    "to_status": new_status,
+                    "actor_id": actor.id if actor else None,
+                    "guests": booking.guests,
+                }
+            )
 
         return booking
 

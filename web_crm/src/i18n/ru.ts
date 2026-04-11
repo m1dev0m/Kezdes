@@ -589,6 +589,7 @@ export const ru = {
         csv: 'CSV',
         pdf: 'PDF',
         reportGenerated: 'отчет сгенерирован!',
+        errorGenerating: 'Ошибка при формировании отчета',
     },
     pendingApproval: {
         title: 'Аккаунт создан!',

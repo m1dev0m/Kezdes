@@ -65,7 +65,6 @@ class Booking(models.Model):
 
     ACTIVE_STATUSES = [PENDING, CONFIRMED, PAYMENT_PENDING, SEATED]
 
-    # Fields
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -91,7 +90,6 @@ class Booking(models.Model):
         related_name='legacy_bookings'
     )
 
-    # Date/Time fields
     date = models.DateField()
     time = models.TimeField()
     duration_minutes = models.PositiveIntegerField(
@@ -109,7 +107,7 @@ class Booking(models.Model):
         blank=True
     )
 
-    # Guest information
+   
     guests = models.PositiveIntegerField(default=1)
     user_name = models.CharField(
         max_length=255,

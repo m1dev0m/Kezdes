@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import BookingViewSet, WaitlistViewSet
+from .views import BookingViewSet
+from .waitlist_views import WaitlistViewSet
 
 app_name = 'bookings'
 router = DefaultRouter()

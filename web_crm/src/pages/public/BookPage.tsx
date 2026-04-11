@@ -479,6 +479,7 @@ export default function BookPage() {
                       key={slot}
                       type="button"
                       onClick={() => updateField('time', slot)}
+                      aria-label={`booking-slot-${slot}`}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                         form.time === slot ? 'bg-[#1d4ed8] text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                       }`}

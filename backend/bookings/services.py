@@ -487,3 +487,52 @@ class WaitlistService:
                 data={"type": "waitlist_promoted", "waitlist_id": entry.id},
             )
         return entry
+
+    @staticmethod
+    def convert_to_reservation(entry):
+        """Converts a waitlist entry into an actual reservation inside a transaction."""
+        from django.db import transaction, IntegrityError
+        from .models import WaitlistEntry, Booking
+        from .services import BookingService
+
+        duration = getattr(entry.restaurant, 'turnover_default_min', 85)
+
+        if not BookingService.acquire_booking_lock(
+            entry.restaurant_id, entry.date, entry.time, duration_minutes=duration
+        ):
+            return None, "Это время сейчас бронируется другим пользователем."
+
+        try:
+            with transaction.atomic():
+                tables = BookingService.find_best_tables(
+                    entry.restaurant, entry.date, entry.time, entry.guests, duration_minutes=duration
+                )
+                if not tables:
+                    return None, "К сожалению, нет доступных столов."
+
+                booking = Booking.objects.create(
+                    user=entry.user,
+                    restaurant=entry.restaurant,
+                    date=entry.date,
+                    time=entry.time,
+                    guests=entry.guests,
+                    duration_minutes=duration,
+                    status=Booking.CONFIRMED,
+                    table=tables[0],
+                    user_name=entry.contact_name,
+                    user_phone=entry.contact_phone,
+                    guest_email=entry.contact_email,
+                )
+                booking.tables.set(tables)
+
+                entry.status = WaitlistEntry.PROMOTED
+                entry.promoted_booking = booking
+                entry.save()
+
+                return booking, None
+        except IntegrityError:
+            return None, "Не удалось создать бронирование из-за конфликта данных."
+        finally:
+            BookingService.release_booking_lock(
+                entry.restaurant_id, entry.date, entry.time, duration_minutes=duration
+            )

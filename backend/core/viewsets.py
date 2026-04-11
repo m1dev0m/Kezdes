@@ -13,16 +13,13 @@ class OptionalPageNumberPagination(PageNumberPagination):
 
 
 class OptionalPaginationMixin:
-    """
-    Backward-compatible pagination:
-    returns plain list unless `page` or `page_size` provided.
-    """
+    
     pagination_class = OptionalPageNumberPagination
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         if 'page' not in request.query_params and 'page_size' not in request.query_params:
-            # Enforce global hard-cap to prevent memory exhaust
+          
             queryset = queryset[:2000]
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)

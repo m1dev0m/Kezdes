@@ -16,11 +16,6 @@ def get_user_profile(user):
         return None
     if profile is None or getattr(profile, "pk", None) is None:
         return None
-    from core.models import Profile
-    if not Profile.objects.filter(pk=profile.pk, user_id=user.id).exists():
-        cache_name = getattr(Profile.user.field, "cache_name", "profile")
-        user.__dict__.pop(cache_name, None)
-        return None
     return profile
 
 

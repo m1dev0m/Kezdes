@@ -192,7 +192,8 @@ export default function Waitlist() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Живая очередь и резерв</div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Очередь (Waitlist)</h1>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Лист ожидания</h1>
+            <p className="mt-2 text-sm font-medium text-slate-600">Очередь гостей и резерв на полностью занятые слоты.</p>
             <div className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 space-y-2">
               <p>
                 Используйте очередь для гостей, которые пришли без предупреждения (walk-in) и ждут столик прямо сейчас, 
