@@ -13,7 +13,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { request } from '../../lib/api';
 import { consumePendingPostAuthRoute, getAuthErrorMessage, getPostAuthRoute, sanitizeRedirectTarget, useAuth } from '../../lib/auth-context';
@@ -160,7 +160,7 @@ export default function RegisterScreen() {
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-                        <MaterialIcons name="close" size={24} color={colors.text} />
+                        <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <Logo />
                     <View style={styles.iconButton} />
@@ -213,14 +213,14 @@ export default function RegisterScreen() {
                         </View>
 
                         <View style={styles.hintCard}>
-                            <MaterialIcons name={role === 'owner' ? 'storefront' : 'person-outline'} size={18} color={colors.primary} />
+                            <Ionicons name={role === 'owner' ? 'storefront-outline' : 'person-outline'} size={18} color={colors.primary} />
                             <Text style={styles.hintText}>{roleHint}</Text>
                         </View>
 
                         <View style={styles.inputWrapper}>
                             <Text style={styles.label}>Электронная почта</Text>
                             <View style={styles.inputIconContainer}>
-                                <MaterialIcons name="mail" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="mail-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIcon}
                                     placeholder="example@kezdes.kz"
@@ -237,7 +237,7 @@ export default function RegisterScreen() {
                         <View style={styles.inputWrapper}>
                             <Text style={styles.label}>Логин</Text>
                             <View style={styles.inputIconContainer}>
-                                <MaterialIcons name="person" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="person-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIcon}
                                     placeholder="kezdes_user"
@@ -253,7 +253,7 @@ export default function RegisterScreen() {
                         <View style={styles.inputWrapper}>
                             <Text style={styles.label}>Телефон</Text>
                             <View style={styles.inputIconContainer}>
-                                <MaterialIcons name="phone" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="call-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIcon}
                                     placeholder="+7 700 000 00 00"
@@ -269,7 +269,7 @@ export default function RegisterScreen() {
                         <View style={styles.inputWrapper}>
                             <Text style={styles.label}>Пароль</Text>
                             <View style={styles.inputIconContainer}>
-                                <MaterialIcons name="lock" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="lock-closed-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIconRight}
                                     placeholder="••••••••"
@@ -280,7 +280,7 @@ export default function RegisterScreen() {
                                     editable={step === 1}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                                    <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={colors.muted} />
+                                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.muted} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -293,7 +293,7 @@ export default function RegisterScreen() {
                                     password && confirmPassword && password !== confirmPassword ? styles.inputErrorContainer : null,
                                 ]}
                             >
-                                <MaterialIcons name="lock" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="lock-closed-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIconRight}
                                     placeholder="••••••••"
@@ -304,7 +304,7 @@ export default function RegisterScreen() {
                                     editable={step === 1}
                                 />
                                 <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
-                                    <MaterialIcons name={showConfirmPassword ? 'visibility-off' : 'visibility'} size={20} color={colors.muted} />
+                                    <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.muted} />
                                 </TouchableOpacity>
                             </View>
                             {password && confirmPassword && password !== confirmPassword ? (
@@ -325,7 +325,7 @@ export default function RegisterScreen() {
                                     <View style={styles.inputWrapper}>
                                         <Text style={styles.label}>Код подтверждения</Text>
                                         <View style={styles.inputIconContainer}>
-                                            <MaterialIcons name="key" size={20} color={colors.muted} style={styles.inputIcon} />
+                                            <Ionicons name="key-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                             <TextInput
                                                 style={styles.inputWithIcon}
                                                 placeholder="123456"

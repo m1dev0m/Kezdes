@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useAuth } from '../lib/auth-context';
 import { API_BASE_URL } from '../lib/api';
@@ -15,34 +15,41 @@ export default function ChatScreen() {
     const [messages, setMessages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+    const shouldAutoScrollRef = useRef(true);
 
     const bookingId = params.id as string;
     const name = params.name as string || 'Chat';
 
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async (silent = false) => {
         if (!user?.access || !bookingId) return;
         try {
+            if (!silent) setRefreshing(true);
             const url = `${API_BASE_URL}/chat/messages/?booking=${bookingId}`;
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${user.access}` }
             });
             if (res.ok) {
                 const data = await res.json();
-                setMessages(data);
+                const payload = Array.isArray(data) ? data : (data?.results || []);
+                setMessages(payload);
             }
         } catch (err) {
             console.error('Error fetching messages:', err);
         } finally {
+            setRefreshing(false);
             setLoading(false);
         }
-    };
+    }, [bookingId, user?.access]);
 
     useEffect(() => {
-        fetchMessages();
-        const interval = setInterval(fetchMessages, 500); // Faster polling for real-time feel
+        void fetchMessages();
+        const interval = setInterval(() => {
+            void fetchMessages(true);
+        }, 3000);
         return () => clearInterval(interval);
-    }, [bookingId, user]);
+    }, [fetchMessages]);
 
     const handleSend = async () => {
         if (!message.trim() || !user?.access || !bookingId) return;
@@ -53,9 +60,11 @@ export default function ChatScreen() {
             sender_username: user.username,
             isOptimistic: true,
         };
+        shouldAutoScrollRef.current = true;
         setMessages(prev => [...prev, optimisticMsg]);
         const currentMsg = message;
         setMessage('');
+        setSending(true);
 
         try {
             const res = await fetch(`${API_BASE_URL}/chat/messages/`, {
@@ -80,6 +89,7 @@ export default function ChatScreen() {
             console.error('Error sending message:', err);
             setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
             setMessage(currentMsg);
+            Alert.alert('Ошибка', 'Не удалось отправить сообщение');
         } finally {
             setSending(false);
         }
@@ -107,10 +117,10 @@ export default function ChatScreen() {
                 </TouchableOpacity>
                 <View style={styles.headerInfo}>
                     <Text style={styles.headerName}>{name}</Text>
-                    <Text style={styles.headerStatus}>В сети (Booking #{bookingId})</Text>
+                    <Text style={styles.headerStatus}>Чат по брони #{bookingId}</Text>
                 </View>
-                <TouchableOpacity style={styles.iconBtn}>
-                    <Ionicons name="call-outline" size={20} color={colors.text} />
+                <TouchableOpacity style={styles.iconBtn} onPress={() => void fetchMessages(true)}>
+                    <Ionicons name="refresh" size={20} color={colors.text} />
                 </TouchableOpacity>
             </View>
 
@@ -131,7 +141,26 @@ export default function ChatScreen() {
                         keyExtractor={item => item.id.toString()}
                         contentContainerStyle={styles.list}
                         showsVerticalScrollIndicator={false}
-                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        onScroll={({ nativeEvent }) => {
+                            const distanceFromBottom =
+                                nativeEvent.contentSize.height - (nativeEvent.contentOffset.y + nativeEvent.layoutMeasurement.height);
+                            shouldAutoScrollRef.current = distanceFromBottom < 80;
+                        }}
+                        scrollEventThrottle={16}
+                        onContentSizeChange={() => {
+                            if (shouldAutoScrollRef.current) {
+                                flatListRef.current?.scrollToEnd({ animated: true });
+                            }
+                        }}
+                        refreshing={refreshing}
+                        onRefresh={() => void fetchMessages(true)}
+                        ListEmptyComponent={
+                            <View style={styles.emptyState}>
+                                <Ionicons name="chatbubble-ellipses-outline" size={42} color={colors.muted} />
+                                <Text style={styles.emptyTitle}>Сообщений пока нет</Text>
+                                <Text style={styles.emptyText}>Напишите первым, чтобы открыть диалог по этой брони.</Text>
+                            </View>
+                        }
                     />
                 )}
 
@@ -151,7 +180,7 @@ export default function ChatScreen() {
                         onPress={handleSend}
                         disabled={!message.trim() || sending}
                     >
-                        {sending ? <ActivityIndicator size="small" color="#fff" /> : <MaterialIcons name="send" size={20} color="#fff" />}
+                        {sending ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="send" size={18} color="#fff" />}
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
@@ -183,4 +212,7 @@ const styles = StyleSheet.create({
     attachBtn: { width: 40, height: 40, borderRadius: 32, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
     input: { flex: 1, backgroundColor: colors.surface, borderRadius: 32, paddingHorizontal: 16, paddingVertical: 8, maxHeight: 100, fontSize: 15 },
     sendBtn: { width: 40, height: 40, borderRadius: 32, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 24 },
+    emptyTitle: { marginTop: 12, fontSize: 16, fontWeight: '700', color: colors.text },
+    emptyText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: colors.textSecondary, textAlign: 'center' },
 });

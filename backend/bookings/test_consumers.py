@@ -114,3 +114,31 @@ def test_booking_consumer_returns_none_for_inaccessible_booking(viewer, owner, r
     result = async_to_sync(consumer.get_restaurant_id_from_booking_if_accessible)(viewer, booking.id)
 
     assert result is None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_booking_consumer_normalizes_booking_update_payload():
+    consumer = BookingConsumer()
+    consumer.send_json = AsyncMock()
+
+    async_to_sync(consumer.booking_update)(
+        {
+            "type": "booking_update",
+            "booking": {
+                "id": 77,
+                "status": "pending",
+                "date": "2030-01-01",
+            },
+        }
+    )
+
+    consumer.send_json.assert_awaited_once_with(
+        {
+            "type": "booking_update",
+            "booking": {
+                "id": 77,
+                "status": "pending",
+                "date": "2030-01-01",
+            },
+        }
+    )

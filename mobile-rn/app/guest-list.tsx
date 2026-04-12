@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import EmptyState from '../components/EmptyState';
 
@@ -90,7 +90,7 @@ export default function GuestListScreen() {
                                     </View>
                                 </View>
                                 <TouchableOpacity style={styles.editBtn}>
-                                    <MaterialIcons name="edit" size={14} color={colors.primary} />
+                                    <Ionicons name="create-outline" size={14} color={colors.primary} />
                                     <Text style={styles.editBtnText}>Редактировать</Text>
                                 </TouchableOpacity>
                             </View>
@@ -112,7 +112,7 @@ export default function GuestListScreen() {
                     <Text style={styles.primaryBtnText}>Добавить гостя</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.secondaryBtn}>
-                    <MaterialIcons name="contact-phone" size={20} color={colors.primary} />
+                    <Ionicons name="people-outline" size={20} color={colors.primary} />
                     <Text style={styles.secondaryBtnText}>Импортировать из контактов</Text>
                 </TouchableOpacity>
             </View>

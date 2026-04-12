@@ -67,7 +67,17 @@ class BookingConsumer(AsyncJsonWebsocketConsumer):
 
     async def booking_update(self, event):
         """Receive booking update from group and send to WebSocket."""
-        await self.send_json(event['data'])
+        payload = event.get('data')
+        if payload is None and 'booking' in event:
+            payload = event.get('booking')
+
+        if payload is None:
+            return
+
+        await self.send_json({
+            'type': 'booking_update',
+            'booking': payload,
+        })
 
     @database_sync_to_async
     def is_restaurant_admin_or_staff(self, user, restaurant_id):

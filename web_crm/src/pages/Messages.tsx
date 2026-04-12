@@ -414,7 +414,7 @@ export default function MessagesPage() {
                             className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
                         >
                             <RefreshCw size={12} />
-                            Retry
+                            Повторить
                         </button>
                     </div>
                 ) : null}
@@ -438,6 +438,12 @@ export default function MessagesPage() {
                         </div>
                     ) : (
                         <div className="divide-y divide-slate-50">
+                            {hasRestaurantRole && activeRestaurantId && !isConnected && (
+                                <div className="mx-4 my-2 flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 p-2 text-center text-[10px] font-bold uppercase tracking-widest text-red-600 shadow-sm">
+                                    <span className="material-symbols-outlined text-[14px]">wifi_off</span>
+                                    <span>Connection lost. Please refresh to receive new messages.</span>
+                                </div>
+                            )}
                             {filteredConversations.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400/40">
                                     <MessageSquare size={24} />
@@ -565,7 +571,7 @@ export default function MessagesPage() {
                                         className="inline-flex items-center gap-2 self-start rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
                                     >
                                         <RefreshCw size={14} />
-                                        Retry
+                                        Повторить
                                     </button>
                                 </div>
                             </div>

@@ -21,11 +21,12 @@ class NotificationService:
             from .tasks import send_notification_task
             send_notification_task.delay(user.id, title, body, data)
         except Exception as e:
-            logger.warning(f"Notification async failed; falling back to sync: {e}")
-            try:
-                NotificationService._notify_user_sync(user, title, body, data)
-            except Exception as sync_err:
-                logger.warning(f"Notification sync failed: {sync_err}")
+            logger.warning(
+                "Notification async failed; skipping sync fallback for user %s: %s",
+                user.id,
+                e,
+            )
+            return
 
     @staticmethod
     def _notify_user_sync(user, title, body, data=None):
@@ -52,7 +53,8 @@ class NotificationService:
         if restaurant.owner:
             NotificationService.notify_user(restaurant.owner, title, body, data)
         
-        staff = restaurant.staff_profiles.filter(role__in=['manager', 'hostess'])
+        # Keep legacy hostess rows covered while the canonical role is "host".
+        staff = restaurant.staff_profiles.filter(role__in=['manager', 'host', 'hostess'])
         for profile in staff:
             NotificationService.notify_user(profile.user, title, body, data)
 

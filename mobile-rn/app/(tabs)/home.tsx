@@ -129,7 +129,7 @@ export default function SearchScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Logo />
                 </View>
-                <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/messages')}>
+                <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.7} onPress={() => router.push('/notifications')}>
                     <Ionicons name="notifications-outline" size={24} color="#94a3b8" />
                     {unreadCount > 0 ? (
                         <View style={styles.notificationBadge}>

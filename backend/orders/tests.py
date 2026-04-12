@@ -34,7 +34,7 @@ class OrderFlowTests(TestCase):
         )
         self.r1.owner = self.staff
         self.r1.plan = Restaurant.PLAN_PLUS
-        self.r1.feature_flags = {"orders_basic": True}
+        self.r1.feature_flags = {"orders_basic": True, "menu_basic": True}
         self.r1.save(update_fields=["owner", "plan", "feature_flags"])
         self.staff.profile.role = "owner"
         self.staff.profile.save(update_fields=["role"])
@@ -130,3 +130,22 @@ class OrderFlowTests(TestCase):
         self.assertEqual(res.status_code, 200)
         payload = res.data.get("results", res.data)
         self.assertEqual(len(payload), 1)
+
+    def test_owner_can_access_admin_menu_items(self):
+        owner_client = APIClient()
+        owner_client.force_authenticate(self.staff)
+
+        res = owner_client.get("/api/v1/orders/admin/items/")
+
+        self.assertEqual(res.status_code, 200)
+
+    def test_admin_menu_items_rejects_missing_profile_instead_of_500(self):
+        broken_user = User.objects.create_user(username="broken_owner", password="pass12345")
+        broken_user.profile.delete()
+
+        broken_client = APIClient()
+        broken_client.force_authenticate(broken_user)
+
+        res = broken_client.get("/api/v1/orders/admin/items/")
+
+        self.assertEqual(res.status_code, 403)

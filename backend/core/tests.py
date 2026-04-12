@@ -1,3 +1,5 @@
+from datetime import date, time, timedelta
+
 from django.test import TestCase
 from django.test import override_settings
 from django.db import connection
@@ -7,7 +9,9 @@ from rest_framework.test import APITestCase
 from django.test.utils import CaptureQueriesContext
 from unittest.mock import patch
 from core.models import OTPDeliveryAttempt, Profile, PushToken, OTPVerification
+from core.notifications import NotificationService
 from core.serializers import UserSerializer
+from bookings.models import Booking
 from restaurants.models import Restaurant, Review, Table
 
 
@@ -74,6 +78,45 @@ class HealthCheckAPITest(APITestCase):
     def test_health_check_endpoint(self):
         response = self.client.get('/api/v1/health/live/')
         self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE])
+
+
+class NotificationServiceTests(TestCase):
+    def test_notify_restaurant_new_booking_includes_host_role(self):
+        owner = User.objects.create_user(username='owner', email='owner@example.com', password='pass1234')
+        manager = User.objects.create_user(username='manager', email='manager@example.com', password='pass1234')
+        host = User.objects.create_user(username='host', email='host@example.com', password='pass1234')
+        guest = User.objects.create_user(username='guest', email='guest@example.com', password='pass1234')
+
+        restaurant = Restaurant.objects.create(
+            name='Notify Test',
+            address='Test address',
+            latitude=43.238949,
+            longitude=76.889709,
+            is_verified=True,
+            owner=owner,
+        )
+        manager.profile.role = 'manager'
+        manager.profile.restaurant = restaurant
+        manager.profile.save(update_fields=['role', 'restaurant'])
+        host.profile.role = 'host'
+        host.profile.restaurant = restaurant
+        host.profile.save(update_fields=['role', 'restaurant'])
+
+        booking = Booking.objects.create(
+            user=guest,
+            restaurant=restaurant,
+            date=date.today() + timedelta(days=1),
+            time=time(19, 0),
+            guests=2,
+        )
+
+        with patch.object(NotificationService, 'notify_user') as notify_user_mock:
+            NotificationService.notify_restaurant_new_booking(booking)
+
+        notified_user_ids = [call.args[0].id for call in notify_user_mock.call_args_list]
+        self.assertEqual(notified_user_ids.count(owner.id), 1)
+        self.assertEqual(notified_user_ids.count(manager.id), 1)
+        self.assertEqual(notified_user_ids.count(host.id), 1)
 
 
 class AuthenticationAPITest(APITestCase):
@@ -194,7 +237,7 @@ class OTPAuthenticationAPITest(APITestCase):
     def test_send_otp_creates_verification_record(self):
         email = 'otp-user@example.com'
 
-        with patch('core.views.random.randint', return_value=123456), patch('core.views.send_mail') as send_mail_mock:
+        with patch('core.views.secrets.randbelow', return_value=23456), patch('core.views.send_mail') as send_mail_mock:
             response = self.client.post('/api/v1/auth/send-otp/', {'email': email})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -220,7 +263,7 @@ class OTPAuthenticationAPITest(APITestCase):
         email = 'existing-otp@example.com'
         OTPVerification.objects.create(email=email, code='111111', is_verified=True)
 
-        with patch('core.views.random.randint', return_value=654321), patch('core.views.send_mail'):
+        with patch('core.views.secrets.randbelow', return_value=554321), patch('core.views.send_mail'):
             response = self.client.post('/api/v1/auth/send-otp/', {'email': email.upper()})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -497,6 +540,125 @@ class RestaurantBySlugContractAPITest(APITestCase):
         response = self.client.get(f'/api/v1/restaurants/by-slug/{self.unverified.slug}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['id'], self.unverified.id)
+
+    def test_retrieve_hides_unverified_from_public(self):
+        response = self.client.get(f'/api/v1/restaurants/{self.unverified.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('success', response.data)
+        self.assertFalse(response.data['success'])
+
+
+class RestaurantClaimSecurityAPITest(APITestCase):
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(
+            name='Unclaimed venue',
+            address='Claim street 1',
+            latitude=43.25,
+            longitude=76.95,
+            is_claimed=False,
+            is_verified=True,
+        )
+
+    def test_claim_rejects_authenticated_user_without_profile(self):
+        user = User.objects.create_user(
+            username='claim_no_profile',
+            email='claim_no_profile@example.com',
+            password='claimpass123',
+        )
+        user.profile.delete()
+
+        self.client.force_authenticate(user=user)
+        response = self.client.post(f'/api/v1/restaurants/{self.restaurant.id}/claim/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.restaurant.refresh_from_db()
+        self.assertFalse(self.restaurant.is_claimed)
+        self.assertIsNone(self.restaurant.owner)
+
+    def test_claim_allows_owner_role(self):
+        user = User.objects.create_user(
+            username='claim_owner',
+            email='claim_owner@example.com',
+            password='claimpass123',
+        )
+        user.profile.role = 'owner'
+        user.profile.save(update_fields=['role'])
+
+        self.client.force_authenticate(user=user)
+        response = self.client.post(f'/api/v1/restaurants/{self.restaurant.id}/claim/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.restaurant.refresh_from_db()
+        self.assertTrue(self.restaurant.is_claimed)
+        self.assertEqual(self.restaurant.owner_id, user.id)
+
+
+class RestaurantReviewReplySecurityAPITest(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username='review_owner',
+            email='review_owner@example.com',
+            password='reviewpass123',
+        )
+        self.owner.profile.role = 'owner'
+        self.owner.profile.save(update_fields=['role'])
+
+        self.guest = User.objects.create_user(
+            username='review_guest',
+            email='review_guest@example.com',
+            password='reviewpass123',
+        )
+        self.guest.profile.role = 'customer'
+        self.guest.profile.save(update_fields=['role'])
+
+        self.restaurant = Restaurant.objects.create(
+            name='Review security restaurant',
+            address='Review avenue 5',
+            latitude=43.27,
+            longitude=76.91,
+            owner=self.owner,
+            is_claimed=True,
+            is_verified=True,
+        )
+        self.owner.profile.restaurant = self.restaurant
+        self.owner.profile.save(update_fields=['restaurant'])
+
+        self.review = Review.objects.create(
+            restaurant=self.restaurant,
+            user=self.guest,
+            rating=5,
+            comment='Original review',
+        )
+
+    def test_owner_can_patch_review_for_own_restaurant(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.patch(
+            f'/api/v1/restaurants/reviews/{self.review.id}/',
+            {'comment': 'Owner updated reply'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+
+    def test_customer_with_linked_restaurant_cannot_patch_review(self):
+        intruder = User.objects.create_user(
+            username='review_intruder',
+            email='review_intruder@example.com',
+            password='reviewpass123',
+        )
+        intruder.profile.role = 'customer'
+        intruder.profile.restaurant = self.restaurant
+        intruder.profile.save(update_fields=['role', 'restaurant'])
+
+        self.client.force_authenticate(intruder)
+        response = self.client.patch(
+            f'/api/v1/restaurants/reviews/{self.review.id}/',
+            {'comment': 'Intruder edit'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND, response.data)
 
 
 class RestaurantSubscriptionAPITest(APITestCase):

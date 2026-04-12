@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { useI18n } from '@/i18n';
 import {
   LogOut,
   User,
@@ -16,8 +17,11 @@ import {
 } from 'lucide-react';
 
 export default function GuestProfile() {
+  const { t } = useI18n();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const defaultCountry = t('guestProfile.defaultCountry');
+  const defaultCity = t('guestProfile.defaultCity');
   const [loading, setLoading] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [formData, setFormData] = useState({
@@ -26,8 +30,8 @@ export default function GuestProfile() {
     lastName: user?.last_name || '',
     email: user?.email || '',
     phone: (user as any)?.profile?.phone || (user as any)?.phone || '',
-    country: 'Казахстан',
-    city: 'Алматы',
+    country: defaultCountry,
+    city: defaultCity,
   });
 
   useEffect(() => {
@@ -45,8 +49,8 @@ export default function GuestProfile() {
           lastName: user?.last_name ?? '',
           email: user?.email ?? '',
           phone: fallbackPhone,
-          country: parsed.country ?? 'Казахстан',
-          city: parsed.city ?? 'Алматы',
+          country: parsed.country ?? defaultCountry,
+          city: parsed.city ?? defaultCity,
         }));
         setSaveState('idle');
         return;
@@ -61,11 +65,11 @@ export default function GuestProfile() {
       lastName: user?.last_name || '',
       email: user?.email || '',
       phone: fallbackPhone,
-      country: 'Казахстан',
-      city: 'Алматы',
+      country: defaultCountry,
+      city: defaultCity,
     });
     setSaveState('idle');
-  }, [user]);
+  }, [defaultCity, defaultCountry, user]);
 
   useEffect(() => {
     if (saveState === 'saved') {
@@ -91,10 +95,14 @@ export default function GuestProfile() {
         city: formData.city,
       }));
       setSaveState('saved');
-      toast.success('Профиль успешно обновлен');
+      toast.success(t('guestProfile.toastSaved'));
     } catch (error: any) {
       setSaveState('error');
-      const detail = error?.response?.data?.detail || error?.response?.data?.username?.[0] || error?.response?.data?.email?.[0] || 'Ошибка при обновлении профиля';
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.username?.[0] ||
+        error?.response?.data?.email?.[0] ||
+        t('guestProfile.toastSaveError');
       toast.error(detail);
     } finally {
       setLoading(false);
@@ -104,7 +112,7 @@ export default function GuestProfile() {
   const handleLogout = () => {
     logout();
     navigate('/login');
-    toast.success('Вы успешно вышли из системы');
+    toast.success(t('guestProfile.toastLoggedOut'));
   };
 
   return (
@@ -113,15 +121,15 @@ export default function GuestProfile() {
       {/* Page Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-2">
-          <h1 className="text-4xl font-black tracking-tighter text-slate-900 leading-none">Настройки профиля</h1>
-          <p className="text-sm font-medium leading-7 text-slate-500 uppercase tracking-wider">Управление персональными данными и безопасностью аккаунта.</p>
+          <h1 className="text-4xl font-black tracking-tighter text-slate-900 leading-none">{t('guestProfile.title')}</h1>
+          <p className="text-sm font-medium leading-7 text-slate-500 uppercase tracking-wider">{t('guestProfile.subtitle')}</p>
         </div>
         <button
           onClick={handleLogout}
           className="h-12 px-6 rounded-xl border border-rose-100 dark:border-rose-900/30 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 text-xs font-bold uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center gap-2"
         >
           <LogOut size={16} />
-          Выйти
+          {t('guestProfile.logout')}
         </button>
       </header>
 
@@ -142,12 +150,12 @@ export default function GuestProfile() {
           </div>
           <div className="flex-1 text-center md:text-left space-y-4">
             <div className="space-y-1">
-              <h3 className="text-xl font-bold text-slate-900 uppercase">Фото профиля</h3>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider leading-relaxed">Это изображение будет видно другим пользователям. Рекомендуемый размер 400x400px.</p>
+              <h3 className="text-xl font-bold text-slate-900 uppercase">{t('guestProfile.photoTitle')}</h3>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider leading-relaxed">{t('guestProfile.photoHint')}</p>
             </div>
             <div className="flex justify-center md:justify-start gap-3">
-              <button className="h-10 px-6 bg-[#1d4ed8] text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#1e40af] transition-all">Загрузить</button>
-              <button className="h-10 px-6 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">Удалить</button>
+              <button className="h-10 px-6 bg-[#1d4ed8] text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#1e40af] transition-all">{t('guestProfile.upload')}</button>
+              <button className="h-10 px-6 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{t('guestProfile.delete')}</button>
             </div>
           </div>
         </div>
@@ -155,56 +163,56 @@ export default function GuestProfile() {
 
       <form onSubmit={handleSave} className="space-y-8">
         <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs font-medium leading-6 text-blue-800">
-          Контактные данные и логин сохраняются в аккаунте. Город и страна остаются локальными предпочтениями этого устройства.
+          {t('guestProfile.localPreferencesHint')}
         </div>
         {/* Personal Details Section */}
         <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
           <div className="flex items-center gap-3 text-[#1d4ed8]">
             <User size={24} />
-            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-[0.1em]">Личная информация</h2>
+            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-[0.1em]">{t('guestProfile.personalInfo')}</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <InputField
-              label="Логин"
+              label={t('guestProfile.username')}
               icon={<User size={18} />}
               value={formData.username}
               onChange={(v) => setFormData(p => ({ ...p, username: v }))}
             />
             <InputField
-              label="Имя"
+              label={t('guestProfile.firstName')}
               icon={<User size={18} />}
               value={formData.firstName}
               onChange={(v) => setFormData(p => ({ ...p, firstName: v }))}
             />
             <InputField
-              label="Фамилия"
+              label={t('guestProfile.lastName')}
               icon={<User size={18} />}
               value={formData.lastName}
               onChange={(v) => setFormData(p => ({ ...p, lastName: v }))}
             />
             <InputField
-              label="Электронная почта"
+              label={t('guestProfile.email')}
               icon={<Mail size={18} />}
               type="email"
               value={formData.email}
               onChange={(v) => setFormData(p => ({ ...p, email: v }))}
             />
             <InputField
-              label="Номер телефона"
+              label={t('guestProfile.phone')}
               icon={<Phone size={18} />}
               type="tel"
               value={formData.phone}
               onChange={(v) => setFormData(p => ({ ...p, phone: v }))}
             />
             <InputField
-              label="Ваш город"
+              label={t('guestProfile.city')}
               icon={<MapPin size={18} />}
               value={formData.city}
               onChange={(v) => setFormData(p => ({ ...p, city: v }))}
             />
             <InputField
-              label="Страна"
+              label={t('guestProfile.country')}
               icon={<MapPin size={18} />}
               value={formData.country}
               onChange={(v) => setFormData(p => ({ ...p, country: v }))}
@@ -216,27 +224,27 @@ export default function GuestProfile() {
         <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
           <div className="flex items-center gap-3 text-[#1d4ed8]">
             <Shield size={24} />
-            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-[0.1em]">Безопасность</h2>
+            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-[0.1em]">{t('guestProfile.security')}</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <SecurityCard
               icon={<Mail size={16} />}
-              label="Email аккаунта"
-              value={formData.email || 'Не указан'}
-              hint="Используется для входа и подтверждения бронирований"
+              label={t('guestProfile.securityEmailLabel')}
+              value={formData.email || t('guestProfile.notSpecified')}
+              hint={t('guestProfile.securityEmailHint')}
             />
             <SecurityCard
               icon={<Phone size={16} />}
-              label="Телефон"
-              value={formData.phone || 'Не привязан'}
-              hint="Рестораны используют его для уточнения деталей"
+              label={t('guestProfile.securityPhoneLabel')}
+              value={formData.phone || t('guestProfile.notLinked')}
+              hint={t('guestProfile.securityPhoneHint')}
             />
             <SecurityCard
               icon={<CheckCircle2 size={16} />}
-              label="Статус доступа"
-              value="Аккаунт активен"
-              hint="Изменения логина и контактов сохраняются в профиле"
+              label={t('guestProfile.securityStatusLabel')}
+              value={t('guestProfile.activeAccount')}
+              hint={t('guestProfile.securityStatusHint')}
             />
           </div>
         </section>
@@ -245,7 +253,7 @@ export default function GuestProfile() {
         <div className="pt-8 flex flex-col-reverse md:flex-row items-center justify-between gap-6 border-t border-slate-100 dark:border-slate-800">
           <button type="button" className="group flex items-center gap-2 text-slate-400 hover:text-rose-500 transition-colors">
             <Trash2 size={18} />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Удалить мой аккаунт</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('guestProfile.deleteAccount')}</span>
           </button>
 
           <div className="flex w-full md:w-auto gap-4">
@@ -254,19 +262,19 @@ export default function GuestProfile() {
               onClick={() => navigate('/guest/dashboard')}
               className="flex-1 md:px-10 h-14 bg-slate-50 text-slate-500 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-slate-100 transition-all"
             >
-              Отмена
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 md:px-12 h-14 bg-[#1d4ed8] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-2xl shadow-[#1d4ed8]/20 hover:bg-[#1e40af] hover:-translate-y-0.5 transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              {loading ? 'Сохранение...' : saveState === 'saved' ? 'Сохранено' : 'Сохранить изменения'}
+              {loading ? t('guestProfile.saving') : saveState === 'saved' ? t('guestProfile.saved') : t('guestProfile.saveChanges')}
             </button>
           </div>
         </div>
         <p className={`text-[10px] font-black uppercase tracking-[0.2em] text-center ${saveState === 'error' ? 'text-rose-500' : saveState === 'saved' ? 'text-emerald-600' : 'text-slate-400'}`}>
-          {saveState === 'error' ? 'Не удалось сохранить изменения' : saveState === 'saved' ? 'Профиль и предпочтения сохранены' : 'Готово к сохранению'}
+          {saveState === 'error' ? t('guestProfile.saveError') : saveState === 'saved' ? t('guestProfile.saveSuccess') : t('guestProfile.readyToSave')}
         </p>
       </form>
     </div>

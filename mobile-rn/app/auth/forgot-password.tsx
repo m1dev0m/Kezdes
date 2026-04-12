@@ -2,7 +2,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useTranslation } from '../../lib/useTranslation';
 
@@ -25,14 +25,14 @@ export default function ForgotPasswordScreen() {
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-                        <MaterialIcons name="arrow-back" size={24} color={colors.text} />
+                        <Ionicons name="arrow-back" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{t('auth.recovery')}</Text>
                     <View style={styles.iconButton} />
                 </View>
                 <View style={styles.successContent}>
                     <View style={styles.successIconBox}>
-                        <MaterialIcons name="mark-email-read" size={60} color={colors.primary} />
+                        <Ionicons name="mail-open-outline" size={60} color={colors.primary} />
                     </View>
                     <Text style={styles.successTitle}>{t('auth.instructionsSent')}</Text>
                     <Text style={styles.successDescription}>
@@ -54,7 +54,7 @@ export default function ForgotPasswordScreen() {
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-                        <MaterialIcons name="arrow-back" size={24} color={colors.text} />
+                        <Ionicons name="arrow-back" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{t('auth.forgotPasswordTitle')}</Text>
                     <View style={styles.iconButton} />
@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
                         <View style={styles.inputWrapper}>
                             <Text style={styles.label}>{t('auth.emailOrPhone')}</Text>
                             <View style={styles.inputIconContainer}>
-                                <MaterialIcons name="mail" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="mail-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIcon}
                                     placeholder="example@mail.com"

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, RefreshControl, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
 import { fetchTables, createTable, updateTable, deleteTable } from '../../lib/api';
@@ -135,7 +135,7 @@ export default function AdminTablesScreen() {
         switch (type) {
             case 'circle': return <Ionicons name="ellipse-outline" size={24} color={colors.primary} />;
             case 'square': return <Ionicons name="square-outline" size={24} color={colors.primary} />;
-            default: return <MaterialIcons name="crop-16-9" size={24} color={colors.primary} />;
+            default: return <Ionicons name="remove-outline" size={24} color={colors.primary} />;
         }
     };
 

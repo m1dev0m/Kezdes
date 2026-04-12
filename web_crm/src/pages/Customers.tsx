@@ -111,7 +111,7 @@ export default function Customers() {
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >
             <Download size={16} />
-            {exporting ? 'Экспорт...' : 'Export CSV'}
+            {exporting ? 'Экспорт...' : 'Экспорт CSV'}
           </button>
           <button
             type="button"
@@ -139,7 +139,7 @@ export default function Customers() {
               onClick={() => void loadGuests()}
               className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
             >
-              Retry
+              Повторить
             </button>
           </div>
         ) : null}
@@ -181,7 +181,7 @@ export default function Customers() {
               onClick={() => void loadGuests()}
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              {refreshing ? 'Обновление...' : 'Refresh'}
+              {refreshing ? 'Обновление...' : 'Обновить'}
             </button>
           </div>
         </div>

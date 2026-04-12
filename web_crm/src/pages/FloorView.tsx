@@ -95,12 +95,25 @@ const TABLE_PRESETS = {
   circle: { width: 96, height: 96 },
 } as const;
 
+const TABLE_TYPE_OPTIONS = [
+  { value: 'square', label: 'Квадрат', description: 'Для компактных столов на 2-4 гостя.' },
+  { value: 'rectangle', label: 'Прямоугольный', description: 'Удобно для основной посадки и сдвига столов.' },
+  { value: 'circle', label: 'Круглый', description: 'Подходит для мягкой посадки и VIP-зон.' },
+] as const;
+
 const SHAPE_PRESETS: Record<FloorShapeType, { width: number; height: number; fill: string; stroke: string }> = {
   rectangle: { width: 180, height: 110, fill: '#ffffff', stroke: '#cbd5e1' },
   circle: { width: 120, height: 120, fill: '#f8fafc', stroke: '#cbd5e1' },
   label: { width: 140, height: 44, fill: '#ffffff', stroke: '#ffffff' },
   line: { width: 180, height: 6, fill: '#94a3b8', stroke: '#94a3b8' },
 };
+
+const SHAPE_TYPE_OPTIONS = [
+  { value: 'rectangle', label: 'Зона', description: 'Бар, кухня, вход или отдельный блок зала.' },
+  { value: 'circle', label: 'Круглая зона', description: 'Для мягких акцентов, lounge или островных зон.' },
+  { value: 'label', label: 'Подпись', description: 'Текстовая метка для входа, сцены, VIP или кухни.' },
+  { value: 'line', label: 'Линия', description: 'Перегородка, проход или визуальное разделение пространства.' },
+] as const;
 
 const FLOOR_TONE_MAP: Record<string, { border: string; bg: string; text: string; shadow: string; accent: string }> = {
   free: {
@@ -158,6 +171,10 @@ function getTableTypeLabel(tableType?: string) {
   if (tableType === 'circle') return 'Круглый';
   if (tableType === 'square') return 'Квадратный';
   return 'Прямоугольный';
+}
+
+function getShapeTypeLabel(shapeType: FloorShapeType) {
+  return SHAPE_TYPE_OPTIONS.find((option) => option.value === shapeType)?.label ?? shapeType;
 }
 
 function getDefaultTableLayout(tableType: string | undefined, index: number) {
@@ -343,6 +360,49 @@ function TableBadge({
     <span className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1.5 text-xs font-bold ${colorMap[status] ?? 'bg-slate-200 text-slate-700'}`}>
       {tableNumber}
     </span>
+  );
+}
+
+function TableTypePreview({ tableType }: { tableType: TableFormState['table_type'] }) {
+  const preset = getTablePreset(tableType);
+  const baseClass =
+    tableType === 'circle' ? 'rounded-full' : tableType === 'square' ? 'rounded-[22px]' : 'rounded-[20px]';
+
+  return (
+    <div className="flex h-20 items-center justify-center rounded-2xl bg-slate-100">
+      <div
+        className={`relative border-2 border-slate-300 bg-white shadow-sm ${baseClass}`}
+        style={{ width: Math.round(preset.width * 0.46), height: Math.round(preset.height * 0.46) }}
+      >
+        <SeatDots shape={tableType} capacity={tableType === 'rectangle' ? 6 : 4} />
+      </div>
+    </div>
+  );
+}
+
+function ShapeTypePreview({ shapeType }: { shapeType: FloorShapeType }) {
+  const preset = SHAPE_PRESETS[shapeType];
+  const shapeClass =
+    shapeType === 'circle' ? 'rounded-full' : shapeType === 'line' ? 'rounded-full' : 'rounded-[22px]';
+
+  return (
+    <div className="flex h-20 items-center justify-center rounded-2xl bg-slate-100">
+      {shapeType === 'label' ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 shadow-sm">
+          VIP
+        </div>
+      ) : (
+        <div
+          className={`border-2 shadow-sm ${shapeClass}`}
+          style={{
+            width: Math.round(preset.width * 0.42),
+            height: Math.max(4, Math.round(preset.height * 0.42)),
+            backgroundColor: preset.fill,
+            borderColor: preset.stroke,
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -1684,396 +1744,6 @@ export default function FloorView() {
                     <div className="mt-2 text-sm font-medium text-slate-700">{selectedTable.current_booking?.guest_name || 'Нет активной посадки'}</div>
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <MetricCard label="X" value={Math.round(selectedTable.x ?? 0)} />
-                  <MetricCard label="Y" value={Math.round(selectedTable.y ?? 0)} />
-                  <MetricCard label="Поворот" value={`${Math.round(selectedTable.rotation ?? 0)}°`} />
-                </div>
-              </div>
-            ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-                Выберите стол на схеме, чтобы редактировать его здесь.
-              </div>
-            )}
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Выбранный элемент</h2>
-                <p className="mt-1 text-sm text-slate-500">Вход, бар, кухня, перегородки и подписи для своего ресторана.</p>
-              </div>
-              <div className="rounded-2xl bg-slate-100 p-2 text-slate-500">
-                <Pencil size={16} />
-              </div>
-            </div>
-
-            {selectedShape ? (
-              <form onSubmit={handleUpdateShape} className="mt-5 space-y-4" noValidate>
-                <Field
-                  label="Название"
-                  value={editShapeForm.name}
-                  onChange={(value) => {
-                    setEditShapeForm((current) => ({ ...current, name: value }));
-                    if (editShapeErrors.name) setEditShapeErrors((current) => ({ ...current, name: undefined }));
-                    updateShapeDraft(selectedShape.id, { name: value }, false);
-                  }}
-                  error={editShapeErrors.name}
-                  disabled={!canManageTables}
-                />
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <SelectField
-                    label="Тип"
-                    value={editShapeForm.shape_type}
-                    onChange={(value) => {
-                      setEditShapeForm((current) => ({ ...current, shape_type: value as FloorShapeType }));
-                      updateShapeDraft(selectedShape.id, { shape_type: value as FloorShapeType });
-                    }}
-                    options={[
-                      { value: 'rectangle', label: 'Rectangle' },
-                      { value: 'circle', label: 'Circle' },
-                      { value: 'label', label: 'Label' },
-                      { value: 'line', label: 'Line' },
-                    ]}
-                    disabled={!canManageTables}
-                  />
-                  <ToggleField
-                    label="Виден на схеме"
-                    description="Элемент остаётся в базе, но его можно временно скрыть."
-                    checked={editShapeForm.is_visible}
-                    onChange={() => {
-                      setEditShapeForm((current) => ({ ...current, is_visible: !current.is_visible }));
-                      updateShapeDraft(selectedShape.id, { is_visible: !editShapeForm.is_visible });
-                    }}
-                    disabled={!canManageTables}
-                  />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <MetricCard label="X" value={Math.round(selectedShape.x ?? 0)} />
-                  <MetricCard label="Y" value={Math.round(selectedShape.y ?? 0)} />
-                  <MetricCard label="Поворот" value={`${Math.round(selectedShape.rotation ?? 0)}°`} />
-                  <MetricCard label="Слой" value={selectedShape.z_index ?? 1} />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Ширина"
-                    type="number"
-                    value={String(Math.round(selectedShape.width))}
-                    onChange={(value) => updateSelectedShapeLayout('width', Number(value) || selectedShape.width)}
-                    disabled={!canManageTables}
-                  />
-                  <Field
-                    label="Высота"
-                    type="number"
-                    value={String(Math.round(selectedShape.height))}
-                    onChange={(value) => updateSelectedShapeLayout('height', Number(value) || selectedShape.height)}
-                    disabled={!canManageTables}
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <ColorField
-                    label="Fill"
-                    value={editShapeForm.fill_color}
-                    onChange={(value) => {
-                      setEditShapeForm((current) => ({ ...current, fill_color: value }));
-                      updateShapeDraft(selectedShape.id, { fill_color: value });
-                    }}
-                    disabled={!canManageTables}
-                  />
-                  <ColorField
-                    label="Stroke"
-                    value={editShapeForm.stroke_color}
-                    onChange={(value) => {
-                      setEditShapeForm((current) => ({ ...current, stroke_color: value }));
-                      updateShapeDraft(selectedShape.id, { stroke_color: value });
-                    }}
-                    disabled={!canManageTables}
-                  />
-                  <ColorField
-                    label="Text"
-                    value={editShapeForm.text_color}
-                    onChange={(value) => {
-                      setEditShapeForm((current) => ({ ...current, text_color: value }));
-                      updateShapeDraft(selectedShape.id, { text_color: value });
-                    }}
-                    disabled={!canManageTables}
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Field
-                    label="X"
-                    type="number"
-                    value={String(Math.round(selectedShape.x))}
-                    onChange={(value) => updateSelectedShapeLayout('x', Number(value) || selectedShape.x)}
-                    disabled={!canManageTables}
-                  />
-                  <Field
-                    label="Y"
-                    type="number"
-                    value={String(Math.round(selectedShape.y))}
-                    onChange={(value) => updateSelectedShapeLayout('y', Number(value) || selectedShape.y)}
-                    disabled={!canManageTables}
-                  />
-                  <Field
-                    label="Поворот"
-                    type="number"
-                    value={String(Math.round(selectedShape.rotation))}
-                    onChange={(value) => updateSelectedShapeLayout('rotation', Number(value) || 0)}
-                    disabled={!canManageTables}
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Layer"
-                    type="number"
-                    value={String(selectedShape.z_index ?? 1)}
-                    onChange={(value) => updateSelectedShapeLayout('z_index', Number(value) || 1)}
-                    disabled={!canManageTables}
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={savingShapeEdit || !canManageTables}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
-                  >
-                    <Save size={16} />
-                    {savingShapeEdit ? 'Сохраняем...' : 'Сохранить элемент'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteShape()}
-                    disabled={savingShapeEdit || !canManageTables}
-                    className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition disabled:opacity-50 ${
-                      deleteShapeArmed ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Trash2 size={16} />
-                    {deleteShapeArmed ? 'Подтвердить удаление' : 'Удалить'}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-                Выберите элемент на схеме, чтобы менять подписи, цвета и позицию.
-              </div>
-            )}
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Новый стол</h2>
-            <p className="mt-1 text-sm text-slate-500">Быстро добавьте стол на схему. Полный список и управление — в разделе «Столы».</p>
-
-            <form onSubmit={handleCreateTable} className="mt-5 space-y-4" noValidate>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {[
-                  { value: 'square', label: 'Квадрат', description: 'Для компактных столов на 2-4 гостя.' },
-                  { value: 'rectangle', label: 'Прямоугольный', description: 'Удобно для основной посадки и сдвига столов.' },
-                  { value: 'circle', label: 'Круглый', description: 'Подходит для мягкой посадки и VIP-зон.' },
-                ].map((preset) => {
-                  const active = createForm.table_type === preset.value;
-                  return (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => setCreateForm((current) => ({ ...current, table_type: preset.value as TableFormState['table_type'] }))}
-                      title={preset.description}
-                      disabled={!canManageTables}
-                      className={`rounded-2xl border px-4 py-3 text-left transition ${
-                        active
-                          ? 'border-blue-200 bg-blue-50 text-blue-900'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      } disabled:opacity-50`}
-                    >
-                      <div className="text-sm font-semibold">{preset.label}</div>
-                      <div className="mt-1 text-xs text-slate-500">{preset.description}</div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <Field
-                label="Название"
-                value={createForm.name}
-                onChange={(value) => {
-                  setCreateForm((current) => ({ ...current, name: value }));
-                  if (createErrors.name) setCreateErrors((current) => ({ ...current, name: undefined }));
-                }}
-                placeholder="Table 1"
-                error={createErrors.name}
-                disabled={!canManageTables}
-              />
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field
-                  label="Вместимость"
-                  type="number"
-                  value={String(createForm.capacity)}
-                  onChange={(value) => {
-                    setCreateForm((current) => ({ ...current, capacity: Math.max(1, Number(value) || 1) }));
-                    if (createErrors.capacity) setCreateErrors((current) => ({ ...current, capacity: undefined }));
-                  }}
-                  error={createErrors.capacity}
-                  disabled={!canManageTables}
-                />
-                <SelectField
-                  label="Форма"
-                  value={createForm.table_type}
-                  onChange={(value) => setCreateForm((current) => ({ ...current, table_type: value as TableFormState['table_type'] }))}
-                  options={[
-                    { value: 'square', label: 'Квадрат' },
-                    { value: 'rectangle', label: 'Прямоугольный' },
-                    { value: 'circle', label: 'Круглый' },
-                  ]}
-                  disabled={!canManageTables}
-                />
-              </div>
-
-              <ToggleField
-                label="Активен для смены"
-                description="Если выключить, стол останется в системе, но исчезнет из рабочей схемы."
-                checked={createForm.is_active}
-                onChange={() => setCreateForm((current) => ({ ...current, is_active: !current.is_active }))}
-                disabled={!canManageTables}
-              />
-
-              <button
-                type="submit"
-                disabled={savingCreate || !canManageTables}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
-              >
-                <Plus size={16} />
-                {savingCreate ? 'Создание...' : 'Добавить стол'}
-              </button>
-
-              {!canManageTables ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  Доступ только для просмотра. Для изменений нужна роль manager или owner.
-                </div>
-              ) : null}
-            </form>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Новый элемент</h2>
-            <p className="mt-1 text-sm text-slate-500">Соберите свою карту зала: вход, кухня, бар, зоны и подписи ресторана.</p>
-
-            <form onSubmit={handleCreateShape} className="mt-5 space-y-4" noValidate>
-              <Field
-                label="Название"
-                value={createShapeForm.name}
-                onChange={(value) => {
-                  setCreateShapeForm((current) => ({ ...current, name: value }));
-                  if (createShapeErrors.name) setCreateShapeErrors((current) => ({ ...current, name: undefined }));
-                }}
-                placeholder="Вход"
-                error={createShapeErrors.name}
-                disabled={!canManageTables}
-              />
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <SelectField
-                  label="Тип"
-                  value={createShapeForm.shape_type}
-                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, shape_type: value as FloorShapeType }))}
-                  options={[
-                    { value: 'rectangle', label: 'Rectangle' },
-                    { value: 'circle', label: 'Circle' },
-                    { value: 'label', label: 'Label' },
-                    { value: 'line', label: 'Line' },
-                  ]}
-                  disabled={!canManageTables}
-                />
-                <ToggleField
-                  label="Показать сразу"
-                  description="Элемент появится на схеме, и его можно будет перетянуть."
-                  checked={createShapeForm.is_visible}
-                  onChange={() => setCreateShapeForm((current) => ({ ...current, is_visible: !current.is_visible }))}
-                  disabled={!canManageTables}
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <ColorField
-                  label="Fill"
-                  value={createShapeForm.fill_color}
-                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, fill_color: value }))}
-                  disabled={!canManageTables}
-                />
-                <ColorField
-                  label="Stroke"
-                  value={createShapeForm.stroke_color}
-                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, stroke_color: value }))}
-                  disabled={!canManageTables}
-                />
-                <ColorField
-                  label="Text"
-                  value={createShapeForm.text_color}
-                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, text_color: value }))}
-                  disabled={!canManageTables}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={savingShapeCreate || !canManageTables}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
-              >
-                <Plus size={16} />
-                {savingShapeCreate ? 'Создание...' : 'Добавить элемент'}
-              </button>
-            </form>
-          </section>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-        <div className="grid min-h-0 grid-cols-1 gap-4 md:grid-cols-3">
-          <Column
-            title="Ожидание"
-            subtitle="по времени ожидания"
-            coversCount={waitlist.length}
-            guestsCount={waitlist.reduce((sum, reservation) => sum + reservation.guests, 0)}
-            reservations={waitlist}
-            onAction={handleAction}
-            inFlightId={inFlightId}
-            emptyText="Нет ожидающих"
-          />
-          <Column
-            title="Бронирования"
-            subtitle="по времени брони"
-            coversCount={upcoming.length}
-            guestsCount={upcoming.reduce((sum, reservation) => sum + reservation.guests, 0)}
-            reservations={upcoming}
-            onAction={handleAction}
-            inFlightId={inFlightId}
-            emptyText="Нет подтверждённых броней"
-          />
-          <Column
-            title="За столом"
-            subtitle="по времени посадки"
-            coversCount={seated.length}
-            guestsCount={seated.reduce((sum, reservation) => sum + reservation.guests, 0)}
-            reservations={seated}
-            onAction={handleAction}
-            inFlightId={inFlightId}
-            showElapsed
-            emptyText="Никто не сидит"
-          />
-        </div>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold tracking-tight text-slate-900">Настройка стола</h2>
-          <p className="mt-1 text-sm text-slate-500">Быстро меняйте параметры выбранного стола. Для массовой настройки откройте «Столы».</p>
-
-          {selectedTable ? (
             <form onSubmit={handleUpdateTable} className="mt-5 space-y-4" noValidate>
               <Field
                 label="Название"
@@ -2241,13 +1911,427 @@ export default function FloorView() {
                 </div>
               ) : null}
             </form>
-          ) : (
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-              Выберите стол на схеме, чтобы редактировать его здесь.
+
+              </div>
+            ) : (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+                Выберите стол на схеме, чтобы редактировать его здесь.
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Выбранный элемент</h2>
+                <p className="mt-1 text-sm text-slate-500">Вход, бар, кухня, перегородки и подписи для своего ресторана.</p>
+              </div>
+              <div className="rounded-2xl bg-slate-100 p-2 text-slate-500">
+                <Pencil size={16} />
+              </div>
             </div>
-          )}
-        </section>
+
+            {selectedShape ? (
+              <form onSubmit={handleUpdateShape} className="mt-5 space-y-4" noValidate>
+                <Field
+                  label="Название"
+                  value={editShapeForm.name}
+                  onChange={(value) => {
+                    setEditShapeForm((current) => ({ ...current, name: value }));
+                    if (editShapeErrors.name) setEditShapeErrors((current) => ({ ...current, name: undefined }));
+                    updateShapeDraft(selectedShape.id, { name: value }, false);
+                  }}
+                  error={editShapeErrors.name}
+                  disabled={!canManageTables}
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SelectField
+                    label="Тип"
+                    value={editShapeForm.shape_type}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, shape_type: value as FloorShapeType }));
+                      updateShapeDraft(selectedShape.id, { shape_type: value as FloorShapeType });
+                    }}
+                    options={[
+                      { value: 'rectangle', label: 'Rectangle' },
+                      { value: 'circle', label: 'Circle' },
+                      { value: 'label', label: 'Label' },
+                      { value: 'line', label: 'Line' },
+                    ]}
+                    disabled={!canManageTables}
+                  />
+                  <ToggleField
+                    label="Виден на схеме"
+                    description="Элемент остаётся в базе, но его можно временно скрыть."
+                    checked={editShapeForm.is_visible}
+                    onChange={() => {
+                      setEditShapeForm((current) => ({ ...current, is_visible: !current.is_visible }));
+                      updateShapeDraft(selectedShape.id, { is_visible: !editShapeForm.is_visible });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <MetricCard label="X" value={Math.round(selectedShape.x ?? 0)} />
+                  <MetricCard label="Y" value={Math.round(selectedShape.y ?? 0)} />
+                  <MetricCard label="Поворот" value={`${Math.round(selectedShape.rotation ?? 0)}°`} />
+                  <MetricCard label="Слой" value={selectedShape.z_index ?? 1} />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Ширина"
+                    type="number"
+                    value={String(Math.round(selectedShape.width))}
+                    onChange={(value) => updateSelectedShapeLayout('width', Number(value) || selectedShape.width)}
+                    disabled={!canManageTables}
+                  />
+                  <Field
+                    label="Высота"
+                    type="number"
+                    value={String(Math.round(selectedShape.height))}
+                    onChange={(value) => updateSelectedShapeLayout('height', Number(value) || selectedShape.height)}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <ColorField
+                    label="Заливка"
+                    value={editShapeForm.fill_color}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, fill_color: value }));
+                      updateShapeDraft(selectedShape.id, { fill_color: value });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                  <ColorField
+                    label="Контур"
+                    value={editShapeForm.stroke_color}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, stroke_color: value }));
+                      updateShapeDraft(selectedShape.id, { stroke_color: value });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                  <ColorField
+                    label="Текст"
+                    value={editShapeForm.text_color}
+                    onChange={(value) => {
+                      setEditShapeForm((current) => ({ ...current, text_color: value }));
+                      updateShapeDraft(selectedShape.id, { text_color: value });
+                    }}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field
+                    label="X"
+                    type="number"
+                    value={String(Math.round(selectedShape.x))}
+                    onChange={(value) => updateSelectedShapeLayout('x', Number(value) || selectedShape.x)}
+                    disabled={!canManageTables}
+                  />
+                  <Field
+                    label="Y"
+                    type="number"
+                    value={String(Math.round(selectedShape.y))}
+                    onChange={(value) => updateSelectedShapeLayout('y', Number(value) || selectedShape.y)}
+                    disabled={!canManageTables}
+                  />
+                  <Field
+                    label="Поворот"
+                    type="number"
+                    value={String(Math.round(selectedShape.rotation))}
+                    onChange={(value) => updateSelectedShapeLayout('rotation', Number(value) || 0)}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Слой"
+                    type="number"
+                    value={String(selectedShape.z_index ?? 1)}
+                    onChange={(value) => updateSelectedShapeLayout('z_index', Number(value) || 1)}
+                    disabled={!canManageTables}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={savingShapeEdit || !canManageTables}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+                  >
+                    <Save size={16} />
+                    {savingShapeEdit ? 'Сохраняем...' : 'Сохранить элемент'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteShape()}
+                    disabled={savingShapeEdit || !canManageTables}
+                    className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition disabled:opacity-50 ${
+                      deleteShapeArmed ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Trash2 size={16} />
+                    {deleteShapeArmed ? 'Подтвердить удаление' : 'Удалить'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+                Выберите элемент на схеме, чтобы менять подписи, цвета и позицию.
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Новый стол</h2>
+            <p className="mt-1 text-sm text-slate-500">Быстро добавьте стол на схему. Полный список и управление — в разделе «Столы».</p>
+
+            <form onSubmit={handleCreateTable} className="mt-5 space-y-4" noValidate>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {TABLE_TYPE_OPTIONS.map((preset) => {
+                  const active = createForm.table_type === preset.value;
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setCreateForm((current) => ({ ...current, table_type: preset.value as TableFormState['table_type'] }))}
+                      title={preset.description}
+                      disabled={!canManageTables}
+                      className={`rounded-2xl border px-4 py-3 text-left transition ${
+                        active
+                          ? 'border-blue-200 bg-blue-50 text-blue-900'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      } disabled:opacity-50`}
+                    >
+                      <TableTypePreview tableType={preset.value} />
+                      <div className="text-sm font-semibold">{preset.label}</div>
+                      <div className="mt-1 text-xs text-slate-500">{preset.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Field
+                label="Название"
+                value={createForm.name}
+                onChange={(value) => {
+                  setCreateForm((current) => ({ ...current, name: value }));
+                  if (createErrors.name) setCreateErrors((current) => ({ ...current, name: undefined }));
+                }}
+                placeholder="Table 1"
+                error={createErrors.name}
+                disabled={!canManageTables}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Вместимость"
+                  type="number"
+                  value={String(createForm.capacity)}
+                  onChange={(value) => {
+                    setCreateForm((current) => ({ ...current, capacity: Math.max(1, Number(value) || 1) }));
+                    if (createErrors.capacity) setCreateErrors((current) => ({ ...current, capacity: undefined }));
+                  }}
+                  error={createErrors.capacity}
+                  disabled={!canManageTables}
+                />
+                <SelectField
+                  label="Форма"
+                  value={createForm.table_type}
+                  onChange={(value) => setCreateForm((current) => ({ ...current, table_type: value as TableFormState['table_type'] }))}
+                  options={TABLE_TYPE_OPTIONS.map((preset) => ({ value: preset.value, label: preset.label }))}
+                  disabled={!canManageTables}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Быстрый выбор вместимости</div>
+                <div className="flex flex-wrap gap-2">
+                  {[2, 4, 6, 8].map((capacity) => {
+                    const active = createForm.capacity === capacity;
+                    return (
+                      <button
+                        key={capacity}
+                        type="button"
+                        onClick={() => {
+                          setCreateForm((current) => ({ ...current, capacity }));
+                          if (createErrors.capacity) setCreateErrors((current) => ({ ...current, capacity: undefined }));
+                        }}
+                        disabled={!canManageTables}
+                        className={`inline-flex min-w-12 items-center justify-center rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
+                          active
+                            ? 'border-blue-200 bg-blue-50 text-blue-900'
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        } disabled:opacity-50`}
+                      >
+                        {capacity}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <ToggleField
+                label="Активен для смены"
+                description="Если выключить, стол останется в системе, но исчезнет из рабочей схемы."
+                checked={createForm.is_active}
+                onChange={() => setCreateForm((current) => ({ ...current, is_active: !current.is_active }))}
+                disabled={!canManageTables}
+              />
+
+              <button
+                type="submit"
+                disabled={savingCreate || !canManageTables}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+              >
+                <Plus size={16} />
+                {savingCreate ? 'Создание...' : 'Добавить стол'}
+              </button>
+
+              {!canManageTables ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Доступ только для просмотра. Для изменений нужна роль manager или owner.
+                </div>
+              ) : null}
+            </form>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Новый элемент</h2>
+            <p className="mt-1 text-sm text-slate-500">Соберите свою карту зала: вход, кухня, бар, зоны и подписи ресторана.</p>
+
+            <form onSubmit={handleCreateShape} className="mt-5 space-y-4" noValidate>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {SHAPE_TYPE_OPTIONS.map((preset) => {
+                  const active = createShapeForm.shape_type === preset.value;
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setCreateShapeForm((current) => ({ ...current, shape_type: preset.value }))}
+                      aria-label={`Шаблон элемента: ${preset.label}`}
+                      disabled={!canManageTables}
+                      className={`rounded-2xl border px-4 py-3 text-left transition ${
+                        active
+                          ? 'border-blue-200 bg-blue-50 text-blue-900'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      } disabled:opacity-50`}
+                    >
+                      <ShapeTypePreview shapeType={preset.value} />
+                      <div className="text-sm font-semibold">{preset.label}</div>
+                      <div className="mt-1 text-xs text-slate-500">{preset.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Field
+                label="Название"
+                value={createShapeForm.name}
+                onChange={(value) => {
+                  setCreateShapeForm((current) => ({ ...current, name: value }));
+                  if (createShapeErrors.name) setCreateShapeErrors((current) => ({ ...current, name: undefined }));
+                }}
+                placeholder="Вход"
+                error={createShapeErrors.name}
+                disabled={!canManageTables}
+              />
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Выбранный тип</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">{getShapeTypeLabel(createShapeForm.shape_type)}</div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ToggleField
+                  label="Показать сразу"
+                  description="Элемент появится на схеме, и его можно будет перетянуть."
+                  checked={createShapeForm.is_visible}
+                  onChange={() => setCreateShapeForm((current) => ({ ...current, is_visible: !current.is_visible }))}
+                  disabled={!canManageTables}
+                />
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+                  После добавления элемент можно перетянуть, повернуть и перекрасить прямо на схеме.
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <ColorField
+                  label="Fill"
+                  value={createShapeForm.fill_color}
+                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, fill_color: value }))}
+                  disabled={!canManageTables}
+                />
+                <ColorField
+                  label="Stroke"
+                  value={createShapeForm.stroke_color}
+                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, stroke_color: value }))}
+                  disabled={!canManageTables}
+                />
+                <ColorField
+                  label="Text"
+                  value={createShapeForm.text_color}
+                  onChange={(value) => setCreateShapeForm((current) => ({ ...current, text_color: value }))}
+                  disabled={!canManageTables}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingShapeCreate || !canManageTables}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                <Plus size={16} />
+                {savingShapeCreate ? 'Создание...' : 'Добавить элемент'}
+              </button>
+            </form>
+          </section>
+        </div>
       </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+        <div className="grid min-h-0 grid-cols-1 gap-4 md:grid-cols-3">
+          <Column
+            title="Ожидание"
+            subtitle="по времени ожидания"
+            coversCount={waitlist.length}
+            guestsCount={waitlist.reduce((sum, reservation) => sum + reservation.guests, 0)}
+            reservations={waitlist}
+            onAction={handleAction}
+            inFlightId={inFlightId}
+            emptyText="Нет ожидающих"
+          />
+          <Column
+            title="Бронирования"
+            subtitle="по времени брони"
+            coversCount={upcoming.length}
+            guestsCount={upcoming.reduce((sum, reservation) => sum + reservation.guests, 0)}
+            reservations={upcoming}
+            onAction={handleAction}
+            inFlightId={inFlightId}
+            emptyText="Нет подтверждённых броней"
+          />
+          <Column
+            title="За столом"
+            subtitle="по времени посадки"
+            coversCount={seated.length}
+            guestsCount={seated.reduce((sum, reservation) => sum + reservation.guests, 0)}
+            reservations={seated}
+            onAction={handleAction}
+            inFlightId={inFlightId}
+            showElapsed
+            emptyText="Никто не сидит"
+          />
+        </div>
+</section>
     </div>
   );
 }

@@ -194,21 +194,16 @@ class LeadViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        # Only staff should be able to list leads; anonymous can only create.
+        # Leads are currently global inbound marketing contacts with no restaurant FK.
+        # Restrict listing to global admin until/if tenant ownership is modeled explicitly.
         user = self.request.user
         if not user.is_authenticated:
             return Lead.objects.none()
         profile = get_user_profile(user)
         if not profile:
             return Lead.objects.none()
-        role = profile.role
-        if role == "global_admin":
+        if profile.role == "global_admin":
             return Lead.objects.all()
-        if role in ("owner", "restaurant_admin"):
-            from core.utils import get_user_restaurant
-            restaurant = get_user_restaurant(user)
-            if restaurant:
-                return Lead.objects.filter(restaurant=restaurant)
         return Lead.objects.none()
 
     def perform_create(self, serializer):

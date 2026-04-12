@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from crm.models import Customer, CustomerNote
+from crm.models import Customer, CustomerNote, Lead
 from restaurants.models import Restaurant
 
 
@@ -79,3 +79,24 @@ class CrmAccessTests(APITestCase):
         self.assertEqual(customers_res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(notes_res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(visits_res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_leads_list_does_not_500_and_returns_empty(self):
+        Lead.objects.create(name="Inbound", phone="+77010000002", city="Almaty", source="pricing")
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get("/api/v1/crm/leads/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+    def test_global_admin_can_list_leads(self):
+        admin = User.objects.create_user(username="crm_global_admin", password="pwd-123")
+        admin.profile.role = "global_admin"
+        admin.profile.save(update_fields=["role"])
+        Lead.objects.create(name="Inbound", phone="+77010000003", city="Astana", source="pricing")
+
+        self.client.force_authenticate(admin)
+        response = self.client.get("/api/v1/crm/leads/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)

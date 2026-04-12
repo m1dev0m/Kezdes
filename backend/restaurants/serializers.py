@@ -17,6 +17,7 @@ class ZoneSerializer(serializers.ModelSerializer):
     class Meta:
         model = Zone
         fields = '__all__'
+        read_only_fields = ['restaurant']
 
 class ShiftSerializer(serializers.ModelSerializer):
     class Meta:

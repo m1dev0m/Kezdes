@@ -13,7 +13,7 @@ import json
 import logging
 from core.responses import api_error
 from core.permissions import IsRestaurantAdmin, CanManageReservations
-from core.utils import get_user_profile
+from core.utils import get_user_profile, get_user_restaurant
 
 logger = logging.getLogger(__name__)
 from .serializers import (
@@ -270,6 +270,14 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
         return Response(self.get_serializer(booking).data, status=status.HTTP_200_OK)
 
+    def _can_manage_restaurant(self, user, restaurant) -> bool:
+        profile = get_user_profile(user)
+        if not profile:
+            return False
+        if profile.is_global_admin:
+            return True
+        return get_user_restaurant(user) == restaurant
+
     @action(detail=False, methods=['get', 'delete'], permission_classes=[permissions.AllowAny], url_path=r'public/(?P<public_token>[^/.]+)')
     def public_booking(self, request, public_token=None):
         """Public lookup and self-service cancel endpoint for a booking token."""
@@ -424,14 +432,6 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
                 include_history=include_history,
                 include_order_prefetch=include_order_prefetch,
             ).order_by('-date', '-time')
-
-        # Guest logic
-        if profile.role in ('customer', 'organizer'):
-            return self._optimized_booking_queryset(
-                Booking.objects.filter(user=user),
-                include_history=include_history,
-                include_order_prefetch=include_order_prefetch,
-            ).order_by('-created_at')
 
         # Global admin (platform level)
         if profile.role == 'global_admin':
@@ -593,16 +593,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         user = request.user
         if not user or not user.is_authenticated:
             return False
-
-        profile = get_user_profile(user)
-        if not profile:
-            return False
-        if profile.is_global_admin:
-            return True
-
-        from core.utils import get_user_restaurant
-        user_rest = get_user_restaurant(user)
-        return user_rest == booking.restaurant
+        return self._can_manage_restaurant(user, booking.restaurant)
 
     def destroy(self, request, *args, **kwargs):
         """DELETE behaves as cancellation for MVP API compatibility."""
@@ -649,21 +640,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         guests = serializer.validated_data.get('guests', 1)
         duration = serializer.validated_data.get('duration_minutes', 90)
 
-        # Permission check
-        profile = getattr(request.user, 'profile', None)
-        role = getattr(profile, 'role', None) if profile else None
-
-        if role == 'global_admin':
-            pass  # allowed
-        elif role in ('owner', 'restaurant_admin'):
-            is_owner = getattr(request.user, 'owned_restaurant', None) == restaurant
-            is_profile_linked = getattr(profile, 'restaurant', None) == restaurant
-            if not (is_owner or is_profile_linked):
-                return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
-        elif role in ('manager', 'host'):
-            if getattr(profile, 'restaurant', None) != restaurant:
-                return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
-        else:
+        if not self._can_manage_restaurant(request.user, restaurant):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
 
         # Extract booking data — pop 'status' separately to avoid duplicate kwarg
@@ -713,7 +690,6 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
     @action(detail=False, methods=['get'], permission_classes=[CanManageReservations])
     def my_restaurant(self, request):
         """Get all bookings for the admin's restaurant."""
-        from core.utils import get_user_restaurant
         restaurant = get_user_restaurant(request.user)
         
         if not restaurant:

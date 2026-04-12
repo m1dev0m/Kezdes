@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
 import { fetchDashboardAnalytics, type DashboardAnalyticsResponse } from '../../lib/api';
@@ -82,7 +82,7 @@ export default function AdminAnalyticsScreen() {
 
                         <View style={styles.premiumCard}>
                             <View style={styles.cardHeader}>
-                                <MaterialIcons name="groups" size={20} color={colors.primary} />
+                                <Ionicons name="people-outline" size={20} color={colors.primary} />
                                 <Text style={styles.cardTitle}>Average Party Size</Text>
                             </View>
                             <Text style={styles.cardValue}>{data.avg_guests.toFixed(1)} PAX</Text>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     ShoppingBag, Clock, ChevronRight, ChevronLeft,
     Receipt, DollarSign, RefreshCw
@@ -58,13 +58,7 @@ export default function Orders() {
     const pageSize = 20;
     const canViewOrders = useMemo(() => hasFeature(summary, 'orders_basic'), [summary]);
 
-    useEffect(() => {
-        if (subscriptionLoading || !summary) return;
-        if (!canViewOrders) return;
-        load();
-    }, [canViewOrders, filter, page, subscriptionLoading, summary]);
-
-    const load = async () => {
+    const load = useCallback(async () => {
         setRefreshing(true);
         try {
             const params = new URLSearchParams();
@@ -88,7 +82,13 @@ export default function Orders() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [filter, page, t]);
+
+    useEffect(() => {
+        if (subscriptionLoading || !summary) return;
+        if (!canViewOrders) return;
+        void load();
+    }, [canViewOrders, filter, page, subscriptionLoading, summary, load]);
 
     if (subscriptionLoading && !summary) {
         return (

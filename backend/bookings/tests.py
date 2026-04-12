@@ -963,6 +963,72 @@ class BookingContractReliabilityTests(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_create_manual_rejects_authenticated_user_without_profile(self):
+        broken_user = User.objects.create_user("broken_manual", "broken_manual@test.com", "pass1234")
+        broken_user.profile.delete()
+
+        self.client.force_authenticate(user=broken_user)
+        response = self.client.post(
+            "/api/v1/bookings/create_manual/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "time": "18:30",
+                "guests": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_manual_allows_manager_for_own_restaurant(self):
+        manager = User.objects.create_user("manager_manual", "manager_manual@test.com", "pass1234")
+        manager.profile.role = "manager"
+        manager.profile.restaurant = self.restaurant
+        manager.profile.save()
+
+        self.client.force_authenticate(user=manager)
+        response = self.client.post(
+            "/api/v1/bookings/create_manual/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "time": "19:00",
+                "guests": 3,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_manual_rejects_owner_for_foreign_restaurant(self):
+        other_owner = User.objects.create_user("other_owner_manual", "other_owner_manual@test.com", "pass1234")
+        other_owner.profile.role = "owner"
+        other_owner.profile.save()
+        other_restaurant = Restaurant.objects.create(
+            name="Foreign Restaurant",
+            address="Other Street 1",
+            latitude=43.20,
+            longitude=76.80,
+            owner=other_owner,
+            is_claimed=True,
+            is_verified=True,
+            capacity=20,
+        )
+        other_owner.profile.restaurant = other_restaurant
+        other_owner.profile.save()
+
+        self.client.force_authenticate(user=other_owner)
+        response = self.client.post(
+            "/api/v1/bookings/create_manual/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "time": "19:00",
+                "guests": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_available_slots_returns_stable_shape(self):
         self.client.force_authenticate(user=self.customer)
         response = self.client.get(

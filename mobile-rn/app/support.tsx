@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 const HELP_TOPICS = [
-    { title: 'Как забронировать?', icon: 'book-online' },
-    { title: 'Отмена бронирования', icon: 'cancel' },
-    { title: 'Оплата и счета', icon: 'payments' },
-    { title: 'Регистрация заведения', icon: 'storefront' },
+    { title: 'Как забронировать?', icon: 'calendar-outline' as const },
+    { title: 'Отмена бронирования', icon: 'close-circle-outline' as const },
+    { title: 'Оплата и счета', icon: 'card-outline' as const },
+    { title: 'Регистрация заведения', icon: 'storefront-outline' as const },
 ];
 
 export default function SupportScreen() {
@@ -34,7 +34,7 @@ export default function SupportScreen() {
                 <View style={styles.grid}>
                     {HELP_TOPICS.map((topic, idx) => (
                         <TouchableOpacity key={idx} style={styles.topicCard}>
-                            <MaterialIcons name={topic.icon as any} size={32} color={colors.primary} />
+                            <Ionicons name={topic.icon} size={32} color={colors.primary} />
                             <Text style={styles.topicTitle}>{topic.title}</Text>
                         </TouchableOpacity>
                     ))}

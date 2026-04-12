@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
 
@@ -33,7 +33,7 @@ export default function AdminSettingsScreen() {
                     onPress={() => router.push('/admin/setup?edit=true')}
                 >
                     <View style={[styles.dateIconBox, { backgroundColor: 'rgba(67, 0, 255, 0.1)' }]}>
-                        <MaterialIcons name="restaurant" size={20} color="#4300FF" />
+                        <Ionicons name="restaurant-outline" size={20} color="#4300FF" />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.dateTitle}>Информация о заведении</Text>
@@ -61,7 +61,7 @@ export default function AdminSettingsScreen() {
                     <Text style={[styles.settingLabel, { marginBottom: 8 }]}>Макс. гостей в одной брони</Text>
                     <View style={styles.inputWithIcon}>
                         <TextInput style={styles.inputIconned} defaultValue="12" keyboardType="numeric" />
-                        <MaterialIcons name="people" size={20} color={colors.muted} style={styles.inputIconRight} />
+                        <Ionicons name="people-outline" size={20} color={colors.muted} style={styles.inputIconRight} />
                     </View>
                 </View>
 
@@ -75,7 +75,7 @@ export default function AdminSettingsScreen() {
 
                 <View style={styles.dateCard}>
                     <View style={styles.dateIconBox}>
-                        <MaterialIcons name="calendar-today" size={20} color="#ef4444" />
+                        <Ionicons name="calendar-outline" size={20} color="#ef4444" />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.dateTitle}>31 декабря 2024</Text>
@@ -88,7 +88,7 @@ export default function AdminSettingsScreen() {
 
                 <View style={[styles.dateCard, { marginBottom: 32 }]}>
                     <View style={styles.dateIconBox}>
-                        <MaterialIcons name="calendar-today" size={20} color="#ef4444" />
+                        <Ionicons name="calendar-outline" size={20} color="#ef4444" />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.dateTitle}>1 января 2025</Text>

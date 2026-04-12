@@ -120,7 +120,7 @@ class RestaurantService:
             # 2. Update role
             profile = get_user_profile(user)
             if profile:
-                if profile.role not in ('restaurant_admin', 'restaurant_owner', 'owner'):
+                if not profile.is_owner:
                     profile.role = 'owner'
                 profile.save()
 

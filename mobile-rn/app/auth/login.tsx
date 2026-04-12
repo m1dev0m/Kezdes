@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
 
 import { useRouter, Link, useLocalSearchParams } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
 import { consumePendingPostAuthRoute, getAuthErrorMessage, getPostAuthRoute, sanitizeRedirectTarget, useAuth } from '../../lib/auth-context';
@@ -57,7 +57,7 @@ export default function LoginScreen() {
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-                        <MaterialIcons name="close" size={24} color={colors.text} />
+                        <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <Logo />
                     <View style={styles.iconButton} />
@@ -85,7 +85,7 @@ export default function LoginScreen() {
                         <View style={styles.inputWrapper}>
                             <Text style={styles.label}>Логин или Email</Text>
                             <View style={styles.inputIconContainer}>
-                                <MaterialIcons name="mail" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="mail-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIcon}
                                     placeholder="example"
@@ -106,7 +106,7 @@ export default function LoginScreen() {
                             </View>
 
                             <View style={styles.inputIconContainer}>
-                                <MaterialIcons name="lock" size={20} color={colors.muted} style={styles.inputIcon} />
+                                <Ionicons name="lock-closed-outline" size={20} color={colors.muted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.inputWithIconRight}
                                     placeholder="••••••••"
@@ -116,7 +116,7 @@ export default function LoginScreen() {
                                     secureTextEntry={!showPassword}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                                    <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={colors.muted} />
+                                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.muted} />
                                 </TouchableOpacity>
                             </View>
                         </View>

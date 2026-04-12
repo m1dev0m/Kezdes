@@ -38,8 +38,8 @@ class TenantModelViewSet(viewsets.ModelViewSet):
     """
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
-        profile = get_user_profile(user)
-        restaurant = getattr(profile, 'restaurant', None)
+        from .utils import get_user_restaurant
+        restaurant = get_user_restaurant(user)
         if restaurant is None:
             return self.queryset.none()
         return self.queryset.filter(restaurant=restaurant)

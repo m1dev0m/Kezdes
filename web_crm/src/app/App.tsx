@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from '@/modules/auth/logic/AuthContext';
 import { getPostAuthRedirectPath } from '@/modules/auth/logic/roles';
 import { I18nProvider } from '@/i18n/index.tsx';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { BookingRealtimeNotifier } from '@/components/BookingRealtimeNotifier';
 import AdminLayout from '@/layouts/AdminLayout';
 import GlobalAdminLayout from '@/layouts/GlobalAdminLayout';
 import PublicLayout from '@/layouts/PublicLayout';
@@ -78,6 +79,7 @@ function App() {
       <AuthProvider>
         <Toaster position="top-right" />
         <BrowserRouter>
+          <BookingRealtimeNotifier />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<IndexRedirect />} />

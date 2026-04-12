@@ -1,6 +1,10 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -59,19 +63,22 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         refill_rate = 5
         now = time.time()
 
-        bucket = await cache.aget(cache_key)
-        if bucket is None:
-            tokens = capacity - 1
-            await cache.aset(cache_key, (tokens, now), timeout=60)
-        else:
-            tokens, last_update = bucket
-            elapsed = now - last_update
-            tokens = min(capacity, tokens + elapsed * refill_rate)
-            if tokens < 1:
-                await self.send_json({'type': 'error', 'message': 'Rate limit exceeded. Please slow down.'})
-                return
-            tokens -= 1
-            await cache.aset(cache_key, (tokens, now), timeout=60)
+        try:
+            bucket = await cache.aget(cache_key)
+            if bucket is None:
+                tokens = capacity - 1
+                await cache.aset(cache_key, (tokens, now), timeout=60)
+            else:
+                tokens, last_update = bucket
+                elapsed = now - last_update
+                tokens = min(capacity, tokens + elapsed * refill_rate)
+                if tokens < 1:
+                    await self.send_json({'type': 'error', 'message': 'Rate limit exceeded. Please slow down.'})
+                    return
+                tokens -= 1
+                await cache.aset(cache_key, (tokens, now), timeout=60)
+        except Exception as exc:
+            logger.warning("Chat rate limit cache unavailable for restaurant %s: %s", self.restaurant_id, exc)
 
         message_content = content.get('message', '')
         if not message_content:

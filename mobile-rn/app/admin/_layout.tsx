@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useResponsive } from '../../hooks/useResponsive';
 
@@ -43,7 +43,7 @@ export default function AdminLayout() {
                 options={{
                     title: 'Дашборд',
                     tabBarIcon: ({ color }) => (
-                        <MaterialIcons name="dashboard" size={24} color={color} />
+                        <Ionicons name="grid-outline" size={24} color={color} />
                     ),
                 }}
             />

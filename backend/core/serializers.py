@@ -108,7 +108,7 @@ class UserMeSerializer(serializers.ModelSerializer):
             return True
         if profile.restaurant:
             return profile.restaurant.is_verified
-        if profile.role in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
+        if profile.role in ['owner', 'pending']:
             from restaurants.models import RestaurantRequest
             req = RestaurantRequest.objects.filter(owner=obj).order_by('-created_at').first()
             if req:
@@ -120,7 +120,7 @@ class UserMeSerializer(serializers.ModelSerializer):
         profile = get_user_profile(obj)
         if not profile:
             return False
-        if profile.role not in ['restaurant_admin', 'restaurant_owner', 'owner', 'pending']:
+        if profile.role not in ['owner', 'pending']:
             return False
         if profile.restaurant:
             return False

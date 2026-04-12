@@ -21,7 +21,7 @@ from core.permissions import (
     IsRestaurantOrGlobalAdmin,
     IsRestaurantStaff,
 )
-from core.utils import get_user_profile
+from core.utils import get_user_profile, get_user_restaurant
 from orders.models import MenuCategory, MenuItem
 from orders.serializers import PublicMenuCategorySerializer, PublicMenuItemSerializer
 from core.responses import api_error
@@ -63,6 +63,23 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if self.action == "feature_flags":
             return [IsGlobalAdmin()]
         return super().get_permissions()
+
+    @staticmethod
+    def _is_global_admin_user(user) -> bool:
+        profile = get_user_profile(user) if user and user.is_authenticated else None
+        return bool(profile and profile.is_global_admin)
+
+    def _can_access_unverified_restaurant(self, request, restaurant: Restaurant) -> bool:
+        if not request.user.is_authenticated:
+            return False
+        if restaurant.owner_id == request.user.id:
+            return True
+        return self._is_global_admin_user(request.user)
+
+    @staticmethod
+    def _can_claim_restaurant(user) -> bool:
+        profile = get_user_profile(user)
+        return bool(profile and profile.is_owner)
 
     def get_queryset(self):
         if self.action == "list":
@@ -128,15 +145,8 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        if not instance.is_verified:
-            is_owner = request.user.is_authenticated and instance.owner == request.user
-            profile = get_user_profile(request.user) if request.user.is_authenticated else None
-            is_global_admin = (
-                request.user.is_authenticated
-                and bool(profile and profile.role == "global_admin")
-            )
-            if not is_owner and not is_global_admin:
-                return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
+        if not instance.is_verified and not self._can_access_unverified_restaurant(request, instance):
+            return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
 
         if not request.user.is_authenticated or instance.owner != request.user:
             Restaurant.objects.filter(pk=instance.pk).update(views_count=models.F('views_count') + 1)
@@ -169,8 +179,6 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
     def subscription(self, request):
-        from core.utils import get_user_restaurant
-
         restaurant = get_user_restaurant(request.user)
         if not restaurant:
             return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
@@ -184,8 +192,6 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated], url_path="subscription/audit")
     def subscription_audit(self, request):
-        from core.utils import get_user_restaurant
-
         restaurant = get_user_restaurant(request.user)
         if not restaurant:
             return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
@@ -194,8 +200,6 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated], url_path="subscription/invoices")
     def subscription_invoices(self, request):
-        from core.utils import get_user_restaurant
-
         restaurant = get_user_restaurant(request.user)
         if not restaurant:
             return api_error("Restaurant not found", status.HTTP_404_NOT_FOUND)
@@ -247,15 +251,8 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 )
                 .get(slug=slug)
             )
-            if not restaurant.is_verified:
-                is_owner = request.user.is_authenticated and restaurant.owner == request.user
-                profile = get_user_profile(request.user) if request.user.is_authenticated else None
-                is_global_admin = (
-                    request.user.is_authenticated
-                    and bool(profile and profile.role == "global_admin")
-                )
-                if not is_owner and not is_global_admin:
-                    return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
+            if not restaurant.is_verified and not self._can_access_unverified_restaurant(request, restaurant):
+                return api_error("Restaurant is pending verification.", status.HTTP_403_FORBIDDEN)
             serializer = self.get_serializer(restaurant)
             return Response(serializer.data)
         except Restaurant.DoesNotExist:
@@ -276,8 +273,7 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         restaurant = self.get_object()
         if restaurant.is_claimed:
             return api_error("Already claimed", status.HTTP_400_BAD_REQUEST)
-        profile = get_user_profile(request.user)
-        if profile and profile.role not in ("restaurant_admin", "restaurant_owner", "owner"):
+        if not self._can_claim_restaurant(request.user):
             return api_error("Only restaurant admins can claim venues", status.HTTP_403_FORBIDDEN)
         restaurant.owner = request.user
         restaurant.is_claimed = True
@@ -291,7 +287,6 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             avail = restaurant.availabilities.all()
             serializer = AvailabilitySerializer(avail, many=True)
             return Response(serializer.data)
-        from core.utils import get_user_restaurant
         user_rest = get_user_restaurant(request.user)
         if not user_rest or user_rest.id != restaurant.id:
             return api_error("Not authorized", status.HTTP_403_FORBIDDEN)
@@ -942,16 +937,18 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
         user = request.user
-        
-        is_restaurant_admin = False
         profile = get_user_profile(user)
-        if profile:
-            if profile.role in ('restaurant_admin', 'restaurant_owner', 'manager') and instance.restaurant.owner == user:
-                is_restaurant_admin = True
-            elif getattr(profile, 'restaurant', None) == instance.restaurant:
-                is_restaurant_admin = True
-                
-        if not is_restaurant_admin and not getattr(profile, 'role', '') == 'global_admin':
+
+        is_global_admin = bool(profile and profile.role == 'global_admin')
+        from core.utils import get_user_restaurant
+        staff_restaurant = get_user_restaurant(user)
+        is_restaurant_staff = bool(
+            profile
+            and getattr(profile, 'is_staff_member', False)
+            and staff_restaurant == instance.restaurant
+        )
+
+        if not is_global_admin and not is_restaurant_staff:
             return Response({"detail": "Only restaurant staff can reply to reviews."}, status=status.HTTP_403_FORBIDDEN)
             
         return super().partial_update(request, *args, **kwargs)

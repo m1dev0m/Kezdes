@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
 export default function AdminAccountScreen() {
@@ -21,7 +21,7 @@ export default function AdminAccountScreen() {
                     <Text style={styles.sectionLabel}>ОРГАНИЗАЦИЯ</Text>
                     <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/admin/edit')}>
                         <View style={styles.menuIcon}>
-                            <MaterialIcons name="storefront" size={22} color={colors.primary} />
+                            <Ionicons name="storefront-outline" size={22} color={colors.primary} />
                         </View>
                         <Text style={styles.menuText}>Профиль заведения</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.muted} />

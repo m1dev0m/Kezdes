@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
 import { fetchMyRestaurantBookings, seatBooking, updateBookingStatus } from '../../lib/api';
@@ -12,6 +12,7 @@ import BookingCard from '../../components/BookingCard';
 
 export default function AdminBookingsScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams<{ highlight?: string; filter?: string; today?: string }>();
     const { user } = useAuth();
     const { isTablet, horizontalPadding, contentMaxWidth } = useResponsive();
     const [bookings, setBookings] = useState<any[]>([]);
@@ -19,6 +20,12 @@ export default function AdminBookingsScreen() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [filter, setFilter] = useState<'all' | 'pending'>('all');
     const [onlyToday, setOnlyToday] = useState(false);
+    const highlightId = useMemo(() => {
+        const raw = params.highlight;
+        if (!raw) return null;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? parsed : null;
+    }, [params.highlight]);
 
     const initData = React.useCallback(async (refresh = false) => {
         const token = user?.access;
@@ -43,6 +50,15 @@ export default function AdminBookingsScreen() {
     useEffect(() => {
         initData();
     }, [initData]);
+
+    useEffect(() => {
+        if (params.filter === 'pending') {
+            setFilter('pending');
+        }
+        if (params.today === '1') {
+            setOnlyToday(true);
+        }
+    }, [params.filter, params.today]);
 
     const handleAction = React.useCallback(async (bookingId: string | number, action: 'confirm' | 'reject') => {
         const token = user?.access;
@@ -101,19 +117,33 @@ export default function AdminBookingsScreen() {
 
     const todayStr = React.useMemo(() => new Date().toISOString().split('T')[0], []);
 
+    const pendingCount = useMemo(() => bookings.filter((b) => b.status === 'pending').length, [bookings]);
+    const activeCount = useMemo(
+        () => bookings.filter((b) => ['approved', 'confirmed', 'seated', 'pending'].includes(b.status)).length,
+        [bookings],
+    );
+
     const filteredBookings = React.useMemo(() => {
-        return bookings.filter(b => {
+        const next = bookings.filter(b => {
+            if (highlightId && Number(b.id) === highlightId) return true;
             const statusMatch = filter === 'all' ? true : b.status === filter;
             const dateMatch = onlyToday ? b.date === todayStr : true;
             return statusMatch && dateMatch;
         });
-    }, [bookings, filter, onlyToday, todayStr]);
+        if (!highlightId) return next;
+        return [...next].sort((left, right) => {
+            if (Number(left.id) === highlightId) return -1;
+            if (Number(right.id) === highlightId) return 1;
+            return 0;
+        });
+    }, [bookings, filter, onlyToday, todayStr, highlightId]);
 
     const renderItem = React.useCallback(({ item }: { item: any }) => (
         <View style={[styles.cardColumn, isTablet && styles.cardColumnTablet]}>
             <BookingCard
                 booking={item}
                 isTablet={isTablet}
+                highlighted={highlightId === Number(item.id)}
                 onAction={handleAction}
                 onSeat={handleSeat}
                 onPatchStatus={handlePatchStatus}
@@ -151,7 +181,7 @@ export default function AdminBookingsScreen() {
                     style={[styles.filterBtn, onlyToday && styles.filterBtnActive]}
                     onPress={() => setOnlyToday(!onlyToday)}
                 >
-                    <MaterialIcons name="today" size={14} color={onlyToday ? "#fff" : "#64748b"} />
+                    <Ionicons name="today-outline" size={14} color={onlyToday ? "#fff" : "#64748b"} />
                     <Text style={[styles.filterText, onlyToday && styles.filterTextActive]}>Сегодня</Text>
                 </TouchableOpacity>
 
@@ -164,6 +194,23 @@ export default function AdminBookingsScreen() {
                         {filter === 'all' ? 'Все' : 'Новые'}
                     </Text>
                 </TouchableOpacity>
+            </View>
+
+            <View style={[styles.summaryRow, { paddingHorizontal: horizontalPadding }]}>
+                <View style={styles.summaryChip}>
+                    <Text style={styles.summaryChipValue}>{activeCount}</Text>
+                    <Text style={styles.summaryChipLabel}>в работе</Text>
+                </View>
+                <View style={[styles.summaryChip, styles.summaryChipAccent]}>
+                    <Text style={[styles.summaryChipValue, styles.summaryChipValueAccent]}>{pendingCount}</Text>
+                    <Text style={[styles.summaryChipLabel, styles.summaryChipLabelAccent]}>новые заявки</Text>
+                </View>
+                {highlightId ? (
+                    <View style={styles.summaryChip}>
+                        <Text style={styles.summaryChipValue}>#{highlightId}</Text>
+                        <Text style={styles.summaryChipLabel}>открыта из календаря</Text>
+                    </View>
+                ) : null}
             </View>
 
             <FlatList
@@ -205,6 +252,13 @@ const styles = StyleSheet.create({
     filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     filterText: { color: '#64748b', fontSize: 13, fontWeight: '700' },
     filterTextActive: { color: '#fff' },
+    summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 18, flexWrap: 'wrap' },
+    summaryChip: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
+    summaryChipAccent: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+    summaryChipValue: { fontSize: 16, fontWeight: '900', color: colors.text },
+    summaryChipValueAccent: { color: colors.primary },
+    summaryChipLabel: { marginTop: 2, fontSize: 11, fontWeight: '600', color: colors.textSecondary },
+    summaryChipLabelAccent: { color: '#1d4ed8' },
 
     content: { paddingBottom: 100 },
     listContent: { paddingHorizontal: 8 },

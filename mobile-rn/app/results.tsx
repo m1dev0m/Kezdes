@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { fetchRestaurants } from '../lib/api';
 import MapComponent from './MapComponent';
@@ -155,7 +155,7 @@ export default function ResultsScreen() {
                 <View style={styles.searchBarWrapper}>
                     <View style={styles.topNavHeader}>
                         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-                            <MaterialIcons name="arrow-back-ios" size={20} color="#0f172a" />
+                            <Ionicons name="chevron-back" size={20} color="#0f172a" />
                         </TouchableOpacity>
                         <Text style={styles.topNavTitle}>{viewMode === 'map' ? 'Поиск на карте' : 'Подходящие рестораны'}</Text>
                         <View style={{ width: 40 }} />
@@ -198,7 +198,7 @@ export default function ResultsScreen() {
                                 setAffordableOnly(false);
                             }}
                         >
-                            <MaterialIcons name="tune" size={16} color="#64748b" />
+                            <Ionicons name="options-outline" size={16} color="#64748b" />
                         </TouchableOpacity>
                     </ScrollView>
 
@@ -256,13 +256,13 @@ export default function ResultsScreen() {
                                     <View style={styles.cardHeaderRow}>
                                         <Text style={styles.bottomCardTitle} numberOfLines={2}>{selectedVenue.name}</Text>
                                         <View style={styles.ratingBadge}>
-                                            <MaterialIcons name="star" size={10} color={colors.primary} />
+                                            <Ionicons name="star" size={10} color={colors.primary} />
                                             <Text style={styles.ratingText}>{selectedVenue.rating || 4.8}</Text>
                                         </View>
                                     </View>
                                     <Text style={styles.cardSubtitle}>Ресторан • До {selectedVenue.capacity || 150} чел.</Text>
                                     <View style={styles.cardMetaRow}>
-                                        <MaterialIcons name="near-me" size={14} color="#64748b" />
+                                        <Ionicons name="navigate-outline" size={14} color="#64748b" />
                                         <Text style={styles.cardMetaText}>0.5 км</Text>
                                         <View style={{ flex: 1 }} />
                                         <Text style={styles.priceTierText}>₸₸₸</Text>
@@ -294,7 +294,7 @@ export default function ResultsScreen() {
                         </TouchableOpacity>
                     </View>
                     <TouchableOpacity style={[styles.mapControlBtn, { marginTop: 12, borderRadius: 40 }]}>
-                        <MaterialIcons name="my-location" size={20} color="#0f172a" />
+                        <Ionicons name="locate-outline" size={20} color="#0f172a" />
                     </TouchableOpacity>
                 </View>
             )}

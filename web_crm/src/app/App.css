@@ -38,3 +38,18 @@
 .read-the-docs {
   color: #888;
 }
+
+@keyframes realtime-toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.realtime-toast-progress {
+  animation-name: realtime-toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}

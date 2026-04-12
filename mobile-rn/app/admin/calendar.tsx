@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
 import { useAuth } from '../../lib/auth-context';
-import { fetchMyRestaurantBookings } from '../../lib/api';
+import { fetchMyRestaurantBookings, fetchTableStatus } from '../../lib/api';
 import { useResponsive } from '../../hooks/useResponsive';
 
 const START_HOUR = 9;
@@ -19,6 +19,7 @@ export default function AdminCalendarScreen() {
     const [selectedTab, setSelectedTab] = useState('Все столы');
     const [viewMode, setViewMode] = useState('День');
     const [bookings, setBookings] = useState<any[]>([]);
+    const [tables, setTables] = useState<any[]>([]);
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -37,8 +38,13 @@ export default function AdminCalendarScreen() {
         }
 
         try {
-            const data = await fetchMyRestaurantBookings(token);
-            setBookings((data || []) as any[]);
+            const today = new Date().toISOString().split('T')[0];
+            const [bookingData, tableData] = await Promise.all([
+                fetchMyRestaurantBookings(token),
+                fetchTableStatus(token, today).catch(() => []),
+            ]);
+            setBookings((bookingData || []) as any[]);
+            setTables(Array.isArray(tableData) ? tableData : []);
         } catch (error) {
             console.error('Calendar bookings load error:', error);
         } finally {
@@ -59,16 +65,20 @@ export default function AdminCalendarScreen() {
     }, []);
 
     const tableTabs = useMemo(() => {
-        const uniqueTableLabels = Array.from(
-            new Set(
-                bookings
-                    .map((booking) => booking.table_number || booking.table || booking.table_id)
-                    .filter(Boolean)
-                    .map((value) => `Стол ${value}`)
-            )
-        );
-        return ['Все столы', ...uniqueTableLabels];
-    }, [bookings]);
+        const fromTables = tables
+            .filter((table) => table?.is_active !== false)
+            .map((table) => `Стол ${table.number || table.name || table.id}`);
+        const fromBookings = bookings
+            .map((booking) => booking.table_number || booking.table || booking.table_id)
+            .filter(Boolean)
+            .map((value) => `Стол ${value}`);
+        return ['Все столы', ...Array.from(new Set([...fromTables, ...fromBookings]))];
+    }, [bookings, tables]);
+
+    const gridColumns = useMemo(() => {
+        const preferred = tableTabs.filter((tab) => tab !== 'Все столы');
+        return preferred.length > 0 ? preferred : ['Без стола'];
+    }, [tableTabs]);
 
     const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -88,7 +98,12 @@ export default function AdminCalendarScreen() {
         });
     }, [bookings, selectedTab, todayStr]);
 
-    const getBookingStyle = (booking: any, allBookings: any[]) => {
+    const getBookingColumnKey = React.useCallback((booking: any) => {
+        const bookingTableLabel = booking.table_number || booking.table || booking.table_id;
+        return bookingTableLabel ? `Стол ${bookingTableLabel}` : 'Без стола';
+    }, []);
+
+    const getBookingStyle = React.useCallback((booking: any, allBookings: any[]) => {
         const [hours, mins] = booking.time.split(':').map(Number);
         const slotHeight = isTablet ? 88 : 76;
         const offsetMinutes = (hours - START_HOUR) * 60 + (mins || 0);
@@ -96,19 +111,28 @@ export default function AdminCalendarScreen() {
 
         const duration = (booking.duration_minutes ? booking.duration_minutes / 60 : (booking.duration_hours || 2));
         const height = Math.max(slotHeight * 0.9, duration * slotHeight);
+        const columnKey = getBookingColumnKey(booking);
+        const columnIndex = Math.max(0, gridColumns.indexOf(columnKey));
+        const columnWidthPercent = 100 / Math.max(1, gridColumns.length);
 
-        const overlaps = allBookings.filter(b =>
-            b.id !== booking.id &&
-            b.date === booking.date &&
-            b.time === booking.time
+        const overlaps = allBookings.filter((candidate) => {
+            return (
+                candidate.id !== booking.id &&
+                candidate.date === booking.date &&
+                candidate.time === booking.time &&
+                getBookingColumnKey(candidate) === columnKey
+            );
+        });
+
+        const sameColumnAtTime = allBookings.filter(
+            (candidate) => candidate.date === booking.date && candidate.time === booking.time && getBookingColumnKey(candidate) === columnKey,
         );
+        const indexInOverlaps = sameColumnAtTime.findIndex((candidate) => candidate.id === booking.id);
+        const overlapWidthPercent = overlaps.length > 0 ? columnWidthPercent / (overlaps.length + 1) : columnWidthPercent;
+        const left = columnIndex * columnWidthPercent + Math.max(0, indexInOverlaps) * overlapWidthPercent;
 
-        const indexInOverlaps = allBookings.filter(b => b.date === booking.date && b.time === booking.time).indexOf(booking);
-        const widthPercent = overlaps.length > 0 ? (100 / (overlaps.length + 1)) : 100;
-        const left = indexInOverlaps * widthPercent;
-
-        return { top, left: `${left}%`, height, width: `${widthPercent - 2}%` };
-    };
+        return { top, left: `${left}%`, height, width: `${Math.max(overlapWidthPercent - 1.4, 8)}%` };
+    }, [getBookingColumnKey, gridColumns, isTablet]);
 
     const handleAddEvent = () => {
         router.push('/admin/add-booking' as any);
@@ -138,8 +162,12 @@ export default function AdminCalendarScreen() {
                     </View>
                 </View>
                 <View style={styles.headerRight}>
-                    <TouchableOpacity style={styles.iconCircleBtn}>
-                        <Ionicons name="search" size={20} color={colors.textSecondary} />
+                    <TouchableOpacity style={styles.iconCircleBtn} onPress={() => loadBookings(true)} disabled={isRefreshing}>
+                        {isRefreshing ? (
+                            <ActivityIndicator size="small" color={colors.textSecondary} />
+                        ) : (
+                            <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+                        )}
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.iconCircleBtn, { backgroundColor: colors.primary, marginLeft: 8 }]}
@@ -154,8 +182,8 @@ export default function AdminCalendarScreen() {
                 {['День', 'Неделя', 'Месяц'].map(mode => (
                     <TouchableOpacity
                         key={mode}
-                        style={[styles.viewModeBtn, viewMode === mode && styles.viewModeBtnActive]}
-                        onPress={() => setViewMode(mode)}
+                        style={[styles.viewModeBtn, viewMode === mode && styles.viewModeBtnActive, mode !== 'День' && styles.viewModeBtnDisabled]}
+                        onPress={() => mode === 'День' && setViewMode(mode)}
                         activeOpacity={0.8}
                     >
                         <Text style={[styles.viewModeText, viewMode === mode && styles.viewModeTextActive]}>{mode}</Text>
@@ -181,25 +209,18 @@ export default function AdminCalendarScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingRight: horizontalPadding }}
-                refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadBookings(true)} />}
             >
             <View style={[styles.calendarShell, { minWidth: isTablet ? Math.min(contentMaxWidth, 980) : 720 }]}>
             <View style={styles.gridHeaderRow}>
                 <View style={styles.timeAxisHeader}>
                     <Ionicons name="time-outline" size={16} color={colors.muted} />
                 </View>
-                <View style={styles.gridColumnHeader}>
-                    <Text style={styles.colTopText}>ЗАЛ</Text>
-                    <Text style={styles.colBotText}>Стол 1</Text>
-                </View>
-                <View style={styles.gridColumnHeader}>
-                    <Text style={styles.colTopText}>ЗАЛ</Text>
-                    <Text style={styles.colBotText}>Стол 2</Text>
-                </View>
-                <View style={styles.gridColumnHeader}>
-                    <Text style={styles.colTopText}>ЗАЛ</Text>
-                    <Text style={styles.colBotText}>Стол 3</Text>
-                </View>
+                {gridColumns.map((column) => (
+                    <View key={column} style={styles.gridColumnHeader}>
+                        <Text style={styles.colTopText}>{column === 'Без стола' ? 'ОЧЕРЕДЬ' : 'ЗАЛ'}</Text>
+                        <Text style={styles.colBotText}>{column}</Text>
+                    </View>
+                ))}
             </View>
 
             <ScrollView style={styles.gridScroll} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -217,9 +238,12 @@ export default function AdminCalendarScreen() {
                             {hours.map((_, i) => (
                                 <View key={i} style={styles.gridLineHorizontal} />
                             ))}
-                            <View style={styles.gridLineVertical} />
-                            <View style={[styles.gridLineVertical, { left: '33.33%' }]} />
-                            <View style={[styles.gridLineVertical, { left: '66.66%' }]} />
+                            {gridColumns.slice(1).map((_, index) => (
+                                <View
+                                    key={`grid-col-${index}`}
+                                    style={[styles.gridLineVertical, { left: `${((index + 1) * 100) / gridColumns.length}%` }]}
+                                />
+                            ))}
                         </View>
 
                         {visibleBookings.map((booking, idx, array) => {
@@ -255,7 +279,7 @@ export default function AdminCalendarScreen() {
                                     ]}>
                                         {isPending ? (
                                             <Text style={[styles.bTimeText, { color: '#475569' }]}>
-                                                <MaterialIcons name="schedule" size={10} /> Ожидание
+                                                <Ionicons name="time-outline" size={10} /> Ожидание
                                             </Text>
                                         ) : (
                                             <Text style={[styles.bTimeText, blockStyle === styles.bgYellow && { color: '#000' }]}>
@@ -271,7 +295,7 @@ export default function AdminCalendarScreen() {
                             <View style={styles.emptyCalendarState}>
                                 <Ionicons name="calendar-outline" size={36} color={colors.muted} />
                                 <Text style={styles.emptyCalendarTitle}>На сегодня активных броней нет</Text>
-                                <Text style={styles.emptyCalendarText}>Потяни вниз для обновления или добавь новую бронь.</Text>
+                                <Text style={styles.emptyCalendarText}>Нажмите обновление или добавьте новую бронь.</Text>
                             </View>
                         ) : null}
                     </View>
@@ -300,7 +324,7 @@ export default function AdminCalendarScreen() {
                         style={[styles.fabIconBtn, { backgroundColor: colors.primary }]}
                         onPress={() => router.push({ pathname: '/admin/bookings', params: { highlight: selectedBooking.id } })}
                     >
-                        <MaterialIcons name="arrow-forward" size={18} color="#fff" />
+                        <Ionicons name="arrow-forward" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
             )}
@@ -324,6 +348,7 @@ const styles = StyleSheet.create({
     iconCircleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
     viewModeSwitcher: { flexDirection: 'row', backgroundColor: '#f8fafc', marginHorizontal: 20, borderRadius: 40, padding: 4, marginBottom: 16 },
     viewModeBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 32 },
+    viewModeBtnDisabled: { opacity: 0.45 },
     viewModeBtnActive: { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
     viewModeText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
     viewModeTextActive: { color: colors.text },

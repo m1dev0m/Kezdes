@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 const statusMap = {
@@ -15,6 +15,7 @@ const statusMap = {
 interface BookingCardProps {
     booking: any;
     isTablet?: boolean;
+    highlighted?: boolean;
     onAction: (id: string | number, action: 'confirm' | 'reject') => void;
     onSeat: (id: string | number) => void;
     onPatchStatus: (id: string | number, status: 'no_show' | 'complete') => void;
@@ -23,16 +24,18 @@ interface BookingCardProps {
     onDetails: (id: string | number) => void;
 }
 
-const BookingCard = memo(({ booking: b, isTablet = false, onAction, onSeat, onPatchStatus, onChat, onEdit, onDetails }: BookingCardProps) => {
+const BookingCard = memo(({ booking: b, isTablet = false, highlighted = false, onAction, onSeat, onPatchStatus, onChat, onEdit, onDetails }: BookingCardProps) => {
     const status = statusMap[b.status as keyof typeof statusMap] || statusMap.pending;
     const isPending = b.status === 'pending';
     const isActive = b.status === 'approved' || b.status === 'confirmed';
     const isSeated = b.status === 'seated';
 
     return (
-        <View style={[styles.card, isTablet && styles.cardTablet]}>
+        <View style={[styles.card, isTablet && styles.cardTablet, highlighted && styles.cardHighlighted]}>
             <View style={styles.cardHeader}>
-                <Text style={styles.timeLabel}>{b.time ? b.time.substring(0, 5) : '--:--'} • СЕГОДНЯ</Text>
+                <Text style={styles.timeLabel}>
+                    {b.time ? b.time.substring(0, 5) : '--:--'} • {b.date || 'СЕГОДНЯ'}
+                </Text>
                 <View style={[styles.statusBadge, { backgroundColor: status.bg, borderColor: status.border }]}>
                     <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
                 </View>
@@ -59,13 +62,22 @@ const BookingCard = memo(({ booking: b, isTablet = false, onAction, onSeat, onPa
             <View style={styles.metaRow}>
                 <View style={styles.metaItem}>
                     <Ionicons name="people" size={16} color={colors.textSecondary} />
-                    <Text style={styles.metaText}>{b.guests} PAX</Text>
+                    <Text style={styles.metaText}>{b.guests} гостей</Text>
                 </View>
+                {!!(b.table_number || b.table) && (
+                    <>
+                        <View style={styles.metaDot} />
+                        <View style={styles.metaItem}>
+                            <Ionicons name="grid-outline" size={14} color={colors.primary} />
+                            <Text style={styles.metaText}>Стол {b.table_number || b.table}</Text>
+                        </View>
+                    </>
+                )}
                 {!!b.event_type && (
                     <>
                         <View style={styles.metaDot} />
                         <View style={styles.metaItem}>
-                            <MaterialIcons name="event" size={14} color={colors.primary} />
+                            <Ionicons name="calendar-outline" size={14} color={colors.primary} />
                             <Text style={styles.metaText}>{b.event_type === 'business' ? 'Бизнес' : 'Частное'}</Text>
                         </View>
                     </>
@@ -139,6 +151,11 @@ const styles = StyleSheet.create({
     cardTablet: {
         minHeight: 250,
         padding: 20,
+    },
+    cardHighlighted: {
+        borderColor: colors.primary,
+        shadowColor: colors.primary,
+        shadowOpacity: 0.14,
     },
     cardHeader: {
         flexDirection: 'row',

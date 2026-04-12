@@ -49,6 +49,15 @@ export default function Analytics() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canViewAnalytics = useMemo(() => hasFeature(summary, 'analytics_basic'), [summary]);
+  const kpis = useMemo(() => {
+    if (!data) return [];
+    return [
+      { label: 'Bookings today', value: data.bookings_today, hint: 'Все заявки за текущий день', icon: <CalendarRange size={18} /> },
+      { label: 'Monthly bookings', value: data.bookings_month, hint: 'Накопительный объём за месяц', icon: <BarChart3 size={18} /> },
+      { label: 'Confirmation rate', value: `${data.confirmation_rate}%`, hint: 'Доля подтверждённых броней', icon: <Users size={18} /> },
+      { label: 'Repeat guests', value: `${data.repeat_customer_rate}%`, hint: 'Повторные визиты и retention', icon: <Repeat size={18} /> },
+    ];
+  }, [data]);
 
   const loadAnalytics = useCallback(async () => {
     setRefreshing(true);
@@ -97,7 +106,7 @@ export default function Analytics() {
               onClick={() => void reloadSubscription()}
               className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
             >
-              Retry
+              Повторить
             </button>
           </div>
         </div>
@@ -118,16 +127,6 @@ export default function Analytics() {
       </div>
     );
   }
-
-  const kpis = useMemo(() => {
-    if (!data) return [];
-    return [
-      { label: 'Bookings today', value: data.bookings_today, hint: 'Все заявки за текущий день', icon: <CalendarRange size={18} /> },
-      { label: 'Monthly bookings', value: data.bookings_month, hint: 'Накопительный объём за месяц', icon: <BarChart3 size={18} /> },
-      { label: 'Confirmation rate', value: `${data.confirmation_rate}%`, hint: 'Доля подтверждённых броней', icon: <Users size={18} /> },
-      { label: 'Repeat guests', value: `${data.repeat_customer_rate}%`, hint: 'Повторные визиты и retention', icon: <Repeat size={18} /> },
-    ];
-  }, [data]);
 
   if (loading && !data) {
     return (
@@ -160,7 +159,7 @@ export default function Analytics() {
           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-          {refreshing ? 'Обновление...' : 'Refresh'}
+          {refreshing ? 'Обновление...' : 'Обновить'}
         </button>
       </header>
 
@@ -172,7 +171,7 @@ export default function Analytics() {
             onClick={() => void loadAnalytics()}
             className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-rose-700 transition hover:bg-rose-100"
           >
-            Retry
+            Повторить
           </button>
         </div>
       ) : null}

@@ -124,6 +124,10 @@ export default function AdminDashboardScreen() {
         router.push('/support');
     }, [router]);
 
+    const openNotifications = useCallback(() => {
+        router.push('/notifications');
+    }, [router]);
+
     if (isLoading) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -147,7 +151,7 @@ export default function AdminDashboardScreen() {
                         </View>
                     </View>
                 </View>
-                <TouchableOpacity style={styles.notifBtn}>
+                <TouchableOpacity style={styles.notifBtn} onPress={openNotifications} activeOpacity={0.8}>
                     <Ionicons name="notifications" size={24} color={colors.text} />
                     {unhandledCount > 0 && <View style={styles.notifBadge} />}
                 </TouchableOpacity>
@@ -250,12 +254,16 @@ export default function AdminDashboardScreen() {
                                         <View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                                 <Text style={styles.reqUserName}>{booking.user_name || 'Клиент'}</Text>
-                                                <View style={styles.vipBadge}><Text style={styles.vipText}>VIP</Text></View>
                                             </View>
                                             <View style={styles.reqMetaRow}>
                                                 <Ionicons name="people" size={14} color={colors.textSecondary} />
                                                 <Text style={styles.reqMetaText}>{booking.guests} гостя</Text>
-                                                <Ionicons name="warning" size={14} color="#ef4444" style={{ marginLeft: 8 }} />
+                                                {!!booking.table_number && (
+                                                    <>
+                                                        <Ionicons name="grid-outline" size={14} color={colors.primary} style={{ marginLeft: 8 }} />
+                                                        <Text style={styles.reqMetaText}>Стол {booking.table_number}</Text>
+                                                    </>
+                                                )}
                                             </View>
                                         </View>
                                     </View>
@@ -370,8 +378,6 @@ const styles = StyleSheet.create({
     reqAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
     reqAvText: { fontSize: 16, fontWeight: '700', color: colors.text },
     reqUserName: { fontSize: 15, fontWeight: '700', color: colors.text },
-    vipBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-    vipText: { fontSize: 9, fontWeight: '800', color: '#d97706' },
     reqMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
     reqMetaText: { fontSize: 12, color: colors.textSecondary, fontWeight: '500' },
     reqTime: { fontSize: 18, fontWeight: '800', color: '#4300FF', textAlign: 'right' },
