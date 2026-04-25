@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
@@ -57,6 +57,12 @@ export default function AdminCalendarScreen() {
         loadBookings();
     }, [loadBookings]);
 
+    useFocusEffect(
+        React.useCallback(() => {
+            void loadBookings(true);
+        }, [loadBookings])
+    );
+
     const hours = useMemo(() => {
         return Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => {
             const hour = START_HOUR + index;
@@ -80,6 +86,10 @@ export default function AdminCalendarScreen() {
         return preferred.length > 0 ? preferred : ['Без стола'];
     }, [tableTabs]);
 
+    const getBookingTableLabel = React.useCallback((booking: any) => (
+        booking?.table_number || booking?.table || booking?.table_id || null
+    ), []);
+
     const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     const visibleBookings = useMemo(() => {
@@ -93,15 +103,15 @@ export default function AdminCalendarScreen() {
                 return true;
             }
 
-            const bookingTableLabel = booking.table_number || booking.table || booking.table_id;
+            const bookingTableLabel = getBookingTableLabel(booking);
             return `Стол ${bookingTableLabel}` === selectedTab;
         });
-    }, [bookings, selectedTab, todayStr]);
+    }, [bookings, getBookingTableLabel, selectedTab, todayStr]);
 
     const getBookingColumnKey = React.useCallback((booking: any) => {
-        const bookingTableLabel = booking.table_number || booking.table || booking.table_id;
+        const bookingTableLabel = getBookingTableLabel(booking);
         return bookingTableLabel ? `Стол ${bookingTableLabel}` : 'Без стола';
-    }, []);
+    }, [getBookingTableLabel]);
 
     const getBookingStyle = React.useCallback((booking: any, allBookings: any[]) => {
         const [hours, mins] = booking.time.split(':').map(Number);
@@ -311,7 +321,7 @@ export default function AdminCalendarScreen() {
                         <Text style={styles.fabTitle}>{selectedBooking.user_name || 'Гость'}</Text>
                         <Text style={styles.fabSub}>
                             {selectedBooking.time} · {selectedBooking.guests} чел.
-                            {selectedBooking.table_number ? ` · Стол ${selectedBooking.table_number}` : ''}
+                            {getBookingTableLabel(selectedBooking) ? ` · Стол ${getBookingTableLabel(selectedBooking)}` : ''}
                         </Text>
                     </View>
                     <TouchableOpacity
@@ -384,7 +394,7 @@ const styles = StyleSheet.create({
         shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4
     },
     bgBlue: { backgroundColor: colors.primary },
-    bgYellow: { backgroundColor: '#facc15' }, // vibrant yellow from mockup
+    bgYellow: { backgroundColor: '#facc15' }, 
     bgGray: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', elevation: 0, shadowOpacity: 0 },
 
     bTitle: { fontSize: 12, fontWeight: '700', color: '#fff', marginBottom: 4 },

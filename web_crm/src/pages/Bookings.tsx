@@ -11,6 +11,7 @@ import {
   getReservationDateTime,
   getReservationName,
   getReservationPhone,
+  getReservationCustomerSignals,
   getReservationSourceLabel,
   getReservationStatusMeta,
   getTableCapacity,
@@ -648,7 +649,7 @@ export default function Bookings() {
             className="inline-flex items-center gap-2 self-start rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
           >
             <RefreshCw size={14} />
-            Retry
+            Повторить
           </button>
         </div>
       ) : null}
@@ -674,10 +675,10 @@ export default function Bookings() {
             <div className="flex flex-wrap gap-2">
               {(
                 [
-                  ['all', 'All'],
-                  ['today', 'Today'],
-                  ['now', 'Now'],
-                  ['upcoming', 'Upcoming'],
+                  ['all', 'Все'],
+                  ['today', 'Сегодня'],
+                  ['now', 'Сейчас'],
+                  ['upcoming', 'Предстоящие'],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -699,13 +700,13 @@ export default function Bookings() {
             <div className="flex flex-wrap gap-2">
               {(
                 [
-                  ['all', 'All statuses'],
-                  ['pending', 'Pending'],
-                  ['confirmed', 'Confirmed'],
-                  ['seated', 'Seated'],
-                  ['completed', 'Completed'],
-                  ['cancelled', 'Cancelled'],
-                  ['no_show', 'No show'],
+                  ['all', 'Все статусы'],
+                  ['pending', 'Ожидание'],
+                  ['confirmed', 'Подтверждены'],
+                  ['seated', 'За столом'],
+                  ['completed', 'Завершены'],
+                  ['cancelled', 'Отменены'],
+                  ['no_show', 'Неявка'],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -739,7 +740,7 @@ export default function Bookings() {
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50"
               >
                 <X size={14} />
-                Clear filters
+                Сбросить фильтры
               </button>
             ) : null}
             <button
@@ -792,7 +793,7 @@ export default function Bookings() {
                 {refreshing ? (
                   <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
                     <span className="material-symbols-outlined animate-spin text-[16px]">refresh</span>
-                    Updating
+                    Обновление
                   </span>
                 ) : null}
                 {!useFullDataset && totalCount > PAGE_SIZE ? (
@@ -807,12 +808,12 @@ export default function Bookings() {
               <table className="w-full text-left">
                 <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   <tr>
-                    <th className="p-4">Guest</th>
-                    <th className="p-4">Time</th>
-                    <th className="p-4">Guests</th>
-                    <th className="p-4">Table</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4 text-right">Action</th>
+                    <th className="p-4">Гость</th>
+                    <th className="p-4">Время</th>
+                    <th className="p-4">Кол-во</th>
+                    <th className="p-4">Стол</th>
+                    <th className="p-4">Статус</th>
+                    <th className="p-4 text-right">Действие</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -844,7 +845,7 @@ export default function Bookings() {
                               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
                             >
                               <X size={14} />
-                              Clear filters
+                              Сбросить фильтры
                             </button>
                           ) : null}
                         </div>
@@ -853,6 +854,7 @@ export default function Bookings() {
                   ) : (
                     filteredReservations.map((reservation) => {
                       const isBusy = inFlightId === reservation.id;
+                      const customerSignals = getReservationCustomerSignals(reservation);
 
                       return (
                     <tr
@@ -869,6 +871,18 @@ export default function Bookings() {
                               <div>
                                 <p className="text-sm font-semibold text-slate-900">{getReservationName(reservation)}</p>
                                 <p className="text-xs text-slate-500">{getReservationPhone(reservation)}</p>
+                                {customerSignals.length > 0 ? (
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {customerSignals.map((signal) => (
+                                      <span
+                                        key={signal.key}
+                                        className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${signal.className}`}
+                                      >
+                                        {signal.label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
                           </td>
@@ -939,7 +953,7 @@ export default function Bookings() {
           {selectedReservation ? (
             <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-5">
-                <h3 className="text-xl font-semibold text-slate-900">Booking details</h3>
+                <h3 className="text-xl font-semibold text-slate-900">Детали бронирования</h3>
                 <button
                   type="button"
                   onClick={() => setSelectedReservationId(null)}
@@ -970,7 +984,7 @@ export default function Bookings() {
                         className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
                       >
                         <span className="material-symbols-outlined text-[14px]">forum</span>
-                        Message
+                        Сообщение
                       </button>
                     )}
                   </div>
@@ -1043,6 +1057,44 @@ export default function Bookings() {
                       <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Комментарий</p>
                       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
                         {selectedReservation.special_requests}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {selectedReservation.customer_summary ? (
+                    <section>
+                      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">CRM-сигнал</p>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          {selectedReservation.customer_summary.is_vip ? (
+                            <span className="rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700">
+                              VIP
+                            </span>
+                          ) : null}
+                          {selectedReservation.customer_summary.risk_label === 'no_show_risk' ? (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                              No-show risk
+                            </span>
+                          ) : null}
+                          {selectedReservation.customer_summary.risk_label === 'blacklist' ? (
+                            <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                              Problem guest
+                            </span>
+                          ) : null}
+                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                            {selectedReservation.customer_summary.visits_count} визитов
+                          </span>
+                          {selectedReservation.customer_summary.no_show_count > 0 ? (
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                              {selectedReservation.customer_summary.no_show_count} no-show
+                            </span>
+                          ) : null}
+                        </div>
+                        {selectedReservation.customer_summary.note_preview ? (
+                          <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                            {selectedReservation.customer_summary.note_preview}
+                          </div>
+                        ) : null}
                       </div>
                     </section>
                   ) : null}
@@ -1327,7 +1379,7 @@ function TablePicker({
           <div>
             <h2 className="text-lg font-semibold text-slate-900">{mode === 'seat' ? 'Выберите стол' : 'Назначьте стол'}</h2>
             <p className="text-sm text-slate-500">
-              {getReservationName(reservation)} · {reservation.guests} guests
+              {getReservationName(reservation)} · {reservation.guests} гостей
             </p>
           </div>
           <button

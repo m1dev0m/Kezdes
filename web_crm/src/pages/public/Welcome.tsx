@@ -80,7 +80,7 @@ export default function Welcome() {
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
     } catch {
-      // ignore storage cleanup errors
+      
     }
   }, [user, logout]);
 

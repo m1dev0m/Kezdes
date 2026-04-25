@@ -19,6 +19,15 @@ type StoredGuestContact = {
   phone?: string;
 };
 
+type AvailableTable = {
+  id: number;
+  name?: string | null;
+  number?: string | null;
+  table_number?: string | null;
+  capacity?: number | null;
+  seats?: number | null;
+};
+
 const INITIAL_STATE: BookingFormState = {
   date: getLocalDateString(),
   time: '19:00',
@@ -43,18 +52,37 @@ function getPreferredGuestName(user: ReturnType<typeof useAuth>['user']) {
   return fullName || user.username || '';
 }
 
+function normalizeBookingPhone(phone: string) {
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 10) return `+7${digits}`;
+  if (digits.length === 11 && digits.startsWith('8')) return `+7${digits.slice(1)}`;
+  if (digits.length === 11 && digits.startsWith('7')) return `+${digits}`;
+  if (digits.length >= 10) return phone.trim();
+  return '';
+}
+
 function validateForm(form: BookingFormState): FieldErrors {
   const errors: FieldErrors = {};
-  const digits = form.phone.replace(/\D/g, '');
+  const normalizedPhone = normalizeBookingPhone(form.phone);
 
   if (!form.date) errors.date = 'Выберите дату бронирования.';
   if (!form.time) errors.time = 'Выберите время.';
   if (!form.name.trim()) errors.name = 'Введите ваше имя.';
   if (form.guests < 1) errors.guests = 'Минимум 1 гость.';
   if (form.guests > 20) errors.guests = 'Для групп больше 20 гостей свяжитесь с рестораном.';
-  if (digits.length < 10 || digits.length > 12) errors.phone = 'Введите корректный номер телефона.';
+  if (!normalizedPhone) errors.phone = 'Укажите телефон в формате +7 777 123 45 67.';
 
   return errors;
+}
+
+function getFirstFieldError(errors: FieldErrors): string | null {
+  const order: Array<keyof BookingFormState> = ['date', 'time', 'guests', 'name', 'phone'];
+  for (const key of order) {
+    const message = errors[key];
+    if (message) return message;
+  }
+  return null;
 }
 
 export default function BookPage() {
@@ -73,12 +101,16 @@ export default function BookPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [availabilityRetry, setAvailabilityRetry] = useState(0);
+  const [tableMode, setTableMode] = useState<'auto' | 'manual'>('auto');
+  const [availableTables, setAvailableTables] = useState<AvailableTable[]>([]);
+  const [loadingTables, setLoadingTables] = useState(false);
+  const [tableError, setTableError] = useState<string | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
   const wantsWaitlist =
     new URLSearchParams(location.search).get('waitlist') === '1' ||
     Boolean((location.state as { openWaitlist?: boolean } | null)?.openWaitlist);
   const profilePhone = user?.phone || user?.profile?.phone || '';
-  const usesProfilePhone = Boolean(user && profilePhone);
 
   useEffect(() => {
     if (!id) {
@@ -155,7 +187,7 @@ export default function BookPage() {
         phone: current.phone || stored.phone || '',
       }));
     } catch {
-      // Ignore invalid storage payloads.
+      
     }
   }, []);
 
@@ -188,6 +220,11 @@ export default function BookPage() {
         });
         const slots = Array.isArray(response.data?.slots) ? response.data.slots : [];
         setAvailableSlots(slots);
+        setForm((current) => {
+          if (slots.length === 0) return current;
+          if (slots.includes(current.time)) return current;
+          return { ...current, time: slots[0] };
+        });
       } catch (error) {
         setAvailableSlots([]);
         setAvailabilityError(getApiErrorMessage(error, 'Не удалось загрузить доступные слоты.'));
@@ -199,20 +236,63 @@ export default function BookPage() {
     void loadSlots();
   }, [availabilityRetry, form.date, form.guests, restaurant?.id, wantsWaitlist]);
 
-  const isValid = useMemo(() => Object.keys(validateForm(form)).length === 0, [form]);
+  useEffect(() => {
+    if (!restaurant?.id || !form.date || !form.time || wantsWaitlist) {
+      setAvailableTables([]);
+      setSelectedTableId(null);
+      setTableError(null);
+      return;
+    }
+
+    const loadTables = async () => {
+      setLoadingTables(true);
+      setTableError(null);
+      try {
+        const response = await api.get<{ available_tables: AvailableTable[] }>('/bookings/available_tables/', {
+          params: {
+            restaurant_id: restaurant.id,
+            date: form.date,
+            time: form.time,
+          },
+        });
+        const rawTables = Array.isArray(response.data?.available_tables) ? response.data.available_tables : [];
+        const fittingTables = rawTables.filter((table) => Number(table.capacity ?? table.seats ?? 0) >= form.guests);
+        setAvailableTables(fittingTables);
+        setSelectedTableId((current) => (
+          current && fittingTables.some((table) => table.id === current)
+            ? current
+            : fittingTables[0]?.id ?? null
+        ));
+      } catch (error) {
+        setAvailableTables([]);
+        setSelectedTableId(null);
+        setTableError(getApiErrorMessage(error, 'Не удалось загрузить доступные столы.'));
+      } finally {
+        setLoadingTables(false);
+      }
+    };
+
+    void loadTables();
+  }, [form.date, form.guests, form.time, restaurant?.id, wantsWaitlist]);
+
+  const resolvedPhone = useMemo(
+    () => normalizeBookingPhone(form.phone),
+    [form.phone],
+  );
+  const effectiveForm = form;
   const hasExactAvailability = availableSlots.includes(form.time);
   const showWaitlistAction = wantsWaitlist || (!loadingSlots && (!hasExactAvailability || Boolean(availabilityError)));
+  const requiresManualTableChoice = tableMode === 'manual' && hasExactAvailability;
   const canSubmitBooking = Boolean(
-    isValid &&
-      !loading &&
+    !loading &&
       restaurant &&
-      !screenError &&
+      !loadingTables &&
       (!loadingSlots || Boolean(availabilityError)) &&
-      (availabilityError || hasExactAvailability),
+      (availabilityError || hasExactAvailability) &&
+      (!requiresManualTableChoice || Boolean(selectedTableId)),
   );
   const resolvedRestaurantId = restaurant?.id ?? (id && /^\d+$/.test(id) ? Number(id) : null);
   const restaurantLinkId = restaurant?.id ?? id ?? '';
-  const resolvedPhone = (usesProfilePhone ? profilePhone : form.phone).trim();
 
   const updateField = <K extends keyof BookingFormState>(key: K, value: BookingFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -231,18 +311,18 @@ export default function BookPage() {
         } satisfies StoredGuestContact),
       );
     } catch {
-      // Best effort only.
+      
     }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const nextForm = usesProfilePhone ? { ...form, phone: resolvedPhone } : form;
+    const nextForm = effectiveForm;
     const errors = validateForm(nextForm);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0 || !resolvedRestaurantId || !restaurant) {
-      setScreenError('Проверьте форму и исправьте отмеченные поля.');
+      setScreenError(getFirstFieldError(errors) || 'Проверьте форму и исправьте отмеченные поля.');
       return;
     }
 
@@ -262,6 +342,7 @@ export default function BookPage() {
         user_name: form.name.trim(),
         user_phone: resolvedPhone,
         event_type: 'other',
+        ...(tableMode === 'manual' && selectedTableId ? { table_id: selectedTableId } : {}),
       });
 
       const confirmationRestaurantId = restaurant.id;
@@ -299,11 +380,11 @@ export default function BookPage() {
 
   const handleJoinWaitlist = async () => {
     if (!resolvedRestaurantId || !restaurant) return;
-    const nextForm = usesProfilePhone ? { ...form, phone: resolvedPhone } : form;
+    const nextForm = effectiveForm;
     const errors = validateForm(nextForm);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setScreenError('Проверьте форму перед добавлением в лист ожидания.');
+      setScreenError(getFirstFieldError(errors) || 'Проверьте форму перед добавлением в лист ожидания.');
       return;
     }
 
@@ -576,16 +657,7 @@ export default function BookPage() {
                 error={fieldErrors.name}
               />
 
-              {usesProfilePhone ? (
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Телефон</label>
-                  <div className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900">
-                    <Phone size={18} className="text-slate-400" />
-                    <span>{resolvedPhone}</span>
-                  </div>
-                  <div className="text-sm text-slate-500">Номер берём из вашего профиля.</div>
-                </div>
-              ) : (
+              <div className="space-y-2">
                 <Field
                   label="Телефон"
                   name="phone"
@@ -595,7 +667,75 @@ export default function BookPage() {
                   placeholder="+7 (___) ___ __ __"
                   error={fieldErrors.phone}
                 />
-              )}
+                {profilePhone ? (
+                  <div className="text-sm text-slate-500">Номер из профиля подставлен автоматически, его можно изменить.</div>
+                ) : null}
+              </div>
+
+              {!showWaitlistAction ? (
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Стол</div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTableMode('auto')}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        tableMode === 'auto' ? 'bg-[#1d4ed8] text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      Автоматически
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTableMode('manual')}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        tableMode === 'manual' ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      Выбрать самому
+                    </button>
+                  </div>
+
+                  {tableMode === 'auto' ? (
+                    <p className="text-sm leading-7 text-slate-600">
+                      Система сама подберёт лучший свободный стол под выбранное время и количество гостей.
+                    </p>
+                  ) : loadingTables ? (
+                    <div className="text-sm text-slate-500">Загружаем подходящие столы...</div>
+                  ) : tableError ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{tableError}</div>
+                  ) : availableTables.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {availableTables.map((table) => {
+                        const isSelected = selectedTableId === table.id;
+                        const tableLabel = table.table_number || table.name || table.number || `Стол ${table.id}`;
+                        const seats = Number(table.capacity ?? table.seats ?? 0);
+                        return (
+                          <button
+                            key={table.id}
+                            type="button"
+                            onClick={() => setSelectedTableId(table.id)}
+                            className={`rounded-2xl border px-4 py-3 text-left transition ${
+                              isSelected
+                                ? 'border-[#1d4ed8] bg-blue-50 text-blue-700'
+                                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="text-sm font-semibold">{tableLabel}</div>
+                            <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+                              До {seats} гостей
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm leading-7 text-slate-600">
+                      Для выбранного времени нет подходящих столов под это количество гостей.
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               <button
                 type="submit"
@@ -605,6 +745,8 @@ export default function BookPage() {
               >
               {loading
                 ? 'Создание брони...'
+                : tableMode === 'manual' && !selectedTableId && hasExactAvailability
+                  ? 'Выберите стол'
                 : !hasExactAvailability && !availabilityError
                   ? 'Выберите доступное время'
                   : 'Забронировать'}

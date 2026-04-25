@@ -9,10 +9,10 @@ async function loginAs(page: Page, username: string, password: string) {
     await page.locator('input[type="text"], input[type="email"]').first().fill(username);
     await page.locator('input[type="password"]').first().fill(password);
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/\/app\//, { timeout: 12000 });
+    await page.waitForURL(/\/app\
 }
 
-// ── Public tests ──────────────────────────────────────────────────────────────
+
 
 test.describe('1. Public pages', () => {
 
@@ -38,7 +38,7 @@ test.describe('1. Public pages', () => {
 
 });
 
-// ── Admin tests ───────────────────────────────────────────────────────────────
+
 
 test.describe('2. Admin flow', () => {
 

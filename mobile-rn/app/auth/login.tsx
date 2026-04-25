@@ -217,15 +217,15 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     title: {
-        fontSize: 30, // HTML text-3xl
-        fontWeight: '700', // HTML font-bold
+        fontSize: 30, 
+        fontWeight: '700', 
         color: colors.text,
         marginBottom: 8,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        fontWeight: '400', // HTML font-normal
+        fontWeight: '400', 
         color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 24,
@@ -346,8 +346,8 @@ const styles = StyleSheet.create({
     dividerText: {
         paddingHorizontal: 16,
         color: colors.muted,
-        fontSize: 12, // HTML text-xs
-        fontWeight: '500', // HTML font-medium
+        fontSize: 12, 
+        fontWeight: '500', 
         letterSpacing: 1,
         textTransform: 'uppercase',
     },

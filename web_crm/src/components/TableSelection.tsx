@@ -78,7 +78,7 @@ export default function TableSelection({
 
     if (!isOpen) return null;
 
-    // Build layout — use stored coords if meaningful, else auto-grid
+    
     const layoutTables: LayoutTable[] = tables.map((t, idx) => {
         const hasCoords = t.x != null && t.y != null && (t.x > 0 || t.y > 0);
         const lw = t.width > 10 ? t.width : 140;
@@ -122,7 +122,7 @@ export default function TableSelection({
                     transition={{ duration: 0.18 }}
                     className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
                 >
-                    {/* Header */}
+                    {}
                     <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900">Выберите стол</h3>
@@ -217,7 +217,7 @@ export default function TableSelection({
                             </div>
                         )}
 
-                        {/* Legend */}
+                        {}
                         <div className="mt-4 flex items-center justify-center gap-5 text-xs text-slate-500">
                             <span className="flex items-center gap-1.5">
                                 <span className="w-3 h-3 rounded-full border-2 border-emerald-400 bg-emerald-50 inline-block" />

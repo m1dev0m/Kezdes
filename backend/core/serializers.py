@@ -227,7 +227,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         if len(password) < 8:
             raise serializers.ValidationError({"password": "Password must be at least 8 characters long."})
 
-        # If password2 is provided by clients, enforce match
+                                                            
         if password2 is not None and password != password2:
             raise serializers.ValidationError({"password2": "Passwords do not match."})
 
@@ -249,7 +249,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
         normalized_role = role_aliases.get(role, role)
         allowed_roles = {r[0] for r in Profile.ROLE_CHOICES}
-        # Block privileged roles from public registration
+                                                         
         blocked_roles = {'global_admin'}
         if normalized_role in blocked_roles:
             raise serializers.ValidationError({"role": "Invalid role."})
@@ -258,7 +258,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         attrs['role'] = normalized_role
         attrs['requested_role'] = requested_role
 
-        # Email OTP Verification
+                                
         if getattr(settings, "REQUIRE_EMAIL_OTP", False):
             otp_code = (attrs.get('otp_code') or '').strip()
             if not otp_code:
@@ -332,7 +332,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 city=city
             )
         
-        # Mark OTP as verified
+                              
         otp_record = OTPVerification.objects.filter(email__iexact=user.email).order_by('-created_at').first()
         if otp_record:
             otp_record.mark_verified()

@@ -9,6 +9,10 @@ import { useAuth } from '../../lib/auth-context';
 export default function AdminSettingsScreen() {
     const router = useRouter();
     const { logout } = useAuth();
+    const handleLogout = async () => {
+        await logout();
+        router.replace('/onboarding');
+    };
 
     const [autoConfirm, setAutoConfirm] = useState(true);
     const [emailNotif, setEmailNotif] = useState(true);
@@ -127,7 +131,7 @@ export default function AdminSettingsScreen() {
                     />
                 </View>
 
-                <TouchableOpacity style={styles.logoutBoundary} onPress={logout}>
+                <TouchableOpacity style={styles.logoutBoundary} onPress={() => void handleLogout()}>
                     <Ionicons name="log-out-outline" size={20} color="#ef4444" />
                     <Text style={styles.logoutText}>Выйти из аккаунта</Text>
                 </TouchableOpacity>

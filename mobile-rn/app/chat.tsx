@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useAuth } from '../lib/auth-context';
 import { API_BASE_URL } from '../lib/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function ChatScreen() {
     const params = useLocalSearchParams();
@@ -16,16 +17,34 @@ export default function ChatScreen() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
     const shouldAutoScrollRef = useRef(true);
 
     const bookingId = params.id as string;
     const name = params.name as string || 'Chat';
 
+    const markRead = useCallback(async () => {
+        if (!user?.access || !bookingId) return;
+        try {
+            await fetch(`${API_BASE_URL}/chat/messages/mark_read/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${user.access}`
+                },
+                body: JSON.stringify({ booking: bookingId })
+            });
+        } catch {
+            
+        }
+    }, [bookingId, user?.access]);
+
     const fetchMessages = useCallback(async (silent = false) => {
         if (!user?.access || !bookingId) return;
         try {
             if (!silent) setRefreshing(true);
+            setError(null);
             const url = `${API_BASE_URL}/chat/messages/?booking=${bookingId}`;
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${user.access}` }
@@ -34,14 +53,17 @@ export default function ChatScreen() {
                 const data = await res.json();
                 const payload = Array.isArray(data) ? data : (data?.results || []);
                 setMessages(payload);
+                void markRead();
+            } else {
+                setError('Не удалось загрузить сообщения');
             }
         } catch (err) {
-            console.error('Error fetching messages:', err);
+            setError('Не удалось загрузить сообщения');
         } finally {
             setRefreshing(false);
             setLoading(false);
         }
-    }, [bookingId, user?.access]);
+    }, [bookingId, markRead, user?.access]);
 
     useEffect(() => {
         void fetchMessages();
@@ -50,6 +72,14 @@ export default function ChatScreen() {
         }, 3000);
         return () => clearInterval(interval);
     }, [fetchMessages]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void fetchMessages(true);
+            void markRead();
+            return () => {};
+        }, [fetchMessages, markRead])
+    );
 
     const handleSend = async () => {
         if (!message.trim() || !user?.access || !bookingId) return;
@@ -157,8 +187,8 @@ export default function ChatScreen() {
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
                                 <Ionicons name="chatbubble-ellipses-outline" size={42} color={colors.muted} />
-                                <Text style={styles.emptyTitle}>Сообщений пока нет</Text>
-                                <Text style={styles.emptyText}>Напишите первым, чтобы открыть диалог по этой брони.</Text>
+                                <Text style={styles.emptyTitle}>{error ? 'Ошибка загрузки' : 'Сообщений пока нет'}</Text>
+                                <Text style={styles.emptyText}>{error || 'Напишите первым, чтобы открыть диалог по этой брони.'}</Text>
                             </View>
                         }
                     />

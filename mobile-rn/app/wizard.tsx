@@ -66,18 +66,18 @@ export default function WizardScreen() {
     const [eventTitle, setEventTitle] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
 
-    const TOTAL_STEPS = 4; // 1: Type, 2: Date/Time, 3: Details, 4: Add-ons
+    const TOTAL_STEPS = 4; 
 
     const updateEventType = (typeId: string) => {
         setEventType(typeId);
 
         const big = typeId === 'wedding';
         if (big) {
-            setGuests(Math.max(50, guests)); // bump up to minimum 50
+            setGuests(Math.max(50, guests)); 
             setMinBudget(1000000);
             setMaxBudget(5000000);
         } else {
-            setGuests(Math.min(100, guests)); // clamp down to max 100
+            setGuests(Math.min(100, guests)); 
             setMinBudget(50000);
             setMaxBudget(200000);
         }
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     content: {
         paddingHorizontal: 20,
         paddingTop: 24,
-        paddingBottom: 120, // space for fixed footer
+        paddingBottom: 120, 
     },
     heroTextCenter: {
         alignItems: 'center',
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
         rowGap: 16,
     },
     typeCard: {
-        width: (width - 40 - 16) / 2, // (screen width - outer padding - gap) / 2
+        width: (width - 40 - 16) / 2, 
         backgroundColor: '#ffffff',
         borderRadius: 32,
         borderWidth: 2,
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
         color: colors.text,
     },
     cardBox: {
-        backgroundColor: 'rgba(246, 247, 248, 0.7)', // slate-50 equiv
+        backgroundColor: 'rgba(246, 247, 248, 0.7)', 
         borderRadius: 32,
         padding: 16,
         borderWidth: 1,
@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
         lineHeight: 40,
         textAlign: 'center',
         minWidth: 80,
-        padding: 0, // override default android padding
+        padding: 0, 
         margin: 0,
     },
     guestLabel: {
@@ -844,7 +844,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderWidth: 2,
         borderColor: colors.primary,
-        transform: [{ translateY: -9 }, { translateX: -12 }], // approximate center
+        transform: [{ translateY: -9 }, { translateX: -12 }], 
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,

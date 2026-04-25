@@ -131,13 +131,6 @@ class Order(models.Model):
         self.save(update_fields=["status"])
 
     def confirm_atomic(self, *, payment_status: str | None = None) -> dict:
-        """
-        Confirm order safely:
-        - locks order + items
-        - validates item activity/availability
-        - updates price_snapshot to current menu price at confirmation time
-        - recalculates total
-        """
         with transaction.atomic():
             order = Order.objects.select_for_update().get(pk=self.pk)
             if order.status == Order.Status.CANCELLED:

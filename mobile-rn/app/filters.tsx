@@ -253,8 +253,8 @@ const styles = StyleSheet.create({
         borderColor: '#ffffff',
     },
     gridItemActive: {
-        backgroundColor: '#eff6ff', // blue-50
-        borderColor: '#bfdbfe', // blue-200
+        backgroundColor: '#eff6ff', 
+        borderColor: '#bfdbfe', 
     },
     gridItemText: {
         fontSize: 14,

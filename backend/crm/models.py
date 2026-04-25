@@ -93,9 +93,6 @@ def update_customer_stats_on_visit_delete(sender, instance, **kwargs):
 
 
 class Lead(models.Model):
-    """
-    Simple inbound marketing lead from pricing/contact forms.
-    """
     name = models.CharField(max_length=255)
     phone = models.CharField(max_length=50)
     city = models.CharField(max_length=255, blank=True)

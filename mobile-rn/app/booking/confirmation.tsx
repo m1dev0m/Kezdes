@@ -68,9 +68,9 @@ export default function BookingConfirmationScreen() {
             }
         };
 
-        pollStatus(); // Initial check
-        const interval = setInterval(pollStatus, 2000); // Poll every 2 seconds for better UX
-        const timeout = setTimeout(() => clearInterval(interval), 120000); // Stop after 2 minutes
+        pollStatus(); 
+        const interval = setInterval(pollStatus, 2000); 
+        const timeout = setTimeout(() => clearInterval(interval), 120000); 
 
         return () => {
             clearInterval(interval);
@@ -164,11 +164,11 @@ export default function BookingConfirmationScreen() {
                             <Text style={styles.detailLabel}>ID бронирования</Text>
                             <Text style={styles.detailVal}>#KZ-{bookingId}</Text>
                         </View>
-                        {fullBooking?.table_number && (
+                        {(fullBooking?.table_number || fullBooking?.table || fullBooking?.table_id) && (
                             <View style={[styles.detailRow, { marginTop: 12 }]}>
                                 <Text style={styles.detailLabel}>Ваш столик</Text>
                                 <View style={styles.tableBadge}>
-                                    <Text style={styles.tableBadgeText}>СТОЛ {fullBooking.table_number}</Text>
+                                    <Text style={styles.tableBadgeText}>СТОЛ {fullBooking.table_number || fullBooking.table || fullBooking.table_id}</Text>
                                 </View>
                             </View>
                         )}

@@ -2,9 +2,6 @@ import requests
 import logging
 logger = logging.getLogger(__name__)
 def send_push_notification(user, title, body, data=None):
-    """
-    Send a push notification to all tokens associated with a user via Expo Push API.
-    """
     from .models import PushToken
     tokens = list(PushToken.objects.filter(user=user).values_list('token', flat=True))
     if not tokens:

@@ -4,10 +4,6 @@ from django.http import HttpResponse
 
 
 def get_user_profile(user):
-    """
-    Safely resolve user's profile.
-    Returns None when profile is missing instead of raising.
-    """
     if not user or not getattr(user, "is_authenticated", False):
         return None
     try:
@@ -20,9 +16,6 @@ def get_user_profile(user):
 
 
 def get_user_restaurant(user):
-    """
-    Resolve restaurant from user - supports both owner-linked and profile-linked relations.
-    """
     restaurant = getattr(user, "owned_restaurant", None)
     if restaurant:
         return restaurant
@@ -36,9 +29,6 @@ def get_user_restaurant(user):
 
 
 def auto_adjust_column_width(worksheet):
-    """
-    Automatically adjust column widths in an openpyxl worksheet based on content.
-    """
     for col in worksheet.columns:
         max_length = 0
         column = col[0].column_letter
@@ -53,9 +43,6 @@ def auto_adjust_column_width(worksheet):
 
 
 def create_excel_response(workbook, filename):
-    """
-    Create an HTTP response with Excel file attachment.
-    """
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

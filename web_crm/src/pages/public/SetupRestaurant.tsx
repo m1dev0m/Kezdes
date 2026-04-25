@@ -70,8 +70,8 @@ export default function SetupRestaurant() {
 
   const role = normalizeUserRole(user.role);
 
-  // Prevent "fatal" navigation loops / blank pages when this route is reached by mistake.
-  // Setup is only valid for owners who still need to submit the restaurant application.
+  
+  
   if (user.restaurant_verified) {
     return <Navigate to="/app/dashboard" replace />;
   }

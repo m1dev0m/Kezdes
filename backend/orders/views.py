@@ -39,12 +39,6 @@ class AdminMenuItemViewSet(TenantModelViewSet):
 
 
 class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
-    """
-    Customer order API.
-    - user can only access their own orders
-    - order items can be upserted via set_item
-    - confirmation is atomic and validates availability + updates price snapshots
-    """
 
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -63,13 +57,13 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Order.objects.none()
             
-        # Support both customer view and staff view
+                                                   
         if self._has_staff_order_access(user):
             return Order.objects.filter(
                 restaurant=get_user_restaurant(user)
             ).select_related("restaurant", "reservation", "user").prefetch_related("items__menu_item").order_by("-created_at")
         
-        # Default behavior: user's own orders (customer view)
+                                                             
         return (
             Order.objects.filter(user=user)
             .select_related("restaurant", "reservation")
@@ -79,9 +73,6 @@ class OrderViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def my_restaurant(self, request):
-        """
-        Orders for the restaurant managed/owned by the user.
-        """
         user = request.user
         restaurant = get_user_restaurant(user)
 

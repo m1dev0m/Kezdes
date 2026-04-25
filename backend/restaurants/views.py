@@ -99,7 +99,7 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             if my_restaurants_only and user.is_authenticated:
                 queryset = queryset.filter(owner=user)
             else:
-                # Public discovery should never expose restaurants that still 403 on detail/book flows.
+                                                                                                       
                 queryset = queryset.filter(is_verified=True)
 
         city = self.request.query_params.get("city")
@@ -260,12 +260,12 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated], url_path="favorites")
     def favorites(self, request):
-        """MVP: return empty list. Favorites can be implemented later with a user-restaurant relation."""
+        
         return Response([])
 
     @action(detail=True, methods=["delete"], permission_classes=[permissions.IsAuthenticated], url_path="favorite")
     def favorite(self, request, pk=None):
-        """MVP: no-op delete so frontend does not 404."""
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
@@ -347,12 +347,6 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
 
 class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
-    """
-    Application flow for restaurants.
-
-    - Authenticated restaurant owners create/update their own applications.
-    - Global admins can list, filter, approve, and reject applications.
-    """
 
     queryset = RestaurantRequest.objects.select_related("owner").order_by("-created_at")
     serializer_class = RestaurantRequestSerializer
@@ -372,7 +366,7 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return super().get_permissions()
 
     def create(self, request, *args, **kwargs):
-        # Public onboarding: allow submitting an application and minting tokens for the created owner.
+                                                                                                      
         if request.user and request.user.is_authenticated:
             return super().create(request, *args, **kwargs)
 
@@ -423,7 +417,7 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        # Owners can only access their own requests for detail/update/delete.
+                                                                             
         if self.action in ["retrieve", "update", "partial_update", "destroy"] and not self._is_global_admin(self.request.user):
             qs = qs.filter(owner=self.request.user)
 
@@ -460,9 +454,6 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        """
-        Attach current user as owner and default email/credentials on create.
-        """
         user = self.request.user
         email = serializer.validated_data.get("email") or getattr(user, "email", "") or ""
         serializer.save(
@@ -473,10 +464,6 @@ class RestaurantRequestViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def mine(self, request):
-        """
-        Return the latest application for the current user (if any).
-        Used by restaurant owners to see their request status.
-        """
         user = request.user
         req = (
             RestaurantRequest.objects.filter(owner=user)
@@ -725,7 +712,7 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
         return Response(response_payload)
 
     def _check_ownership(self, table):
-        """Verify the table belongs to the current user's restaurant."""
+        
         from core.utils import get_user_restaurant
         restaurant = get_user_restaurant(self.request.user)
         if restaurant is None or table.restaurant_id != restaurant.id:
@@ -766,7 +753,7 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
 
     @action(detail=False, methods=["get"])
     def status(self, request):
-        # Tenant enforced by get_queryset from TenantModelViewSet
+                                                                 
         tables = self.get_queryset()
 
         user = self.request.user
@@ -812,7 +799,7 @@ class TableViewSet(OptionalPaginationMixin, TenantModelViewSet):
 
     @action(detail=True, methods=["patch"])
     def update_status(self, request, pk=None):
-        """Allow manager+ to change table status (free/occupied/reserved/cleaning)."""
+        
         table = self.get_object()
         new_status = request.data.get("status")
         valid_statuses = [s[0] for s in Table.STATUS_CHOICES]
@@ -884,7 +871,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         restaurant_id = self.kwargs.get('restaurant_pk') or self.request.query_params.get('restaurant')
         if restaurant_id:
             return Review.objects.filter(restaurant_id=restaurant_id).select_related('user')
-        # Fallback: only show reviews for the user's own restaurant (staff) or none
+                                                                                   
         user = self.request.user
         if user.is_authenticated:
             from core.utils import get_user_restaurant

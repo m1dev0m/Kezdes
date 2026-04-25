@@ -110,7 +110,7 @@ export default function RestaurantRegistration() {
             </header>
 
             <main className="flex-1 flex flex-col lg:flex-row items-center relative overflow-hidden">
-                {/* Decorative background grid */}
+                {}
                 <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] opacity-10 pointer-events-none" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[800px] bg-[#0047FF]/5 rounded-full blur-[120px] pointer-events-none" />
 

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class BookingLifecycleMixin:
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def check_in(self, request, pk=None):
-        """Mark booking as checked in (guest arrived) and transition to SEATED."""
+        
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -44,7 +44,6 @@ class BookingLifecycleMixin:
 
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def reschedule(self, request, pk=None):
-        """Reschedule booking by changing date/time/duration, re-checking capacity and reallocating tables."""
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -56,9 +55,9 @@ class BookingLifecycleMixin:
         )
         serializer.is_valid(raise_exception=True)
         return self._apply_schedule_update(request, booking, serializer.validated_data, event_type='reschedule')
+
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def confirm(self, request, pk=None):
-        """PENDING → APPROVED with capacity re-check inside a transaction."""
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -70,7 +69,6 @@ class BookingLifecycleMixin:
 
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def reject(self, request, pk=None):
-        """PENDING → REJECTED (admin rejects a pending booking)."""
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -79,9 +77,9 @@ class BookingLifecycleMixin:
         if error:
             return api_error(error, status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
+
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def cancel_by_restaurant(self, request, pk=None):
-        """APPROVED → CANCELLED_BY_RESTAURANT (restaurant cancels after approval)."""
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -90,55 +88,57 @@ class BookingLifecycleMixin:
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
+
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def seat(self, request, pk=None):
-        """APPROVED → SEATED (guest has arrived and been seated). Allows setting a table_id."""
         from ..services import BookingService
 
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
-            
-        table_id = request.data.get('table_id')
-        if table_id:
-            try:
-                table = Table.objects.get(id=table_id, restaurant=booking.restaurant)
-            except Table.DoesNotExist:
-                return api_error("Указанный стол не найден.", status.HTTP_400_BAD_REQUEST)
-
-            if table.seats < booking.guests:
-                return api_error(
-                    "Вместимость стола недостаточна для этой брони.",
-                    status.HTTP_400_BAD_REQUEST,
-                    details={"seats": table.seats, "guests": booking.guests},
-                )
-
-            available_table_ids = BookingService.get_available_table_ids(
-                booking.restaurant,
-                booking.date,
-                booking.time,
-                booking.duration_minutes,
-                exclude_booking_id=booking.id,
-            )
-            if table.id not in available_table_ids:
-                return api_error(
-                    "Стол недоступен для этого времени.",
-                    status.HTTP_400_BAD_REQUEST,
-                    details={"table_id": table.id},
-                )
-
-            booking.table = table
-            booking.save(update_fields=['table', 'updated_at'])
-            booking.tables.set([table])
 
         try:
-            StatusMachine.transition(booking, Booking.SEATED, actor=request.user)
+            with transaction.atomic():
+                booking = Booking.objects.select_for_update().get(pk=booking.pk)
+                table_id = request.data.get('table_id')
+                if table_id:
+                    try:
+                        table = Table.objects.get(id=table_id, restaurant=booking.restaurant)
+                    except Table.DoesNotExist:
+                        return api_error("Указанный стол не найден.", status.HTTP_400_BAD_REQUEST)
+
+                    if table.seats < booking.guests:
+                        return api_error(
+                            "Вместимость стола недостаточна для этой брони.",
+                            status.HTTP_400_BAD_REQUEST,
+                            details={"seats": table.seats, "guests": booking.guests},
+                        )
+
+                    available_table_ids = BookingService.get_available_table_ids(
+                        booking.restaurant,
+                        booking.date,
+                        booking.time,
+                        booking.duration_minutes,
+                        exclude_booking_id=booking.id,
+                    )
+                    if table.id not in available_table_ids:
+                        return api_error(
+                            "Стол недоступен для этого времени.",
+                            status.HTTP_400_BAD_REQUEST,
+                            details={"table_id": table.id},
+                        )
+
+                    booking.table = table
+                    booking.save(update_fields=['table', 'updated_at'])
+                    booking.tables.set([table])
+
+                StatusMachine.transition(booking, Booking.SEATED, actor=request.user)
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
+
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def complete(self, request, pk=None):
-        """APPROVED/SEATED → COMPLETED (event finished successfully). Records visit in CRM."""
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -146,7 +146,7 @@ class BookingLifecycleMixin:
             with transaction.atomic():
                 StatusMachine.transition(booking, Booking.COMPLETED, actor=request.user)
                 from crm.services import CRMService
-                
+
                 customer_phone = booking.user_phone
                 if not customer_phone and booking.user:
                     profile = get_user_profile(booking.user)
@@ -165,9 +165,9 @@ class BookingLifecycleMixin:
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(booking).data)
+
     @action(detail=True, methods=['post', 'patch'], permission_classes=[CanManageReservations])
     def no_show(self, request, pk=None):
-        """APPROVED → NO_SHOW (guest didn't arrive)."""
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -179,7 +179,7 @@ class BookingLifecycleMixin:
 
     @action(detail=True, methods=['post'], permission_classes=[CanManageReservations])
     def reassign_table(self, request, pk=None):
-        """Reassign booking to a different single table (table_id required)."""
+        
         from ..services import BookingService
 
         booking = self.get_object()

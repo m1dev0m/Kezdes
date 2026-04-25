@@ -8,6 +8,7 @@ import {
   extractResults,
   getApiErrorMessage,
   getLocalDateString,
+  getReservationCustomerSignals,
   getReservationName,
   getReservationPhone,
   getTableCapacity,
@@ -417,6 +418,8 @@ function ReservationRow({
   inFlight: boolean;
   showElapsed?: boolean;
 }) {
+  const customerSignals = getReservationCustomerSignals(reservation);
+
   return (
     <div
       className={`group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
@@ -438,6 +441,18 @@ function ReservationRow({
           <span className="text-xs text-slate-500">{fmt(reservation.time)}</span>
           {reservation.user_phone ? <span className="truncate text-xs text-slate-400">{getReservationPhone(reservation)}</span> : null}
         </div>
+        {customerSignals.length > 0 ? (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {customerSignals.map((signal) => (
+              <span
+                key={signal.key}
+                className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${signal.className}`}
+              >
+                {signal.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <TableBadge tableNumber={reservation.table_number} status={reservation.status} />

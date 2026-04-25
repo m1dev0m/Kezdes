@@ -4,9 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
+import { useAuth } from '../../lib/auth-context';
 
 export default function AdminAccountScreen() {
     const router = useRouter();
+    const { logout } = useAuth();
+
+    const handleLogout = async () => {
+        await logout();
+        router.replace('/onboarding');
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -54,7 +61,7 @@ export default function AdminAccountScreen() {
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.logoutBtn} onPress={() => router.replace('/auth/login')}>
+                <TouchableOpacity style={styles.logoutBtn} onPress={() => void handleLogout()}>
                     <Ionicons name="log-out-outline" size={22} color="#ef4444" />
                     <Text style={styles.logoutText}>Выйти из системы</Text>
                 </TouchableOpacity>

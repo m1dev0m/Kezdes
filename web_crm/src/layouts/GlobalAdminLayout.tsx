@@ -46,7 +46,7 @@ export default function GlobalAdminLayout() {
 
     return (
         <div className="min-h-screen bg-[#fafaf9] flex font-inter selection:bg-[#1d4ed8]/10 text-slate-900">
-            {/* Enterprise Sidebar */}
+            {}
             <aside className="w-80 bg-white flex flex-col border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] relative z-[50]">
                 <div className="h-24 flex items-center px-10 border-b border-slate-100">
                     <Link to="/admin/dashboard" className="flex items-center gap-4 group">
@@ -104,7 +104,7 @@ export default function GlobalAdminLayout() {
                 </div>
             </aside>
 
-            {/* Main Command Terminal */}
+            {}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 h-20 flex items-center px-12 justify-between shrink-0 relative z-40">
                     <div className="flex items-center gap-4">

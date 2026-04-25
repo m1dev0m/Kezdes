@@ -145,7 +145,7 @@ export default function EventDetailsScreen() {
                     <Text style={styles.sectionTitle}>ЛОКАЦИЯ</Text>
                     <View style={styles.mapCard}>
                         <ImageBackground
-                            source={require('../assets/images/featured_1.jpg')} // Using featured_1 as placeholder
+                            source={require('../assets/images/featured_1.jpg')} 
                             style={styles.mapImage}
                             imageStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
                         >
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     mapImage: {
         width: '100%',
         height: 140,
-        backgroundColor: '#bae6fd', // light blue mock
+        backgroundColor: '#bae6fd', 
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         justifyContent: 'center',
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 40,
-        backgroundColor: 'rgba(59, 130, 246, 0.2)', // blue overlay
+        backgroundColor: 'rgba(59, 130, 246, 0.2)', 
         justifyContent: 'center',
         alignItems: 'center',
     },

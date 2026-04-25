@@ -38,7 +38,7 @@ const initialState = (): ManualBookingFormState => ({
 
 export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingFormProps) {
   const { user } = useAuth();
-  const restaurantId = user?.restaurant;
+  const restaurantId = user?.owned_restaurant?.id ?? user?.restaurant ?? user?.profile?.restaurant ?? null;
 
   const [formData, setFormData] = useState<ManualBookingFormState>(initialState);
   const [allTables, setAllTables] = useState<TableRecord[]>([]);

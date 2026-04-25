@@ -89,6 +89,11 @@ export default function ProfileScreen() {
             ? 'Ресторан'
             : 'Гость Kezdes';
 
+    const handleLogout = useCallback(async () => {
+        await logout();
+        router.replace('/onboarding');
+    }, [logout, router]);
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -211,7 +216,7 @@ export default function ProfileScreen() {
                                 <Text style={styles.menuText}>Помощь по аккаунту</Text>
                                 <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => void logout()}>
+                            <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => void handleLogout()}>
                                 <View style={[styles.menuIconBox, { backgroundColor: '#fee2e2' }]}>
                                     <Ionicons name="log-out-outline" size={20} color={colors.error} />
                                 </View>

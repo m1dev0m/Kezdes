@@ -8,17 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class BookingConsumer(AsyncJsonWebsocketConsumer):
-    """
-    WebSocket consumer for real-time booking status updates.
-    URL: ws/bookings/<id>/
-
-    Backwards compatible behavior:
-    - If <id> matches a Booking the user has access to, it is treated as booking_id
-      and the restaurant_id is derived from that booking.
-    - Otherwise <id> is treated as restaurant_id.
-
-    Admin/staff users join restaurant group. Regular users join personal group.
-    """
 
     async def connect(self):
         kwargs = (self.scope.get('url_route') or {}).get('kwargs') or {}
@@ -66,7 +55,7 @@ class BookingConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(g, self.channel_name)
 
     async def booking_update(self, event):
-        """Receive booking update from group and send to WebSocket."""
+        
         payload = event.get('data')
         if payload is None and 'booking' in event:
             payload = event.get('booking')

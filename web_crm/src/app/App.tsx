@@ -45,7 +45,7 @@ const RestaurantPendingApproval = lazy(() => import('@/pages/public/RestaurantPe
 const SetupRestaurant = lazy(() => import('@/pages/public/SetupRestaurant'));
 const RoleSelection = lazy(() => import('@/pages/RoleSelection'));
 
-// Guest Pages
+
 const GuestLayout = lazy(() => import('@/layouts/GuestLayout'));
 const GuestDashboard = lazy(() => import('@/pages/guest/GuestDashboard'));
 const GuestBookingDetails = lazy(() => import('@/pages/guest/GuestBookingDetails'));

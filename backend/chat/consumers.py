@@ -8,10 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
-    """
-    WebSocket consumer for real-time chat between clients and restaurants.
-    URL: ws/chat/<restaurant_id>/
-    """
 
     async def connect(self):
         self.last_msg_time = 0
@@ -58,7 +54,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         user_id = user.id if user.is_authenticated else self.channel_name
         cache_key = f"ws_ratelimit:{user_id}"
 
-        # Token Bucket algorithm: capacity 10 messages, refill 5 per second
+                                                                           
         capacity = 10
         refill_rate = 5
         now = time.time()
@@ -122,7 +118,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_send(f'chat_user_{msg["guest_id"]}', payload)
 
     async def chat_message(self, event):
-        """Receive message from group and send to WebSocket."""
+        
         await self.send_json(event['message'])
 
     @database_sync_to_async

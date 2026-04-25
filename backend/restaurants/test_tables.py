@@ -1,14 +1,3 @@
-"""
-Tests for Table CRUD module.
-
-Covers:
-  - create / read / update / delete
-  - capacity validation (1-20)
-  - restaurant ownership enforcement
-  - cross-restaurant access prevention
-  - duplicate name rejection
-  - delete protection when active bookings exist
-"""
 import pytest
 from datetime import date, time, timedelta
 from django.contrib.auth.models import User
@@ -20,7 +9,7 @@ from restaurants.models import Restaurant, Table
 from core.models import Profile
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+                                                                                
 
 @pytest.fixture
 def owner(db):
@@ -95,9 +84,9 @@ def future_date():
     return date.today() + timedelta(days=7)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 1. CREATE
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+           
+                                                                                
 
 class TestTableCreate:
 
@@ -183,7 +172,7 @@ class TestTableCreate:
 
     @pytest.mark.django_db
     def test_create_no_restaurant_fails(self, client, db):
-        """User without a restaurant cannot create tables."""
+        
         user = User.objects.create_user("loner", "l@test.com", "pass123")
         user.profile.role = "owner"
         user.profile.save()
@@ -201,9 +190,9 @@ class TestTableCreate:
         assert "Лимит тарифа" in str(resp.data)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 2. READ (LIST / RETRIEVE)
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+                           
+                                                                                
 
 class TestTableRead:
 
@@ -261,9 +250,9 @@ class TestTableRead:
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 3. UPDATE
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+           
+                                                                                
 
 class TestTableUpdate:
 
@@ -336,9 +325,9 @@ class TestTableUpdate:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 4. DELETE
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+           
+                                                                                
 
 class TestTableDelete:
 
@@ -434,9 +423,9 @@ class TestTableBulkDelete:
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 5. TENANT ISOLATION
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+                     
+                                                                                
 
 class TestTenantIsolation:
 
@@ -474,9 +463,9 @@ class TestTenantIsolation:
         assert Table.objects.filter(id=t.id).exists()
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 5b. ROLE PERMISSIONS
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+                      
+                                                                                
 
 class TestTableRolePermissions:
 
@@ -523,9 +512,9 @@ class TestTableRolePermissions:
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 6. TABLE STATUS ENDPOINT
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+                          
+                                                                                
 
 class TestTableStatus:
 
@@ -581,9 +570,9 @@ class TestTableStatus:
         assert resp.data[0]["status"] == "occupied"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 7. UPDATE STATUS ACTION
-# ══════════════════════════════════════════════════════════════════════════════
+                                                                                
+                         
+                                                                                
 
 class TestUpdateTableStatus:
 

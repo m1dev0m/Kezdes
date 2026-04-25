@@ -66,10 +66,6 @@ class TwoGISService:
 class RestaurantService:
     @staticmethod
     def approve_request(request_id, admin_user=None):
-        """
-        Approves a RestaurantRequest, ensures the User has the correct role,
-        creates/verifies the Restaurant, and links them.
-        """
         from django.contrib.auth.models import User
         from .models import Restaurant, RestaurantRequest
         import string
@@ -83,9 +79,9 @@ class RestaurantService:
             req.status = 'approved'
             req.save(update_fields=['status'])
 
-            # 1. Find or create user
-            # For MVP we must never accidentally approve an application for a different account.
-            # If the request was created by an authenticated user, prefer that owner.
+                                    
+                                                                                                
+                                                                                     
             user = req.owner
             if not user:
                 user = User.objects.filter(email=req.email).first()
@@ -117,17 +113,17 @@ class RestaurantService:
             else:
                 username = user.username
 
-            # 2. Update role
+                            
             profile = get_user_profile(user)
             if profile:
                 if not profile.is_owner:
                     profile.role = 'owner'
                 profile.save()
 
-            # 3. Create or verify restaurant
+                                            
             restaurant = Restaurant.objects.filter(owner=user).first()
             if not restaurant:
-                # Use standard Almaty coordinates if not provided
+                                                                 
                 restaurant = Restaurant.objects.create(
                     name=req.name,
                     address=req.address or req.city,
@@ -142,7 +138,7 @@ class RestaurantService:
                 )
             else:
                 restaurant.is_verified = True
-                restaurant.name = req.name # Update name from request
+                restaurant.name = req.name                           
                 restaurant.city = req.city
                 restaurant.phone = req.phone
                 restaurant.save()
@@ -152,7 +148,7 @@ class RestaurantService:
                 profile.restaurant = restaurant
                 profile.save()
 
-            # Trigger notification
+                                  
             try:
                 from core.notifications import NotificationService
                 NotificationService.notify_restaurant_approved(

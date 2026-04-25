@@ -1,14 +1,10 @@
-"""
-Database optimization script for 1000-1500 users
-Run this after migrations: python manage.py shell < optimize_db.py
-"""
 
 from django.db import connection
 from django.db import models
 from django.apps import apps
 
 def create_indexes():
-    """Create critical indexes for scale"""
+    
     indexes = [
         ('bookings_booking', ['restaurant_id', 'date']),
         ('bookings_booking', ['user_id', 'status']),
@@ -37,20 +33,20 @@ def create_indexes():
     connection.commit()
 
 def enable_partitioning():
-    """Enable table partitioning for very large tables (future optimization)"""
+    
     pass
     pass
     pass
     pass
 
 def vacuum_analyze():
-    """Vacuum and analyze for query planner"""
+    
     with connection.cursor() as cursor:
         cursor.execute("VACUUM ANALYZE;")
         pass
 
 def check_connection_settings():
-    """Check PostgreSQL settings"""
+    
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT name, setting FROM pg_settings 

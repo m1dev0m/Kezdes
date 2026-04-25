@@ -21,7 +21,7 @@ router.register(r'staff', StaffViewSet, basename='staff')
 router.register(r'reviews', ReviewViewSet, basename='all-reviews')
 router.register(r'', RestaurantViewSet)
 
-# For nested routing: /restaurants/<id>/reviews/
+                                                
 restaurant_router = DefaultRouter()
 restaurant_router.register(r'reviews', ReviewViewSet, basename='restaurant-reviews')
 

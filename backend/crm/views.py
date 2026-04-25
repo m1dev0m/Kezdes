@@ -54,9 +54,6 @@ class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def export(self, request):
-        """
-        Export customers of current restaurant as CSV.
-        """
         restaurant = get_user_restaurant(request.user)
         if not restaurant:
             return Response({"detail": "No restaurant associated."}, status=status.HTTP_400_BAD_REQUEST)
@@ -106,7 +103,7 @@ class CustomerViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def bookings(self, request, pk=None):
-        """List bookings linked to this customer (same restaurant, matching phone)."""
+        
         customer = self.get_object()
         from bookings.models import Booking
         from crm.services import normalize_phone
@@ -182,9 +179,6 @@ class VisitViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class LeadViewSet(viewsets.ModelViewSet):
-    """
-    Public-facing marketing leads from pricing/contact forms.
-    """
     serializer_class = LeadSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -194,8 +188,8 @@ class LeadViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        # Leads are currently global inbound marketing contacts with no restaurant FK.
-        # Restrict listing to global admin until/if tenant ownership is modeled explicitly.
+                                                                                      
+                                                                                           
         user = self.request.user
         if not user.is_authenticated:
             return Lead.objects.none()

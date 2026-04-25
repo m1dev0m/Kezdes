@@ -1,14 +1,10 @@
-#!/usr/bin/env python
-"""
-API Contract Validator
-Checks that frontend URLs match backend routing
-"""
+                     
 
 import re
 import sys
 from pathlib import Path
 
-# Backend routes (from urls.py and routers)
+                                           
 BACKEND_ROUTES = {
     'GET /api/v1/auth/me/': 'core.views.UserProfileView',
     'POST /api/v1/auth/login/': 'core.views.CustomTokenObtainPairView',
@@ -40,12 +36,12 @@ BACKEND_ROUTES = {
 }
 
 def check_frontend_calls(web_crm_root='web_crm'):
-    """Scan web_crm for API calls and check against backend routes"""
+    
     
     src_dir = Path(web_crm_root) / 'src'
     issues = []
     
-    # Pattern to find api calls
+                               
     api_patterns = [
         r"api\.get\(['\"`]([^'\"]+)",
         r"api\.post\(['\"`]([^'\"]+)",
@@ -60,13 +56,13 @@ def check_frontend_calls(web_crm_root='web_crm'):
                 matches = re.findall(pattern, content)
                 for match in matches:
                     url = match
-                    # Normalize URL
+                                   
                     if '{' in url and '}' in url:
                         url_normalized = re.sub(r'\$\{[^}]+\}', '{id}', url)
                     else:
                         url_normalized = url
                     
-                    # Check if URL exists in backend routes
+                                                           
                     full_url = f"GET {url_normalized}" if 'ws' not in url else f"ws {url_normalized}"
                     found = False
                     for backend_route in BACKEND_ROUTES:

@@ -104,7 +104,7 @@ export function useWebSocket({
                     setLastMessage(data);
                     onMessageRef.current?.(data);
                 } catch {
-                    // ignore parse errors
+                    
                 }
             };
 
@@ -124,7 +124,7 @@ export function useWebSocket({
                 ws.close();
             };
         } catch {
-            // connection failed, will retry
+            
         }
     }, [enabled, getWsUrl, reconnectInterval, maxRetries]);
 

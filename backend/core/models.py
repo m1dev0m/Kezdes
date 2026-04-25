@@ -17,7 +17,7 @@ class Profile(models.Model):
         ('pending', 'Ожидает выбора роли'),
     ]
     
-    # Legacy role mappings for backwards compatibility
+                                                      
     ROLE_MAPPING = {
         'restaurant_admin': 'owner',
         'restaurant_owner': 'owner',
@@ -57,7 +57,7 @@ class Profile(models.Model):
     
     @property
     def restaurant_verified(self):
-        """Check if the user's restaurant is verified (for owners)"""
+        
         if self.role == 'owner' and self.restaurant:
             return self.restaurant.is_verified
         return False
@@ -75,7 +75,7 @@ def save_user_profile(sender, instance, **kwargs):
     profile.save()
 
 
-# Normalize legacy role aliases before saving Profile
+                                                     
 from django.db.models.signals import pre_save
 
 @receiver(pre_save, sender=Profile)

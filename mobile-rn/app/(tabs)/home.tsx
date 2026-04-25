@@ -312,7 +312,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF', // Pure White Minimalist
+        backgroundColor: '#FFFFFF', 
     },
     headerTop: {
         flexDirection: 'row',
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#F8F9FA',
-        height: 52, // adjust height slightly for inputs if needed, or keep 44. User said 52 for buttons. Let's make it 44 but radius 14.
+        height: 52, 
         borderRadius: 40,
         paddingHorizontal: 16,
     },
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 52,
         justifyContent: 'center',
-        backgroundColor: '#0047FF', // Deep Blue CTA
+        backgroundColor: '#0047FF', 
         borderRadius: 32,
         alignItems: 'center',
     },

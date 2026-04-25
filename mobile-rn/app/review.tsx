@@ -8,6 +8,8 @@ import {
     ImageBackground,
     ActivityIndicator,
     Platform,
+    TextInput,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,6 +22,15 @@ function getLocalDateString() {
     const now = new Date();
     const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
     return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
+function formatVisitDateLabel(value: string) {
+    const date = new Date(`${value}T12:00:00`);
+    return date.toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
 }
 
 export default function ReviewScreen() {
@@ -36,11 +47,10 @@ export default function ReviewScreen() {
     const restaurantImageUrl = (params.restaurantImageUrl as string) || '';
     const guestCount = parseInt(params.guests as string) || 2;
     const guestString = `${guestCount} гостей`;
-    const dateString = (params.date as string) || getLocalDateString();
-    const timeString = (params.time as string) || '19:00';
     const totalBudget = parseInt(params.budget as string) || 0;
     const restaurantId = (params.restaurantId as string) || (params.venueId as string) || '';
-    const visitDate = (params.date as string) || getLocalDateString();
+    const [selectedDate, setSelectedDate] = useState((params.date as string) || getLocalDateString());
+    const [showCalendar, setShowCalendar] = useState(false);
     const initialTimeCandidate = (() => {
         const raw = ((params.time as string) || '19:00').trim();
         const candidate = raw.split(' ')[0] || '19:00';
@@ -51,8 +61,12 @@ export default function ReviewScreen() {
     const [slotsLoading, setSlotsLoading] = useState(true);
     const [slotsError, setSlotsError] = useState<string | null>(null);
     const [selectedSlot, setSelectedSlot] = useState(initialTimeCandidate);
+    const [guestName, setGuestName] = useState('');
     const slotsAuthError = slotsError === 'Сессия истекла. Войдите снова.';
     const slotsTemporaryError = Boolean(slotsError && !slotsAuthError);
+    const profilePhone = (user?.phone || '').trim();
+    const hasProfilePhone = Boolean(profilePhone);
+    const displayPhone = hasProfilePhone ? profilePhone : 'Номер не указан в профиле';
 
     const basePricePerPerson = 8000;
     const reservationPrice = guestCount * basePricePerPerson;
@@ -70,7 +84,7 @@ export default function ReviewScreen() {
             ['restaurantAddress', restaurantAddress],
             ['restaurantImageUrl', restaurantImageUrl],
             ['guests', String(guestCount)],
-            ['date', visitDate],
+            ['date', selectedDate],
             ['time', selectedSlot],
             ['budget', params.budget as string | undefined],
             ['eventType', params.eventType as string | undefined],
@@ -91,6 +105,28 @@ export default function ReviewScreen() {
         return `/review${query ? `?${query}` : ''}`;
     })();
 
+    const currentCalendarDate = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
+    const currentCalendarYear = currentCalendarDate.getFullYear();
+    const currentCalendarMonth = currentCalendarDate.getMonth();
+    const monthNames = useMemo(
+        () => ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+        [],
+    );
+    const dayNames = useMemo(() => ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], []);
+    const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+    const firstDayOfWeek = (new Date(currentCalendarYear, currentCalendarMonth, 1).getDay() + 6) % 7;
+
+    const changeCalendarMonth = (delta: number) => {
+        const next = new Date(currentCalendarYear, currentCalendarMonth + delta, 1, 12);
+        const today = new Date();
+        const floorToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+        if (next < floorToday) {
+            setSelectedDate(getLocalDateString());
+            return;
+        }
+        setSelectedDate(next.toISOString().slice(0, 10));
+    };
+
     const loadSlots = async () => {
         if (!restaurantId) {
             setSlots([]);
@@ -104,7 +140,7 @@ export default function ReviewScreen() {
         try {
             const availability = await fetchAvailableSlots({
                 restaurant_id: restaurantId,
-                date: visitDate,
+                date: selectedDate,
                 guests: guestCount,
             });
             const nextSlots = Array.isArray(availability?.slots) ? availability.slots : [];
@@ -127,8 +163,19 @@ export default function ReviewScreen() {
 
     useEffect(() => {
         void loadSlots();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [restaurantId, visitDate, guestCount]);
+        
+    }, [restaurantId, selectedDate, guestCount]);
+
+    useEffect(() => {
+        const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim();
+        if (fullName) {
+            setGuestName(fullName);
+            return;
+        }
+        if (user?.username) {
+            setGuestName(user.username);
+        }
+    }, [user?.first_name, user?.last_name, user?.username]);
 
     const canConfirm = useMemo(() => {
         if (submitting) return false;
@@ -152,6 +199,16 @@ export default function ReviewScreen() {
             return;
         }
 
+        if (!guestName.trim()) {
+            alert('Введите имя для бронирования.');
+            return;
+        }
+
+        if (!hasProfilePhone) {
+            alert('Добавьте номер телефона в профиль, чтобы завершить бронирование.');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const startTimeCandidate = selectedSlot.length >= 5 ? selectedSlot.slice(0, 5) : initialTimeCandidate;
@@ -165,7 +222,7 @@ export default function ReviewScreen() {
             try {
                 const availability = await fetchAvailableSlots({
                     restaurant_id: restaurantId,
-                    date: visitDate,
+                    date: selectedDate,
                     guests: guestCount,
                 });
                 const slots = Array.isArray(availability?.slots) ? availability.slots : [];
@@ -185,7 +242,7 @@ export default function ReviewScreen() {
                 if (error?.message === 'SESSION_EXPIRED') {
                     return;
                 }
-                // If availability is temporarily down, don't hard-block first-use booking.
+                
             }
 
             let specialRequests = '';
@@ -194,9 +251,11 @@ export default function ReviewScreen() {
 
             const res = await createBooking({
                 restaurant: restaurantId,
-                date: visitDate,
+                date: selectedDate,
                 time: startTime,
                 guests: guestCount,
+                user_name: guestName.trim(),
+                user_phone: profilePhone,
                 event_type: params.eventType as string || 'reservation',
                 event_title: params.eventTitle as string || '',
                 special_requests: specialRequests.trim(),
@@ -210,7 +269,7 @@ export default function ReviewScreen() {
                 params: {
                     bookingId: res.id,
                     restaurantName: restaurantName,
-                    date: visitDate,
+                    date: selectedDate,
                     time: startTime.slice(0, 5),
                     guests: String(guestCount),
                     eventTitle: params.eventTitle || '',
@@ -225,17 +284,17 @@ export default function ReviewScreen() {
             });
         } catch (error: any) {
             if (error.message === 'SESSION_EXPIRED') {
-                return; // Silently abort, auth interceptor will redirect
+                return; 
             }
             console.error('Booking failed:', error);
             const rawMessage = typeof error?.message === 'string' ? error.message : '';
             const mightBeAvailabilityIssue =
                 /slot|available|availability|no\s*slots|time|date|стол|слот|время|дата/i.test(rawMessage);
-            alert(
-                mightBeAvailabilityIssue
-                    ? 'Слот недоступен. Вернитесь назад и выберите другое время/дату, затем повторите.'
-                    : 'Ошибка при бронировании: ' + (rawMessage || 'неизвестная ошибка'),
-            );
+            if (mightBeAvailabilityIssue && !rawMessage.trim()) {
+                alert('Слот недоступен. Вернитесь назад и выберите другое время или дату.');
+                return;
+            }
+            alert(rawMessage.trim() || 'Не удалось создать бронирование.');
         } finally {
             setSubmitting(false);
         }
@@ -280,7 +339,10 @@ export default function ReviewScreen() {
                         <View style={styles.detailsList}>
                             <View style={styles.detailItem}>
                                 <MaterialIcons name="calendar-today" size={20} color={colors.primary} />
-                                <Text style={styles.detailText}>{visitDate}</Text>
+                                <TouchableOpacity style={styles.detailValueButton} activeOpacity={0.8} onPress={() => setShowCalendar(true)}>
+                                    <Text style={styles.detailText}>{formatVisitDateLabel(selectedDate)}</Text>
+                                    <MaterialIcons name="edit-calendar" size={18} color={colors.primary} />
+                                </TouchableOpacity>
                             </View>
                             <View style={styles.detailItem}>
                                 <MaterialIcons name="schedule" size={20} color={colors.primary} />
@@ -297,6 +359,30 @@ export default function ReviewScreen() {
                                 </Text>
                             </View>
                         </View>
+                    </View>
+                </View>
+
+                <View style={styles.sectionBlock}>
+                    <Text style={styles.sectionTitle}>КОНТАКТ ГОСТЯ</Text>
+                    <View style={styles.contactCard}>
+                        <Text style={styles.contactLabel}>Имя</Text>
+                        <TextInput
+                            style={styles.contactInput}
+                            value={guestName}
+                            onChangeText={setGuestName}
+                            placeholder="Как к вам обращаться"
+                            placeholderTextColor="#94a3b8"
+                        />
+                        <Text style={[styles.contactLabel, styles.contactLabelSpacing]}>Телефон</Text>
+                        <View style={styles.contactPhoneBox}>
+                            <Ionicons name="call-outline" size={18} color={colors.textSecondary} />
+                            <Text style={hasProfilePhone ? styles.contactPhoneText : styles.contactPhoneMutedText}>
+                                {displayPhone}
+                            </Text>
+                        </View>
+                        <Text style={styles.contactHint}>
+                            Номер берём из профиля, чтобы бронь и уведомления были привязаны к вашему аккаунту.
+                        </Text>
                     </View>
                 </View>
 
@@ -434,6 +520,72 @@ export default function ReviewScreen() {
                     </View>
                 </View>
             </ScrollView>
+
+            <Modal visible={showCalendar} transparent animationType="fade" onRequestClose={() => setShowCalendar(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.calendarModalContent}>
+                        <View style={styles.calendarModalHeader}>
+                            <Text style={styles.calendarModalTitle}>Выберите дату</Text>
+                            <TouchableOpacity onPress={() => setShowCalendar(false)} activeOpacity={0.8}>
+                                <Ionicons name="close" size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.calendarMonthHeader}>
+                            <TouchableOpacity onPress={() => changeCalendarMonth(-1)} activeOpacity={0.8}>
+                                <Ionicons name="chevron-back" size={28} color="#0f172a" />
+                            </TouchableOpacity>
+                            <Text style={styles.calendarMonthTitle}>
+                                {monthNames[currentCalendarMonth]} {currentCalendarYear}
+                            </Text>
+                            <TouchableOpacity onPress={() => changeCalendarMonth(1)} activeOpacity={0.8}>
+                                <Ionicons name="chevron-forward" size={28} color="#0f172a" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.calendarWeekRow}>
+                            {dayNames.map((day) => (
+                                <View key={day} style={styles.calendarWeekCell}>
+                                    <Text style={styles.calendarWeekText}>{day}</Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        <View style={styles.calendarGrid}>
+                            {Array.from({ length: firstDayOfWeek }, (_, index) => (
+                                <View key={`empty-${index}`} style={styles.calendarDayBtn} />
+                            ))}
+                            {Array.from({ length: daysInMonth }, (_, index) => {
+                                const day = index + 1;
+                                const nextDate = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                const isActive = selectedDate === nextDate;
+                                const today = new Date();
+                                const dayDate = new Date(currentCalendarYear, currentCalendarMonth, day, 12);
+                                const isPast = dayDate < new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+
+                                return (
+                                    <TouchableOpacity
+                                        key={nextDate}
+                                        style={[
+                                            styles.calendarDayBtn,
+                                            isActive && styles.calendarDayBtnActive,
+                                            isPast && styles.calendarDayBtnDisabled,
+                                        ]}
+                                        disabled={isPast}
+                                        activeOpacity={0.8}
+                                        onPress={() => {
+                                            setSelectedDate(nextDate);
+                                            setShowCalendar(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.calendarDayText, isActive && styles.calendarDayTextActive]}>{day}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             <View style={styles.footer}>
                 <View style={styles.secureBadgeRow}>
@@ -601,6 +753,12 @@ const styles = StyleSheet.create({
         color: '#475569',
         flex: 1,
     },
+    detailValueButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     sectionBlock: {
         paddingHorizontal: 20,
         marginBottom: 24,
@@ -611,6 +769,58 @@ const styles = StyleSheet.create({
         color: '#94a3b8',
         letterSpacing: 1,
         marginBottom: 12,
+    },
+    contactCard: {
+        backgroundColor: '#ffffff',
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        padding: 16,
+    },
+    contactLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748b',
+        marginBottom: 8,
+    },
+    contactLabelSpacing: {
+        marginTop: 14,
+    },
+    contactInput: {
+        height: 52,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#dbe3f0',
+        backgroundColor: '#ffffff',
+        paddingHorizontal: 14,
+        fontSize: 15,
+        color: '#0f172a',
+    },
+    contactPhoneBox: {
+        minHeight: 52,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        backgroundColor: '#f8fafc',
+        paddingHorizontal: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    contactPhoneText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#0f172a',
+    },
+    contactPhoneMutedText: {
+        fontSize: 15,
+        color: '#94a3b8',
+    },
+    contactHint: {
+        marginTop: 10,
+        fontSize: 13,
+        lineHeight: 18,
+        color: '#64748b',
     },
     addonsList: {
         backgroundColor: '#f8fafc',
@@ -650,7 +860,7 @@ const styles = StyleSheet.create({
     addonFree: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#16a34a', // emerald-600
+        color: '#16a34a', 
         letterSpacing: 0.5,
     },
     addonPrice: {
@@ -883,5 +1093,79 @@ const styles = StyleSheet.create({
         color: '#9f1239',
         fontSize: 12,
         fontWeight: '800',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    calendarModalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 28,
+        padding: 20,
+    },
+    calendarModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    calendarModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#0f172a',
+    },
+    calendarMonthHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    calendarMonthTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#0f172a',
+    },
+    calendarWeekRow: {
+        flexDirection: 'row',
+        marginBottom: 8,
+    },
+    calendarWeekCell: {
+        width: '14.2857%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 6,
+    },
+    calendarWeekText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#94a3b8',
+    },
+    calendarGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    calendarDayBtn: {
+        width: '14.2857%',
+        aspectRatio: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 999,
+        marginBottom: 8,
+    },
+    calendarDayBtnActive: {
+        backgroundColor: '#0047FF',
+    },
+    calendarDayBtnDisabled: {
+        opacity: 0.3,
+    },
+    calendarDayText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0f172a',
+    },
+    calendarDayTextActive: {
+        color: '#fff',
     },
 });

@@ -1,14 +1,3 @@
-"""
-Stability & correctness tests covering:
-  1. Race condition / distributed lock (double-booking same slot)
-  2. Idempotency-Key deduplication in BookingViewSet.create
-  3. IntegrityError rollback on unique_active_booking_per_slot
-  4. /tables/status/ with valid/invalid date+time params
-  5. /bookings/available_slots/ boundary times and closed hours
-  6. /bookings/ optional pagination (page_size, page)
-  7. DB constraints: guests 1..20, duration 15..480
-  8. Table seats >= 1, restaurant NOT NULL
-"""
 import pytest
 from datetime import date, time, timedelta
 from unittest.mock import patch
@@ -21,7 +10,7 @@ from bookings.models import Booking
 from restaurants.models import Restaurant, Table, OpeningHours
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+                                                                                
 
 @pytest.fixture
 def api_client():
@@ -30,7 +19,7 @@ def api_client():
 
 @pytest.fixture
 def setup(db):
-    """Create owner + verified restaurant + 2 tables + customer."""
+    
     owner = User.objects.create_user("stab_owner", "o@t.com", "pass1234")
     owner.profile.role = "owner"
     owner.profile.save()
@@ -49,7 +38,7 @@ def setup(db):
     t1 = Table.objects.create(restaurant=restaurant, number="T1", seats=4)
     t2 = Table.objects.create(restaurant=restaurant, number="T2", seats=4)
 
-    # Open every day 10:00–23:00
+                                
     for day in range(7):
         OpeningHours.objects.create(
             restaurant=restaurant,
@@ -69,22 +58,18 @@ def _tomorrow():
     return (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-# ── 1. Race condition / lock ──────────────────────────────────────────────────
+                                                                                
 
 @pytest.mark.django_db
 class TestRaceCondition:
-    """
-    Simulate two concurrent requests for the same slot.
-    The lock prevents both from succeeding.
-    """
 
     def test_lock_prevents_double_booking(self, setup):
         owner, restaurant, t1, t2, customer = setup
         tomorrow = _tomorrow()
 
-        # Simulate: lock is already held when second request arrives
+                                                                    
         with patch("bookings.services.BookingService.acquire_booking_lock") as mock_lock:
-            # First call succeeds, second fails
+                                               
             mock_lock.side_effect = [True, False]
 
             client1 = APIClient()
@@ -98,13 +83,13 @@ class TestRaceCondition:
                 "duration_minutes": 90,
             }
 
-            # First request — lock acquired
+                                           
             mock_lock.return_value = True
             mock_lock.side_effect = None
             r1 = client1.post("/api/v1/bookings/", payload)
             assert r1.status_code == 201, r1.data
 
-            # Second request — lock denied
+                                          
             customer2 = User.objects.create_user("stab_cust2", "c2@t.com", "pass1234")
             customer2.profile.role = "customer"
             customer2.profile.save()
@@ -116,9 +101,9 @@ class TestRaceCondition:
             assert r2.status_code in (400, 409), r2.data
 
     def test_capacity_blocks_overbooking(self, setup):
-        """When capacity is exhausted, second booking is rejected."""
+        
         owner, restaurant, t1, t2, customer = setup
-        # Set capacity to exactly 4 (one table)
+                                               
         restaurant.capacity = 4
         restaurant.save()
         tomorrow = _tomorrow()
@@ -150,7 +135,7 @@ class TestRaceCondition:
         assert "вместимост" in str(r2.data).lower() or "guests" in str(r2.data).lower()
 
 
-# ── 2. Idempotency-Key deduplication ─────────────────────────────────────────
+                                                                               
 
 @pytest.mark.django_db
 class TestIdempotency:
@@ -174,12 +159,12 @@ class TestIdempotency:
         assert r1.status_code == 201, r1.data
         booking_id = r1.data["id"]
 
-        # Second request with same key — must return same booking, not create new
+                                                                                 
         r2 = client.post("/api/v1/bookings/", payload, HTTP_IDEMPOTENCY_KEY=key)
         assert r2.status_code in (200, 201)
         assert r2.data["id"] == booking_id
 
-        # Only one booking should exist
+                                       
         assert Booking.objects.filter(
             user=customer, restaurant=restaurant, date=tomorrow, time="18:00:00"
         ).count() == 1
@@ -199,7 +184,7 @@ class TestIdempotency:
         }, HTTP_IDEMPOTENCY_KEY="key-A")
         assert r1.status_code == 201
 
-        # Different time slot — different booking
+                                                 
         day_after = (date.today() + timedelta(days=2)).strftime("%Y-%m-%d")
         r2 = client.post("/api/v1/bookings/", {
             "restaurant": restaurant.id,
@@ -212,16 +197,12 @@ class TestIdempotency:
         assert r1.data["id"] != r2.data["id"]
 
 
-# ── 3. IntegrityError rollback ────────────────────────────────────────────────
+                                                                                
 
 @pytest.mark.django_db
 class TestIntegrityRollback:
 
     def test_unique_constraint_prevents_duplicate_slot(self, setup):
-        """
-        unique_active_booking_per_slot: same user+restaurant+date+time
-        with active status must be rejected.
-        """
         owner, restaurant, t1, t2, customer = setup
         tomorrow = _tomorrow()
 
@@ -244,11 +225,11 @@ class TestIntegrityRollback:
             "guests": 2,
             "duration_minutes": 90,
         })
-        # Should be rejected (overlap or unique constraint)
+                                                           
         assert r.status_code in (400, 409), r.data
 
     def test_db_check_constraint_guests_min(self, setup):
-        """guests < 1 must be rejected at DB level."""
+        
         owner, restaurant, t1, t2, customer = setup
         with pytest.raises((IntegrityError, Exception)):
             Booking.objects.create(
@@ -256,13 +237,13 @@ class TestIntegrityRollback:
                 restaurant=restaurant,
                 date=date.today() + timedelta(days=1),
                 time=time(19, 0),
-                guests=0,  # violates CHECK guests >= 1
+                guests=0,                              
                 duration_minutes=90,
                 status=Booking.PENDING,
             )
 
     def test_db_check_constraint_guests_max(self, setup):
-        """guests > 20 must be rejected at DB level."""
+        
         owner, restaurant, t1, t2, customer = setup
         with pytest.raises((IntegrityError, Exception)):
             Booking.objects.create(
@@ -270,13 +251,13 @@ class TestIntegrityRollback:
                 restaurant=restaurant,
                 date=date.today() + timedelta(days=1),
                 time=time(19, 0),
-                guests=21,  # violates CHECK guests <= 20
+                guests=21,                               
                 duration_minutes=90,
                 status=Booking.PENDING,
             )
 
     def test_db_check_constraint_duration_min(self, setup):
-        """duration_minutes < 15 must be rejected at DB level."""
+        
         owner, restaurant, t1, t2, customer = setup
         with pytest.raises((IntegrityError, Exception)):
             Booking.objects.create(
@@ -285,12 +266,12 @@ class TestIntegrityRollback:
                 date=date.today() + timedelta(days=1),
                 time=time(19, 0),
                 guests=2,
-                duration_minutes=10,  # violates CHECK duration >= 15
+                duration_minutes=10,                                 
                 status=Booking.PENDING,
             )
 
     def test_db_check_constraint_duration_max(self, setup):
-        """duration_minutes > 480 must be rejected at DB level."""
+        
         owner, restaurant, t1, t2, customer = setup
         with pytest.raises((IntegrityError, Exception)):
             Booking.objects.create(
@@ -299,12 +280,12 @@ class TestIntegrityRollback:
                 date=date.today() + timedelta(days=1),
                 time=time(19, 0),
                 guests=2,
-                duration_minutes=481,  # violates CHECK duration <= 480
+                duration_minutes=481,                                  
                 status=Booking.PENDING,
             )
 
 
-# ── 4. /tables/status/ date+time params ──────────────────────────────────────
+                                                                               
 
 @pytest.mark.django_db
 class TestTableStatus:
@@ -319,7 +300,7 @@ class TestTableStatus:
         })
         assert r.status_code == 200
         assert isinstance(r.data, list)
-        assert len(r.data) == 2  # t1 and t2
+        assert len(r.data) == 2             
 
     def test_no_params_uses_now(self, setup):
         owner, restaurant, t1, t2, customer = setup
@@ -397,7 +378,7 @@ class TestTableStatus:
         assert statuses[t1.id] == "occupied"
 
 
-# ── 5. /bookings/available_slots/ boundary times ─────────────────────────────
+                                                                               
 
 @pytest.mark.django_db
 class TestAvailableSlots:
@@ -414,14 +395,14 @@ class TestAvailableSlots:
         assert r.status_code == 200
         slots = r.data.get("slots", [])
         assert len(slots) > 0
-        # All slots should be within 10:00–23:00
+                                                
         for slot in slots:
             h = int(slot[:2])
             assert 10 <= h < 23, f"Slot {slot} outside operating hours"
 
     def test_closed_day_returns_empty(self, setup):
         owner, restaurant, t1, t2, customer = setup
-        # Mark tomorrow as closed
+                                 
         tomorrow_weekday = (date.today() + timedelta(days=1)).weekday()
         OpeningHours.objects.filter(
             restaurant=restaurant, day_of_week=tomorrow_weekday
@@ -458,12 +439,12 @@ class TestAvailableSlots:
             "date": yesterday,
             "guests": 2,
         })
-        # Backend may return 400 or empty slots — both are acceptable
-        # The important thing is it doesn't crash (500)
+                                                                     
+                                                       
         assert r.status_code != 500
 
 
-# ── 6. /bookings/ optional pagination ────────────────────────────────────────
+                                                                               
 
 @pytest.mark.django_db
 class TestPagination:
@@ -491,7 +472,7 @@ class TestPagination:
         client.force_authenticate(user=owner)
         r = client.get("/api/v1/bookings/my_restaurant/")
         assert r.status_code == 200
-        # Without pagination params, returns list or results
+                                                            
         data = r.data.get("results", r.data) if isinstance(r.data, dict) else r.data
         assert len(data) >= 5
 
@@ -530,7 +511,7 @@ class TestPagination:
             assert r.data["results"] == []
 
 
-# ── 7. API-level constraint validation ───────────────────────────────────────
+                                                                               
 
 @pytest.mark.django_db
 class TestAPIConstraints:
@@ -602,7 +583,7 @@ class TestAPIConstraints:
         assert r.status_code == 400
 
 
-# ── 8. Table model constraints ────────────────────────────────────────────────
+                                                                                
 
 @pytest.mark.django_db
 class TestTableConstraints:
@@ -613,7 +594,7 @@ class TestTableConstraints:
             Table.objects.create(
                 restaurant=restaurant,
                 number="BAD",
-                seats=0,  # violates seats >= 1
+                seats=0,                       
             )
 
     def test_table_seats_21_rejected(self, setup):
@@ -622,7 +603,7 @@ class TestTableConstraints:
             Table.objects.create(
                 restaurant=restaurant,
                 number="BIG",
-                seats=21,  # violates seats <= 20
+                seats=21,                        
             )
 
     def test_table_api_rejects_capacity_0(self, setup):

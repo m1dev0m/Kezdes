@@ -1,8 +1,3 @@
-"""
-Comprehensive tests for the booking system.
-Covers: model logic, service layer (table allocation, capacity),
-        API endpoints (CRUD, status transitions), and edge cases.
-"""
 from datetime import date, time, timedelta, datetime
 from decimal import Decimal
 
@@ -142,7 +137,7 @@ class BookingModelTests(TestCase):
 
 
 class BookingServiceTests(TestCase):
-    """Tests for BookingService service layer."""
+    
 
     def setUp(self):
         self.user = User.objects.create_user("testuser", "test@test.com", "pass1234")
@@ -165,7 +160,7 @@ class BookingServiceTests(TestCase):
         )
 
     def test_find_best_tables_single_table(self):
-        """Should select the smallest suitable table."""
+        
         tables = BookingService.find_best_tables(
             self.restaurant, _tomorrow(), time(19, 0), guests=3
         )
@@ -173,7 +168,7 @@ class BookingServiceTests(TestCase):
         self.assertEqual(tables[0].id, self.table_medium.id)
 
     def test_find_best_tables_preferred(self):
-        """Should return the preferred table if available and large enough."""
+        
         tables = BookingService.find_best_tables(
             self.restaurant, _tomorrow(), time(19, 0), guests=2,
             preferred_table_id=self.table_large.id
@@ -182,7 +177,7 @@ class BookingServiceTests(TestCase):
         self.assertEqual(tables[0].id, self.table_large.id)
 
     def test_find_best_tables_preferred_too_small(self):
-        """Should return [] if the preferred table can't fit the guests."""
+        
         tables = BookingService.find_best_tables(
             self.restaurant, _tomorrow(), time(19, 0), guests=3,
             preferred_table_id=self.table_small.id
@@ -190,17 +185,17 @@ class BookingServiceTests(TestCase):
         self.assertEqual(tables, [])
 
     def test_find_best_tables_combines_for_large_party(self):
-        """Should combine tables if no single table fits the party."""
+        
         tables = BookingService.find_best_tables(
             self.restaurant, _tomorrow(), time(19, 0), guests=10
         )
-        # 8 + 4 = 12 >= 10 — should combine the large and medium tables
+                                                                       
         self.assertGreater(len(tables), 1)
         total_seats = sum(t.seats for t in tables)
         self.assertGreaterEqual(total_seats, 10)
 
     def test_find_best_tables_occupied_excluded(self):
-        """Occupied tables should be excluded from allocation."""
+        
         Booking.objects.create(
             user=self.user,
             restaurant=self.restaurant,
@@ -214,7 +209,7 @@ class BookingServiceTests(TestCase):
         tables = BookingService.find_best_tables(
             self.restaurant, _tomorrow(), time(19, 0), guests=3
         )
-        # table_medium is occupied, should get table_large instead
+                                                                  
         self.assertEqual(len(tables), 1)
         self.assertEqual(tables[0].id, self.table_large.id)
 
@@ -225,7 +220,7 @@ class BookingServiceTests(TestCase):
         self.assertTrue(ok)
 
     def test_check_capacity_exceeds_limit(self):
-        # Fill up capacity
+                          
         Booking.objects.create(
             user=self.user,
             restaurant=self.restaurant,
@@ -276,14 +271,14 @@ class BookingServiceTests(TestCase):
     CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
 )
 class BookingAPITests(TestCase):
-    """Tests for the Booking REST API endpoints."""
+    
 
     def setUp(self):
         self.client = APIClient()
         self.owner = User.objects.create_user("owner", "owner@test.com", "pass1234")
         self.customer = User.objects.create_user("customer", "customer@test.com", "pass1234")
 
-        # Set up profiles
+                         
         self.owner.profile.role = "owner"
         self.owner.profile.save()
         self.customer.profile.role = "customer"
@@ -306,7 +301,7 @@ class BookingAPITests(TestCase):
         )
 
     def _create_booking(self, user=None, **overrides):
-        """Helper to create a booking via the API."""
+        
         user = user or self.customer
         self.client.force_authenticate(user=user)
         data = {
@@ -326,13 +321,35 @@ class BookingAPITests(TestCase):
         self.assertIn("id", res.data)
         self.assertEqual(Booking.objects.count(), 1)
 
+    def test_create_booking_uses_profile_phone_as_default(self):
+        self.customer.profile.phone = "+77005556677"
+        self.customer.profile.save(update_fields=["phone"])
+
+        res = self._create_booking(user_phone="")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        booking = Booking.objects.get(id=res.data["id"])
+        self.assertEqual(booking.user_phone, "+77005556677")
+        self.assertEqual(res.data.get("user_phone"), "+77005556677")
+
+    def test_create_booking_keeps_user_phone_override(self):
+        self.customer.profile.phone = "+77005556677"
+        self.customer.profile.save(update_fields=["phone"])
+
+        res = self._create_booking(user_phone="+77007778899")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        booking = Booking.objects.get(id=res.data["id"])
+        self.assertEqual(booking.user_phone, "+77007778899")
+        self.assertEqual(res.data.get("user_phone"), "+77007778899")
+
     def test_create_booking_past_date_fails(self):
         yesterday = date.today() - timedelta(days=1)
         res = self._create_booking(date=str(yesterday))
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_confirm_booking(self):
-        """Owner confirms a pending booking."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
@@ -344,7 +361,7 @@ class BookingAPITests(TestCase):
         self.assertEqual(booking.status, Booking.APPROVED)
 
     def test_reject_booking(self):
-        """Owner rejects a pending booking."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
@@ -356,15 +373,15 @@ class BookingAPITests(TestCase):
         self.assertEqual(booking.status, Booking.REJECTED)
 
     def test_cancel_booking_by_user(self):
-        """Customer cancels their own booking."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
-        # First confirm it
+                          
         self.client.force_authenticate(user=self.owner)
         self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
 
-        # Customer cancels
+                          
         self.client.force_authenticate(user=self.customer)
         cancel_res = self.client.delete(f"/api/v1/bookings/{booking_id}/")
         self.assertEqual(cancel_res.status_code, status.HTTP_204_NO_CONTENT)
@@ -373,7 +390,7 @@ class BookingAPITests(TestCase):
         self.assertEqual(booking.status, Booking.CANCELLED_BY_USER)
 
     def test_public_booking_lookup_and_cancel_by_token(self):
-        """Public token should allow lookup and self-service cancellation without auth."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
         booking = Booking.objects.get(id=booking_id)
@@ -394,7 +411,7 @@ class BookingAPITests(TestCase):
         self.assertEqual(booking.status, Booking.CANCELLED_BY_USER)
 
     def test_completed_booking_exposes_review_and_rebook_context(self):
-        """Completed bookings must expose review eligibility and repeat-booking payload."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
         booking = Booking.objects.get(id=booking_id)
@@ -416,7 +433,7 @@ class BookingAPITests(TestCase):
         self.assertEqual(public_detail.data["rebook_payload"]["booking_id"], booking_id)
 
     def test_my_restaurant_does_not_crash_when_customer_profile_missing(self):
-        """Serializer should handle missing booking.user.profile safely."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
         booking = Booking.objects.get(id=booking_id)
@@ -432,19 +449,19 @@ class BookingAPITests(TestCase):
         self.assertIn("rebook_payload", detail.data)
 
     def test_double_confirm_fails(self):
-        """Confirming an already confirmed booking should fail."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
         self.client.force_authenticate(user=self.owner)
         self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
 
-        # Try to confirm again
+                              
         second = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_my_restaurant_endpoint(self):
-        """Owner can see their restaurant's bookings."""
+        
         self._create_booking()
 
         self.client.force_authenticate(user=self.owner)
@@ -454,8 +471,8 @@ class BookingAPITests(TestCase):
         self.assertEqual(len(data), 1)
 
     def test_my_restaurant_limit(self):
-        """my_restaurant supports limit param (used by Dashboard)."""
-        # Create multiple bookings
+        
+                                  
         self._create_booking(time="18:00")
         self._create_booking(time="19:00")
         self._create_booking(time="20:00")
@@ -467,10 +484,10 @@ class BookingAPITests(TestCase):
         self.assertEqual(len(data), 2)
 
     def test_my_restaurant_filters_by_date_and_time(self):
-        """my_restaurant supports date + time_from/time_to filters."""
+        
         target_date = str(_tomorrow())
 
-        # Create two bookings on same date, different times
+                                                           
         r1 = self._create_booking(date=target_date, time="18:00")
         r2 = self._create_booking(date=target_date, time="21:00")
         self.assertEqual(r1.status_code, status.HTTP_201_CREATED)
@@ -487,17 +504,17 @@ class BookingAPITests(TestCase):
         self.assertNotIn(r1.data["id"], ids)
 
     def test_reschedule_booking(self):
-        """Owner can reschedule an active booking and the booking is reallocated."""
+        
         res = self._create_booking(time="19:00")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         booking_id = res.data["id"]
 
-        # Confirm first so it's in active flow from restaurant perspective
+                                                                          
         self.client.force_authenticate(user=self.owner)
         confirm_res = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
         self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
 
-        # Reschedule to a new time
+                                  
         reschedule_res = self.client.post(
             f"/api/v1/bookings/{booking_id}/reschedule/",
             {"date": str(_tomorrow()), "time": "20:00", "duration_minutes": 90},
@@ -605,9 +622,9 @@ class BookingAPITests(TestCase):
         self.assertIn("turnover_minutes", smart_res.data)
 
     def test_list_filters_by_time_and_table(self):
-        """List endpoint supports filtering by time range and table."""
-        # Create base table and an extra table so that we can
-        # have bookings on different physical tables.
+        
+                                                             
+                                                     
         res1 = self._create_booking(time="18:00")
         res2 = self._create_booking(time="21:00")
         self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
@@ -616,26 +633,26 @@ class BookingAPITests(TestCase):
         b1 = Booking.objects.get(id=res1.data["id"])
         b2 = Booking.objects.get(id=res2.data["id"])
 
-        # Force the second booking onto a different table so that
-        # filtering by table_id can distinguish between them.
+                                                                 
+                                                             
         second_table = Table.objects.create(
             restaurant=self.restaurant, number="A2", seats=4, is_active=True,
         )
         b2.table = second_table
         b2.save(update_fields=["table"])
-        # Ensure M2M legacy relation also points to the second table only
+                                                                         
         b2.tables.set([second_table])
 
         self.client.force_authenticate(user=self.owner)
 
-        # Filter time range that should include only the later booking
+                                                                      
         resp = self.client.get("/api/v1/bookings/", {"date": str(_tomorrow()), "time_from": "20:00"})
         data = resp.data if isinstance(resp.data, list) else resp.data.get("results", [])
         ids = {row["id"] for row in data}
         self.assertIn(b2.id, ids)
         self.assertNotIn(b1.id, ids)
 
-        # Filter by table_id
+                            
         resp2 = self.client.get("/api/v1/bookings/", {"table_id": b1.table_id})
         data2 = resp2.data if isinstance(resp2.data, list) else resp2.data.get("results", [])
         ids2 = {row["id"] for row in data2}
@@ -643,7 +660,7 @@ class BookingAPITests(TestCase):
         self.assertNotIn(b2.id, ids2)
 
     def test_unauthenticated_can_create(self):
-        """Unauthenticated users can create public bookings."""
+        
         self.client.force_authenticate(user=None)
         res = self.client.post("/api/v1/bookings/", {
             "restaurant": self.restaurant.id,
@@ -656,7 +673,7 @@ class BookingAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
     def test_staff_can_create_walk_in_waitlist_entry(self):
-        """Restaurant staff should be able to create an anonymous walk-in waitlist entry through the existing waitlist endpoint."""
+        
         self.client.force_authenticate(user=self.owner)
         response = self.client.post(
             "/api/v1/bookings/waitlist/",
@@ -679,7 +696,7 @@ class BookingAPITests(TestCase):
         self.assertEqual(entry.guest_phone, "+77001112233")
 
     def test_waitlist_convert_returns_redirect_context(self):
-        """Converting a waitlist entry should return enough context for the frontend to redirect to the created booking."""
+        
         self.client.force_authenticate(user=self.owner)
         create_res = self.client.post(
             "/api/v1/bookings/waitlist/",
@@ -712,13 +729,13 @@ class BookingAPITests(TestCase):
     CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
 )
 class OnboardingFlowTests(TestCase):
-    """Tests for the restaurant owner onboarding flow."""
+    
 
     def setUp(self):
         self.client = APIClient()
 
     def test_register_owner_creates_request(self):
-        """Registering as 'owner' with a restaurant_name should create a RestaurantRequest."""
+        
         from restaurants.models import RestaurantRequest
 
         res = self.client.post("/api/v1/auth/register/", {
@@ -739,7 +756,7 @@ class OnboardingFlowTests(TestCase):
         self.assertEqual(req.status, "pending")
 
     def test_approve_request_creates_restaurant(self):
-        """Approving a RestaurantRequest should create a Restaurant and link it to the user."""
+        
         from restaurants.models import RestaurantRequest, Restaurant
         from restaurants.services import RestaurantService
 
@@ -769,7 +786,7 @@ class OnboardingFlowTests(TestCase):
         self.assertEqual(user.profile.restaurant, restaurant)
 
     def test_approve_already_approved_fails(self):
-        """Approving a non-pending request should fail."""
+        
         from restaurants.models import RestaurantRequest
         from restaurants.services import RestaurantService
 
@@ -793,10 +810,6 @@ class OnboardingFlowTests(TestCase):
     CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
 )
 class BookingSerializerContractTests(TestCase):
-    """
-    Tests that verify the API response contract matches what the frontend expects.
-    Specifically: status field values, user_name/user_phone, table_number.
-    """
 
     def setUp(self):
         self.client = APIClient()
@@ -838,18 +851,18 @@ class BookingSerializerContractTests(TestCase):
         return self.client.post("/api/v1/bookings/", data, format="json")
 
     def test_cancelled_by_user_status_not_collapsed(self):
-        """cancelled_by_user must be returned as-is, not collapsed to 'cancelled'."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
-        # Confirm then cancel by user
+                                     
         self.client.force_authenticate(user=self.owner)
         self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
 
         self.client.force_authenticate(user=self.customer)
         self.client.delete(f"/api/v1/bookings/{booking_id}/")
 
-        # Fetch via my_restaurant
+                                 
         self.client.force_authenticate(user=self.owner)
         res = self.client.get("/api/v1/bookings/my_restaurant/")
         data = res.data if isinstance(res.data, list) else res.data.get("results", [])
@@ -857,7 +870,7 @@ class BookingSerializerContractTests(TestCase):
         self.assertEqual(booking_data["status"], "cancelled_by_user")
 
     def test_cancelled_by_restaurant_status_not_collapsed(self):
-        """cancelled_by_restaurant must be returned as-is, not collapsed to 'cancelled'."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
@@ -871,7 +884,7 @@ class BookingSerializerContractTests(TestCase):
         self.assertEqual(booking_data["status"], "cancelled_by_restaurant")
 
     def test_confirmed_status_serialized_as_confirmed(self):
-        """Confirmed booking must return status='confirmed'."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
@@ -880,18 +893,18 @@ class BookingSerializerContractTests(TestCase):
         self.assertEqual(confirm_res.data["status"], "confirmed")
 
     def test_table_number_in_response(self):
-        """Booking response must include table_number field."""
+        
         res = self._create_booking()
         self.assertIn("table_number", res.data)
 
     def test_user_name_and_phone_in_response(self):
-        """Booking response must include user_name and user_phone."""
+        
         res = self._create_booking()
         self.assertIn("user_name", res.data)
         self.assertIn("user_phone", res.data)
 
     def test_normalize_statuses_approved_alias(self):
-        """?status=approved filter must return confirmed bookings."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
@@ -904,7 +917,7 @@ class BookingSerializerContractTests(TestCase):
         self.assertIn(booking_id, ids)
 
     def test_my_restaurant_returns_correct_shape(self):
-        """my_restaurant must return bookings with all required frontend fields."""
+        
         res = self._create_booking()
         booking_id = res.data["id"]
 
@@ -948,7 +961,7 @@ class BookingContractReliabilityTests(TestCase):
         Table.objects.create(restaurant=self.restaurant, number="R1", seats=4, is_active=True)
 
     def test_create_manual_allows_walkin_without_guest_contact(self):
-        """Walk-in bookings without user_name/user_phone are allowed (anonymous walk-ins)."""
+        
         self.client.force_authenticate(user=self.owner)
         response = self.client.post(
             "/api/v1/bookings/create_manual/",
@@ -957,7 +970,7 @@ class BookingContractReliabilityTests(TestCase):
                 "date": str(_tomorrow()),
                 "time": "18:30",
                 "guests": 2,
-                # no user_name/user_phone — valid for anonymous walk-in
+                                                                       
             },
             format="json",
         )

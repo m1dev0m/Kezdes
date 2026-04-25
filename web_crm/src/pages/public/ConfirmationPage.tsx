@@ -98,7 +98,7 @@ export default function ConfirmationPage() {
     };
 
     void syncPublicBooking();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [canUsePublicManagement, state.publicToken]);
 
   const publicHelpText = useMemo(() => {

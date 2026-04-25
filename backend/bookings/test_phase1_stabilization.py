@@ -50,7 +50,7 @@ def setup_restaurant(users):
         address="123 Street",
         owner=owner,
         is_claimed=True,
-        is_verified=True,  # Crucial for Phase 1 fixes
+        is_verified=True,                             
         capacity=50,
     )
     owner.profile.restaurant = restaurant
@@ -74,7 +74,7 @@ def setup_restaurant(users):
 @pytest.mark.django_db
 class TestPhase1Stabilization:
     
-    # --- AUTH MODULE ---
+                         
     def test_login_correct_credentials(self, api_client, users):
         res = api_client.post("/api/v1/auth/login/", {"username": "customer1", "password": "pass123"})
         assert res.status_code == status.HTTP_200_OK, res.data
@@ -90,7 +90,7 @@ class TestPhase1Stabilization:
         res = api_client.post("/api/v1/auth/login/", {"username": "ghost", "password": "pass123"})
         assert res.status_code == status.HTTP_401_UNAUTHORIZED
 
-    # --- RESTAURANT APPROVAL FLOW ---
+                                      
     def test_create_restaurant_request(self, api_client, users):
         api_client.force_authenticate(user=users["owner"])
         res = api_client.post("/api/v1/restaurants/requests/", {
@@ -106,8 +106,8 @@ class TestPhase1Stabilization:
         assert req.status == "pending"
         
     def test_unauthenticated_cannot_create_request(self, api_client):
-        # The /requests/ endpoint is intentionally public (AllowAny for create)
-        # to allow restaurant owners to self-register. Missing required fields → 400.
+                                                                               
+                                                                                     
         res = api_client.post("/api/v1/restaurants/requests/", {
             "name": "Hacker Venue",
             "address": "Hack Street",
@@ -125,7 +125,7 @@ class TestPhase1Stabilization:
         assert res.status_code == status.HTTP_200_OK, res.data
         assert res.data["status"] == "approved"
         
-        # Verify the actual restaurant was created and is verified
+                                                                  
         rest_id = res.data["restaurant_id"]
         rest = Restaurant.objects.get(id=rest_id)
         assert rest.is_verified is True
@@ -145,11 +145,11 @@ class TestPhase1Stabilization:
             "guests": 2
         })
         
-        # We added this gate:
+                             
         assert res.status_code == status.HTTP_400_BAD_REQUEST, res.data
         assert "вериф" in str(res.data).lower() or "verif" in str(res.data).lower() or "одобрен" in str(res.data).lower()
 
-    # --- TABLE CRUD WITH PERMISSIONS ---
+                                         
     def test_host_can_update_table_status(self, api_client, users, setup_restaurant):
         api_client.force_authenticate(user=users["host"])
         t1 = setup_restaurant["tables"][0]
@@ -188,23 +188,23 @@ class TestPhase1Stabilization:
         res = api_client.delete(f"/api/v1/tables/{t1.id}/")
         assert res.status_code == status.HTTP_204_NO_CONTENT
 
-    # --- RESERVATION RULES ---
+                               
     def test_overlapping_booking_rejected(self, api_client, users, setup_restaurant):
         rest = setup_restaurant["restaurant"]
-        # Delete smaller tables to force a conflict on the only big table
+                                                                         
         Table.objects.filter(id__in=[t.id for t in setup_restaurant["tables"][:2]]).delete()
-        t3 = setup_restaurant["tables"][2] # 6 seats
+        t3 = setup_restaurant["tables"][2]          
         
         api_client.force_authenticate(user=users["customer"])
         book_date = str(datetime.date.today() + datetime.timedelta(days=1))
         
-        # First booking at 19:00 for 4 people (takes the 6-seat table)
+                                                                      
         res1 = api_client.post("/api/v1/bookings/", {
             "restaurant": rest.id, "date": book_date, "time": "19:00:00", "guests": 4, "duration_minutes": 120
         })
         assert res1.status_code == status.HTTP_201_CREATED
 
-        # Second concurrent booking at 19:30 for 2 people
+                                                         
         res2 = api_client.post("/api/v1/bookings/", {
             "restaurant": rest.id, "date": book_date, "time": "19:30:00", "guests": 2, "duration_minutes": 120
         })
@@ -220,7 +220,7 @@ class TestPhase1Stabilization:
         rest = setup_restaurant["restaurant"]
         book_date = str(datetime.date.today() + datetime.timedelta(days=1))
         
-        # Request 15 guests, rest has 12 seats, triggers capacity exception
+                                                                           
         res = api_client.post("/api/v1/bookings/", {
             "restaurant": rest.id, "date": book_date, "time": "20:00:00", "guests": 15
         })
@@ -232,17 +232,17 @@ class TestPhase1Stabilization:
         rest = setup_restaurant["restaurant"]
         book_date = str(datetime.date.today() + datetime.timedelta(days=1))
         
-        # Request 3 guests -> should take 4-seat table (T2)
+                                                           
         res = api_client.post("/api/v1/bookings/", {
             "restaurant": rest.id, "date": book_date, "time": "18:00:00", "guests": 3
         })
         assert res.status_code == status.HTTP_201_CREATED, res.data
         
-        # In the test setup:
-        # T1 (2 seats) is id 1
-        # T2 (4 seats) is id 2
-        # T3 (6 seats) is id 3
-        # Response uses `table_id` field from BookingSerializer
+                            
+                              
+                              
+                              
+                                                               
         allocated_id = res.data.get("table_id") or (
             res.data["table"]["id"] if isinstance(res.data.get("table"), dict) else res.data.get("table")
         )

@@ -24,7 +24,7 @@ from restaurants.models import Restaurant, Table
 
 
 def _rand_phone(i: int) -> str:
-    return f"+7700{(1000000 + i):07d}"  # +7700XXXXXXX
+    return f"+7700{(1000000 + i):07d}"                
 
 
 def _rand_name() -> str:
@@ -48,11 +48,11 @@ def _ceil_dt_to_quarter(dt: datetime) -> datetime:
 
 
 def _pick_time_slots(base_date: date, count: int) -> list[dtime]:
-    """Create a set of intentionally overlapping slots."""
+    
     start = datetime.combine(base_date, dtime(18, 0))
     slots: list[dtime] = []
     for _ in range(count):
-        # heavily bias to overlapping: 18:00-20:00
+                                                  
         minutes = random.choice([0, 15, 30, 45, 60, 75, 90, 105, 120])
         dt = _ceil_dt_to_quarter(start + timedelta(minutes=minutes))
         slots.append(dt.time())
@@ -145,7 +145,7 @@ class Command(BaseCommand):
             tables_by_restaurant = self._seed_tables(prefix, restaurants, tables_min, tables_max)
             guests = self._seed_guests(prefix, guests_n)
 
-            # Precompute target slots to force overlaps
+                                                       
             slots = _pick_time_slots(base_date, requests_n)
 
             self.stdout.write(self.style.NOTICE("[2/4] Running concurrent reservation traffic simulation..."))
@@ -184,11 +184,11 @@ class Command(BaseCommand):
         restaurants_qs = Restaurant.objects.filter(name__startswith=f"{prefix} ")
         restaurant_ids = list(restaurants_qs.values_list("id", flat=True))
         if restaurant_ids:
-            # Delete dependent bookings first
+                                             
             Booking.objects.filter(restaurant_id__in=restaurant_ids).delete()
-            # Delete tables
+                           
             Table.objects.filter(restaurant_id__in=restaurant_ids).delete()
-            # Detach owner->restaurant relation (profile) if present
+                                                                    
             owners = User.objects.filter(owned_restaurant__id__in=restaurant_ids)
             for u in owners:
                 if hasattr(u, "profile") and getattr(u.profile, "restaurant_id", None) in restaurant_ids:
@@ -279,7 +279,7 @@ class Command(BaseCommand):
         concurrency: int,
         arrival_window_seconds: float,
     ) -> list[RequestResult]:
-        # Pre-generate request payloads
+                                       
         payloads: list[dict[str, Any]] = []
         for i in range(requests_n):
             r = random.choice(restaurants)
@@ -287,7 +287,7 @@ class Command(BaseCommand):
             guest = random.choice(guests)
             guest_count = random.randint(1, 8)
 
-            # Randomly try to force specific table selection ~50% of the time
+                                                                             
             table_id = None
             if random.random() < 0.5:
                 table_id = random.choice(tables_by_restaurant[r.id]).id
@@ -372,7 +372,7 @@ class Command(BaseCommand):
 
         active = list(qs.filter(status__in=Booking.ACTIVE_STATUSES))
 
-        # A) No overlaps per physical table across ACTIVE_STATUSES
+                                                                  
         per_table: dict[int, list[Booking]] = {}
         for b in active:
             ids = set()
@@ -397,8 +397,8 @@ class Command(BaseCommand):
                 prev_end = end_dt
                 prev_id = b.id
 
-        # B) Capacity respected (sum guests for overlapping in slot should not exceed restaurant.capacity)
-        #    We validate this in a coarse way: for each active booking window, sum guests overlapping.
+                                                                                                          
+                                                                                                      
         for r in restaurants:
             if not r.capacity:
                 continue
@@ -416,7 +416,7 @@ class Command(BaseCommand):
                     )
                     break
 
-        # C) No duplicate active booking per (user, restaurant, date, time)
+                                                                           
         dups = (
             Booking.objects.filter(
                 restaurant__in=restaurants,

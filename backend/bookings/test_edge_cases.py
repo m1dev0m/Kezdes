@@ -1,6 +1,3 @@
-"""
-Additional tests for edge cases and regression testing.
-"""
 import pytest
 from datetime import date, time, timedelta
 from django.contrib.auth.models import User
@@ -54,7 +51,7 @@ class TestEdgeCases:
         return admin, restaurant
 
     def test_booking_with_exact_table_capacity(self, api_client, setup_edge_case_restaurant, db):
-        """Test booking exactly matching table capacity succeeds"""
+        
         admin, restaurant = setup_edge_case_restaurant
 
         customer = User.objects.create_user(
@@ -81,7 +78,7 @@ class TestEdgeCases:
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_booking_multiple_tables_combined(self, api_client, setup_edge_case_restaurant, db):
-        """Test booking that requires combining multiple tables"""
+        
         admin, restaurant = setup_edge_case_restaurant
 
         customer = User.objects.create_user(
@@ -121,7 +118,7 @@ class TestEdgeCases:
 
         tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-        # Book 3-hour slot
+                          
         response1 = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': tomorrow,
@@ -130,19 +127,19 @@ class TestEdgeCases:
             'duration_minutes': 180
         })
 
-        # Should succeed
+                        
         assert response1.status_code == status.HTTP_201_CREATED
 
     def test_booking_near_closing_time(self, api_client, setup_edge_case_restaurant, db):
-        """Test booking near restaurant closing time when hours are defined"""
+        
         admin, restaurant = setup_edge_case_restaurant
 
-        # The fixture already creates opening hours for Monday (day_of_week=0)
-        # Let's check what day tomorrow is
+                                                                              
+                                          
         tomorrow = date.today() + timedelta(days=1)
         day_of_week = tomorrow.weekday()
 
-        # Ensure closing time is 21:00 for the target day
+                                                         
         hours, _ = OpeningHours.objects.get_or_create(
             restaurant=restaurant,
             day_of_week=day_of_week,
@@ -152,7 +149,7 @@ class TestEdgeCases:
                 'is_closed': False
             }
         )
-        # Always enforce closing_time=21:00 regardless of existing value
+                                                                        
         hours.closing_time = time(21, 0)
         hours.opening_time = time(10, 0)
         hours.is_closed = False
@@ -170,7 +167,7 @@ class TestEdgeCases:
 
         tomorrow_str = tomorrow.strftime('%Y-%m-%d')
 
-        # Book at 20:00 with 90 min duration - should end at 21:30 which is past closing
+                                                                                        
         response = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': tomorrow_str,
@@ -179,11 +176,11 @@ class TestEdgeCases:
             'duration_minutes': 90
         })
 
-        # Should fail due to operating hours (ends at 21:30 > 21:00 closing)
+                                                                            
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_booking_past_closing_time_allowed_when_within_hours(self, api_client, setup_edge_case_restaurant, db):
-        """Test booking that ends exactly at closing time is allowed"""
+        
         admin, restaurant = setup_edge_case_restaurant
 
         customer = User.objects.create_user(
@@ -198,7 +195,7 @@ class TestEdgeCases:
 
         tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-        # Book at 20:30 with 90 min duration - ends at 22:00 which is exactly closing
+                                                                                     
         response = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': tomorrow,
@@ -207,12 +204,12 @@ class TestEdgeCases:
             'duration_minutes': 90
         })
 
-        # This depends on implementation - might pass or fail
+                                                             
         assert response.status_code in [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST]
 
 
 class TestMultipleRestaurants:
-    """Tests for multiple restaurants and concurrent scenarios"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -220,8 +217,8 @@ class TestMultipleRestaurants:
 
     @pytest.fixture
     def setup_multiple_restaurants(self, db):
-        """Setup multiple restaurants for testing"""
-        # Restaurant 1
+        
+                      
         admin1 = User.objects.create_user(
             username='multi_admin1',
             email='multiadmin1@test.com',
@@ -243,7 +240,7 @@ class TestMultipleRestaurants:
         Table.objects.create(restaurant=restaurant1, number='1', seats=4)
         Table.objects.create(restaurant=restaurant1, number='2', seats=6)
 
-        # Restaurant 2
+                      
         admin2 = User.objects.create_user(
             username='multi_admin2',
             email='multiadmin2@test.com',
@@ -267,7 +264,7 @@ class TestMultipleRestaurants:
         return admin1, admin2, restaurant1, restaurant2
 
     def test_booking_different_restaurants_same_time(self, api_client, setup_multiple_restaurants, db):
-        """Test user can book different restaurants at same time"""
+        
         admin1, admin2, restaurant1, restaurant2 = setup_multiple_restaurants
 
         customer = User.objects.create_user(
@@ -282,7 +279,7 @@ class TestMultipleRestaurants:
 
         tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-        # Book restaurant 1
+                           
         response1 = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant1.id,
             'date': tomorrow,
@@ -292,7 +289,7 @@ class TestMultipleRestaurants:
         })
         assert response1.status_code == status.HTTP_201_CREATED
 
-        # Try to book restaurant 2 at overlapping time
+                                                      
         response2 = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant2.id,
             'date': tomorrow,
@@ -300,11 +297,11 @@ class TestMultipleRestaurants:
             'guests': 2,
             'duration_minutes': 90
         })
-        # This should fail because user has overlapping booking
+                                                               
         assert response2.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_different_users_book_same_restaurant_different_times(self, api_client, setup_multiple_restaurants, db):
-        """Test different users can book same restaurant at different times"""
+        
         admin1, admin2, restaurant1, restaurant2 = setup_multiple_restaurants
 
         customer1 = User.objects.create_user(
@@ -325,7 +322,7 @@ class TestMultipleRestaurants:
 
         tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-        # Customer 1 books at 18:00
+                                   
         api_client.force_authenticate(user=customer1)
         response1 = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant1.id,
@@ -336,7 +333,7 @@ class TestMultipleRestaurants:
         })
         assert response1.status_code == status.HTTP_201_CREATED
 
-        # Customer 2 books at 20:00 (non-overlapping)
+                                                     
         api_client.force_authenticate(user=customer2)
         response2 = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant1.id,
@@ -349,7 +346,7 @@ class TestMultipleRestaurants:
 
 
 class TestRestaurantCapacityLimits:
-    """Tests for restaurant-level capacity limits"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -357,7 +354,7 @@ class TestRestaurantCapacityLimits:
 
     @pytest.fixture
     def setup_low_capacity_restaurant(self, db):
-        """Setup restaurant with limited total capacity"""
+        
         admin = User.objects.create_user(
             username='lowcap_admin',
             email='lowcapadmin@test.com',
@@ -372,19 +369,19 @@ class TestRestaurantCapacityLimits:
             owner=admin,
             is_claimed=True,
             is_verified=True,
-            capacity=6  # Very low capacity
+            capacity=6                     
         )
         admin.profile.restaurant = restaurant
         admin.profile.save()
 
-        # Create tables with total capacity of 6
+                                                
         Table.objects.create(restaurant=restaurant, number='1', seats=2)
         Table.objects.create(restaurant=restaurant, number='2', seats=4)
 
         return admin, restaurant
 
     def test_restaurant_capacity_limit_enforced(self, api_client, setup_low_capacity_restaurant, db):
-        """Test that restaurant capacity limit is enforced"""
+        
         admin, restaurant = setup_low_capacity_restaurant
 
         customer1 = User.objects.create_user(
@@ -399,7 +396,7 @@ class TestRestaurantCapacityLimits:
 
         tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-        # First booking of 4 guests should succeed
+                                                  
         response1 = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': tomorrow,
@@ -409,7 +406,7 @@ class TestRestaurantCapacityLimits:
         })
         assert response1.status_code == status.HTTP_201_CREATED
 
-        # Second booking of 4 guests at overlapping time should fail
+                                                                    
         customer2 = User.objects.create_user(
             username='cap_customer2',
             email='capc2@test.com',
@@ -423,17 +420,17 @@ class TestRestaurantCapacityLimits:
         response2 = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': tomorrow,
-            'time': '19:00',  # Overlaps with first booking
+            'time': '19:00',                               
             'guests': 4,
             'duration_minutes': 90
         })
 
-        # Should fail due to capacity limit
+                                           
         assert response2.status_code == status.HTTP_400_BAD_REQUEST
 
 
 class TestBookingStatusTransitions:
-    """Tests for booking status transitions"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -441,7 +438,7 @@ class TestBookingStatusTransitions:
 
     @pytest.fixture
     def setup_for_status_tests(self, db):
-        """Setup for status transition tests"""
+        
         admin = User.objects.create_user(
             username='status_admin',
             email='statusadmin@test.com',
@@ -484,7 +481,7 @@ class TestBookingStatusTransitions:
         return admin, customer, restaurant, booking
 
     def test_admin_can_confirm_booking(self, api_client, setup_for_status_tests):
-        """Test that admin can confirm a pending booking"""
+        
         admin, customer, restaurant, booking = setup_for_status_tests
 
         api_client.force_authenticate(user=admin)
@@ -495,7 +492,7 @@ class TestBookingStatusTransitions:
         assert booking.status == Booking.APPROVED
 
     def test_admin_can_reject_booking(self, api_client, setup_for_status_tests):
-        """Test that admin can reject a pending booking"""
+        
         admin, customer, restaurant, booking = setup_for_status_tests
 
         api_client.force_authenticate(user=admin)
@@ -506,10 +503,10 @@ class TestBookingStatusTransitions:
         assert booking.status == Booking.REJECTED
 
     def test_admin_can_cancel_approved_booking(self, api_client, setup_for_status_tests):
-        """Test that admin can cancel an approved booking"""
+        
         admin, customer, restaurant, booking = setup_for_status_tests
 
-        # First confirm the booking
+                                   
         booking.status = Booking.APPROVED
         booking.save()
 

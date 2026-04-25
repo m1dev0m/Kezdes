@@ -32,19 +32,19 @@ export interface TableProps<T> {
     rowKey: (record: T) => string;
     isLoading?: boolean;
 
-    // Selection
+    
     selectedRowKeys?: string[];
     onSelectionChange?: (selectedKeys: string[]) => void;
 
-    // Sorting
+    
     sortKey?: string;
     sortDirection?: SortDirection;
     onSort?: (key: string, direction: SortDirection) => void;
 
-    // Pagination
+    
     pagination?: TablePagination;
 
-    // Actions
+    
     onRowClick?: (record: T) => void;
     className?: string;
     stickyHeader?: boolean;

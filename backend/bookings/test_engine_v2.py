@@ -1,11 +1,3 @@
-"""
-Tests for ReservationEngine — Level 1 Core.
-
-Covers:
-  1. ReservationValidator — overlap, capacity, table existence
-  2. TableAssigner        — smallest table selection, combinations, errors
-  3. StatusMachine        — enforced transitions, forbidden transitions
-"""
 import pytest
 from datetime import date, time, timedelta
 from django.contrib.auth.models import User
@@ -22,7 +14,6 @@ from bookings.models import Booking
 from restaurants.models import Restaurant, Table
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture
 def restaurant(db):
@@ -81,21 +72,14 @@ def make_booking(restaurant, table, user, booking_date, booking_time,
     return b
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 1. RESERVATION VALIDATOR — overlap / capacity / table existence
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestOverlapDetection:
-    """Test that overlapping bookings are correctly detected (per-table)."""
+    
 
     @pytest.mark.django_db
     def test_same_table_overlap_blocked(self, restaurant, tables, customer, future_date):
-        """Two bookings on the SAME table at the same time → blocked via table availability."""
-        make_booking(restaurant, tables["t4"], customer, future_date, time(19, 0),
+                make_booking(restaurant, tables["t4"], customer, future_date, time(19, 0),
                      guests=2, duration=90)
-        # No table_id → validator checks if ANY table is available
-        # T4 is taken, but T6/T8 are free → valid (different table)
-        # But if we request T4 specifically → blocked
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=2, duration_minutes=90,
             table_id=tables["t4"].id,
@@ -105,10 +89,8 @@ class TestOverlapDetection:
 
     @pytest.mark.django_db
     def test_different_table_same_time_allowed(self, restaurant, tables, customer, future_date):
-        """Two bookings at the same time on DIFFERENT tables → allowed."""
-        make_booking(restaurant, tables["t4"], customer, future_date, time(19, 0),
+                make_booking(restaurant, tables["t4"], customer, future_date, time(19, 0),
                      guests=2, duration=90)
-        # No specific table → validator finds T6 or T8 → valid
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=2, duration_minutes=90,
         )
@@ -116,8 +98,6 @@ class TestOverlapDetection:
 
     @pytest.mark.django_db
     def test_all_tables_occupied_blocked(self, restaurant, customer, future_date):
-        """All tables occupied → no table available → blocked."""
-        # Create one table and book it
         only_table = Table.objects.create(
             restaurant=restaurant, number="ONLY", seats=4, is_active=True,
         )
@@ -131,8 +111,7 @@ class TestOverlapDetection:
 
     @pytest.mark.django_db
     def test_no_overlap_adjacent(self, restaurant, tables, customer, future_date):
-        """Back-to-back bookings with no overlap → valid even on same table."""
-        make_booking(restaurant, tables["t4"], customer, future_date, time(19, 0),
+                make_booking(restaurant, tables["t4"], customer, future_date, time(19, 0),
                      guests=2, duration=90)  # 19:00–20:30
         result = ReservationValidator.validate(
             restaurant, future_date, time(20, 30), guests=2, duration_minutes=90,
@@ -141,8 +120,7 @@ class TestOverlapDetection:
 
     @pytest.mark.django_db
     def test_no_overlap_far_apart(self, restaurant, tables, customer, future_date):
-        """Bookings hours apart → no overlap."""
-        make_booking(restaurant, tables["t4"], customer, future_date, time(12, 0),
+                make_booking(restaurant, tables["t4"], customer, future_date, time(12, 0),
                      guests=2, duration=90)
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=2, duration_minutes=90,
@@ -151,10 +129,9 @@ class TestOverlapDetection:
 
     @pytest.mark.django_db
     def test_cancelled_booking_no_block(self, restaurant, tables, customer, future_date):
-        """Cancelled bookings don't block the table."""
+        
         make_booking(restaurant, tables["t4"], customer, future_date, time(19, 0),
                      guests=2, duration=90, status=Booking.CANCELLED_BY_USER)
-        # Same table should be available
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=2, duration_minutes=90,
             table_id=tables["t4"].id,
@@ -165,11 +142,9 @@ class TestOverlapDetection:
     def test_capacity_exceeded_when_all_tables_booked(
         self, restaurant, tables, customer, future_date
     ):
-        """When total guests across all bookings exceed restaurant capacity."""
-        # Book all tables with large parties
+        
         make_booking(restaurant, tables["t8"], customer, future_date, time(19, 0),
                      guests=15, duration=90)
-        # capacity=20, booked=15, request=10 → exceeds
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=10, duration_minutes=90,
         )
@@ -178,11 +153,11 @@ class TestOverlapDetection:
 
 
 class TestCapacityValidation:
-    """Test that capacity checks work correctly."""
+    
 
     @pytest.mark.django_db
     def test_exceed_capacity(self, restaurant, tables, customer, future_date):
-        """Booking that exceeds restaurant capacity."""
+        
         make_booking(restaurant, tables["t8"], customer, future_date, time(19, 0),
                      guests=15, duration=90)
         result = ReservationValidator.validate(
@@ -193,10 +168,8 @@ class TestCapacityValidation:
 
     @pytest.mark.django_db
     def test_within_capacity(self, restaurant, tables, customer, future_date):
-        """Booking within restaurant capacity — use exclude_booking_id to isolate capacity check."""
-        existing = make_booking(restaurant, tables["t8"], customer, future_date, time(19, 0),
+                existing = make_booking(restaurant, tables["t8"], customer, future_date, time(19, 0),
                                 guests=10, duration=90)
-        # Exclude the existing booking so overlap doesn't fire; capacity = 20, booked=10, request=5
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=5, duration_minutes=90,
             exclude_booking_id=existing.id,
@@ -205,8 +178,7 @@ class TestCapacityValidation:
 
     @pytest.mark.django_db
     def test_exact_capacity_boundary(self, restaurant, tables, customer, future_date):
-        """Booking that exactly fills capacity — exclude existing to test capacity in isolation."""
-        existing = make_booking(restaurant, tables["t8"], customer, future_date, time(19, 0),
+                existing = make_booking(restaurant, tables["t8"], customer, future_date, time(19, 0),
                                 guests=10, duration=90)
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=10, duration_minutes=90,
@@ -216,23 +188,21 @@ class TestCapacityValidation:
 
     @pytest.mark.django_db
     def test_no_capacity_set_skips_check(self, restaurant, tables, future_date):
-        """Restaurant with no capacity → skip check."""
-        restaurant.capacity = None
+                restaurant.capacity = None
         restaurant.save()
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=100, duration_minutes=90,
         )
-        # Should pass capacity (no limit), may fail on table availability
         cap_errors = [e for e in result.errors if "вместимост" in e.lower()]
         assert len(cap_errors) == 0
 
 
 class TestTableExistenceValidation:
-    """Test that table existence checks work correctly."""
+    
 
     @pytest.mark.django_db
     def test_table_not_found(self, restaurant, future_date):
-        """Non-existent table ID."""
+        
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=2,
             duration_minutes=90, table_id=99999,
@@ -242,7 +212,7 @@ class TestTableExistenceValidation:
 
     @pytest.mark.django_db
     def test_table_wrong_restaurant(self, restaurant, tables, future_date):
-        """Table belongs to a different restaurant."""
+        
         other_owner = User.objects.create_user("other_owner", "other@test.com", "pass")
         other_rest = Restaurant.objects.create(
             name="Other", address="X", city="Almaty", owner=other_owner,
@@ -260,7 +230,7 @@ class TestTableExistenceValidation:
 
     @pytest.mark.django_db
     def test_table_inactive(self, restaurant, tables, future_date):
-        """Table is not active."""
+        
         inactive = Table.objects.create(
             restaurant=restaurant, number="T99", seats=4, is_active=False,
         )
@@ -273,7 +243,7 @@ class TestTableExistenceValidation:
 
     @pytest.mark.django_db
     def test_table_insufficient_seats(self, restaurant, tables, future_date):
-        """Table has fewer seats than guests."""
+        
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=5,
             duration_minutes=90, table_id=tables["t2"].id,
@@ -283,7 +253,7 @@ class TestTableExistenceValidation:
 
     @pytest.mark.django_db
     def test_table_valid(self, restaurant, tables, future_date):
-        """Valid table assignment passes."""
+        
         result = ReservationValidator.validate(
             restaurant, future_date, time(19, 0), guests=3,
             duration_minutes=90, table_id=tables["t4"].id,
@@ -321,61 +291,51 @@ class TestValidationResult:
         r.raise_if_invalid()  # should not raise
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 2. TABLE ASSIGNER — smallest table, combination, error cases
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestTableAssignerSingle:
     @pytest.mark.django_db
     def test_smallest_sufficient_table(self, restaurant, tables, future_date):
-        """3 guests → T4 (4 seats), not T6 or T8."""
-        result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=3)
+                result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=3)
         assert len(result) == 1
         assert result[0].seats == 4
         assert result[0].id == tables["t4"].id
 
     @pytest.mark.django_db
     def test_exact_fit_table(self, restaurant, tables, future_date):
-        """4 guests → T4 exactly."""
-        result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=4)
+                result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=4)
         assert len(result) == 1
         assert result[0].seats == 4
 
     @pytest.mark.django_db
     def test_largest_guests_single_table(self, restaurant, tables, future_date):
-        """8 guests → T8."""
-        result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=8)
+                result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=8)
         assert len(result) == 1
         assert result[0].seats == 8
 
     @pytest.mark.django_db
     def test_returns_empty_when_no_tables(self, restaurant, future_date):
-        """No tables → empty list."""
-        result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=2)
+                result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=2)
         assert result == []
 
 
 class TestTableAssignerCombination:
     @pytest.mark.django_db
     def test_combines_when_no_single_fits(self, restaurant, tables, future_date):
-        """9 guests: no single table fits → combination."""
-        result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=9)
+                result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=9)
         total = sum(t.seats for t in result)
         assert total >= 9
         assert len(result) >= 2
 
     @pytest.mark.django_db
     def test_combination_minimizes_waste(self, restaurant, tables, future_date):
-        """5 guests: should pick T6 (6 seats) over T2+T4 (6 seats, 2 tables)."""
+        
         result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=5)
-        # T6 is the best single table
         assert len(result) == 1
         assert result[0].seats == 6
 
     @pytest.mark.django_db
     def test_returns_empty_when_insufficient_total(self, restaurant, future_date):
-        """More guests than total capacity → empty."""
-        Table.objects.create(restaurant=restaurant, number="T1", seats=1, is_active=True)
+                Table.objects.create(restaurant=restaurant, number="T1", seats=1, is_active=True)
         result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=50)
         assert result == []
 
@@ -383,8 +343,7 @@ class TestTableAssignerCombination:
 class TestTableAssignerPreferred:
     @pytest.mark.django_db
     def test_preferred_table_used(self, restaurant, tables, future_date):
-        """Preferred table that fits → use it."""
-        result = TableAssigner.assign(
+                result = TableAssigner.assign(
             restaurant, future_date, time(18, 0), guests=3,
             preferred_table_id=tables["t6"].id,
         )
@@ -393,8 +352,7 @@ class TestTableAssignerPreferred:
 
     @pytest.mark.django_db
     def test_preferred_table_too_small(self, restaurant, tables, future_date):
-        """Preferred table too small → return empty (fail explicitly)."""
-        result = TableAssigner.assign(
+                result = TableAssigner.assign(
             restaurant, future_date, time(18, 0), guests=5,
             preferred_table_id=tables["t2"].id,
         )
@@ -402,8 +360,7 @@ class TestTableAssignerPreferred:
 
     @pytest.mark.django_db
     def test_preferred_table_not_found(self, restaurant, tables, future_date):
-        """Preferred table doesn't exist → return empty."""
-        result = TableAssigner.assign(
+                result = TableAssigner.assign(
             restaurant, future_date, time(18, 0), guests=2,
             preferred_table_id=99999,
         )
@@ -413,18 +370,17 @@ class TestTableAssignerPreferred:
 class TestTableAssignerOccupied:
     @pytest.mark.django_db
     def test_skips_occupied_tables(self, restaurant, tables, customer, future_date):
-        """Occupied table should be skipped."""
+        
         make_booking(restaurant, tables["t4"], customer, future_date, time(18, 0),
                      guests=3, duration=90)
         result = TableAssigner.assign(restaurant, future_date, time(18, 0), guests=3)
         assert len(result) == 1
-        # Should pick T6 (next smallest after T4 which is occupied)
         assert result[0].id == tables["t6"].id
         assert result[0].id != tables["t4"].id
 
     @pytest.mark.django_db
     def test_exclude_booking_id(self, restaurant, tables, customer, future_date):
-        """Exclude specific booking from overlap check."""
+        
         booking = make_booking(
             restaurant, tables["t4"], customer, future_date, time(18, 0),
             guests=3, duration=90,
@@ -433,17 +389,12 @@ class TestTableAssignerOccupied:
             restaurant, future_date, time(18, 0), guests=3,
             exclude_booking_id=booking.id,
         )
-        # T4 should be available because we excluded the booking
         assert any(t.id == tables["t4"].id for t in result)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 3. STATUS MACHINE — enforced transitions
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestStatusMachineHappyPath:
-    """Test the canonical happy path: pending → confirmed → seated → completed."""
-
+    
     @pytest.mark.django_db
     def test_pending_to_confirmed(self, restaurant, tables, customer, future_date):
         b = make_booking(restaurant, tables["t4"], customer, future_date,
@@ -470,8 +421,7 @@ class TestStatusMachineHappyPath:
 
     @pytest.mark.django_db
     def test_full_happy_path(self, restaurant, tables, customer, future_date):
-        """pending → confirmed → seated → completed in sequence."""
-        b = make_booking(restaurant, tables["t4"], customer, future_date,
+                b = make_booking(restaurant, tables["t4"], customer, future_date,
                          time(19, 0), status=Booking.PENDING)
         StatusMachine.transition(b, Booking.CONFIRMED)
         StatusMachine.transition(b, Booking.SEATED)
@@ -481,7 +431,7 @@ class TestStatusMachineHappyPath:
 
 
 class TestStatusMachineForbiddenTransitions:
-    """Test that illogical transitions are rejected."""
+    
 
     @pytest.mark.django_db
     def test_pending_to_seated_forbidden(self, restaurant, tables, customer, future_date):
@@ -541,7 +491,7 @@ class TestStatusMachineForbiddenTransitions:
 
 
 class TestStatusMachineAlternatePaths:
-    """Test valid non-happy-path transitions."""
+    
 
     @pytest.mark.django_db
     def test_pending_to_rejected(self, restaurant, tables, customer, future_date):
@@ -585,8 +535,7 @@ class TestStatusMachineAlternatePaths:
 
     @pytest.mark.django_db
     def test_confirmed_to_completed_direct(self, restaurant, tables, customer, future_date):
-        """CONFIRMED → COMPLETED is allowed (skip seated)."""
-        b = make_booking(restaurant, tables["t4"], customer, future_date,
+                b = make_booking(restaurant, tables["t4"], customer, future_date,
                          time(19, 0), status=Booking.CONFIRMED)
         StatusMachine.transition(b, Booking.COMPLETED)
         b.refresh_from_db()
@@ -639,7 +588,7 @@ class TestStatusMachineHelpers:
 
     @pytest.mark.django_db
     def test_creates_history_record(self, restaurant, tables, customer, future_date):
-        """Transition should create a ReservationHistory entry."""
+        
         b = make_booking(restaurant, tables["t4"], customer, future_date,
                          time(19, 0), status=Booking.PENDING)
         assert b.history.count() == 0
@@ -652,25 +601,21 @@ class TestStatusMachineHelpers:
 
 
 class TestStatusMachineTransitionMap:
-    """Verify TRANSITIONS dict covers all statuses."""
+    
 
     def test_all_statuses_have_transitions(self):
         for status, _ in Booking.STATUS_CHOICES:
             assert status in TRANSITIONS, f"Missing transition for status: {status}"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 4. WALK-IN SUPPORT
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestWalkInBooking:
-    """Walk-in bookings should work with user=None."""
+    
 
     @pytest.mark.django_db
     def test_walk_in_booking_validated(self, restaurant, tables, future_date):
-        """validate_booking_data should accept user=None (walk-in)."""
+        
         from bookings.services import BookingService
-        # Should not raise
         BookingService.validate_booking_data(
             user=None,
             restaurant=restaurant,
@@ -682,7 +627,7 @@ class TestWalkInBooking:
 
     @pytest.mark.django_db
     def test_walk_in_creates_booking(self, restaurant, tables, future_date):
-        """create_booking with user=None should succeed."""
+        
         from bookings.services import BookingService
         booking = BookingService.create_booking(
             user=None,

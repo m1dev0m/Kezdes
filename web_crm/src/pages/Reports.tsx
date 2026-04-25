@@ -52,7 +52,7 @@ export default function Reports() {
 
     return (
         <div className="max-w-[1440px] mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
-            {/* Header Section */}
+            {}
             <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div className="space-y-2">
                     <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter leading-none uppercase">{t('reports.title')}</h1>
@@ -64,7 +64,7 @@ export default function Reports() {
                 </button>
             </header>
 
-            {/* Reports Grid */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {reportTypes.map((report) => (
                     <motion.div
@@ -106,7 +106,7 @@ export default function Reports() {
                 ))}
             </div>
 
-            {/* Premium CTA Section */}
+            {}
             <div className="bg-[#0047FF] rounded-[3rem] p-16 text-white flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden shadow-2xl shadow-[#0047FF]/30">
                 <div className="absolute top-0 right-0 size-[500px] bg-white/10 rounded-full blur-[100px] -mr-64 -mt-64" />
                 <div className="relative z-10 space-y-4 text-center lg:text-left">

@@ -590,11 +590,11 @@ const styles = StyleSheet.create({
 
     mapBottomCardContainer: {
         position: 'absolute',
-        bottom: 0, // Adjusted to sit above tab bar if needed, or 0 since it might have safe area
+        bottom: 0, 
         left: 0,
         right: 0,
         padding: 16,
-        paddingBottom: 24, // extra clearance
+        paddingBottom: 24, 
         justifyContent: 'flex-end',
         zIndex: 20,
     },
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
 
     mapControls: {
         position: 'absolute',
-        bottom: 240, // above the bottom card
+        bottom: 240, 
         right: 16,
         zIndex: 10,
     },

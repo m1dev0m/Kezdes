@@ -26,10 +26,10 @@ def setup_data():
         user.set_password('testpass123')
         user.save()
         
-        # Create profile
+                        
         Profile.objects.get_or_create(user=user, defaults={'role': 'owner'})
         
-        # Create restaurant
+                           
         rest, created = Restaurant.objects.get_or_create(
             owner=user,
             defaults={
@@ -39,11 +39,11 @@ def setup_data():
             }
         )
         
-        # Set profile restaurant
+                                
         user.profile.restaurant = rest
         user.profile.save()
         
-        # Create 10 tables for each
+                                   
         if created or not Table.objects.filter(restaurant=rest).exists():
             for t in range(1, 11):
                 Table.objects.create(
@@ -63,10 +63,10 @@ def setup_data():
 def simulate_bookings_for_restaurant(restaurant):
     print(f"[{restaurant.name}] Starting simulation...")
     today = datetime.date.today()
-    # 20 to 40 bookings
+                       
     num_bookings = random.randint(20, 40)
     
-    # Pre-generate parameters
+                             
     requests = []
     for i in range(num_bookings):
         hour = random.randint(12, 22)
@@ -84,7 +84,7 @@ def simulate_bookings_for_restaurant(restaurant):
     successes = 0
     failures = 0
     
-    # Send requests concurrently to test locks
+                                              
     with ThreadPoolExecutor(max_workers=5) as executor:
         futures = []
         for req in requests:
@@ -102,10 +102,10 @@ def simulate_bookings_for_restaurant(restaurant):
     return successes
 
 def make_booking(req):
-    # Simulate API behavior: try to create
+                                          
     try:
         from core.utils import get_user_restaurant
-        # We simulate this at the service level, passing restaurant directly
+                                                                            
         booking = Booking.objects.create(
             restaurant_id=req['restaurant_id'],
             user_name=req['name'],
@@ -116,17 +116,17 @@ def make_booking(req):
             status='pending'
         )
         
-        # Simulate approval -> confirming capacity -> seating
-        auto_approve = True # Assuming auto-approve setting or manager action
+                                                             
+        auto_approve = True                                                  
         if auto_approve:
-            # Parse time string to time object
+                                              
             try:
-                # "12:30" format
+                                
                 time_obj = datetime.datetime.strptime(req['time'], '%H:%M').time()
             except ValueError:
                 time_obj = datetime.time(12, 0)
                 
-            # Reassign table during approval
+                                            
             tables = BookingService.find_best_tables(
                 restaurant=booking.restaurant,
                 date=req['date'],
@@ -151,13 +151,13 @@ def make_booking(req):
                 print(f"Lock acquire error: {le}")
                 return False
             booking.status = 'approved'
-            booking.table = tables[0]  # Just setting first for simplicity in legacy field
+            booking.table = tables[0]                                                     
             booking.save()
             booking.tables.set(tables)
             return True
             
     except Exception as e:
-        # Expected if locked/rejected
+                                     
         print(f"Exception during booking: {e}")
         return False
         
@@ -177,7 +177,7 @@ def run_simulation():
     print(f"Simulation completed. Total successful bookings today: {total_success}")
     
     print("Testing seating & cancel flows...")
-    # Grab a few successful bookings and 'seat' them
+                                                    
     approved_bookings = Booking.objects.filter(status='approved')
     print(f"Found {approved_bookings.count()} approved bookings. Seating 5 randomly...")
     for b in approved_bookings.order_by('?')[:5]:
@@ -189,7 +189,7 @@ def run_simulation():
         b.status = 'cancelled'
         b.save()
         
-    # Final count 
+                  
     print("Final Status Breakdown:")
     from django.db.models import Count
     for item in Booking.objects.values('status').annotate(total=Count('id')).order_by('status'):

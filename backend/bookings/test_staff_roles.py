@@ -1,6 +1,3 @@
-"""
-Tests for Staff Management and Role-based Access Control
-"""
 import pytest
 from datetime import date, time, timedelta
 from django.contrib.auth.models import User
@@ -13,7 +10,7 @@ from crm.models import Customer
 
 @pytest.mark.django_db
 class TestStaffManagement:
-    """Test staff management by restaurant owner"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -45,7 +42,7 @@ class TestStaffManagement:
         return owner, restaurant
 
     def test_owner_can_add_manager(self, api_client, owner_with_restaurant):
-        """Test that owner can add a manager"""
+        
         owner, restaurant = owner_with_restaurant
         api_client.force_authenticate(user=owner)
         
@@ -64,7 +61,7 @@ class TestStaffManagement:
         assert manager.profile.restaurant == restaurant
 
     def test_owner_can_add_host(self, api_client, owner_with_restaurant):
-        """Test that owner can add a host"""
+        
         owner, restaurant = owner_with_restaurant
         api_client.force_authenticate(user=owner)
         
@@ -83,7 +80,7 @@ class TestStaffManagement:
         assert host.profile.restaurant == restaurant
 
     def test_manager_can_view_bookings(self, api_client, owner_with_restaurant):
-        """Test that manager can view restaurant bookings"""
+        
         owner, restaurant = owner_with_restaurant
         
         manager = User.objects.create_user(
@@ -118,7 +115,7 @@ class TestStaffManagement:
         response = api_client.get('/api/v1/bookings/')
         
         assert response.status_code == 200
-        # Response might be paginated or list
+                                             
         if hasattr(response.data, 'get'):
             results = response.data.get('results', response.data)
         else:
@@ -126,7 +123,7 @@ class TestStaffManagement:
         assert len(results) >= 1
 
     def test_manager_can_confirm_booking(self, api_client, owner_with_restaurant):
-        """Test that manager can confirm a pending booking"""
+        
         owner, restaurant = owner_with_restaurant
         
         manager = User.objects.create_user(
@@ -160,11 +157,11 @@ class TestStaffManagement:
         api_client.force_authenticate(user=manager)
         response = api_client.post(f'/api/v1/bookings/{booking.id}/confirm/')
         
-        # Manager should be able to confirm
+                                           
         assert response.status_code in [200, 403]
 
     def test_host_can_view_bookings(self, api_client, owner_with_restaurant):
-        """Test that host can view bookings"""
+        
         owner, restaurant = owner_with_restaurant
         
         host = User.objects.create_user(
@@ -184,7 +181,7 @@ class TestStaffManagement:
 
 @pytest.mark.django_db
 class TestRolePermissions:
-    """Test role-based permissions"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -213,7 +210,7 @@ class TestRolePermissions:
         return owner, restaurant
 
     def test_customer_cannot_access_staff_management(self, api_client, restaurant_setup):
-        """Test that customer cannot access staff management"""
+        
         owner, restaurant = restaurant_setup
         
         customer = User.objects.create_user(
@@ -225,17 +222,17 @@ class TestRolePermissions:
         customer.profile.save()
         
         api_client.force_authenticate(user=customer)
-        # Customer has no restaurant, so they can't see staff
+                                                             
         response = api_client.get('/api/v1/restaurants/staff/')
         
-        # Should return empty or 403 - either is acceptable for customer without restaurant
+                                                                                           
         assert response.status_code in [200, 403, 404]
-        # If 200, should be empty list
+                                      
         if response.status_code == 200:
             assert len(response.data) == 0
 
     def test_customer_can_create_booking(self, api_client, restaurant_setup):
-        """Test that customer can create a booking"""
+        
         owner, restaurant = restaurant_setup
         
         Table.objects.create(restaurant=restaurant, number='1', seats=4)

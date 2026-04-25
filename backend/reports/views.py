@@ -65,8 +65,8 @@ class CustomersExcelReportView(APIView):
         headers = ["ID", "Name", "Phone", "Email", "Visits Count", "Total Spent", "Notes Count", "Last Note"]
         ws.append(headers)
         
-        # .iterator() ignores prefetch_related, causing a massive N+1 DOS.
-        # We drop .iterator() and slice to hard limit to prevent OOM.
+                                                                          
+                                                                     
         customers = Customer.objects.filter(restaurant=restaurant).prefetch_related("internal_notes").order_by("-visits_count")[:5000]
         
         for c in customers:

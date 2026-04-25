@@ -73,12 +73,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             try {
                 localStorage.removeItem(key);
             } catch {
-                // ignore
+                
             }
             try {
                 sessionStorage.removeItem(key);
             } catch {
-                // ignore
+                
             }
         },
     };

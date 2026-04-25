@@ -61,7 +61,7 @@ export default function Contact() {
 
             <main className="pt-48 pb-32 px-10">
                 <div className="max-w-7xl mx-auto grid gap-20 lg:grid-cols-[1.2fr,0.8fr] items-start">
-                    {/* Interaction Vector */}
+                    {}
                     <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800 p-12 md:p-20 shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-12">
                         <div className="space-y-6">
                             <div className="inline-flex items-center gap-2 rounded-full bg-[#1d4ed8]/5 text-[#1d4ed8] px-5 py-2 text-[11px] font-bold uppercase tracking-widest border border-[#1d4ed8]/10">
@@ -145,7 +145,7 @@ export default function Contact() {
                         </form>
                     </section>
 
-                    {/* Protocol Sidebar */}
+                    {}
                     <aside className="space-y-10 lg:sticky lg:top-48">
                         <section className="bg-slate-900 text-white rounded-[2.5rem] p-12 space-y-10 shadow-2xl shadow-black/10 relative overflow-hidden">
                             <div className="absolute top-0 right-0 size-64 bg-[#1d4ed8]/20 rounded-full blur-[80px] -mr-32 -mt-32" />

@@ -1,8 +1,3 @@
-"""
-Comprehensive tests for MVP Restaurant Reservation Platform
-Tests critical features: Authentication, Restaurant Creation, Table Management,
-Reservation Creation, Reservation Conflict Prevention
-"""
 import pytest
 from datetime import date, time, timedelta
 
@@ -15,7 +10,7 @@ from bookings.models import Booking
 
 
 class TestAuthentication:
-    """Tests for user authentication"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -33,7 +28,7 @@ class TestAuthentication:
         return user
 
     def test_registration_as_customer(self, api_client, db):
-        """Test that a user can register as a customer"""
+        
         response = api_client.post('/api/v1/auth/register/', {
             'username': 'new_customer',
             'email': 'newcustomer@test.com',
@@ -45,7 +40,7 @@ class TestAuthentication:
         assert User.objects.filter(username='new_customer').exists()
 
     def test_registration_as_restaurant_admin(self, api_client, db):
-        """Test that a user can register as a restaurant admin (mapped to owner)"""
+        
         response = api_client.post('/api/v1/auth/register/', {
             'username': 'new_restaurant_admin',
             'email': 'newadmin@test.com',
@@ -55,11 +50,11 @@ class TestAuthentication:
         })
         assert response.status_code == status.HTTP_201_CREATED
         user = User.objects.get(username='new_restaurant_admin')
-        # Role is mapped from restaurant_admin to owner
+                                                       
         assert user.profile.role == 'owner'
 
     def test_login_success(self, api_client, customer_user):
-        """Test successful login"""
+        
         response = api_client.post('/api/v1/auth/login/', {
             'username': 'customer_test',
             'password': 'testpass123'
@@ -69,7 +64,7 @@ class TestAuthentication:
         assert 'refresh' in response.data
 
     def test_login_invalid_credentials(self, api_client, customer_user):
-        """Test login with invalid credentials fails"""
+        
         response = api_client.post('/api/v1/auth/login/', {
             'username': 'customer_test',
             'password': 'wrongpassword'
@@ -78,7 +73,7 @@ class TestAuthentication:
 
 
 class TestRestaurantCreation:
-    """Tests for restaurant creation"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -96,7 +91,7 @@ class TestRestaurantCreation:
         return user
 
     def test_create_restaurant(self, api_client, restaurant_admin):
-        """Test that a restaurant admin can create a restaurant"""
+        
         api_client.force_authenticate(user=restaurant_admin)
         
         response = api_client.post('/api/v1/restaurants/', {
@@ -115,8 +110,8 @@ class TestRestaurantCreation:
         assert restaurant.owner == restaurant_admin
 
     def test_cannot_create_second_restaurant(self, api_client, restaurant_admin, db):
-        """Test that a restaurant admin cannot create a second restaurant"""
-        # First restaurant
+        
+                          
         Restaurant.objects.create(
             name='First Restaurant',
             address='123 Test St',
@@ -134,7 +129,7 @@ class TestRestaurantCreation:
 
 
 class TestTableManagement:
-    """Tests for table management"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -162,7 +157,7 @@ class TestTableManagement:
         return user, restaurant
 
     def test_create_table(self, api_client, restaurant_with_admin):
-        """Test that a restaurant admin can create a table"""
+        
         admin, restaurant = restaurant_with_admin
         api_client.force_authenticate(user=admin)
         
@@ -176,10 +171,10 @@ class TestTableManagement:
         assert response.data['status'] == 'free'
 
     def test_list_tables(self, api_client, restaurant_with_admin):
-        """Test that a restaurant admin can list their tables"""
+        
         admin, restaurant = restaurant_with_admin
         
-        # Create tables
+                       
         Table.objects.create(restaurant=restaurant, number='1', seats=4)
         Table.objects.create(restaurant=restaurant, number='2', seats=2)
         
@@ -187,7 +182,7 @@ class TestTableManagement:
         response = api_client.get('/api/v1/tables/')
         
         assert response.status_code == status.HTTP_200_OK
-        # Response may be paginated or plain list
+                                                 
         if isinstance(response.data, list):
             results = response.data
         else:
@@ -195,7 +190,7 @@ class TestTableManagement:
         assert len(results) == 2
 
     def test_update_table(self, api_client, restaurant_with_admin):
-        """Test that a restaurant admin can update a table"""
+        
         admin, restaurant = restaurant_with_admin
         table = Table.objects.create(restaurant=restaurant, number='1', seats=4)
         
@@ -209,7 +204,7 @@ class TestTableManagement:
 
 
 class TestReservationCreation:
-    """Tests for reservation/booking creation"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -242,7 +237,7 @@ class TestReservationCreation:
         return admin, restaurant
 
     def test_create_booking(self, api_client, setup_restaurant, db):
-        """Test that a customer can create a booking"""
+        
         admin, restaurant = setup_restaurant
         
         customer = User.objects.create_user(
@@ -269,7 +264,7 @@ class TestReservationCreation:
         assert response.data['status'] == 'pending'
 
     def test_create_booking_unverified_restaurant_fails(self, api_client, setup_restaurant, db):
-        """Test that booking an unverified restaurant fails"""
+        
         admin, restaurant = setup_restaurant
         restaurant.is_verified = False
         restaurant.save()
@@ -297,7 +292,7 @@ class TestReservationCreation:
 
 
 class TestReservationConflictPrevention:
-    """Tests for reservation conflict prevention"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -325,7 +320,7 @@ class TestReservationConflictPrevention:
         
         table = Table.objects.create(restaurant=restaurant, number='1', seats=4)
         
-        # Create an existing booking
+                                    
         booking_date = (date.today() + timedelta(days=2)).strftime('%Y-%m-%d')
         existing_booking = Booking.objects.create(
             restaurant=restaurant,
@@ -340,7 +335,7 @@ class TestReservationConflictPrevention:
         return admin, restaurant, booking_date
 
     def test_double_booking_same_time_blocked(self, api_client, setup_with_booking, db):
-        """Test that double booking at the same time is blocked"""
+        
         admin, restaurant, booking_date = setup_with_booking
         
         customer = User.objects.create_user(
@@ -353,11 +348,11 @@ class TestReservationConflictPrevention:
         
         api_client.force_authenticate(user=customer)
         
-        # Try to book the same time
+                                   
         response = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': booking_date,
-            'time': '19:00',  # Same time as existing booking
+            'time': '19:00',                                 
             'guests': 2,
             'duration_minutes': 90
         })
@@ -367,7 +362,7 @@ class TestReservationConflictPrevention:
         assert 'столов' in error_str or 'available' in error_str or 'пересекающ' in error_str or 'активн' in error_str
 
     def test_back_to_back_booking_allowed(self, api_client, setup_with_booking, db):
-        """Test that back-to-back bookings (one ends when another starts) are allowed"""
+        
         admin, restaurant, booking_date = setup_with_booking
         
         customer = User.objects.create_user(
@@ -380,7 +375,7 @@ class TestReservationConflictPrevention:
         
         api_client.force_authenticate(user=customer)
         
-        # Try to book immediately after existing booking ends (21:00 = 19:00 + 120 min)
+                                                                                       
         response = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': booking_date,
@@ -389,12 +384,12 @@ class TestReservationConflictPrevention:
             'duration_minutes': 90
         })
         
-        # This should succeed because existing booking ends at 21:00
+                                                                    
         assert response.status_code == status.HTTP_201_CREATED
 
 
 class TestReservationCancellation:
-    """Tests for reservation cancellation"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -444,10 +439,10 @@ class TestReservationCancellation:
         return admin, customer, restaurant, booking
 
     def test_customer_can_cancel_own_booking(self, api_client, setup_with_pending_booking):
-        """Test that a customer can cancel their own booking"""
+        
         admin, customer, restaurant, booking_date = setup_with_pending_booking
         
-        # Get the booking
+                         
         booking = Booking.objects.filter(user=customer).first()
         
         api_client.force_authenticate(user=customer)
@@ -458,7 +453,7 @@ class TestReservationCancellation:
         assert booking.status == Booking.CANCELLED_BY_USER
 
     def test_cannot_cancel_completed_booking(self, api_client, setup_with_pending_booking, db):
-        """Test that a completed booking cannot be cancelled"""
+        
         admin, customer, restaurant, booking_date = setup_with_pending_booking
         
         booking = Booking.objects.filter(user=customer).first()
@@ -468,12 +463,12 @@ class TestReservationCancellation:
         api_client.force_authenticate(user=customer)
         response = api_client.post(f'/api/v1/bookings/{booking.id}/cancel/')
         
-        # Should fail because transition is not allowed
+                                                       
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 class TestTableCapacityEnforcement:
-    """Tests for table capacity enforcement"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -499,13 +494,13 @@ class TestTableCapacityEnforcement:
         admin.profile.restaurant = restaurant
         admin.profile.save()
         
-        # Small table that can only fit 2 people
+                                                
         Table.objects.create(restaurant=restaurant, number='1', seats=2)
         
         return admin, restaurant
 
     def test_booking_exceeding_table_capacity_fails(self, api_client, setup_small_table, db):
-        """Test that booking more guests than table capacity fails"""
+        
         admin, restaurant = setup_small_table
         
         customer = User.objects.create_user(
@@ -520,12 +515,12 @@ class TestTableCapacityEnforcement:
         
         tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        # Try to book 4 guests for a 2-seat table
+                                                 
         response = api_client.post('/api/v1/bookings/', {
             'restaurant': restaurant.id,
             'date': tomorrow,
             'time': '19:00',
-            'guests': 4,  # More than table capacity
+            'guests': 4,                            
             'duration_minutes': 90
         })
         
@@ -533,7 +528,7 @@ class TestTableCapacityEnforcement:
 
 
 class TestDashboardViewing:
-    """Tests for dashboard viewing"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -561,7 +556,7 @@ class TestDashboardViewing:
         
         table = Table.objects.create(restaurant=restaurant, number='1', seats=4)
         
-        # Create some bookings
+                              
         booking_date = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
         
         customer = User.objects.create_user(
@@ -585,7 +580,7 @@ class TestDashboardViewing:
         return admin, restaurant
 
     def test_admin_can_view_restaurant_bookings(self, api_client, setup_restaurant_with_bookings):
-        """Test that restaurant admin can view their restaurant's bookings"""
+        
         admin, restaurant = setup_restaurant_with_bookings
         
         api_client.force_authenticate(user=admin)
@@ -599,7 +594,7 @@ class TestDashboardViewing:
         assert len(results) >= 1
 
     def test_customer_can_view_own_bookings(self, api_client, setup_restaurant_with_bookings, db):
-        """Test that customer can view their own bookings"""
+        
         admin, restaurant = setup_restaurant_with_bookings
         
         customer = User.objects.create_user(
@@ -630,13 +625,13 @@ class TestDashboardViewing:
             results = response.data
         else:
             results = response.data.get('results', [])
-        # Should only see own bookings
+                                      
         customer_ids = [b.get('user') or b.get('customer_id') for b in results]
         assert customer.id in customer_ids
 
 
 class TestAvailableSlots:
-    """Tests for available time slots"""
+    
 
     @pytest.fixture
     def api_client(self):
@@ -664,10 +659,10 @@ class TestAvailableSlots:
         
         Table.objects.create(restaurant=restaurant, number='1', seats=4)
         
-        # Add operating hours
+                             
         OpeningHours.objects.create(
             restaurant=restaurant,
-            day_of_week=0,  # Monday
+            day_of_week=0,          
             opening_time=time(10, 0),
             closing_time=time(22, 0),
             is_closed=False
@@ -676,12 +671,12 @@ class TestAvailableSlots:
         return admin, restaurant
 
     def test_get_available_slots(self, api_client, setup_with_hours):
-        """Test getting available time slots"""
+        
         admin, restaurant = setup_with_hours
         
-        # Find a future Monday
+                              
         target_date = date.today()
-        while target_date.weekday() != 0:  # Monday is 0
+        while target_date.weekday() != 0:               
             target_date += timedelta(days=1)
         
         response = api_client.get('/api/v1/bookings/available_slots/', {
@@ -692,5 +687,5 @@ class TestAvailableSlots:
         
         assert response.status_code == status.HTTP_200_OK
         assert 'slots' in response.data
-        # Should have some available slots
+                                          
         assert len(response.data['slots']) > 0

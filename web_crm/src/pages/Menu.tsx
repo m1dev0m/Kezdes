@@ -164,7 +164,7 @@ export default function Menu() {
             </header>
 
             <div className="flex gap-10">
-                {/* Categories Left Rail */}
+                {}
                 <aside className="w-64 shrink-0 space-y-8">
                     <div>
                         <h3 className="text-[10px] font-black text-[#1A3C34] uppercase tracking-[0.2em] mb-4 ml-1">Menu Flow</h3>
@@ -199,7 +199,7 @@ export default function Menu() {
                     </div>
                 </aside>
 
-                {/* Main Content Grid */}
+                {}
                 <main className="flex-1">
                     <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-8">
                         {filteredItems.length === 0 ? (
@@ -267,7 +267,7 @@ export default function Menu() {
                 </main>
             </div>
 
-            {/* Modals */}
+            {}
             {catModal && (
                 <div className="fixed inset-0 bg-[#1A3C34]/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
                     <div className="bg-white rounded-[3rem] w-full max-w-sm p-10 shadow-2xl relative">

@@ -10,7 +10,7 @@
 2) Запусти mobile:
 - `cd mobile-rn`
 - `npm i`
-- `npm run start`
+- `npm run start:lan`
 
 По умолчанию `API_BASE_URL` в dev автоматически берётся из Expo host (IP ноутбука) и будет работать на реальном iPhone в одной Wi‑Fi сети.
 
@@ -31,9 +31,19 @@
 Expo может работать в режиме tunnel (тогда авто‑детект IP не поможет). В этом случае нужно явно задать API:
 
 - Временно в терминале:
-  - `EXPO_PUBLIC_API_URL=https://<public-host>/api/v1 npm run start`
+  - `EXPO_PUBLIC_API_URL=https://<public-host>/api/v1 npm run start:tunnel`
 - Или в `mobile-rn/.env.local` (файл не коммитится):
   - `EXPO_PUBLIC_API_URL=http://192.168.x.x:8000/api/v1`
+
+## Один запуск для телефона
+
+Из корня проекта:
+
+- `./scripts/mobile_phone_test.sh lan`
+- `./scripts/mobile_phone_test.sh tunnel`
+
+`lan` использует локальную Wi‑Fi сеть.
+`tunnel` поднимает `ngrok` для backend и запускает Expo tunnel с уже подставленным `EXPO_PUBLIC_API_URL`.
 
 ## Команды
 
@@ -57,4 +67,3 @@ Expo может работать в режиме tunnel (тогда авто‑�
 Для публикации:
 - iOS: TestFlight → App Store (`eas submit -p ios`)
 - Android: Play Console (`eas submit -p android`)
-

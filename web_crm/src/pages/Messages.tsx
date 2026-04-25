@@ -37,7 +37,7 @@ interface BookingSummary {
 }
 
 interface Conversation {
-    id: string; // "b-ID" or "c-ID"
+    id: string; 
     type: 'booking' | 'direct';
     targetId: number;
     title: string;
@@ -138,7 +138,7 @@ export default function MessagesPage() {
                 });
             });
 
-            // Sort by latest activity
+            
             const sorted = merged.sort((a, b) => {
                 const tA = new Date(a.timestamp || 0).getTime();
                 const tB = new Date(b.timestamp || 0).getTime();
@@ -180,7 +180,7 @@ export default function MessagesPage() {
                         return;
                     }
                 } catch {
-                    // Fall through to the normal list if the selected booking cannot be hydrated.
+                    
                 }
             }
 
@@ -210,7 +210,7 @@ export default function MessagesPage() {
 
             await api.post('/chat/messages/mark_read/', { conversation: conv.targetId });
         } catch {
-            // Marking read is best-effort; the chat must remain usable even if the badge update fails.
+            
         }
     }, []);
 
@@ -370,7 +370,7 @@ export default function MessagesPage() {
 
     return (
         <div className="flex h-[calc(100vh-140px)] -m-6 md:-m-8 bg-white overflow-hidden border border-slate-200 rounded-xl shadow-sm">
-            {/* Sidebar */}
+            {}
             <div className="w-80 shrink-0 flex flex-col border-r border-slate-200 bg-white">
                 <div className="p-4 border-b border-slate-100">
                     <div className="flex items-center justify-between mb-4 px-1">
@@ -487,7 +487,7 @@ export default function MessagesPage() {
                 </div>
             </div>
 
-            {/* Chat Area */}
+            {}
             {selectedConv ? (
                 <div className="flex-1 flex flex-col min-w-0 bg-slate-50/30">
                     <div className="flex items-center gap-4 px-6 py-3 border-b border-slate-200 bg-white/50 backdrop-blur-sm">

@@ -66,10 +66,6 @@ class EndToEndBookingFlowTest(APITestCase):
         self.assertIn(create_res.data["id"], returned_ids)
 
     def test_admin_manual_booking_not_visible_in_organizer_personal_list(self):
-        """
-        Admin creates a manual booking (walk-in guest) and it should NOT appear
-        in the organizer's own /bookings/ list, because that list is per-auth user.
-        """
         admin_token = self._login("newtestadmin", "pwd")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {admin_token}")
         manual_payload = {

@@ -3,17 +3,47 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
+interface CustomerSummary {
+    id: number;
+    visits_count: number;
+    no_show_count: number;
+    flag: string;
+    is_vip: boolean;
+    risk_label: string;
+    notes: string;
+    note_preview: string;
+}
+
+interface BookingRecord {
+    id: string | number;
+    date?: string | null;
+    time?: string | null;
+    status: string;
+    user_name?: string | null;
+    customer_name?: string | null;
+    user_phone?: string | null;
+    customer_phone?: string | null;
+    guests?: number;
+    table_number?: string | null;
+    table?: string | number | null;
+    table_id?: number | null;
+    event_type?: string | null;
+    pay_at_restaurant?: boolean;
+    customer_summary?: CustomerSummary | null;
+}
+
 const statusMap = {
     pending: { label: 'ОЖИДАНИЕ', color: '#f97316', bg: '#fff7ed', border: '#ffedd5' },
     approved: { label: 'ПОДТВЕРЖДЕНО', color: '#16a34a', bg: '#f0fdf4', border: '#dcfce7' },
     confirmed: { label: 'ПОДТВЕРЖДЕНО', color: '#16a34a', bg: '#f0fdf4', border: '#dcfce7' },
+    seated: { label: 'ЗА СТОЛОМ', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
     completed: { label: 'ЗАВЕРШЕНО', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
     rejected: { label: 'ОТКЛОНЕНО', color: '#ef4444', bg: '#fef2f2', border: '#fee2e2' },
     no_show: { label: 'НЕ ПРИШЕЛ', color: '#94a3b8', bg: '#f1f5f9', border: '#e2e8f0' },
 };
 
 interface BookingCardProps {
-    booking: any;
+    booking: BookingRecord;
     isTablet?: boolean;
     highlighted?: boolean;
     onAction: (id: string | number, action: 'confirm' | 'reject') => void;
@@ -23,6 +53,7 @@ interface BookingCardProps {
     onEdit: (id: string | number) => void;
     onDetails: (id: string | number) => void;
 }
+
 
 const BookingCard = memo(({ booking: b, isTablet = false, highlighted = false, onAction, onSeat, onPatchStatus, onChat, onEdit, onDetails }: BookingCardProps) => {
     const status = statusMap[b.status as keyof typeof statusMap] || statusMap.pending;
@@ -53,7 +84,7 @@ const BookingCard = memo(({ booking: b, isTablet = false, highlighted = false, o
                 </View>
                 <TouchableOpacity
                     style={styles.chatIconBtn}
-                    onPress={() => onChat(b.id, b.user_name || b.customer_name)}
+                    onPress={() => onChat(b.id, b.user_name || b.customer_name || '')}
                 >
                     <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
                 </TouchableOpacity>
@@ -64,14 +95,11 @@ const BookingCard = memo(({ booking: b, isTablet = false, highlighted = false, o
                     <Ionicons name="people" size={16} color={colors.textSecondary} />
                     <Text style={styles.metaText}>{b.guests} гостей</Text>
                 </View>
-                {!!(b.table_number || b.table) && (
-                    <>
-                        <View style={styles.metaDot} />
-                        <View style={styles.metaItem}>
-                            <Ionicons name="grid-outline" size={14} color={colors.primary} />
-                            <Text style={styles.metaText}>Стол {b.table_number || b.table}</Text>
-                        </View>
-                    </>
+                {!!(b.table_number ?? b.table) && (
+                    <View style={styles.tableMetaBadge}>
+                        <Ionicons name="grid-outline" size={14} color={colors.primary} />
+                        <Text style={styles.tableMetaText}>Стол {b.table_number ?? b.table}</Text>
+                    </View>
                 )}
                 {!!b.event_type && (
                     <>
@@ -88,6 +116,27 @@ const BookingCard = memo(({ booking: b, isTablet = false, highlighted = false, o
                     </View>
                 )}
             </View>
+
+            {(b.customer_summary?.is_vip || b.customer_summary?.risk_label === 'no_show_risk' || (b.customer_summary?.no_show_count ?? 0) > 0) ? (
+                <View style={styles.crmRow}>
+                    {b.customer_summary?.is_vip ? (
+                        <View style={[styles.crmBadge, styles.crmBadgeVip]}>
+                            <Text style={[styles.crmBadgeText, styles.crmBadgeTextVip]}>VIP</Text>
+                        </View>
+                    ) : null}
+                    {b.customer_summary?.risk_label === 'no_show_risk' ? (
+                        <View style={[styles.crmBadge, styles.crmBadgeWarn]}>
+                            <Text style={[styles.crmBadgeText, styles.crmBadgeTextWarn]}>No-show risk</Text>
+                        </View>
+                    ) : null}
+                    {(b.customer_summary?.no_show_count ?? 0) > 0 ? (
+                        <Text style={styles.crmMetaText}>{b.customer_summary!.no_show_count} no-show</Text>
+                    ) : null}
+                    {(b.customer_summary?.visits_count ?? 0) > 0 ? (
+                        <Text style={styles.crmMetaText}>{b.customer_summary!.visits_count} визитов</Text>
+                    ) : null}
+                </View>
+            ) : null}
 
             <View style={[styles.actions, isTablet && styles.actionsTablet]}>
                 {isPending ? (
@@ -110,7 +159,7 @@ const BookingCard = memo(({ booking: b, isTablet = false, highlighted = false, o
                     </>
                 ) : isSeated ? (
                     <>
-                        <TouchableOpacity style={styles.btnOutline} onPress={() => onChat(b.id, b.user_name || b.customer_name)}>
+                        <TouchableOpacity style={styles.btnOutline} onPress={() => onChat(b.id, b.user_name || b.customer_name || '')}>
                             <Text style={styles.btnOutlineText}>Чат</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.btnPrimary} onPress={() => onPatchStatus(b.id, 'complete')}>
@@ -218,6 +267,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 10,
         marginBottom: 24,
+        flexWrap: 'wrap',
     },
     metaItem: {
         flexDirection: 'row',
@@ -236,6 +286,22 @@ const styles = StyleSheet.create({
         borderRadius: 2,
         backgroundColor: '#e2e8f0',
     },
+    tableMetaBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: '#eff6ff',
+        borderWidth: 1,
+        borderColor: '#bfdbfe',
+    },
+    tableMetaText: {
+        fontSize: 12,
+        color: '#1d4ed8',
+        fontWeight: '800',
+    },
     payBadge: {
         backgroundColor: '#fef3c7',
         paddingHorizontal: 8,
@@ -247,6 +313,42 @@ const styles = StyleSheet.create({
         fontSize: 9,
         fontWeight: '900',
         color: '#92400e',
+    },
+    crmRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 18,
+    },
+    crmBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 999,
+        borderWidth: 1,
+    },
+    crmBadgeVip: {
+        backgroundColor: '#fdf4ff',
+        borderColor: '#f5d0fe',
+    },
+    crmBadgeWarn: {
+        backgroundColor: '#fff7ed',
+        borderColor: '#fed7aa',
+    },
+    crmBadgeText: {
+        fontSize: 10,
+        fontWeight: '900',
+    },
+    crmBadgeTextVip: {
+        color: '#a21caf',
+    },
+    crmBadgeTextWarn: {
+        color: '#c2410c',
+    },
+    crmMetaText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.textSecondary,
     },
     actions: {
         flexDirection: 'row',

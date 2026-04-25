@@ -1,10 +1,14 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.test import APITestCase
+from unittest.mock import patch
 
 from bookings.models import Booking, WaitlistEntry
+from bookings.serializers import BookingSerializer
+from crm.models import Customer
 from restaurants.models import Restaurant, Table
 from bookings.services import WaitlistService
 
@@ -105,7 +109,7 @@ class BookingApiHardeningTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # Error may be in detail or nested — just verify it's a 400
+                                                                   
         error_text = str(response.data).lower()
         self.assertTrue(
             "верификац" in error_text or "restaurant" in error_text or "verified" in error_text,
@@ -224,6 +228,142 @@ class BookingApiHardeningTests(APITestCase):
             format="json",
         )
         self.assertEqual(back_to_back.status_code, status.HTTP_201_CREATED)
+
+    def test_same_user_duplicate_booking_in_same_restaurant_returns_human_message(self):
+        self._auth_as_customer()
+        Table.objects.create(
+            restaurant=self.restaurant,
+            number="T2",
+            seats=4,
+            is_active=True,
+        )
+
+        first = self.client.post(
+            "/api/v1/bookings/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": "2030-01-05",
+                "time": "19:00",
+                "duration_minutes": 120,
+                "guests": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+
+        duplicate = self.client.post(
+            "/api/v1/bookings/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": "2030-01-05",
+                "time": "20:00",
+                "duration_minutes": 90,
+                "guests": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("success", duplicate.data)
+        self.assertFalse(duplicate.data["success"])
+        message = duplicate.data["error"]["message"]
+        self.assertIn("У вас уже есть активная бронь в этом ресторане", message)
+        self.assertIn("отмените предыдущую бронь", message.lower())
+
+    def test_anonymous_duplicate_booking_returns_existing_booking(self):
+        Table.objects.create(
+            restaurant=self.restaurant,
+            number="T3",
+            seats=4,
+            is_active=True,
+        )
+
+        payload = {
+            "restaurant": self.restaurant.id,
+            "date": "2030-01-05",
+            "time": "18:00",
+            "guests": 2,
+            "user_name": "Public Guest",
+            "user_phone": "+77001234567",
+        }
+
+        first = self.client.post("/api/v1/bookings/", payload, format="json")
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED, first.data)
+
+        second = self.client.post("/api/v1/bookings/", payload, format="json")
+        self.assertEqual(second.status_code, status.HTTP_200_OK, second.data)
+        self.assertEqual(first.data["id"], second.data["id"])
+        self.assertEqual(
+            Booking.objects.filter(
+                restaurant=self.restaurant,
+                date=date(2030, 1, 5),
+                time=time(18, 0),
+                user_phone="+77001234567",
+            ).count(),
+            1,
+        )
+
+    def test_manual_duplicate_booking_returns_existing_booking(self):
+        self._auth_as_admin()
+        table = Table.objects.create(
+            restaurant=self.restaurant,
+            number="M3",
+            seats=4,
+            is_active=True,
+        )
+
+        payload = {
+            "user_name": "Walk-in Guest",
+            "user_phone": "+77009991234",
+            "date": "2030-01-08",
+            "time": "21:00",
+            "guests": 2,
+            "table_id": table.id,
+            "status": Booking.CONFIRMED,
+        }
+
+        first = self.client.post("/api/v1/bookings/create_manual/", payload, format="json")
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED, first.data)
+
+        second = self.client.post("/api/v1/bookings/create_manual/", payload, format="json")
+        self.assertEqual(second.status_code, status.HTTP_200_OK, second.data)
+        self.assertEqual(first.data["id"], second.data["id"])
+        self.assertEqual(
+            Booking.objects.filter(
+                restaurant=self.restaurant,
+                date=date(2030, 1, 8),
+                time=time(21, 0),
+                user_phone="+77009991234",
+            ).count(),
+            1,
+        )
+
+    def test_booking_validation_uses_localdate_instead_of_system_date(self):
+        serializer_date = date.today()
+        mocked_localdate = serializer_date + timedelta(days=1)
+
+        with patch("bookings.serializers.timezone.localdate", return_value=mocked_localdate):
+            serializer = BookingSerializer(
+                data={
+                    "restaurant": self.restaurant.id,
+                    "date": serializer_date.isoformat(),
+                    "time": "19:00",
+                    "guests": 2,
+                }
+            )
+            self.assertFalse(serializer.is_valid())
+            self.assertIn("date", serializer.errors)
+
+        booking = Booking(
+            restaurant=self.restaurant,
+            date=serializer_date,
+            time=time(19, 0),
+            guests=2,
+            duration_minutes=90,
+            status=Booking.PENDING,
+        )
+        with patch("bookings.models.timezone.localdate", return_value=mocked_localdate):
+            with self.assertRaises(ValidationError):
+                booking.full_clean()
 
     def test_anonymous_waitlist_join_exposes_public_token_and_can_be_canceled(self):
         Table.objects.create(
@@ -347,7 +487,7 @@ class BookingApiHardeningTests(APITestCase):
             },
             format="json",
         )
-        # Allocation strategy supports combining multiple tables when needed.
+                                                                             
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_booking_validation_error_contract(self):
@@ -372,7 +512,7 @@ class BookingApiHardeningTests(APITestCase):
             self.assertIn("details", response.data["error"])
             self.assertTrue(response.data["error"]["details"] is not None)
 
-            # field-specific check (if present)
+                                               
             if expected_field in response.data["error"]["details"]:
                 self.assertTrue(True)
 
@@ -447,6 +587,48 @@ class BookingApiHardeningTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
+
+    def test_my_restaurant_includes_customer_summary_for_matching_phone(self):
+        self._auth_as_admin()
+
+        customer = Customer.objects.create(
+            restaurant=self.restaurant,
+            name="VIP Guest",
+            phone="+77007778899",
+            visits_count=6,
+            flag="vip",
+            no_show_count=2,
+            notes="Любит тихий стол у окна и предупреждает заранее, если задерживается.",
+        )
+
+        booking = Booking.objects.create(
+            restaurant=self.restaurant,
+            date=date(2030, 1, 6),
+            time=time(20, 0),
+            duration_minutes=90,
+            guests=2,
+            status=Booking.PENDING,
+            source="admin",
+            user_name="VIP Guest",
+            user_phone=customer.phone,
+        )
+        booking.tables.set([])
+
+        response = self.client.get(
+            "/api/v1/bookings/my_restaurant/",
+            {"limit": 50},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+
+        row = next(item for item in response.data if item["id"] == booking.id)
+        self.assertIn("customer_summary", row)
+        self.assertEqual(row["customer_summary"]["id"], customer.id)
+        self.assertEqual(row["customer_summary"]["visits_count"], 6)
+        self.assertEqual(row["customer_summary"]["no_show_count"], 2)
+        self.assertTrue(row["customer_summary"]["is_vip"])
+        self.assertEqual(row["customer_summary"]["risk_label"], "no_show_risk")
+        self.assertIn("Любит тихий стол", row["customer_summary"]["note_preview"])
 
     def test_my_restaurant_paginates_results(self):
         self._auth_as_admin()
@@ -663,6 +845,57 @@ class BookingApiHardeningTests(APITestCase):
         self.assertIn("error", unavailable_response.data)
         self.assertEqual(unavailable_response.data["error"]["details"]["table_id"], booking_table.id)
 
+    def test_seat_rolls_back_table_assignment_when_transition_fails(self):
+        self._auth_as_customer()
+
+        original_table = Table.objects.create(
+            restaurant=self.restaurant,
+            number="OPS-R1",
+            seats=4,
+            is_active=True,
+        )
+        replacement_table = Table.objects.create(
+            restaurant=self.restaurant,
+            number="OPS-R2",
+            seats=4,
+            is_active=True,
+        )
+
+        create = self.client.post(
+            "/api/v1/bookings/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": "2030-01-11",
+                "time": "19:00",
+                "guests": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(create.status_code, status.HTTP_201_CREATED, create.data)
+        booking_id = create.data["id"]
+
+        self._auth_as_admin()
+        confirm = self.client.post(f"/api/v1/bookings/{booking_id}/confirm/")
+        self.assertEqual(confirm.status_code, status.HTTP_200_OK, confirm.data)
+        booking_before = Booking.objects.get(id=booking_id)
+        self.assertEqual(booking_before.table_id, original_table.id)
+
+        with patch(
+            "bookings.mixins.lifecycle_mixins.StatusMachine.transition",
+            side_effect=ValidationError("transition failed"),
+        ):
+            response = self.client.post(
+                f"/api/v1/bookings/{booking_id}/seat/",
+                {"table_id": replacement_table.id},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        booking = Booking.objects.get(id=booking_id)
+        self.assertEqual(booking.status, Booking.CONFIRMED)
+        self.assertEqual(booking.table_id, original_table.id)
+        self.assertEqual(list(booking.tables.values_list("id", flat=True)), [original_table.id])
+
     def test_booking_actions_error_contract(self):
         self._auth_as_customer()
         Table.objects.create(restaurant=self.restaurant, number="T1", seats=4, is_active=True)
@@ -675,7 +908,7 @@ class BookingApiHardeningTests(APITestCase):
         self.assertEqual(create.status_code, status.HTTP_201_CREATED)
         booking_id = create.data["id"]
 
-        # staff for same restaurant
+                                   
         login = self.client.post(
             "/api/v1/auth/login/",
             {"username": self.admin.username, "password": "test-pass-123"},
@@ -684,7 +917,7 @@ class BookingApiHardeningTests(APITestCase):
         self.assertEqual(login.status_code, status.HTTP_200_OK)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
 
-        # invalid reschedule payload
+                                    
         res = self.client.post(f"/api/v1/bookings/{booking_id}/reschedule/", {"date": "bad-date", "time": "bad-time"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(res.data.get("success", True))
@@ -700,10 +933,10 @@ class BookingApiHardeningTests(APITestCase):
         table_a = Table.objects.create(restaurant=self.restaurant, number="A1", seats=4, is_active=True)
         table_b = Table.objects.create(restaurant=restaurant2, number="B1", seats=4, is_active=True)
 
-        # booking B belongs to restaurant2
+                                          
         Booking.objects.create(user=self.customer, restaurant=restaurant2, table=table_b, date=date(2030, 1, 20), time=time(19, 0), guests=2, status=Booking.CONFIRMED)
 
-        # login as restaurant admin1 (staff) to access /tables/
+                                                               
         login1 = self.client.post("/api/v1/auth/login/", {"username": self.admin.username, "password": "test-pass-123"}, format="json")
         self.assertEqual(login1.status_code, status.HTTP_200_OK)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login1.data['access']}")
@@ -713,7 +946,7 @@ class BookingApiHardeningTests(APITestCase):
         for t in tables_resp.data:
             self.assertNotEqual(t.get("id"), table_b.id)
 
-        # login as admin1 and try to access table_b by ID
+                                                         
         login1 = self.client.post("/api/v1/auth/login/", {"username": self.admin.username, "password": "test-pass-123"}, format="json")
         self.assertEqual(login1.status_code, status.HTTP_200_OK)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login1.data['access']}")
@@ -727,7 +960,7 @@ class BookingApiHardeningTests(APITestCase):
         resp = self.client.delete(f"/api/v1/tables/{table_b.id}/")
         self.assertIn(resp.status_code, [status.HTTP_404_NOT_FOUND, status.HTTP_403_FORBIDDEN])
 
-        # bookings list should not contain restaurant2 booking
+                                                              
         bk_resp = self.client.get("/api/v1/bookings/")
         self.assertEqual(bk_resp.status_code, status.HTTP_200_OK)
         booking_items = bk_resp.data.get("results", bk_resp.data) if isinstance(bk_resp.data, dict) else bk_resp.data
@@ -739,7 +972,7 @@ class BookingApiHardeningTests(APITestCase):
         table1 = Table.objects.create(restaurant=self.restaurant, number="T1", seats=4, is_active=True)
         table2 = Table.objects.create(restaurant=self.restaurant, number="T2", seats=4, is_active=True)
 
-        # Use a second customer for the second booking to avoid unique constraint
+                                                                                 
         from django.contrib.auth.models import User as DjangoUser
         customer2 = DjangoUser.objects.create_user("status_cust2", "sc2@t.com", "pass1234")
 
@@ -823,3 +1056,77 @@ class BookingApiHardeningTests(APITestCase):
         )
         self.assertEqual(second.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(second.data.get("success", True))
+
+    def test_booking_detail_returns_customer_summary(self):
+        """Booking detail (retrieve) endpoint returns customer_summary when CRM customer exists."""
+        self._auth_as_admin()
+
+        customer = Customer.objects.create(
+            restaurant=self.restaurant,
+            name="Detail VIP",
+            phone="+77001234567",
+            visits_count=10,
+            flag="vip",
+            no_show_count=0,
+        )
+
+        table = Table.objects.create(restaurant=self.restaurant, number="D1", seats=4, is_active=True)
+        booking = Booking.objects.create(
+            restaurant=self.restaurant,
+            table=table,
+            date=date(2030, 2, 1),
+            time=time(19, 0),
+            duration_minutes=90,
+            guests=2,
+            status=Booking.CONFIRMED,
+            user_name="Detail VIP",
+            user_phone=customer.phone,
+        )
+        booking.tables.set([table])
+
+        response = self.client.get(f"/api/v1/bookings/{booking.id}/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("customer_summary", response.data)
+        summary = response.data["customer_summary"]
+        self.assertIsNotNone(summary)
+        self.assertEqual(summary["id"], customer.id)
+        self.assertTrue(summary["is_vip"])
+        self.assertEqual(summary["visits_count"], 10)
+
+    def test_waitlist_conversion_preserves_guest_identity(self):
+        """Waitlist→reservation conversion preserves contact fields and produces valid booking."""
+        table = Table.objects.create(restaurant=self.restaurant, number="WC1", seats=4, is_active=True)
+
+        entry = WaitlistEntry.objects.create(
+            restaurant=self.restaurant,
+            date=date(2030, 2, 2),
+            time=time(19, 0),
+            guests=2,
+            guest_name="Waitlist Guest",
+            guest_phone="+77009998877",
+            guest_email="waitlist@example.com",
+            status=WaitlistEntry.NOTIFIED,
+        )
+
+        booking, error = WaitlistService.convert_to_reservation(entry)
+        self.assertIsNone(error)
+        self.assertIsNotNone(booking)
+
+        # Guest identity preserved
+        self.assertEqual(booking.user_name, "Waitlist Guest")
+        self.assertEqual(booking.user_phone, "+77009998877")
+        self.assertEqual(booking.guest_email, "waitlist@example.com")
+
+        # Booking shape is correct
+        self.assertEqual(booking.restaurant_id, self.restaurant.id)
+        self.assertEqual(booking.date, date(2030, 2, 2))
+        self.assertEqual(booking.time, time(19, 0))
+        self.assertEqual(booking.guests, 2)
+        self.assertEqual(booking.status, Booking.CONFIRMED)
+        self.assertIsNotNone(booking.table)
+        self.assertIsNotNone(booking.public_token)
+
+        # Waitlist entry updated
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, WaitlistEntry.PROMOTED)
+        self.assertEqual(entry.promoted_booking_id, booking.id)

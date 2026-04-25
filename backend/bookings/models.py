@@ -24,11 +24,11 @@ def generate_waitlist_public_token() -> str:
     return uuid.uuid4().hex
 
 class Booking(models.Model):
-    # Status constants
+                      
     PENDING = 'pending'
     PAYMENT_PENDING = 'payment_pending'
     CONFIRMED = 'confirmed'
-    APPROVED = 'confirmed'  # alias — backward compatibility with tests and CRM
+    APPROVED = 'confirmed'                                                     
     SEATED = 'seated'
     REJECTED = 'rejected'
     CANCELLED_BY_USER = 'cancelled_by_user'
@@ -122,7 +122,7 @@ class Booking(models.Model):
         help_text="Телефон клиента (для ручного ввода)"
     )
 
-    # Event details
+                   
     event_type = models.CharField(
         max_length=100,
         blank=True,
@@ -135,7 +135,7 @@ class Booking(models.Model):
     )
     special_requests = models.TextField(blank=True, null=True)
 
-    # Status and workflow
+                         
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
@@ -152,7 +152,7 @@ class Booking(models.Model):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='web')
     shift = models.ForeignKey('restaurants.Shift', on_delete=models.SET_NULL, null=True, blank=True)
 
-    # Financial fields
+                      
     deposit_required = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -169,7 +169,7 @@ class Booking(models.Model):
         help_text="Оплатить в ресторане"
     )
 
-    # Additional fields
+                       
     guest_email = models.EmailField(
         blank=True,
         null=True,
@@ -185,7 +185,7 @@ class Booking(models.Model):
     is_checked_in = models.BooleanField(default=False)
     check_in_time = models.DateTimeField(null=True, blank=True)
 
-    # Timestamps
+                
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -230,51 +230,51 @@ class Booking(models.Model):
 
     @property
     def duration_hours(self) -> float:
-        """Get duration in hours"""
+        
         return self.duration_minutes / 60
 
     @duration_hours.setter
     def duration_hours(self, value: float) -> None:
-        """Set duration from hours"""
+        
         self.duration_minutes = int(value * 60)
 
     @property
     def end_time(self) -> time:
-        """Calculate end time based on start time and duration"""
+        
         start_dt = datetime.combine(self.date, self.time)
         end_dt = start_dt + timedelta(minutes=self.duration_minutes)
         return end_dt.time()
 
     @property
     def is_active(self) -> bool:
-        """Check if booking is in active status"""
+        
         return self.status in self.ACTIVE_STATUSES
 
     @property
     def is_past(self) -> bool:
-        """Check if booking is in the past"""
+        
         if not self.end_datetime:
             return False
         return self.end_datetime < timezone.now()
 
     @property
     def can_be_cancelled(self) -> bool:
-        """Check if booking can be cancelled by user"""
+        
         return self.status in [self.PENDING, self.CONFIRMED, self.PAYMENT_PENDING]
 
     @property
     def can_be_modified(self) -> bool:
-        """Check if booking can be modified"""
+        
         return self.status in [self.PENDING, self.CONFIRMED] and not self.is_past
 
     def overlaps_with(self, other_start_dt: datetime, other_end_dt: datetime) -> bool:
-        """Check if this booking overlaps with given time range"""
+        
         if not self.start_datetime or not self.end_datetime:
             return False
         return self.start_datetime < other_end_dt and other_start_dt < self.end_datetime
 
     def clean(self) -> None:
-        """Validate booking data"""
+        
         if self.guests < 1:
             raise ValidationError({'guests': 'Количество гостей должно быть больше 0'})
 
@@ -284,14 +284,14 @@ class Booking(models.Model):
         if self.duration_minutes > 480:
             raise ValidationError({'duration_minutes': 'Длительность не может превышать 8 часов'})
 
-        if self.date < date.today():
+        if self.date < timezone.localdate():
             raise ValidationError({'date': 'Нельзя создать бронирование на прошедшую дату'})
 
     def save(self, *args, **kwargs) -> None:
-        """Save booking with automatic datetime calculation"""
+        
         self.full_clean()
 
-        # Calculate start and end datetimes
+                                           
         start_dt = datetime.combine(self.date, self.time)
         if settings.USE_TZ:
             start_dt = timezone.make_aware(start_dt)
@@ -302,7 +302,7 @@ class Booking(models.Model):
         super().save(*args, **kwargs)
 
     def transition_to(self, new_status: str, *, actor: Optional[settings.AUTH_USER_MODEL] = None) -> 'Booking':
-        """Transition booking to new status with validation"""
+        
         if new_status not in self.TRANSITIONS.get(self.status, []):
             raise ValidationError(
                 f"Недопустимый переход статуса: {self.get_status_display()} → {new_status}"
@@ -313,7 +313,7 @@ class Booking(models.Model):
         self.status = new_status
         self.save()
 
-        # Create history record
+                               
         ReservationHistory.objects.create(
             reservation=self,
             status=new_status,
@@ -329,7 +329,7 @@ class Booking(models.Model):
 
     @classmethod
     def expire_stale_bookings(cls, ttl_minutes: int = 30) -> int:
-        """Mark pending bookings older than TTL as expired"""
+        
         cutoff = timezone.now() - timedelta(minutes=ttl_minutes)
         expired_count = cls.objects.filter(
             status=cls.PENDING,
@@ -345,7 +345,7 @@ class Booking(models.Model):
         start_time: time,
         duration_minutes: int = 90
     ) -> models.QuerySet['Booking']:
-        """Get all active bookings that overlap with the given time slot"""
+        
         start_dt = datetime.combine(date, start_time)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
@@ -429,10 +429,6 @@ from restaurants.models import Availability
 @receiver(post_save, sender=Booking)
 @receiver(post_delete, sender=Booking)
 def update_availability_on_booking_change(sender, instance, **kwargs):
-    """
-    Automatically updates the daily Availability record when a booking is made or changed.
-    This ensures that the 'available_seats' at the daily level reflects confirmed reservations.
-    """
     restaurant_id = getattr(instance, 'restaurant_id', None)
     date = instance.date
     origin = kwargs.get('origin')
@@ -445,9 +441,9 @@ def update_availability_on_booking_change(sender, instance, **kwargs):
     if not restaurant_id or not date:
         return
 
-    # On restaurant deletion Django cascades to bookings first, and this signal can
-    # still run while the parent restaurant row is already gone. In that case there
-    # is nothing left to recalculate.
+                                                                                   
+                                                                                   
+                                     
     restaurant = Restaurant.objects.filter(pk=restaurant_id).first()
     if restaurant is None:
         return

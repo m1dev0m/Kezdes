@@ -1,5 +1,5 @@
 export const colors = {
-  // CRM Admin (Zoho-like blue/indigo)
+  
   primary: {
     50: '#eff6ff',
     100: '#dbeafe',
@@ -19,7 +19,7 @@ export const colors = {
     cream: '#FDFBF7',
     accent: '#E9E3D5'
   },
-  // Public/Client (brand green)
+  
   accent: {
     50: '#f0fdf4',
     100: '#dcfce7',
@@ -85,7 +85,7 @@ export const colors = {
     900: '#0f172a',
     950: '#020617',
   },
-  // Semantic aliases
+  
   background: 'white',
   foreground: '#0f172a',
   muted: {

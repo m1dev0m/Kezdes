@@ -1,13 +1,3 @@
-"""
-Missing coverage tests for critical scenarios:
-  1. Login flow (token obtain via username and email)
-  2. Register without OTP (OTP is disabled by default)
-  3. Restaurants list (public endpoint)
-  4. Full booking lifecycle: pending → confirmed → seated → completed
-  5. create_manual endpoint
-  6. available_slots endpoint (basic happy path)
-  7. Table CRUD via API (create / list / update / delete)
-"""
 import pytest
 from datetime import date, time, timedelta
 
@@ -18,7 +8,7 @@ from bookings.models import Booking
 from restaurants.models import Restaurant, Table, OpeningHours
 
 
-# ── Shared helpers ────────────────────────────────────────────────────────────
+                                                                                
 
 def _tomorrow():
     return (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -69,7 +59,7 @@ def customer(db):
     return u
 
 
-# ── 1. Login flow ─────────────────────────────────────────────────────────────
+                                                                                
 
 @pytest.mark.django_db
 class TestLoginFlow:
@@ -85,7 +75,7 @@ class TestLoginFlow:
         assert "refresh" in r.data
 
     def test_login_with_email_returns_tokens(self, api_client, owner_and_restaurant):
-        """CustomTokenObtainPairSerializer supports email as username field."""
+        
         owner, _ = owner_and_restaurant
         r = api_client.post("/api/v1/auth/login/", {
             "username": "cov_owner@test.local",
@@ -118,7 +108,7 @@ class TestLoginFlow:
         assert "role" in r.data
 
 
-# ── 2. Register without OTP (OTP disabled) ───────────────────────────────────
+                                                                               
 
 @pytest.mark.django_db
 class TestRegisterWithoutOTP:
@@ -148,7 +138,7 @@ class TestRegisterWithoutOTP:
 
     def test_register_duplicate_username_rejected(self, api_client, owner_and_restaurant):
         r = api_client.post("/api/v1/auth/register/", {
-            "username": "cov_owner",  # already exists
+            "username": "cov_owner",                  
             "email": "unique_email@test.local",
             "password": "StrongPass123!",
             "password2": "StrongPass123!",
@@ -159,7 +149,7 @@ class TestRegisterWithoutOTP:
     def test_register_duplicate_email_rejected(self, api_client, owner_and_restaurant):
         r = api_client.post("/api/v1/auth/register/", {
             "username": "unique_username_cov",
-            "email": "cov_owner@test.local",  # already exists
+            "email": "cov_owner@test.local",                  
             "password": "StrongPass123!",
             "password2": "StrongPass123!",
             "role": "customer",
@@ -185,7 +175,7 @@ class TestRegisterWithoutOTP:
         assert r.status_code == 400
 
 
-# ── 3. Restaurants list (public endpoint) ────────────────────────────────────
+                                                                               
 
 @pytest.mark.django_db
 class TestRestaurantsPublicList:
@@ -199,7 +189,7 @@ class TestRestaurantsPublicList:
         assert restaurant.id in ids
 
     def test_public_list_no_auth_required(self, api_client, owner_and_restaurant):
-        """Unauthenticated users can browse restaurants."""
+        
         r = api_client.get("/api/v1/restaurants/")
         assert r.status_code == 200
 
@@ -227,7 +217,7 @@ class TestRestaurantsPublicList:
         assert "Unverified Place" not in names
 
 
-# ── 4. Full booking lifecycle: pending → confirmed → seated → completed ───────
+                                                                                
 
 @pytest.mark.django_db
 class TestFullBookingLifecycle:
@@ -237,7 +227,7 @@ class TestFullBookingLifecycle:
     ):
         owner, restaurant = owner_and_restaurant
 
-        # Step 1: Customer creates booking (lands in PENDING)
+                                                             
         api_client.force_authenticate(user=customer)
         create_r = api_client.post("/api/v1/bookings/", {
             "restaurant": restaurant.id,
@@ -252,20 +242,20 @@ class TestFullBookingLifecycle:
         booking = Booking.objects.get(id=booking_id)
         assert booking.status == Booking.PENDING
 
-        # Step 2: Owner confirms → APPROVED/CONFIRMED
+                                                     
         api_client.force_authenticate(user=owner)
         confirm_r = api_client.post(f"/api/v1/bookings/{booking_id}/confirm/")
         assert confirm_r.status_code == 200, confirm_r.data
         booking.refresh_from_db()
         assert booking.status in (Booking.APPROVED, Booking.CONFIRMED)
 
-        # Step 3: Owner seats the guest → SEATED
+                                                
         seat_r = api_client.post(f"/api/v1/bookings/{booking_id}/seat/")
         assert seat_r.status_code == 200, seat_r.data
         booking.refresh_from_db()
         assert booking.status == Booking.SEATED
 
-        # Step 4: Owner completes → COMPLETED
+                                             
         complete_r = api_client.post(f"/api/v1/bookings/{booking_id}/complete/")
         assert complete_r.status_code == 200, complete_r.data
         booking.refresh_from_db()
@@ -294,7 +284,7 @@ class TestFullBookingLifecycle:
         assert booking.status == Booking.NO_SHOW
 
     def test_cannot_complete_pending_booking(self, api_client, owner_and_restaurant, customer):
-        """Completing a PENDING booking should fail (invalid transition)."""
+        
         owner, restaurant = owner_and_restaurant
 
         api_client.force_authenticate(user=customer)
@@ -339,7 +329,7 @@ class TestFullBookingLifecycle:
         assert history_count >= 3, f"Expected ≥3 history entries, got {history_count}"
 
 
-# ── 5. create_manual endpoint ─────────────────────────────────────────────────
+                                                                                
 
 @pytest.mark.django_db
 class TestCreateManual:
@@ -426,7 +416,7 @@ class TestCreateManual:
         assert r.status_code == 400
 
 
-# ── 6. available_slots endpoint ───────────────────────────────────────────────
+                                                                                
 
 @pytest.mark.django_db
 class TestAvailableSlotsBasic:
@@ -458,7 +448,7 @@ class TestAvailableSlotsBasic:
         assert r.status_code == 400
 
     def test_no_auth_required_for_slots(self, api_client, owner_and_restaurant):
-        """available_slots is a public endpoint."""
+        
         _, restaurant = owner_and_restaurant
         r = api_client.get("/api/v1/bookings/available_slots/", {
             "restaurant_id": restaurant.id,
@@ -468,7 +458,7 @@ class TestAvailableSlotsBasic:
         assert r.status_code == 200
 
 
-# ── 7. Table CRUD via API ─────────────────────────────────────────────────────
+                                                                                
 
 @pytest.mark.django_db
 class TestTableCRUD:
@@ -485,7 +475,7 @@ class TestTableCRUD:
         r = api_client.get("/api/v1/tables/")
         assert r.status_code == 200
         data = r.data if isinstance(r.data, list) else r.data.get("results", [])
-        # All returned tables must belong to owner's restaurant
+                                                               
         for t in data:
             assert t.get("restaurant") == restaurant.id or "restaurant" not in t
 

@@ -1,7 +1,3 @@
-"""
-E2E tests for Phases 3-6: Auth, Restaurants, Bookings, CRM, Tables.
-Run: python manage.py test test_e2e_phases
-"""
 import os
 import sys
 import django
@@ -29,7 +25,7 @@ def get_token(client, username, password):
 
 
 class Phase3FrontendAPI(TestCase):
-    """Phase 3: Frontend-relevant API endpoints."""
+    
 
     def setUp(self):
         self.client = APIClient()
@@ -91,7 +87,7 @@ class Phase3FrontendAPI(TestCase):
 
 
 class Phase4BookingAPI(TestCase):
-    """Phase 4: Booking endpoints."""
+    
 
     def setUp(self):
         self.client = APIClient()
@@ -136,7 +132,7 @@ class Phase4BookingAPI(TestCase):
 
 
 class Phase6CRMAPI(TestCase):
-    """Phase 6: CRM customers and notes."""
+    
 
     def setUp(self):
         self.client = APIClient()
@@ -183,7 +179,7 @@ class Phase6CRMAPI(TestCase):
 
 
 class Phase8DatabaseValidation(TestCase):
-    """Phase 8: Schema and relations."""
+    
 
     def test_required_tables_exist(self):
         from django.db import connection
@@ -202,7 +198,7 @@ class Phase8DatabaseValidation(TestCase):
 
 
 class Phase10LoadSimulation(TestCase):
-    """Phase 10: Simulate multiple restaurants and reservations."""
+    
 
     def setUp(self):
         self.client = APIClient()

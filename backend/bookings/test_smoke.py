@@ -18,7 +18,7 @@ class TestKezdesSmoke:
         api_client.force_authenticate(user=owner)
         table = table_factory(restaurant=restaurant, seats=4, is_active=True)
         
-        # 1. Create Pending
+                           
         payload = {
             "restaurant": restaurant.id,
             "user_name_manual": "Smoke Test Guest",

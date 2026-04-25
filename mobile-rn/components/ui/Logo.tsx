@@ -29,6 +29,6 @@ export const Logo: React.FC<LogoProps> = ({ style, onPress }) => {
 const styles = StyleSheet.create({
     logo: {
         height: 32,
-        width: 100, // Default width, can be overridden by style prop
+        width: 100, 
     }
 });

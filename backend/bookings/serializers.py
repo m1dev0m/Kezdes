@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from datetime import datetime, timedelta, date
+from django.utils import timezone
 from .models import Booking, ReservationHistory
 from restaurants.models import Review
 from core.utils import get_user_profile
@@ -115,12 +116,13 @@ class BookingSerializer(serializers.ModelSerializer):
     reservation_time = serializers.TimeField(source='time', required=False)
     customer_id = serializers.SerializerMethodField(read_only=True)
     table_id = serializers.SerializerMethodField(read_only=True)
+    customer_summary = serializers.SerializerMethodField(read_only=True)
     history = ReservationHistorySerializer(many=True, read_only=True)
 
     duration_hours = serializers.IntegerField(required=False, write_only=True)
 
     def validate_date(self, value):
-        if value < date.today():
+        if value < timezone.localdate():
             raise serializers.ValidationError("Нельзя забронировать на прошедшую дату.")
         return value
 
@@ -133,6 +135,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'budget', 'pay_at_restaurant',
             'table_number', 'table_ids', 'has_preorder', 'orders_count', 'can_review', 'rebook_payload',
             'reservation_date', 'reservation_time', 'customer_id', 'table_id',
+            'customer_summary',
             'is_checked_in', 'check_in_time',
             'history',
         ]
@@ -150,8 +153,8 @@ class BookingSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        # general validator for date/time formats is done by DRF fields,
-        # but we include explicit fallback for invalid schedule.
+                                                                        
+                                                                
         if 'date' in attrs and attrs['date'] is None:
             raise serializers.ValidationError({
                 'date': 'Неверный формат даты.'
@@ -164,24 +167,25 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Normalize status values to the canonical set the frontend expects.
-        # CONFIRMED and APPROVED are the same model constant ('confirmed') — keep as-is.
-        # CANCELLED_BY_USER / CANCELLED_BY_RESTAURANT are kept distinct so the frontend
-        # can differentiate them (isActiveReservation checks both separately).
-        # No remapping needed for: pending, seated, rejected, completed, no_show, expired.
+                                                                            
+                                                                                        
+                                                                                       
+                                                                              
+                                                                                          
         status_val = data.get('status')
         if status_val == Booking.CONFIRMED:
             data['status'] = 'confirmed'
         elif status_val == Booking.SEATED:
             data['status'] = 'seated'
-        # Do NOT collapse cancelled_by_user / cancelled_by_restaurant into 'cancelled' —
-        # the frontend ReservationStatus type and isActiveReservation() use the full values.
+                                                                                        
+                                                                                            
 
         if instance.user:
             data['user_name'] = instance.user.get_full_name() or instance.user.username or data.get('user_name')
-            profile = getattr(instance.user, 'profile', None)
-            if profile and profile.phone:
-                data['user_phone'] = profile.phone
+            if not data.get('user_phone'):
+                profile = get_user_profile(instance.user)
+                if profile and profile.phone:
+                    data['user_phone'] = profile.phone
 
         return data
 
@@ -193,6 +197,59 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def get_table_id(self, obj: Booking):
         return obj.table_id
+
+    def get_customer_summary(self, obj: Booking):
+        phone = (obj.user_phone or '').strip()
+        if not phone and obj.user_id:
+            profile = get_user_profile(obj.user)
+            phone = (getattr(profile, 'phone', '') or '').strip()
+
+        if not phone:
+            return None
+
+        summary_map = self.context.get('customer_summary_map')
+        if summary_map is not None:
+            return summary_map.get((obj.restaurant_id, phone))
+
+        try:
+            from crm.models import Customer
+        except Exception:
+            return None
+
+        customer = Customer.objects.filter(
+            restaurant_id=obj.restaurant_id,
+            phone=phone,
+        ).order_by('-last_visit').first()
+        if not customer:
+            return None
+
+        return self._build_customer_summary(customer)
+
+    @staticmethod
+    def _build_customer_summary(customer):
+        notes_text = (customer.notes or '').strip()
+        note_preview = notes_text[:140].strip() if notes_text else ''
+        if note_preview and len(notes_text) > 140:
+            note_preview = f"{note_preview}..."
+
+        risk_label = 'regular'
+        if customer.flag == 'problem':
+            risk_label = 'blacklist'
+        elif (customer.no_show_count or 0) >= 2:
+            risk_label = 'no_show_risk'
+        elif customer.flag == 'vip' or (customer.visits_count or 0) >= 5:
+            risk_label = 'vip'
+
+        return {
+            'id': customer.id,
+            'visits_count': customer.visits_count or 0,
+            'no_show_count': customer.no_show_count or 0,
+            'flag': customer.flag or 'new',
+            'is_vip': customer.flag == 'vip' or (customer.visits_count or 0) >= 5,
+            'risk_label': risk_label,
+            'notes': notes_text or '',
+            'note_preview': note_preview,
+        }
 
     def get_table_ids(self, obj: Booking):
         prefetched_tables = _prefetched_related_items(obj, 'tables')
@@ -242,27 +299,19 @@ class BookingSerializer(serializers.ModelSerializer):
 
 
 class BookingListSerializer(BookingSerializer):
-    """
-    Lightweight serializer for list endpoints.
-    Excludes heavy nested structures like `history` and computed relations like `can_review`.
-    """
     class Meta(BookingSerializer.Meta):
         fields = [
             'id', 'public_token', 'user', 'user_name', 'user_phone', 'restaurant', 'restaurant_name',
             'date', 'time', 'duration_minutes', 'guests', 'event_type', 'event_title',
             'status', 'status_display', 'source', 'created_at',
             'table_number', 'table_ids', 'has_preorder', 'orders_count',
-            'reservation_date', 'reservation_time', 'customer_id', 'table_id',
+            'reservation_date', 'reservation_time', 'customer_id', 'table_id', 'customer_summary',
             'is_checked_in', 'check_in_time',
         ]
 
 
 class AdminBookingSerializer(serializers.ModelSerializer):
-    """
-    Serializer used exclusively by restaurant admins to manually create bookings.
-    Bypasses user linkage validation, relying instead on explicit name/phone fields.
-    """
-    # Accept both 'user_name' (frontend) and 'user_name_manual' (legacy)
+                                                                        
     user_name = serializers.CharField(
         max_length=255,
         required=False,
@@ -340,8 +389,8 @@ class AdminBookingSerializer(serializers.ModelSerializer):
                 {"duration_minutes": "Длительность должна быть от 15 до 480 минут (8 часов)."}
             )
 
-        # user_name and user_phone are optional for walk-in bookings
-        # (e.g. admin creates a booking for an anonymous walk-in guest)
+                                                                    
+                                                                       
         if 'user_name' in attrs and attrs['user_name']:
             attrs['user_name'] = attrs['user_name'].strip()
         if 'user_phone' in attrs and attrs['user_phone']:
@@ -355,11 +404,6 @@ class AdminBookingSerializer(serializers.ModelSerializer):
 
 
 class BookingAdminUpdateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for restaurant staff edits and reschedules.
-    Keeps the update contract explicit so admin table actions can patch
-    guest details and schedule fields without exposing unrelated model state.
-    """
     user_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     user_phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     guest_email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
@@ -393,7 +437,7 @@ class BookingAdminUpdateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_date(self, value):
-        if value < date.today():
+        if value < timezone.localdate():
             raise serializers.ValidationError("Нельзя перенести бронь на прошедшую дату.")
         return value
 

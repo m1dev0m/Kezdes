@@ -40,13 +40,13 @@ class Restaurant(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=100, unique=True, null=True, blank=True)
     turnover_default_min = models.PositiveIntegerField(default=85)
-    # Amenities
+               
     has_namazhana = models.BooleanField(default=False)
     has_parking = models.BooleanField(default=False)
     has_kids_zone = models.BooleanField(default=False)
     has_wifi = models.BooleanField(default=False)
     has_terrace = models.BooleanField(default=False)
-    # Service options
+                     
     deposit_required = models.BooleanField(default=False)
     birthday_service_available = models.BooleanField(default=False)
     wheelchair_accessible = models.BooleanField(default=False)
@@ -100,7 +100,7 @@ class Restaurant(models.Model):
     entrance = models.CharField(max_length=50, blank=True, null=True, help_text="Вход/подъезд")
     extra_address_info = models.TextField(blank=True, null=True, help_text="Дополнительная информация (напр. код домофона)")
     
-    # Deposit settings
+                      
     deposit_min_guests = models.PositiveIntegerField(null=True, blank=True, help_text="Мин. кол-во гостей для предоплаты")
     deposit_amount_per_guest = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Сумма предоплаты за гостя")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -201,12 +201,6 @@ class Restaurant(models.Model):
         ]
 
     def has_feature(self, feature: str) -> bool:
-        """
-        Simple feature-flag matrix per subscription plan.
-        none: базовый операционный минимум — брони, схема зала и один зал с лимитами.
-        plus: ежедневная операционная работа ресторана.
-        pro: plus + продвинутая аналитика и автоматизации.
-        """
         overrides = self.feature_flags or {}
         if isinstance(overrides.get(feature), bool):
             return overrides[feature]
@@ -426,10 +420,10 @@ class Table(models.Model):
         null=False,
     )
     zone = models.ForeignKey('Zone', on_delete=models.SET_NULL, null=True, blank=True, related_name='tables')
-    # Primary fields — used everywhere in code and tests
+                                                        
     number = models.CharField(max_length=50, help_text="Table label, e.g. '1', 'A1', 'VIP-1'")
     seats = models.PositiveIntegerField(help_text="Max guests (1–20)")
-    # Canonical aliases kept in sync via save()
+                                               
     name = models.CharField(max_length=50, blank=True)
     capacity = models.PositiveIntegerField(null=True, blank=True)
 
@@ -481,12 +475,12 @@ class Table(models.Model):
             raise ValidationError({"capacity": f"capacity must be <= {self.CAPACITY_MAX}"})
 
     def save(self, *args, **kwargs):
-        # If created via name/capacity (API path), sync to number/seats
+                                                                       
         if self.name and not self.number:
             self.number = self.name
         if self.capacity and not self.seats:
             self.seats = self.capacity
-        # Always keep aliases in sync
+                                     
         self.name = self.number
         self.capacity = self.seats
         self.full_clean()
@@ -607,7 +601,7 @@ logger = logging.getLogger(__name__)
 def send_restaurant_request_emails(sender, instance, created, **kwargs):
     update_fields = kwargs.get("update_fields")
     if created:
-        # Notify Global Admin about a new restaurant request
+                                                            
         subject = f"Новая заявка на регистрацию ресторана: {instance.name}"
         message = (
             f"Новая заявка на регистрацию ресторана!\n\n"
@@ -629,10 +623,10 @@ def send_restaurant_request_emails(sender, instance, created, **kwargs):
         except Exception as e:
             logger.warning(f"Failed to email global admin about new restaurant request {instance.id}: {e}")
 
-    # If it's not newly created, check if status changed to approved
-    # Wait, we need the old state to be 100% accurate, but for MVP checking if it's approved is sufficient
-    # Alternatively we can just check if instance.status == 'approved'.
-    # A complete solution would check if it just changed to approved, but this is simple.
+                                                                    
+                                                                                                          
+                                                                       
+                                                                                         
     
     if (
         not created
@@ -640,7 +634,7 @@ def send_restaurant_request_emails(sender, instance, created, **kwargs):
         and update_fields is not None
         and 'status' in update_fields
     ):
-        # Send confirmation email to restaurant owner
+                                                     
         subject = f"Ваша заявка одобрена: {instance.name}"
         message = (
             f"Здравствуйте, {instance.owner_name or 'партнер'}!\n\n"

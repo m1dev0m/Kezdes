@@ -16,8 +16,8 @@ IS_TESTING = (
     or os.environ.get("TEST_ENV") == "true"
 )
 
-# Keep test runs stable even if the surrounding environment exports non-boolean DEBUG values
-# (e.g. DEBUG=release in some deployment environments).
+                                                                                            
+                                                       
 if IS_TESTING:
     os.environ["DEBUG"] = "True"
     os.environ.setdefault("SECRET_KEY", "django-insecure-test-key-change-me-2026")
@@ -26,9 +26,9 @@ def _load_env_file():
     env_file_path = os.path.join(BASE_DIR, '.env')
     if os.path.exists(env_file_path):
         environ.Env.read_env(env_file_path)
-        # django-environ doesn't override existing env vars; some hosting setups export
-        # non-boolean DEBUG values (e.g. DEBUG=release) which would otherwise be parsed
-        # as False. If a repo-local `.env` exists, prefer its DEBUG value for stability.
+                                                                                       
+                                                                                       
+                                                                                        
         raw_debug = os.environ.get("DEBUG")
         valid_debug_values = {
             "true",
@@ -69,7 +69,7 @@ if not DEBUG and len(JWT_SIGNING_KEY) < 32:
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'testserver'])
 if DEBUG:
-    # Allow any Host header in local/dev so devices on the same Wi-Fi can reach the server.
+                                                                                           
     ALLOWED_HOSTS = ['*']
 TWOGIS_API_KEY = env('TWOGIS_API_KEY', default='')
 CSRF_TRUSTED_ORIGINS = env.list(
@@ -208,7 +208,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_SECONDS = 31536000          
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -292,14 +292,14 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
-    # NOTE: BLACKLIST_AFTER_ROTATION requires the token blacklist app + DB migrations.
-    # In this repo it may not be installed in all environments, so we default to stability.
+                                                                                      
+                                                                                           
     'BLACKLIST_AFTER_ROTATION': 'rest_framework_simplejwt.token_blacklist' in INSTALLED_APPS,
     'UPDATE_LAST_LOGIN': True,
     'SIGNING_KEY': JWT_SIGNING_KEY,
 }
 
-# Email Settings
+                
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = env('EMAIL_HOST', default='')
 EMAIL_PORT = int(env('EMAIL_PORT', default=587))
@@ -310,9 +310,9 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@kezdes.kz')
 
 GLOBAL_ADMIN_EMAIL = env('GLOBAL_ADMIN_EMAIL', default='admin@kezdes.kz')
 
-# OTP settings
-# Keep OTP optional in test runs so legacy smoke tests and local API checks
-# can register users without having to seed OTP state.
+              
+                                                                           
+                                                      
 REQUIRE_EMAIL_OTP = env('REQUIRE_EMAIL_OTP', default='False' if DEBUG else 'True').lower() == 'true' and not IS_TESTING
 OTP_EXPIRE_MINUTES = int(env('OTP_EXPIRE_MINUTES', default=10))
 

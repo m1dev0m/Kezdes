@@ -156,7 +156,7 @@ class MessageViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                     if conv:
                         qs = qs.filter(conversation_id=conv.id)
                     else:
-                        # No conversation yet — fall back to direct booking FK
+                                                                              
                         qs = qs.filter(booking_id=bid)
                 else:
                     qs = qs.filter(booking_id=bid)
@@ -233,12 +233,6 @@ class MessageViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
 
     @decorators.action(detail=False, methods=["post"])
     def mark_read(self, request):
-        """
-        Marks messages as read for a single thread.
-        Accepts either:
-        - booking: booking id (resolves to Conversation restaurant+guest)
-        - restaurant: restaurant id (marks messages in that restaurant thread for the current user)
-        """
         user = request.user
         booking_id = request.data.get("booking")
         conversation_id = request.data.get("conversation")
@@ -279,7 +273,7 @@ class MessageViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 return response.Response({"detail": "Invalid restaurant"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Verify user belongs to this restaurant
+                                                    
             from restaurants.models import Restaurant
             restaurant_obj = Restaurant.objects.filter(id=rid).first()
             if not restaurant_obj:

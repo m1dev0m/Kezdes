@@ -2,10 +2,6 @@ from rest_framework.views import exception_handler
 
 
 def api_exception_handler(exc, context):
-    """
-    Normalize DRF error responses for frontend/mobile consistency.
-    Keeps HTTP status code from DRF, wraps payload into a stable envelope.
-    """
     response = exception_handler(exc, context)
     if response is None:
         return response

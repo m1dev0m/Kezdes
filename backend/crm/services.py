@@ -4,13 +4,13 @@ import re
 from .models import Customer, Visit
 
 def normalize_phone(phone):
-    """Normalize phone number for consistent matching."""
+    
     if not phone:
         return None
     digits = re.sub(r"[^\d]", "", str(phone))
 
-    # Kazakhstan/Russia-style inputs are commonly 10 digits (without country code) or
-    # 11 digits starting with 7/8. We normalize into +7XXXXXXXXXX.
+                                                                                     
+                                                                  
     if len(digits) == 10:
         digits = f"7{digits}"
     elif len(digits) == 11 and digits[0] == "8":
@@ -19,17 +19,12 @@ def normalize_phone(phone):
     if len(digits) == 11 and digits[0] == "7":
         return f"+{digits}"
 
-    # Fallback: keep digits-only format but still add '+' when it already looks like a CC number
+                                                                                                
     return f"+{digits}" if digits else None
 
 class CRMService:
     @staticmethod
     def ensure_customer(restaurant, phone, name=None, email=None):
-        """Upsert a customer profile without recording a visit.
-
-        Use this at booking creation time so CRM can see upcoming guests, while
-        visits_count reflects actual completed visits.
-        """
         normalized_phone = normalize_phone(phone)
         if not normalized_phone:
             return None
@@ -58,11 +53,6 @@ class CRMService:
 
     @staticmethod
     def record_visit(restaurant, phone, name=None, email=None, booking=None, spent_amount=0):
-        """
-        Records a visit for a customer. If customer doesn't exist, create one.
-        Updates visit count, last visit date. Creates a Visit log.
-        Normalizes phone numbers for consistent matching within the same restaurant.
-        """
         normalized_phone = normalize_phone(phone)
         if not normalized_phone:
             return None
@@ -96,10 +86,6 @@ class CRMService:
 
     @staticmethod
     def get_guest_loyalty_status(phone, restaurant):
-        """
-        Returns loyalty metrics for a guest at a specific restaurant.
-        Normalizes phone number for consistent matching.
-        """
         normalized_phone = normalize_phone(phone)
         try:
             customer = Customer.objects.get(restaurant=restaurant, phone=normalized_phone)

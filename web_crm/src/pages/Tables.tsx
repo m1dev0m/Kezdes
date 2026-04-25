@@ -297,7 +297,7 @@ export default function Tables() {
         }
         return;
       } catch {
-        // Fallback to per-table deletion if the clear endpoint is not available yet.
+        
       }
 
       const deletedIds = new Set<number>();

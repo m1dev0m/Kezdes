@@ -390,13 +390,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingTop: 48, // Safe area approx
+        paddingTop: 48, 
     },
     iconBtn: {
         width: 40,
         height: 40,
         borderRadius: 32,
-        backgroundColor: 'rgba(255,255,255,0.9)', // Simulating bg-white/80 backdrop-blur
+        backgroundColor: 'rgba(255,255,255,0.9)', 
         alignItems: 'center',
         justifyContent: 'center',
         ...Platform.select({
@@ -420,10 +420,10 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     scrollContent: {
-        paddingBottom: 120, // Space for bottom CTA
+        paddingBottom: 120, 
     },
     coverWrapper: {
-        height: 288, // h-72 = 18rem = 288px
+        height: 288, 
         width: '100%',
         position: 'relative',
     },
@@ -438,11 +438,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 96,
-        backgroundColor: 'rgba(0,0,0,0.4)', // Simplified gradient simulation
+        backgroundColor: 'rgba(0,0,0,0.4)', 
     },
     infoWrapper: {
         paddingHorizontal: 20,
-        marginTop: -24, // -mt-6
+        marginTop: -24, 
         zIndex: 20,
     },
     infoCard: {
@@ -481,13 +481,13 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
     },
     statusBadge: {
-        backgroundColor: '#DCFCE7', // green-100
+        backgroundColor: '#DCFCE7', 
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 32,
     },
     statusText: {
-        color: '#16A34A', // green-600
+        color: '#16A34A', 
         fontSize: 10,
         fontWeight: '700',
         textTransform: 'uppercase',
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: 16,
-        paddingBottom: 32, // Safe area + padding
+        paddingBottom: 32, 
         backgroundColor: 'rgba(255,255,255,0.95)',
         borderTopWidth: 1,
         borderTopColor: colors.border,

@@ -32,12 +32,12 @@ const safeStorage = {
         try {
             localStorage.removeItem(key);
         } catch {
-            // ignore
+            
         }
         try {
             sessionStorage.removeItem(key);
         } catch {
-            // ignore
+            
         }
     },
 };

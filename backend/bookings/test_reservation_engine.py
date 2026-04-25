@@ -1,13 +1,3 @@
-"""
-Reservation engine tests — covers:
-- Overlapping booking prevention
-- Table capacity enforcement
-- Smallest-suitable-table selection
-- Status transitions
-- Waitlist capacity re-check
-- reassign_table exclude_booking_id fix
-- Duration validation (max 480 min)
-"""
 import pytest
 from datetime import date, time, timedelta
 from django.contrib.auth.models import User
@@ -18,7 +8,6 @@ from bookings.services import BookingService, WaitlistService
 from restaurants.models import Restaurant, Table
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture
 def restaurant(db):
@@ -83,11 +72,10 @@ def make_booking(restaurant, table, user, booking_date, booking_time, guests=2, 
     return b
 
 
-# ── Tests: Table selection ─────────────────────────────────────────────────────
 
 @pytest.mark.django_db
 def test_find_best_tables_picks_smallest_sufficient(restaurant, tables, future_date):
-    """Should pick T4 (4 seats) for 3 guests, not T6."""
+    
     result = BookingService.find_best_tables(restaurant, future_date, time(18, 0), guests=3)
     assert len(result) == 1
     assert result[0].seats == 4
@@ -95,7 +83,7 @@ def test_find_best_tables_picks_smallest_sufficient(restaurant, tables, future_d
 
 @pytest.mark.django_db
 def test_find_best_tables_combines_when_no_single_fits(restaurant, tables, future_date):
-    """7 guests: no single table fits, should combine T4+T6 or T6+T2."""
+    
     result = BookingService.find_best_tables(restaurant, future_date, time(18, 0), guests=7)
     total_seats = sum(t.seats for t in result)
     assert total_seats >= 7
@@ -104,7 +92,7 @@ def test_find_best_tables_combines_when_no_single_fits(restaurant, tables, futur
 
 @pytest.mark.django_db
 def test_find_best_tables_returns_empty_when_impossible(restaurant, tables, future_date):
-    """15 guests: total capacity is 12, should return empty."""
+    
     result = BookingService.find_best_tables(restaurant, future_date, time(18, 0), guests=15)
     assert result == []
 
@@ -116,32 +104,28 @@ def test_find_best_tables_query_count(restaurant, tables, future_date, django_as
         assert len(result) == 1
 
 
-# ── Tests: Overlap prevention ──────────────────────────────────────────────────
 
 @pytest.mark.django_db
 def test_no_overlap_different_times(restaurant, tables, customer, future_date):
-    """Two bookings at non-overlapping times should both get tables."""
+    
     make_booking(restaurant, tables["t4"], customer, future_date, time(12, 0), guests=3, duration=90)
 
-    # 14:00 start — 12:00 booking ends at 13:30, no overlap
     result = BookingService.find_best_tables(restaurant, future_date, time(14, 0), guests=3)
     assert len(result) == 1
 
 
 @pytest.mark.django_db
 def test_overlap_blocks_same_table(restaurant, tables, customer, future_date):
-    """Booking at 18:00 for 90 min occupies T4 until 19:30. 18:30 request should not get T4."""
+    
     make_booking(restaurant, tables["t4"], customer, future_date, time(18, 0), guests=3, duration=90)
 
-    # 18:30 overlaps with 18:00–19:30
     result = BookingService.find_best_tables(restaurant, future_date, time(18, 30), guests=3)
-    # T4 is occupied, should fall back to T6
     assert all(t.id != tables["t4"].id for t in result)
 
 
 @pytest.mark.django_db
 def test_check_capacity_blocks_overbooking(db, restaurant, tables, future_date):
-    """restaurant.capacity=20, but we set it to 10 to test the cap check."""
+    
     restaurant.capacity = 10
     restaurant.save()
 
@@ -150,7 +134,6 @@ def test_check_capacity_blocks_overbooking(db, restaurant, tables, future_date):
     make_booking(restaurant, tables["t6"], u1, future_date, time(18, 0), guests=6, duration=90)
     make_booking(restaurant, tables["t4"], u2, future_date, time(18, 0), guests=4, duration=90)
 
-    # 10 guests booked, capacity=10 → 0 left, requesting 1 more should fail
     ok, available = BookingService.check_capacity(restaurant, future_date, time(18, 0), guests=1)
     assert ok is False
     assert available == 0
@@ -158,20 +141,17 @@ def test_check_capacity_blocks_overbooking(db, restaurant, tables, future_date):
 
 @pytest.mark.django_db
 def test_find_best_tables_blocks_when_all_tables_occupied(db, restaurant, tables, future_date):
-    """All tables occupied → find_best_tables returns empty even if capacity field allows it."""
-    u1 = User.objects.create_user("occ_u1", "occ1@t.com", "pass")
+        u1 = User.objects.create_user("occ_u1", "occ1@t.com", "pass")
     u2 = User.objects.create_user("occ_u2", "occ2@t.com", "pass")
     u3 = User.objects.create_user("occ_u3", "occ3@t.com", "pass")
     make_booking(restaurant, tables["t6"], u1, future_date, time(18, 0), guests=6, duration=90)
     make_booking(restaurant, tables["t4"], u2, future_date, time(18, 0), guests=4, duration=90)
     make_booking(restaurant, tables["t2"], u3, future_date, time(18, 0), guests=2, duration=90)
 
-    # All 3 tables occupied — no table available for even 1 guest
     result = BookingService.find_best_tables(restaurant, future_date, time(18, 0), guests=1)
     assert result == []
 
 
-# ── Tests: Status transitions ──────────────────────────────────────────────────
 
 @pytest.mark.django_db
 def test_valid_status_transition_pending_to_approved(restaurant, tables, customer, future_date):
@@ -198,15 +178,13 @@ def test_terminal_status_cannot_transition(restaurant, tables, customer, future_
             b.transition_to(Booking.APPROVED)
 
 
-# ── Tests: Waitlist capacity re-check ─────────────────────────────────────────
 
 @pytest.mark.django_db
 def test_waitlist_promote_skips_when_still_full(db, restaurant, tables, customer2, future_date):
-    """promote_next should NOT notify if slot is still at capacity (restaurant.capacity)."""
+    
     restaurant.capacity = 12
     restaurant.save()
 
-    # Fill all capacity (12 seats) with distinct users
     u1 = User.objects.create_user("wl_u1", "wl1@t.com", "pass")
     u2 = User.objects.create_user("wl_u2", "wl2@t.com", "pass")
     u3 = User.objects.create_user("wl_u3", "wl3@t.com", "pass")
@@ -229,7 +207,7 @@ def test_waitlist_promote_skips_when_still_full(db, restaurant, tables, customer
 
 @pytest.mark.django_db
 def test_waitlist_promote_notifies_when_slot_opens(restaurant, tables, customer, customer2, future_date):
-    """promote_next should notify when there IS capacity."""
+    
     WaitlistEntry.objects.create(
         user=customer2,
         restaurant=restaurant,
@@ -244,11 +222,10 @@ def test_waitlist_promote_notifies_when_slot_opens(restaurant, tables, customer,
     assert result.status == WaitlistEntry.NOTIFIED
 
 
-# ── Tests: reassign_table excludes current booking ────────────────────────────
 
 @pytest.mark.django_db
 def test_reassign_table_to_same_table_works(restaurant, tables, customer, customer2, future_date):
-    """Reassigning to the same table should succeed (exclude_booking_id fix)."""
+    
     client = APIClient()
     owner = restaurant.owner
     client.force_authenticate(user=owner)
@@ -263,11 +240,10 @@ def test_reassign_table_to_same_table_works(restaurant, tables, customer, custom
     assert response.status_code == 200
 
 
-# ── Tests: Duration validation ─────────────────────────────────────────────────
 
 @pytest.mark.django_db
 def test_duration_too_long_rejected(restaurant, customer, future_date):
-    """Booking with duration > 480 minutes should be rejected."""
+    
     client = APIClient()
     client.force_authenticate(user=customer)
 
@@ -287,7 +263,7 @@ def test_duration_too_long_rejected(restaurant, customer, future_date):
 
 @pytest.mark.django_db
 def test_duration_too_short_rejected(restaurant, customer, future_date):
-    """Booking with duration < 15 minutes should be rejected."""
+    
     client = APIClient()
     client.force_authenticate(user=customer)
 

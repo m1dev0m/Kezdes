@@ -59,7 +59,7 @@ export default function Reviews() {
     return (
         <div className="max-w-[1000px] mx-auto px-6 py-10 space-y-12 animate-in fade-in duration-700">
 
-            {/* Page Header */}
+            {}
             <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div className="space-y-2">
                     <h1 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">Reviews & Feedback</h1>

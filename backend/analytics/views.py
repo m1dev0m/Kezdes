@@ -83,18 +83,18 @@ class DashboardAnalyticsView(APIView):
         ).aggregate(total=Sum('guests'))['total'] or 0
         occupancy = min(int((overlapping_guests / capacity) * 100), 100)
 
-        # Revenue: Use actual order totals if available, otherwise fallback to average estimate
+                                                                                               
         completed_month_qs = month_qs.filter(status='completed')
         completed_month_count = completed_month_qs.count()
         
-        # Calculate revenue from linked orders
+                                              
         from orders.models import Order
         order_revenue = Order.objects.filter(
             reservation__in=completed_month_qs,
             payment_status='PAID'
         ).aggregate(total=Sum('total_amount'))['total'] or 0
         
-        # For bookings without orders, use the average price estimate
+                                                                     
         bookings_with_orders_ids = Order.objects.filter(
             reservation__in=completed_month_qs
         ).values_list('reservation_id', flat=True)
@@ -118,12 +118,12 @@ class DashboardAnalyticsView(APIView):
         repeat_customers = all_customers.filter(visit_count__gte=2).count()
         repeat_customer_rate = round((repeat_customers / total_customers * 100) if total_customers > 0 else 0)
 
-        # No-show analytics (month)
+                                   
         no_show_month = month_qs.filter(status=Booking.NO_SHOW).count()
         decided_month = month_qs.filter(status__in=[Booking.COMPLETED, Booking.NO_SHOW]).count()
         no_show_rate = round((no_show_month / decided_month * 100) if decided_month > 0 else 0)
 
-        # Simple channel breakdown: CRM vs Public
+                                                 
         from collections import Counter as _Counter
 
         channel_counter = _Counter()
@@ -144,10 +144,10 @@ class DashboardAnalyticsView(APIView):
             {"id": "public", "name": "Public", "count": channel_counter.get('public', 0)},
         ]
 
-        # 30‑day retention (users who вернулись в последние 30 дней)
+                                                                    
         last_30 = today - timedelta(days=30)
         last_60 = today - timedelta(days=60)
-        # Берём пользователей с визитами за 60 дней
+                                                   
         recent_users = Booking.objects.filter(
             restaurant=restaurant,
             date__gte=last_60,

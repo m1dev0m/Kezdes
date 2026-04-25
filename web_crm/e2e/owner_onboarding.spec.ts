@@ -1,15 +1,10 @@
-/**
- * E2E: Owner onboarding flow
- * register → restaurant request → global_admin approves → owner logs in → manages tables
- *
- * Uses the real backend API directly (no mocking) via the running dev server.
- */
+
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173';
 const API = 'http://127.0.0.1:8000/api/v1';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 async function apiPost(url: string, body: object, token?: string) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -35,7 +30,7 @@ async function loginApi(username: string, password: string): Promise<string> {
     return r.data.access;
 }
 
-// ── Test ──────────────────────────────────────────────────────────────────────
+
 
 test.describe('Owner onboarding flow', () => {
     test.setTimeout(90_000);
@@ -47,16 +42,16 @@ test.describe('Owner onboarding flow', () => {
         const ownerPassword = 'StrongPass123!';
         const restaurantName = `E2E Restaurant ${ts}`;
 
-        // ── Step 1: Register owner via API (bypasses OTP for test speed) ──────
-        // Create OTP record first
+        
+        
         const otpCode = '424242';
         await fetch(`${API}/auth/send-otp/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: ownerEmail }),
-        }).catch(() => {}); // ignore if endpoint doesn't exist
+        }).catch(() => {}); 
 
-        // Register via API
+        
         const regRes = await apiPost('/auth/register/', {
             username: ownerUsername,
             email: ownerEmail,
@@ -66,13 +61,13 @@ test.describe('Owner onboarding flow', () => {
             otp_code: otpCode,
         });
 
-        // If OTP required and not set up, skip gracefully
+        
         if (regRes.status === 400 && JSON.stringify(regRes.data).includes('otp')) {
             console.log('ℹ OTP required — using direct DB approach via admin API');
-            // Fall through to use existing test user
+            
         }
 
-        // ── Step 2: Login as global admin and approve ─────────────────────────
+        
         let adminToken: string;
         try {
             adminToken = await loginApi('Meatp', 'testpass123');
@@ -81,15 +76,15 @@ test.describe('Owner onboarding flow', () => {
             return;
         }
 
-        // ── Step 3: UI — Login as owner (use existing verified account) ───────
+        
         await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
         await page.locator('input[type="text"], input[type="email"]').first().fill('Meatp');
         await page.locator('input[type="password"]').first().fill('testpass123');
         await page.locator('button[type="submit"]').click();
-        await page.waitForURL(/\/app\//, { timeout: 12000 });
+        await page.waitForURL(/\/app\
         console.log('✓ Logged in as owner');
 
-        // ── Step 4: Navigate to Tables ────────────────────────────────────────
+        
         await page.goto(`${BASE}/app/tables`, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(1500);
 
@@ -121,7 +116,7 @@ test.describe('Owner onboarding flow', () => {
         await page.locator('button', { hasText: 'Save changes' }).click();
         console.log(`✓ Active toggle: "${initialAria}" → "${nextAria}"`);
 
-        // ── Step 8: Create a booking via UI ───────────────────────────────────
+        
         await page.goto(`${BASE}/app/bookings`, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(1500);
 
@@ -143,7 +138,7 @@ test.describe('Owner onboarding flow', () => {
         await page.waitForURL(/\/app\/bookings$/, { timeout: 12000 });
         await page.waitForTimeout(2500);
 
-        // Check booking appears
+        
         const bodyText = await page.locator('body').textContent() || '';
         if (bodyText.includes(guestName)) {
             console.log(`✓ Booking for ${guestName} visible in list`);
@@ -151,7 +146,7 @@ test.describe('Owner onboarding flow', () => {
             console.log(`ℹ Booking may be on different page or filtered`);
         }
 
-        // ── Step 9: Verify booking actions work ───────────────────────────────
+        
         const seatBtns = await page.locator('button', { hasText: /Seat|Seat guest/ }).count();
         console.log(`✓ Seat buttons visible: ${seatBtns}`);
 

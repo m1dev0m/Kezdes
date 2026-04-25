@@ -76,7 +76,7 @@ export default function GuestSettings() {
 
     return (
         <div className="mx-auto max-w-[1280px] px-6 py-8 space-y-12 pb-24">
-            {/* Header */}
+            {}
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div className="max-w-xl">
                     <div className="text-sm font-semibold uppercase tracking-[0.16em] text-[#1d4ed8]">Управление аккаунтом</div>
@@ -92,7 +92,7 @@ export default function GuestSettings() {
                 <div className="rounded-[28px] border border-blue-100 bg-blue-50/70 px-6 py-4 text-sm font-medium leading-7 text-blue-800">
                     Настройки сохраняются локально на этом устройстве. Это позволяет не терять предпочтения при первом использовании гостевого кабинета.
                 </div>
-                {/* Personal Info */}
+                {}
                 <section className="space-y-6">
                         <div className="flex items-center gap-3">
                             <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700">
@@ -140,7 +140,7 @@ export default function GuestSettings() {
                         </div>
                     </section>
 
-                    {/* Verification */}
+                    {}
                     <section className="space-y-6">
                         <div className="flex items-center gap-3">
                             <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700">

@@ -29,7 +29,7 @@ export default function RoleSelection() {
 
             await api.post('/auth/update-role/', { role });
 
-            // Refresh user data in context
+            
             const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
             const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
             if (accessToken && refreshToken) {
@@ -57,7 +57,7 @@ export default function RoleSelection() {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-8">
-                    {/* Customer Option */}
+                    {}
                     <button
                         onClick={() => handleSelectRole('customer')}
                         disabled={!!loading}
@@ -77,7 +77,7 @@ export default function RoleSelection() {
                         </div>
                     </button>
 
-                    {/* Restaurant Owner Option */}
+                    {}
                     <button
                         onClick={() => handleSelectRole('owner')}
                         disabled={!!loading}

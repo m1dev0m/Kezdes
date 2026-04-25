@@ -31,7 +31,7 @@
     color: rgb(var(--accent-rgb));
   }
 
-  /* Ensure Material Symbols render as icons, not raw text. */
+  
   .material-symbols-outlined {
     font-family: "Material Symbols Outlined";
     font-weight: normal;
@@ -77,7 +77,7 @@
     scrollbar-width: none;
   }
 
-  /* Global scrollbar styles */
+  
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -97,7 +97,7 @@
     @apply bg-slate-400 dark:bg-slate-600;
   }
 
-  /* Landing Page Overhaul Custom Styles */
+  
   .nav-link {
     position: relative;
     transition: color 0.3s ease;

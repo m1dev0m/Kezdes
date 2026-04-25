@@ -3,8 +3,8 @@ import re
 with open('bookings/views.py', 'r') as f:
     lines = f.readlines()
 
-start_idx = 793 # Line 794 is 0-indexed 793
-end_idx = 1017  # Line 1018 is 0-indexed 1017, meaning it stops before @action of available_slots
+start_idx = 793                            
+end_idx = 1017                                                                                   
 
 lifecycle_lines = lines[start_idx:end_idx]
 

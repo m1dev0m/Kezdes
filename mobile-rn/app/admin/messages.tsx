@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
@@ -73,6 +73,12 @@ export default function AdminMessagesScreen() {
 
     const pendingCount = useMemo(() => conversations.filter((item) => item.status === 'pending').length, [conversations]);
 
+    useFocusEffect(
+        useCallback(() => {
+            void initData(true);
+        }, [initData])
+    );
+
     const renderItem = ({ item }: { item: any }) => (
         <TouchableOpacity
             style={styles.chatCard}
@@ -97,7 +103,7 @@ export default function AdminMessagesScreen() {
                     </View>
                 </View>
                 <Text style={styles.metaText}>
-                    {item.date || 'Сегодня'}{!!item.table_number ? ` · Стол ${item.table_number}` : ''}
+                    {item.date || 'Сегодня'}{!!(item.table_number || item.table || item.table_id) ? ` · Стол ${item.table_number || item.table || item.table_id}` : ''}
                 </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />

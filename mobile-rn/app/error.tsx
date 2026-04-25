@@ -7,7 +7,7 @@ export default function GlobalError({ error, retry }: { error: Error; retry: () 
   const router = useRouter();
 
   useEffect(() => {
-    // Keep a useful log for development; in production this can be hooked to Sentry.
+    
     console.error("Global app error:", error);
   }, [error]);
 

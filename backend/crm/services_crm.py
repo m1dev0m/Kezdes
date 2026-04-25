@@ -1,6 +1,3 @@
-"""
-CRM Service - handles customer creation and visit tracking from bookings
-"""
 from django.db import transaction
 from crm.models import Customer, Visit
 from bookings.models import Booking
@@ -10,10 +7,6 @@ from crm.services import CRMService as CanonicalCRMService, normalize_phone
 class CRMService:
     @staticmethod
     def get_or_create_customer_from_booking(booking: Booking) -> Customer:
-        """
-        Create or update customer record from booking data.
-        Returns the customer instance.
-        """
         restaurant = booking.restaurant
         
         phone = booking.user_phone
@@ -44,10 +37,6 @@ class CRMService:
     @staticmethod
     @transaction.atomic
     def complete_booking_and_track_visit(booking: Booking) -> Visit:
-        """
-        Mark booking as completed and create a visit record.
-        Call this when the booking is marked as completed (guest has visited).
-        """
         customer = CRMService.get_or_create_customer_from_booking(booking)
 
         CanonicalCRMService.record_visit(
@@ -63,9 +52,6 @@ class CRMService:
 
     @staticmethod
     def update_customer_stats(customer: Customer):
-        """
-        Recalculate customer statistics from their bookings.
-        """
         bookings = Booking.objects.filter(
             user=customer.user,
             restaurant=customer.restaurant,

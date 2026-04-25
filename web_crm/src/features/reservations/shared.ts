@@ -28,6 +28,17 @@ export interface ReservationRecord {
   special_requests?: string | null;
   table_id?: number | null;
   table_number?: string | null;
+  table?: string | number | null;
+  customer_summary?: {
+    id: number;
+    visits_count: number;
+    no_show_count: number;
+    flag: string;
+    is_vip: boolean;
+    risk_label: string;
+    notes: string;
+    note_preview: string;
+  } | null;
   has_preorder?: boolean;
   orders_count?: number;
   check_in_time?: string | null;
@@ -161,12 +172,12 @@ export function getReservationPhone(reservation: ReservationRecord): string {
 }
 
 export function getTableLabel(
-  record: Pick<ReservationRecord, 'table_number'> | TableRecord | null | undefined,
+  record: (Pick<ReservationRecord, 'table_number' | 'table' | 'table_id'> | TableRecord) | null | undefined,
 ): string {
   if (!record) return '—';
   const value =
     'table_number' in record
-      ? record.table_number
+      ? record.table_number ?? record.table ?? record.table_id?.toString()
       : (record as TableRecord).name || (record as TableRecord).number;
   return value?.toString().trim() || '—';
 }
@@ -198,25 +209,60 @@ export function getReservationStatusMeta(status: ReservationStatus): {
 } {
   switch (status) {
     case 'pending':
-      return { label: 'Pending', className: 'bg-amber-50 text-amber-700 border-amber-200' };
+      return { label: 'Ожидание', className: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'approved':
     case 'confirmed':
-      return { label: 'Confirmed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      return { label: 'Подтверждено', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     case 'seated':
-      return { label: 'Seated', className: 'bg-blue-50 text-blue-700 border-blue-200' };
+      return { label: 'За столом', className: 'bg-blue-50 text-blue-700 border-blue-200' };
     case 'completed':
-      return { label: 'Completed', className: 'bg-slate-100 text-slate-700 border-slate-200' };
+      return { label: 'Завершено', className: 'bg-slate-100 text-slate-700 border-slate-200' };
     case 'rejected':
-      return { label: 'Rejected', className: 'bg-rose-50 text-rose-700 border-rose-200' };
+      return { label: 'Отклонено', className: 'bg-rose-50 text-rose-700 border-rose-200' };
     case 'cancelled':
     case 'cancelled_by_restaurant':
     case 'cancelled_by_user':
-      return { label: 'Cancelled', className: 'bg-rose-50 text-rose-700 border-rose-200' };
+      return { label: 'Отменено', className: 'bg-rose-50 text-rose-700 border-rose-200' };
     case 'no_show':
-      return { label: 'No Show', className: 'bg-orange-50 text-orange-700 border-orange-200' };
+      return { label: 'Не пришёл', className: 'bg-orange-50 text-orange-700 border-orange-200' };
     default:
       return { label: status.replaceAll('_', ' '), className: 'bg-slate-100 text-slate-700 border-slate-200' };
   }
+}
+
+export function getReservationCustomerSignals(reservation: ReservationRecord): Array<{
+  key: string;
+  label: string;
+  className: string;
+}> {
+  const summary = reservation.customer_summary;
+  if (!summary) return [];
+
+  const signals: Array<{ key: string; label: string; className: string }> = [];
+
+  if (summary.is_vip) {
+    signals.push({
+      key: 'vip',
+      label: 'VIP',
+      className: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700',
+    });
+  }
+
+  if (summary.risk_label === 'blacklist') {
+    signals.push({
+      key: 'blacklist',
+      label: 'Problem guest',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+    });
+  } else if (summary.risk_label === 'no_show_risk') {
+    signals.push({
+      key: 'no_show_risk',
+      label: 'No-show risk',
+      className: 'border-amber-200 bg-amber-50 text-amber-700',
+    });
+  }
+
+  return signals;
 }
 
 export function getTableStatusMeta(status?: string): {
@@ -225,15 +271,15 @@ export function getTableStatusMeta(status?: string): {
 } {
   switch (status) {
     case 'free':
-      return { label: 'Free', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      return { label: 'Свободен', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     case 'reserved':
-      return { label: 'Reserved', className: 'bg-amber-50 text-amber-700 border-amber-200' };
+      return { label: 'Забронирован', className: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'occupied':
-      return { label: 'Occupied', className: 'bg-blue-50 text-blue-700 border-blue-200' };
+      return { label: 'Занят', className: 'bg-blue-50 text-blue-700 border-blue-200' };
     case 'cleaning':
-      return { label: 'Cleaning', className: 'bg-slate-100 text-slate-700 border-slate-200' };
+      return { label: 'Уборка', className: 'bg-slate-100 text-slate-700 border-slate-200' };
     default:
-      return { label: 'Unknown', className: 'bg-slate-100 text-slate-700 border-slate-200' };
+      return { label: 'Неизвестно', className: 'bg-slate-100 text-slate-700 border-slate-200' };
   }
 }
 

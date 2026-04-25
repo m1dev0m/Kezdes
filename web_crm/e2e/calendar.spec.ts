@@ -8,7 +8,7 @@ test.describe('Calendar', () => {
     await page.locator('input[type="text"], input[type="email"]').first().fill('Meatp');
     await page.locator('input[type="password"]').first().fill('testpass123');
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/\/app\//, { timeout: 12000 });
+    await page.waitForURL(/\/app\
   });
 
   test('calendar exposes explicit date controls', async ({ page }) => {

@@ -1,11 +1,3 @@
-"""
-Reservation Engine — core booking logic.
-
-Responsibilities:
-  1. ReservationValidator  — overlap / capacity / table-existence checks
-  2. TableAssigner         — smallest-suitable-table selection
-  3. StatusMachine         — enforced status transitions
-"""
 
 from __future__ import annotations
 
@@ -23,18 +15,18 @@ from restaurants.models import Restaurant, Table
 from bookings.models import Booking, ReservationHistory
 
 
-# ── helpers ────────────────────────────────────────────────────────────────────
+                                                                                 
 
 def _aware(dt: datetime) -> datetime:
-    """Return a timezone-aware datetime when USE_TZ is on."""
+    
     if settings.USE_TZ and timezone.is_naive(dt):
         return timezone.make_aware(dt)
     return dt
 
 
-# ════════════════════════════════════════════════════════════════════════════════
-# 1. RESERVATION VALIDATOR
-# ════════════════════════════════════════════════════════════════════════════════
+                                                                                  
+                          
+                                                                                  
 
 @dataclass
 class ValidationResult:
@@ -47,9 +39,9 @@ class ValidationResult:
 
 
 class ReservationValidator:
-    """Unified validation for a reservation request."""
+    
 
-    # ── public API ─────────────────────────────────────────────────────────
+                                                                             
 
     @classmethod
     def validate(
@@ -63,34 +55,20 @@ class ReservationValidator:
         table_id: Optional[int] = None,
         exclude_booking_id: Optional[int] = None,
     ) -> ValidationResult:
-        """
-        Run ALL checks and return a combined result.
-
-        Checks (in order):
-          1. date / time not in the past
-          2. table exists and belongs to restaurant  (when table_id given)
-             + table-specific overlap when table_id is given
-          3. operating hours
-          4. capacity
-          5. table availability (any table fits) when no table_id
-
-        Note: Overlap is enforced PER-TABLE by TableAssigner, not restaurant-wide.
-        Multiple bookings CAN coexist at the same time on different tables.
-        """
         errors: List[str] = []
 
-        # 1 ── past-date / past-time
+                                    
         past_err = cls._check_not_past(booking_date, start_time)
         if past_err:
             errors.append(past_err)
 
-        # 2 ── table existence + per-table overlap
+                                                  
         if table_id is not None:
             tbl_err = cls._check_table_exists(table_id, restaurant, guests)
             if tbl_err:
                 errors.append(tbl_err)
             else:
-                # Check if THIS specific table is already booked
+                                                                
                 tbl_overlap = cls._check_table_overlap(
                     restaurant, table_id, booking_date, start_time,
                     duration_minutes, exclude_booking_id=exclude_booking_id,
@@ -98,12 +76,12 @@ class ReservationValidator:
                 if tbl_overlap:
                     errors.append(tbl_overlap)
 
-        # 3 ── operating hours
+                              
         hours_err = cls._check_operating_hours(restaurant, booking_date, start_time, duration_minutes)
         if hours_err:
             errors.append(hours_err)
 
-        # 4 ── capacity
+                       
         cap_err = cls._check_capacity(
             restaurant, booking_date, start_time, guests, duration_minutes,
             exclude_booking_id=exclude_booking_id,
@@ -111,7 +89,7 @@ class ReservationValidator:
         if cap_err:
             errors.append(cap_err)
 
-        # 5 ── at least one table must be available (when no specific table requested)
+                                                                                      
         if table_id is None:
             table_err = cls._check_any_table_available(
                 restaurant, booking_date, start_time, guests,
@@ -122,13 +100,14 @@ class ReservationValidator:
 
         return ValidationResult(is_valid=len(errors) == 0, errors=errors)
 
-    # ── individual checks ──────────────────────────────────────────────────
+                                                                             
 
     @classmethod
     def _check_not_past(cls, booking_date: date, start_time: time) -> Optional[str]:
-        if booking_date < date.today():
+        local_today = timezone.localdate()
+        if booking_date < local_today:
             return "Нельзя создать бронирование на прошедшую дату."
-        if booking_date == date.today() and start_time < timezone.now().time():
+        if booking_date == local_today and start_time < timezone.localtime().time():
             return "Нельзя забронировать на прошедшее время сегодня."
         return None
 
@@ -136,12 +115,6 @@ class ReservationValidator:
     def _check_table_exists(
         cls, table_id: int, restaurant: Restaurant, guests: int
     ) -> Optional[str]:
-        """
-        Verify the table:
-          - belongs to the restaurant
-          - is active
-          - has enough seats
-        """
         try:
             table = Table.objects.get(id=table_id)
         except Table.DoesNotExist:
@@ -172,7 +145,7 @@ class ReservationValidator:
         try:
             hours = restaurant.operating_hours.get(day_of_week=booking_date.weekday())
         except Exception:
-            return None  # no hours configured → assume open
+            return None                                     
 
         if hours.is_closed:
             return "Ресторан закрыт в этот день."
@@ -203,10 +176,6 @@ class ReservationValidator:
         *,
         exclude_booking_id: Optional[int] = None,
     ) -> Optional[str]:
-        """
-        Detect ANY active booking whose time range overlaps the requested slot.
-        This is a restaurant-wide check (used for capacity context, not blocking).
-        """
         start_dt = _aware(datetime.combine(booking_date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
@@ -238,9 +207,6 @@ class ReservationValidator:
         *,
         exclude_booking_id: Optional[int] = None,
     ) -> Optional[str]:
-        """
-        Check if a SPECIFIC table has overlapping bookings.
-        """
         from bookings.models import Booking as Bk
         start_dt = _aware(datetime.combine(booking_date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
@@ -271,10 +237,6 @@ class ReservationValidator:
         *,
         exclude_booking_id: Optional[int] = None,
     ) -> Optional[str]:
-        """
-        Check that at least one suitable table is available for the slot.
-        Uses TableAssigner to find best match.
-        """
         from bookings.engine import TableAssigner
         tables = TableAssigner.assign(
             restaurant, booking_date, start_time, guests, duration_minutes,
@@ -298,12 +260,8 @@ class ReservationValidator:
         *,
         exclude_booking_id: Optional[int] = None,
     ) -> Optional[str]:
-        """
-        Check global restaurant capacity for the slot.
-        Returns error string when capacity is exceeded.
-        """
         if not restaurant.capacity:
-            return None  # no capacity set → skip
+            return None                          
 
         start_dt = _aware(datetime.combine(booking_date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
@@ -328,19 +286,11 @@ class ReservationValidator:
         return None
 
 
-# ════════════════════════════════════════════════════════════════════════════════
-# 2. TABLE ASSIGNER
-# ════════════════════════════════════════════════════════════════════════════════
+                                                                                  
+                   
+                                                                                  
 
 class TableAssigner:
-    """
-    Find the best table (or combination) for a reservation.
-
-    Priority:
-      1. If preferred_table_id given → use it (if available & fits)
-      2. Smallest single table that fits all guests
-      3. Best combination of tables (minimise unused seats)
-    """
 
     @classmethod
     def assign(
@@ -354,9 +304,6 @@ class TableAssigner:
         preferred_table_id: Optional[int] = None,
         exclude_booking_id: Optional[int] = None,
     ) -> List[Table]:
-        """
-        Returns a list of Table objects (1 or more) or empty list if impossible.
-        """
         available = cls._available_tables(
             restaurant, booking_date, start_time, duration_minutes,
             exclude_booking_id=exclude_booking_id,
@@ -365,28 +312,28 @@ class TableAssigner:
         if not available:
             return []
 
-        # 1 ── preferred table
+                              
         if preferred_table_id:
             for t in available:
                 if t.id == preferred_table_id:
                     if t.seats >= guests:
                         return [t]
-                    break  # preferred too small → fall through
-            return []  # preferred not found or too small → explicit fail
+                    break                                      
+            return []                                                    
 
-        # 2 ── smallest single table
+                                    
         single = cls._best_single(available, guests)
         if single:
             return [single]
 
-        # 3 ── combination
+                          
         combo = cls._best_combination(available, guests)
         if combo:
             return combo
 
         return []
 
-    # ── internals ──────────────────────────────────────────────────────────
+                                                                             
 
     @staticmethod
     def _available_tables(
@@ -397,7 +344,7 @@ class TableAssigner:
         *,
         exclude_booking_id: Optional[int] = None,
     ) -> List[Table]:
-        """Active tables NOT occupied during the slot, ordered by seats."""
+        
         start_dt = _aware(datetime.combine(booking_date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
@@ -429,23 +376,19 @@ class TableAssigner:
 
     @staticmethod
     def _best_single(available: List[Table], guests: int) -> Optional[Table]:
-        """Return the smallest table with seats >= guests, or None."""
-        for t in available:  # already sorted by seats
+        
+        for t in available:                           
             if t.seats >= guests:
                 return t
         return None
 
     @staticmethod
     def _best_combination(available: List[Table], guests: int) -> List[Table]:
-        """
-        Bounded DP to find the combination of tables with minimum total seats
-        that covers `guests`.  Returns empty list when impossible.
-        """
         total = sum(t.seats for t in available)
         if total < guests:
             return []
 
-        # best_for_sum[seats] = shortest list of tables achieving exactly `seats`
+                                                                                 
         best_for_sum: Dict[int, List[Table]] = {0: []}
         cap = guests + max(t.seats for t in available)
 
@@ -471,11 +414,11 @@ class TableAssigner:
         return best[1] if best else []
 
 
-# ════════════════════════════════════════════════════════════════════════════════
-# 3. STATUS MACHINE
-# ════════════════════════════════════════════════════════════════════════════════
+                                                                                  
+                   
+                                                                                  
 
-# Canonical transitions:  from_status → [allowed_to_statuses]
+                                                             
 TRANSITIONS: Dict[str, List[str]] = {
     Booking.PENDING:               [Booking.CONFIRMED, Booking.PAYMENT_PENDING,
                                     Booking.REJECTED, Booking.EXPIRED,
@@ -497,12 +440,6 @@ TRANSITIONS: Dict[str, List[str]] = {
 
 
 class StatusMachine:
-    """
-    Enforce allowed status transitions.
-
-    Usage:
-        StatusMachine.transition(booking, Booking.CONFIRMED, actor=request.user)
-    """
 
     @classmethod
     def transition(
@@ -512,11 +449,6 @@ class StatusMachine:
         *,
         actor=None,
     ) -> Booking:
-        """
-        Transition `booking` to `new_status`.
-
-        Raises ValidationError when the transition is not allowed.
-        """
         allowed = TRANSITIONS.get(booking.status, [])
         if new_status not in allowed:
             raise ValidationError(
@@ -561,10 +493,10 @@ class StatusMachine:
 
     @classmethod
     def allowed_transitions(cls, current_status: str) -> List[str]:
-        """Return list of statuses reachable from `current_status`."""
+        
         return list(TRANSITIONS.get(current_status, []))
 
     @classmethod
     def is_terminal(cls, status: str) -> bool:
-        """True when no further transitions are possible."""
+        
         return len(TRANSITIONS.get(status, [])) == 0

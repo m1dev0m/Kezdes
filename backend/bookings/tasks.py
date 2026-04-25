@@ -5,9 +5,6 @@ from datetime import timedelta
 
 @shared_task
 def expire_stale_waitlist_entries(ttl_minutes=15):
-    """
-    Expire waitlist entries that were notified but not confirmed within TTL.
-    """
     from .models import WaitlistEntry
 
     cutoff = timezone.now() - timedelta(minutes=ttl_minutes)
@@ -20,9 +17,6 @@ def expire_stale_waitlist_entries(ttl_minutes=15):
 
 @shared_task
 def expire_stale_bookings(ttl_minutes=30):
-    """
-    Mark pending bookings older than TTL as expired.
-    """
     from .models import Booking
 
     cutoff = timezone.now() - timedelta(minutes=ttl_minutes)
@@ -35,9 +29,6 @@ def expire_stale_bookings(ttl_minutes=30):
 
 @shared_task
 def auto_mark_no_shows(grace_minutes=20):
-    """
-    Mark pending and confirmed bookings as NO_SHOW if they are past start_time + grace_minutes.
-    """
     from .models import Booking, ReservationHistory
     from crm.models import Customer
     import logging
@@ -55,7 +46,7 @@ def auto_mark_no_shows(grace_minutes=20):
         try:
             b.transition_to(Booking.NO_SHOW)
             
-            # Increment no-show counter
+                                       
             customer_phone = b.user_phone
             if customer_phone:
                 try:

@@ -12,16 +12,16 @@ from .models import Booking, ReservationHistory
 from .engine import ReservationValidator, TableAssigner, StatusMachine, _aware
 from core.notifications import NotificationService
 
-# Backward-compatible alias
+                           
 make_aware_if_needed = _aware
 
 
 class BookingService:
-    """Service class for booking business logic."""
+    
 
     LOCK_GRANULARITY_MINUTES = 15
 
-    # ── Operating hours ────────────────────────────────────────────────────
+                                                                             
 
     @staticmethod
     def is_within_operating_hours(
@@ -30,13 +30,13 @@ class BookingService:
         request_time: time,
         duration_minutes: int = 90,
     ) -> bool:
-        """Check if the requested time slot falls within restaurant operating hours."""
+        
         err = ReservationValidator._check_operating_hours(
             restaurant, date, request_time, duration_minutes
         )
         return err is None
 
-    # ── Distributed locking ────────────────────────────────────────────────
+                                                                             
 
     @staticmethod
     def _lock_keys_for_range(
@@ -61,7 +61,7 @@ class BookingService:
         duration_minutes: int = 90,
         timeout: int = 30,
     ) -> bool:
-        """Distributed lock for a reservation time range."""
+        
         import time as time_module
 
         start_dt = _aware(datetime.combine(date, time_val))
@@ -97,7 +97,7 @@ class BookingService:
         for key in keys:
             cache.delete(key)
 
-    # ── Delegates to engine ────────────────────────────────────────────────
+                                                                             
 
     @staticmethod
     def find_best_tables(
@@ -109,7 +109,7 @@ class BookingService:
         preferred_table_id: Optional[int] = None,
         exclude_booking_id: Optional[int] = None,
     ) -> List[Table]:
-        """Delegate to TableAssigner."""
+        
         return TableAssigner.assign(
             restaurant, date, start_time, guests, duration_minutes,
             preferred_table_id=preferred_table_id,
@@ -125,10 +125,6 @@ class BookingService:
         duration_minutes: int = 90,
         exclude_booking_id: Optional[int] = None,
     ) -> Tuple[bool, int]:
-        """
-        Check if the restaurant has enough global capacity for a given slot.
-        Returns (is_ok, available_seats).
-        """
         err = ReservationValidator._check_capacity(
             restaurant, date, start_time, guests, duration_minutes,
             exclude_booking_id=exclude_booking_id,
@@ -136,7 +132,7 @@ class BookingService:
         if err is None:
             return True, 0
 
-        # Extract available seats from error (already computed inside validator)
+                                                                                
         start_dt = _aware(datetime.combine(date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
         qs = Booking.objects.filter(
@@ -158,7 +154,7 @@ class BookingService:
         guests: int,
         duration_minutes: int = 90,
     ) -> List[str]:
-        """Get list of available time slots for given date and guest count."""
+        
         try:
             hours = restaurant.operating_hours.get(day_of_week=date.weekday())
         except ObjectDoesNotExist:
@@ -202,14 +198,14 @@ class BookingService:
         duration_minutes: int = 90,
         exclude_booking_id: Optional[int] = None,
     ) -> List[int]:
-        """Returns a list of table IDs that are free at the given time."""
+        
         tables = TableAssigner._available_tables(
             restaurant, date, start_time, duration_minutes,
             exclude_booking_id=exclude_booking_id,
         )
         return [t.id for t in tables]
 
-    # ── Validation ─────────────────────────────────────────────────────────
+                                                                             
 
     @staticmethod
     def validate_booking_data(
@@ -220,23 +216,45 @@ class BookingService:
         guests: int,
         duration_minutes: int,
         exclude_booking_id: Optional[int] = None,
+        user_phone: Optional[str] = None,
+        guest_email: Optional[str] = None,
     ) -> None:
-        """Validate booking data using the engine and raise ValidationError if invalid."""
         from django.core.exceptions import ValidationError as DjangoValidationError
 
-        # 1. Core validation via engine (past, table, hours, overlap, capacity)
-        result = ReservationValidator.validate(
-            restaurant, booking_date, start_time, guests, duration_minutes,
-            exclude_booking_id=exclude_booking_id,
-        )
-        if not result.is_valid:
-            raise DjangoValidationError({"detail": "; ".join(result.errors)})
-
-        # Skip user-specific checks for walk-ins (user=None)
         if user is None:
+            start_dt = _aware(datetime.combine(booking_date, start_time))
+            end_dt = start_dt + timedelta(minutes=duration_minutes)
+            duplicate_filters = Q()
+            if user_phone:
+                duplicate_filters |= Q(user_phone=user_phone)
+            if guest_email:
+                duplicate_filters |= Q(guest_email=guest_email)
+
+            if duplicate_filters:
+                duplicate_qs = Booking.objects.filter(
+                    duplicate_filters,
+                    restaurant=restaurant,
+                    status__in=Booking.ACTIVE_STATUSES,
+                    start_datetime__lt=end_dt,
+                    end_datetime__gt=start_dt,
+                )
+                if exclude_booking_id:
+                    duplicate_qs = duplicate_qs.exclude(id=exclude_booking_id)
+                if duplicate_qs.exists():
+                    raise DjangoValidationError(
+                        {"time": "У вас уже есть активная бронь в этом ресторане. "
+                                 "Чтобы забронировать снова, отмените предыдущую бронь."}
+                    )
+
+            result = ReservationValidator.validate(
+                restaurant, booking_date, start_time, guests, duration_minutes,
+                exclude_booking_id=exclude_booking_id,
+            )
+            if not result.is_valid:
+                raise DjangoValidationError({"detail": "; ".join(result.errors)})
             return
 
-        # 2. User-specific overlap check (same restaurant)
+                                                          
         start_dt = _aware(datetime.combine(booking_date, start_time))
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
@@ -256,7 +274,7 @@ class BookingService:
                          "Чтобы забронировать снова, отмените предыдущую бронь."}
             )
 
-        # 3. User-specific overlap check (other restaurants)
+                                                            
         user_all_bookings = Booking.objects.filter(
             user=user,
             status__in=Booking.ACTIVE_STATUSES,
@@ -270,7 +288,7 @@ class BookingService:
                          f"в «{existing.restaurant.name}». Отмените её сначала."}
             )
 
-        # 4. Active booking limit
+                                 
         active_count = Booking.objects.filter(
             user=user,
             status__in=Booking.ACTIVE_STATUSES,
@@ -281,7 +299,14 @@ class BookingService:
                                      "Отмените существующие, чтобы создать новые."}
             )
 
-    # ── Create ─────────────────────────────────────────────────────────────
+        result = ReservationValidator.validate(
+            restaurant, booking_date, start_time, guests, duration_minutes,
+            exclude_booking_id=exclude_booking_id,
+        )
+        if not result.is_valid:
+            raise DjangoValidationError({"detail": "; ".join(result.errors)})
+
+                                                                             
 
     @staticmethod
     def create_booking(
@@ -294,12 +319,19 @@ class BookingService:
         preferred_table_id: Optional[int] = None,
         **booking_data,
     ) -> Booking:
-        """Create a new booking with all validations and table allocation."""
+        
         from django.core.exceptions import ValidationError as DjangoValidationError
         from django.db import IntegrityError
 
         BookingService.validate_booking_data(
-            user, restaurant, booking_date, start_time, guests, duration_minutes
+            user,
+            restaurant,
+            booking_date,
+            start_time,
+            guests,
+            duration_minutes,
+            user_phone=booking_data.get("user_phone"),
+            guest_email=booking_data.get("guest_email"),
         )
 
         if not BookingService.acquire_booking_lock(
@@ -349,7 +381,7 @@ class BookingService:
                 )
                 booking.tables.set(allocated_tables)
 
-                # CRM integration
+                                 
                 try:
                     from crm.services import CRMService
                     customer_phone = booking_data.get('user_phone')
@@ -384,11 +416,11 @@ class BookingService:
                 restaurant.id, booking_date, start_time, duration_minutes
             )
 
-    # ── Confirm / Reject ───────────────────────────────────────────────────
+                                                                             
 
     @staticmethod
     def confirm_booking(booking_id, actor=None):
-        """Confirms a pending booking. Re-checks capacity."""
+        
         with transaction.atomic():
             booking = Booking.objects.select_for_update().get(pk=booking_id)
             if booking.status not in (Booking.PENDING, Booking.PAYMENT_PENDING):
@@ -411,7 +443,7 @@ class BookingService:
 
     @staticmethod
     def reject_booking(booking_id, actor=None):
-        """Rejects a pending booking."""
+        
         with transaction.atomic():
             booking = Booking.objects.select_for_update().get(pk=booking_id)
             if booking.status != Booking.PENDING:
@@ -421,11 +453,11 @@ class BookingService:
             NotificationService.notify_customer_booking_rejected(booking)
             return booking, None
 
-    # ── Maintenance ────────────────────────────────────────────────────────
+                                                                             
 
     @staticmethod
     def expire_stale_bookings(ttl_minutes=30):
-        """Mark pending bookings older than TTL as expired."""
+        
         cutoff = timezone.now() - timedelta(minutes=ttl_minutes)
         return Booking.objects.filter(
             status=Booking.PENDING,
@@ -434,7 +466,7 @@ class BookingService:
 
     @staticmethod
     def process_past_bookings():
-        """Mark past approved bookings as COMPLETED or NO_SHOW."""
+        
         now = timezone.now()
         completed = Booking.objects.filter(
             status=Booking.CONFIRMED,
@@ -455,7 +487,7 @@ class BookingService:
 class WaitlistService:
     @staticmethod
     def promote_next(restaurant, date, time_val):
-        """Find the oldest 'waiting' entry and notify."""
+        
         from .models import WaitlistEntry
 
         entry = WaitlistEntry.objects.filter(
@@ -490,7 +522,7 @@ class WaitlistService:
 
     @staticmethod
     def convert_to_reservation(entry):
-        """Converts a waitlist entry into an actual reservation inside a transaction."""
+        
         from django.db import transaction, IntegrityError
         from .models import WaitlistEntry, Booking
         from .services import BookingService

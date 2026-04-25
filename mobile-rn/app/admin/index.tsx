@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
@@ -87,6 +87,12 @@ export default function AdminDashboardScreen() {
 
         return () => clearInterval(interval);
     }, [initData, user?.access]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void initData(true);
+        }, [initData])
+    );
 
     const handleAction = useCallback(async (bookingId: string, action: 'confirm' | 'reject') => {
         const access = user?.access;
@@ -258,10 +264,10 @@ export default function AdminDashboardScreen() {
                                             <View style={styles.reqMetaRow}>
                                                 <Ionicons name="people" size={14} color={colors.textSecondary} />
                                                 <Text style={styles.reqMetaText}>{booking.guests} гостя</Text>
-                                                {!!booking.table_number && (
+                                                {!!(booking.table_number || booking.table || booking.table_id) && (
                                                     <>
                                                         <Ionicons name="grid-outline" size={14} color={colors.primary} style={{ marginLeft: 8 }} />
-                                                        <Text style={styles.reqMetaText}>Стол {booking.table_number}</Text>
+                                                        <Text style={styles.reqMetaText}>Стол {booking.table_number || booking.table || booking.table_id}</Text>
                                                     </>
                                                 )}
                                             </View>
@@ -278,6 +284,19 @@ export default function AdminDashboardScreen() {
                                         <Text style={{ fontWeight: '600', color: colors.text }}>Комментарий: </Text>
                                         {booking.special_requests}
                                     </Text>
+                                ) : null}
+
+                                {(booking.customer_summary?.is_vip || booking.customer_summary?.risk_label === 'no_show_risk') ? (
+                                    <View style={styles.reqSignalRow}>
+                                        {booking.customer_summary?.is_vip ? (
+                                            <View style={styles.reqVipBadge}>
+                                                <Text style={styles.reqVipBadgeText}>VIP</Text>
+                                            </View>
+                                        ) : null}
+                                        {booking.customer_summary?.risk_label === 'no_show_risk' ? (
+                                            <Text style={styles.reqSignalText}>Есть риск no-show</Text>
+                                        ) : null}
+                                    </View>
                                 ) : null}
 
                                 <View style={styles.reqActions}>
@@ -384,6 +403,10 @@ const styles = StyleSheet.create({
     reqDateText: { fontSize: 11, color: colors.textSecondary, textAlign: 'right', marginTop: 2 },
 
     reqComment: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, backgroundColor: '#f8fafc', padding: 12, borderRadius: 40, marginBottom: 20 },
+    reqSignalRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    reqVipBadge: { backgroundColor: '#fdf4ff', borderWidth: 1, borderColor: '#f5d0fe', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+    reqVipBadgeText: { fontSize: 10, fontWeight: '900', color: '#a21caf' },
+    reqSignalText: { fontSize: 12, fontWeight: '700', color: '#c2410c' },
 
     reqActions: { flexDirection: 'row', gap: 12 },
     btnPrimary: { flex: 1, backgroundColor: '#4300FF', paddingVertical: 14, borderRadius: 40, alignItems: 'center' },

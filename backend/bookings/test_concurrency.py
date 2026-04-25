@@ -62,7 +62,7 @@ class ReservationConcurrencyTests(TransactionTestCase):
             connections.close_all()
 
     def test_parallel_double_booking_prevented(self):
-        # Use unique usernames to avoid conflicts between tests
+                                                               
         import uuid
         suffix = uuid.uuid4().hex[:6]
         user_a = User.objects.create_user(username=f"user_a_{suffix}", password="pwd-123")

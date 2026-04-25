@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { extractResults, getLocalDateString } from '@/features/reservations/shared';
+import { extractResults, getLocalDateString, getReservationCustomerSignals, getReservationStatusMeta, getTableLabel, type ReservationRecord } from '@/features/reservations/shared';
 
 const HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`);
 const HOUR_HEIGHT = 100;
@@ -37,6 +37,7 @@ interface CalendarBooking {
     status?: string | keyof typeof STATUS_CONFIG;
     table_id?: number | null;
     table_number?: string | null;
+    customer_summary?: ReservationRecord['customer_summary'];
 }
 
 interface CalendarTable {
@@ -113,6 +114,7 @@ export default function CalendarPage() {
         const matchSearch = !search || (b.user_name || '').toLowerCase().includes(search.toLowerCase());
         return matchSearch;
     });
+    const selectedBookingSignals = selectedBooking ? getReservationCustomerSignals(selectedBooking as ReservationRecord) : [];
 
     const nightNowY = currentDate.toDateString() === new Date().toDateString()
         ? ((new Date().getHours() - START_HOUR) * 60 + new Date().getMinutes()) / 60 * HOUR_HEIGHT
@@ -120,7 +122,7 @@ export default function CalendarPage() {
 
     return (
         <div className="max-w-[1600px] mx-auto h-[calc(100vh-10rem)] flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-sm animate-in fade-in duration-700">
-            {/* Header / Workspace Control */}
+            {}
             <header className="flex flex-col md:flex-row items-center justify-between px-10 py-6 border-b border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 gap-6 z-30">
                 <div className="flex items-center gap-6">
                     <div className="size-14 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-center text-[#0047FF]">
@@ -202,7 +204,7 @@ export default function CalendarPage() {
                 </div>
             </header>
 
-            {/* Calendar Body */}
+            {}
             <div className="flex-1 overflow-hidden relative">
                 <div ref={scrollRef} className="absolute inset-0 overflow-auto no-scrollbar bg-slate-50/20 dark:bg-slate-900/40">
                     {error && (
@@ -215,7 +217,7 @@ export default function CalendarPage() {
                                     className="inline-flex items-center gap-2 self-start rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
                                 >
                                     <RefreshCw size={14} />
-                                    Retry
+                                    Повторить
                                 </button>
                             </div>
                         </div>
@@ -223,19 +225,19 @@ export default function CalendarPage() {
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-full gap-4">
                             <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#0047FF]/20 border-t-[#0047FF]"></div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Synchronizing schedule...</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Синхронизация расписания...</span>
                         </div>
                     ) : viewMode === 'timeline' ? (
                         <div className="min-w-max relative bg-white dark:bg-slate-900">
-                            {/* Column Headers (Times) */}
+                            {}
                             <div className="flex sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
-                                <div className="w-40 py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-black text-[10px] text-slate-400 uppercase tracking-widest bg-slate-50/50 dark:bg-slate-800/30 shrink-0">Table / Sector</div>
+                                <div className="w-40 py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-black text-[10px] text-slate-400 uppercase tracking-widest bg-slate-50/50 dark:bg-slate-800/30 shrink-0">Стол / Сектор</div>
                                 {HOURS.map((h, i) => (
                                     <div key={i} className="w-40 py-5 text-center border-r border-slate-100 dark:border-slate-800 font-black text-[10px] text-slate-400 tabular-nums shrink-0">{h}</div>
                                 ))}
                             </div>
 
-                            {/* Unassigned row */}
+                            {}
                             <div className="flex border-b border-slate-100 dark:border-slate-800 h-24 bg-slate-50/40 dark:bg-slate-800/20">
                                 <div className="w-40 px-8 flex flex-col justify-center border-r border-slate-100 dark:border-slate-800 sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[4px_0_10px_rgba(0,0,0,0.02)] shrink-0">
                                     <span className="font-black text-rose-500 text-[10px] uppercase tracking-[0.2em] italic">Лист ожидания</span>
@@ -248,7 +250,7 @@ export default function CalendarPage() {
                                 </div>
                             </div>
 
-                            {/* Table rows */}
+                            {}
                             {tables.map(t => (
                                 <div key={t.id} className="flex border-b border-slate-100 dark:border-slate-800 h-24 group">
                                     <div className="w-40 px-8 flex flex-col justify-center border-r border-slate-100 dark:border-slate-800 sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[4px_0_10px_rgba(0,0,0,0.02)] shrink-0">
@@ -329,7 +331,7 @@ export default function CalendarPage() {
                 </div>
             </div>
 
-            {/* Detailed Selection Side-Drawer */}
+            {}
             <AnimatePresence>
                 {selectedBooking && (
                     <>
@@ -362,9 +364,22 @@ export default function CalendarPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <DetailCard label="Время" value={selectedBooking.time?.slice(0, 5)} icon="schedule" />
                                     <DetailCard label="Гостей" value={`${selectedBooking.guests} гостей`} icon="groups" />
-                                    <DetailCard label="Стол" value={selectedBooking.table_number ? `#${selectedBooking.table_number}` : 'Не назначен'} icon="table_bar" />
-                                    <DetailCard label="Статус" value={selectedBooking.status?.toUpperCase()} icon="sync_saved_locally" />
+                                    <DetailCard label="Стол" value={selectedBooking.table_id ? getTableLabel(selectedBooking as ReservationRecord) : 'Не назначен'} icon="table_bar" />
+                                    <DetailCard label="Статус" value={getReservationStatusMeta(selectedBooking.status || 'pending').label} icon="sync_saved_locally" />
                                 </div>
+
+                                {selectedBookingSignals.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedBookingSignals.map((signal) => (
+                                            <span
+                                                key={signal.key}
+                                                className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${signal.className}`}
+                                            >
+                                                {signal.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {selectedBooking.comment && (
                                     <div className="p-8 bg-amber-500/5 border border-amber-500/10 rounded-3xl space-y-2">
@@ -414,6 +429,9 @@ function BookingBlock({ booking, onClick }: { booking: CalendarBooking; onClick:
             <div className="flex items-center gap-2 overflow-hidden">
                 <span className="material-symbols-outlined text-[14px] shrink-0">{status.icon}</span>
                 <p className="font-black text-[10px] uppercase tracking-widest truncate">{booking.user_name || 'Гость'}</p>
+                {getReservationCustomerSignals(booking as ReservationRecord).map((s) => (
+                    <span key={s.key} className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-bold leading-none ${s.className}`}>{s.label}</span>
+                ))}
             </div>
             <div className="flex items-center gap-3 opacity-60">
                 <p className="text-[9px] font-black flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">groups</span> {booking.guests}</p>

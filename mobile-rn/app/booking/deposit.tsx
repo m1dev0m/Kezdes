@@ -21,7 +21,7 @@ export default function DepositPaymentScreen() {
         setIsPaying(true);
         try {
             await payDeposit(bookingId, user?.access || '');
-            // Go to payment success
+            
             router.push({
                 pathname: '/booking/payment-success' as any,
                 params: {

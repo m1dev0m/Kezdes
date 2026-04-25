@@ -10,23 +10,19 @@ from core.notifications import NotificationService
 
 @shared_task
 def process_review_requests():
-    """
-    Runs hourly. Finds recently completed bookings (at least 2 hours ago)
-    that haven't been asked for a review yet, and sends a notification.
-    """
     two_hours_ago = timezone.now() - timedelta(hours=2)
-    # Give a window of the last 24 hours to catch any missed
+                                                            
     twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
     
     recent_bookings = Booking.objects.filter(
         status='completed',
         date__gte=twenty_four_hours_ago.date(),
         date__lte=two_hours_ago.date(),
-        # Time check could be refined if date is today
+                                                      
     ).select_related('user', 'restaurant')
 
     for booking in recent_bookings:
-        # Check if we already sent a review request to this customer for this restaurant recently
+                                                                                                 
         customer = Customer.objects.filter(restaurant=booking.restaurant, phone=booking.user.phone if booking.user else booking.guest_phone).first()
         if not customer:
             continue
@@ -58,9 +54,6 @@ def process_review_requests():
 
 @shared_task
 def process_win_back():
-    """
-    Runs daily. Finds customers whose last visit was exactly 30 days ago.
-    """
     thirty_days_ago = timezone.now().date() - timedelta(days=30)
     
     customers = Customer.objects.filter(last_visit__date=thirty_days_ago)
@@ -84,7 +77,7 @@ def process_win_back():
             sent_at=timezone.now()
         )
         
-        # We need the user to send a push
+                                         
         user = None
         if hasattr(customer, 'visit_history'):
             last_visit = customer.visit_history.order_by('-date').first()
@@ -100,12 +93,9 @@ def process_win_back():
 
 @shared_task
 def process_birthdays():
-    """
-    Runs daily. Finds customers whose birthday is exactly 7 days from today.
-    """
     target_date = timezone.now().date() + timedelta(days=7)
     
-    # We only care about day and month matching
+                                               
     customers = Customer.objects.filter(
         date_of_birth__month=target_date.month,
         date_of_birth__day=target_date.day
@@ -130,7 +120,7 @@ def process_birthdays():
             sent_at=timezone.now()
         )
         
-        # We need the user to send a push
+                                         
         user = None
         if hasattr(customer, 'visit_history'):
             last_visit = customer.visit_history.order_by('-date').first()
@@ -146,16 +136,11 @@ def process_birthdays():
 
 @shared_task
 def process_no_show_and_followups():
-    """
-    Runs every ~15 minutes.
-    1) Помечает как no_show подтверждённые брони, начавшиеся > X минут назад и без check_in.
-    2) Отправляет follow‑up no_show гостям (один раз за последние 24 часа).
-    """
     now = timezone.now()
     grace_minutes = 20
     cutoff = now - timedelta(minutes=grace_minutes)
 
-    # 1) AUTO NO-SHOW
+                     
     auto_candidates = Booking.objects.filter(
         status=Booking.APPROVED,
         start_datetime__lte=cutoff,
@@ -169,10 +154,10 @@ def process_no_show_and_followups():
             booking.transition_to(Booking.NO_SHOW)
             auto_marked_ids.append(booking.id)
         except Exception:
-            # Если переход невозможен, просто пропускаем
+                                                        
             continue
 
-    # 2) FOLLOW-UP FOR NO-SHOW
+                              
     since = now - timedelta(hours=24)
     no_show_recent = Booking.objects.filter(
         status=Booking.NO_SHOW,

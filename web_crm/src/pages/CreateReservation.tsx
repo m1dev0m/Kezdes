@@ -3,6 +3,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
+import { useAuth } from '@/modules/auth/logic/AuthContext';
 import {
   extractResults,
   getApiErrorMessage,
@@ -33,6 +34,7 @@ const INITIAL_FORM: ReservationFormState = {
 
 export default function CreateReservation() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
   const [tables, setTables] = useState<TableRecord[]>([]);
   const [availableTables, setAvailableTables] = useState<TableRecord[]>([]);
@@ -44,12 +46,13 @@ export default function CreateReservation() {
   useEffect(() => {
     const loadContext = async () => {
       try {
+        const fallbackRestaurantId = user?.owned_restaurant?.id ?? user?.restaurant ?? user?.profile?.restaurant ?? null;
         const [restaurantResponse, tablesResponse] = await Promise.all([
-          api.get<RestaurantRecord>('/restaurants/me/'),
+          api.get<RestaurantRecord>('/restaurants/me/').catch(() => ({ data: { id: fallbackRestaurantId } as RestaurantRecord })),
           api.get('/tables/'),
         ]);
 
-        setRestaurantId(restaurantResponse.data.id);
+        setRestaurantId(restaurantResponse.data.id ?? fallbackRestaurantId ?? null);
         setTables(extractResults<TableRecord>(tablesResponse.data));
       } catch (error) {
         toast.error(getApiErrorMessage(error, 'Failed to load reservation form'));
@@ -59,7 +62,7 @@ export default function CreateReservation() {
     };
 
     void loadContext();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!restaurantId || !form.date || !form.time) {

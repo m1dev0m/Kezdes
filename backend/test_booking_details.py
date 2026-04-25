@@ -36,7 +36,7 @@ class ReproIssuesTest(APITestCase):
         return res.data["access"]
 
     def test_manual_booking_correct_table_allocation(self):
-        """Confirm that manual bookings now allocate tables."""
+        
         admin_token = self._login("admin", "pwd")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {admin_token}")
         
@@ -57,7 +57,7 @@ class ReproIssuesTest(APITestCase):
         self.assertEqual(booking.table.number, "T1")
 
     def test_manual_booking_correct_user_association(self):
-        """Confirm that manual bookings now do NOT associate with the admin user."""
+        
         admin_token = self._login("admin", "pwd")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {admin_token}")
         
@@ -77,11 +77,11 @@ class ReproIssuesTest(APITestCase):
         self.assertIsNone(booking.user, "Booking should NOT associate with admin user")
 
     def test_check_in_flow(self):
-        """Test that a confirmed booking can be checked in."""
+        
         admin_token = self._login("admin", "pwd")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {admin_token}")
         
-        # Create a confirmed (approved) booking
+                                               
         booking = Booking.objects.create(
             restaurant=self.restaurant,
             date="2030-10-23",
@@ -99,11 +99,11 @@ class ReproIssuesTest(APITestCase):
         self.assertIsNotNone(booking.check_in_time)
 
     def test_check_in_only_approved(self):
-        """Test that only approved bookings can be checked in."""
+        
         admin_token = self._login("admin", "pwd")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {admin_token}")
         
-        # Create a pending booking
+                                  
         booking = Booking.objects.create(
             restaurant=self.restaurant,
             date="2030-10-23",

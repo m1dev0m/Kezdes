@@ -118,7 +118,7 @@ export default function GuestProfile() {
   return (
     <div className="max-w-[800px] mx-auto px-6 py-10 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-      {/* Page Header */}
+      {}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-2">
           <h1 className="text-4xl font-black tracking-tighter text-slate-900 leading-none">{t('guestProfile.title')}</h1>
@@ -133,7 +133,7 @@ export default function GuestProfile() {
         </button>
       </header>
 
-      {/* Profile Photo Section */}
+      {}
       <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-100 dark:border-slate-800 shadow-sm">
         <div className="flex flex-col md:flex-row items-center gap-8">
           <div className="relative group">
@@ -165,7 +165,7 @@ export default function GuestProfile() {
         <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs font-medium leading-6 text-blue-800">
           {t('guestProfile.localPreferencesHint')}
         </div>
-        {/* Personal Details Section */}
+        {}
         <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
           <div className="flex items-center gap-3 text-[#1d4ed8]">
             <User size={24} />
@@ -220,7 +220,7 @@ export default function GuestProfile() {
           </div>
         </section>
 
-        {/* Security Section */}
+        {}
         <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
           <div className="flex items-center gap-3 text-[#1d4ed8]">
             <Shield size={24} />
@@ -249,7 +249,7 @@ export default function GuestProfile() {
           </div>
         </section>
 
-        {/* Action Buttons */}
+        {}
         <div className="pt-8 flex flex-col-reverse md:flex-row items-center justify-between gap-6 border-t border-slate-100 dark:border-slate-800">
           <button type="button" className="group flex items-center gap-2 text-slate-400 hover:text-rose-500 transition-colors">
             <Trash2 size={18} />

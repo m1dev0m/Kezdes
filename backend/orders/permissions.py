@@ -3,11 +3,6 @@ from core.utils import get_user_profile
 
 
 class IsRestaurantAdmin(permissions.BasePermission):
-    """
-    Restricts access to canonical restaurant owner role only.
-
-    (Re-declared locally to avoid tight coupling to core.permissions implementation details.)
-    """
 
     def has_permission(self, request, view):
         profile = get_user_profile(request.user)

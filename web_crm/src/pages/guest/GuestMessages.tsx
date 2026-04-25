@@ -23,7 +23,7 @@ interface Message {
 }
 
 interface Conversation {
-    id: string; // "b-ID" for booking, "r-ID" for restaurant direct
+    id: string; 
     type: 'booking' | 'restaurant';
     targetId: number;
     restaurantId: number | null;
@@ -71,7 +71,7 @@ export default function GuestMessages() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 10000); // Poll conversations every 10s
+        const interval = setInterval(fetchData, 10000); 
         return () => clearInterval(interval);
     }, []);
 
@@ -99,10 +99,10 @@ export default function GuestMessages() {
                 throw new Error('Не удалось загрузить диалоги');
             }
 
-            // Group into conversations
+            
             const convMap = new Map<string, Conversation>();
 
-            // Add conversations from bookings
+            
             allBookings.forEach((b: any) => {
                 const id = `b-${b.id}`;
                 convMap.set(id, {
@@ -120,7 +120,7 @@ export default function GuestMessages() {
                 });
             });
 
-            // Add or update conversations from messages
+            
             allMessages.forEach((m: Message) => {
                 const id = m.booking ? `b-${m.booking}` : `r-${m.restaurant}`;
                 if (!convMap.has(id)) {
@@ -151,7 +151,7 @@ export default function GuestMessages() {
 
             setConversations(sortedConvs);
 
-            // Handle initial selection from navigation state
+            
             if (!selectedConv && locationState) {
                 if (locationState.bookingId) {
                     const c = sortedConvs.find(cv => cv.id === `b-${locationState.bookingId}`);
@@ -220,7 +220,7 @@ export default function GuestMessages() {
             fetchMessages(selectedConv);
             if (pollRef.current) clearInterval(pollRef.current);
             if (!isConnected) {
-                pollRef.current = setInterval(() => fetchMessages(selectedConv), 3000); // Poll messages every 3s
+                pollRef.current = setInterval(() => fetchMessages(selectedConv), 3000); 
             }
         }
         return () => {

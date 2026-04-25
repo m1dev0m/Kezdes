@@ -89,7 +89,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         normalized = []
         for st in raw_statuses:
             if st in ('confirmed', 'approved'):
-                # 'approved' is a frontend alias for 'confirmed' (same DB value)
+                                                                                
                 normalized.append(Booking.CONFIRMED)
             elif st == 'cancelled':
                 normalized.extend([Booking.CANCELLED_BY_USER, Booking.CANCELLED_BY_RESTAURANT])
@@ -102,9 +102,45 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         return f"idempotency:bookings:create:{user_id}:{idempotency_key}"
 
     @staticmethod
+    def _submission_cache_key(scope: str, action_name: str, payload_hash: str) -> str:
+        return f"idempotency:bookings:{action_name}:{scope}:{payload_hash}"
+
+    @staticmethod
     def _request_payload_hash(data) -> str:
         payload = json.dumps(data, sort_keys=True, default=str)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _request_scope(request) -> str:
+        if request.user.is_authenticated:
+            return f"user:{request.user.id}"
+        forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
+        else:
+            client_ip = request.META.get("REMOTE_ADDR", "anon")
+        return f"anon:{client_ip or 'unknown'}"
+
+    def _existing_booking_from_cache(self, cache_key: str):
+        cached = cache.get(cache_key)
+        if not cached:
+            return None
+        booking_id = cached.get("booking_id")
+        if not booking_id:
+            cache.delete(cache_key)
+            return None
+        booking = Booking.objects.filter(id=booking_id).first()
+        if not booking:
+            cache.delete(cache_key)
+            return None
+        return booking
+
+    def _store_booking_cache(self, cache_key: str, booking_id: int, payload_hash: str, ttl: int = 30) -> None:
+        cache.set(
+            cache_key,
+            {"booking_id": booking_id, "payload_hash": payload_hash},
+            timeout=ttl,
+        )
 
     @staticmethod
     def _parse_time_value(raw_value, default_time=None):
@@ -236,8 +272,8 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
                 serializer = self.get_serializer(page, many=True)
                 return self.get_paginated_response(serializer.data)
 
-        # Hard cap: prevent unbounded serialization when clients omit pagination params.
-        # 2000 rows is well above any single-restaurant daily volume.
+                                                                                        
+                                                                     
         qs = qs[:2000]
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
@@ -280,7 +316,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=False, methods=['get', 'delete'], permission_classes=[permissions.AllowAny], url_path=r'public/(?P<public_token>[^/.]+)')
     def public_booking(self, request, public_token=None):
-        """Public lookup and self-service cancel endpoint for a booking token."""
+        
         try:
             booking = (
                 Booking.objects.select_related('restaurant', 'user', 'table')
@@ -421,7 +457,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         include_history = self.action not in {'list', 'my_restaurant'}
         include_order_prefetch = self.action not in {'list', 'my_restaurant'}
 
-        # Mandatory tenant isolation for staff
+                                              
         if profile.is_staff_member:
             from core.utils import get_user_restaurant
             user_rest = get_user_restaurant(user)
@@ -433,7 +469,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
                 include_order_prefetch=include_order_prefetch,
             ).order_by('-date', '-time')
 
-        # Global admin (platform level)
+                                       
         if profile.role == 'global_admin':
             return self._optimized_booking_queryset(
                 Booking.objects.all(),
@@ -459,6 +495,20 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
             context['reviewed_restaurant_ids'] = set(
                 Review.objects.filter(user_id=user.id).values_list('restaurant_id', flat=True)
             )
+        if (
+            user and user.is_authenticated
+            and serializer_class in {BookingSerializer, BookingListSerializer, PublicBookingSerializer}
+        ):
+            restaurant = get_user_restaurant(user)
+            if restaurant:
+                try:
+                    from crm.models import Customer
+                    customer_summary_map = {}
+                    for customer in Customer.objects.filter(restaurant=restaurant):
+                        customer_summary_map[(customer.restaurant_id, customer.phone)] = BookingSerializer._build_customer_summary(customer)
+                    context['customer_summary_map'] = customer_summary_map
+                except Exception:
+                    pass
         return context
 
     def list(self, request, *args, **kwargs):
@@ -467,13 +517,10 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         return self._apply_response_pagination(request, qs)
 
     def create(self, request, *args, **kwargs):
-        """
-        Create booking with optional idempotency support.
-        Repeated request with same Idempotency-Key and same payload returns existing booking.
-        """
         idempotency_key = request.headers.get("Idempotency-Key")
         payload_hash = self._request_payload_hash(request.data)
         cache_key = None
+        implicit_cache_key = None
 
         if idempotency_key and request.user.is_authenticated:
             cache_key = self._idempotency_cache_key(request.user.id, idempotency_key)
@@ -498,25 +545,33 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
                     serializer = self.get_serializer(existing)
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 cache.delete(cache_key)
+        else:
+            implicit_cache_key = self._submission_cache_key(
+                self._request_scope(request),
+                "create",
+                payload_hash,
+            )
+            existing = self._existing_booking_from_cache(implicit_cache_key)
+            if existing:
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
         response = super().create(request, *args, **kwargs)
 
         if cache_key and response.status_code == status.HTTP_201_CREATED and response.data.get("id"):
-            cache.set(
-                cache_key,
-                {"booking_id": response.data["id"], "payload_hash": payload_hash},
-                timeout=600,
-            )
+            self._store_booking_cache(cache_key, response.data["id"], payload_hash, ttl=600)
+        if implicit_cache_key and response.status_code == status.HTTP_201_CREATED and response.data.get("id"):
+            self._store_booking_cache(implicit_cache_key, response.data["id"], payload_hash)
         return response
 
     def perform_create(self, serializer):
-        """Create booking using the BookingService."""
+        
         from .services import BookingService
         from django.core.exceptions import ValidationError as DjangoValidationError
 
         restaurant = serializer.validated_data['restaurant']
 
-        # Gate: reject bookings for unverified restaurants
+                                                          
         if not restaurant.is_verified:
             raise drf_serializers.ValidationError(
                 {"detail": "Ресторан ещё не прошёл верификацию. Бронирование невозможно."}
@@ -527,7 +582,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         guests = serializer.validated_data.get('guests', 1)
         duration = serializer.validated_data.get('duration_minutes', 90)
 
-        # Extract preferred table ID from request data
+                                                      
         preferred_table_id = None
         preferred_table_id_raw = self.request.data.get('table_id')
         if preferred_table_id_raw not in (None, ''):
@@ -537,11 +592,19 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
                 raise drf_serializers.ValidationError({"table_id": "Некорректный table_id."})
 
         user = self.request.user if self.request.user.is_authenticated else None
+        user_phone = serializer.validated_data.get('user_phone')
+        if user_phone:
+            user_phone = user_phone.strip()
+        if not user_phone and user:
+            profile = get_user_profile(user)
+            profile_phone = getattr(profile, 'phone', None) if profile else None
+            if profile_phone:
+                user_phone = profile_phone.strip()
 
-        # Extract additional booking data
+                                         
         booking_data = {
             'user_name': serializer.validated_data.get('user_name'),
-            'user_phone': serializer.validated_data.get('user_phone'),
+            'user_phone': user_phone,
             'guest_email': serializer.validated_data.get('guest_email'),
             'event_type': serializer.validated_data.get('event_type'),
             'event_title': serializer.validated_data.get('event_title'),
@@ -563,10 +626,10 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
                 preferred_table_id=preferred_table_id,
                 **booking_data
             )
-            # Set the instance on the serializer so it returns the created booking
+                                                                                  
             serializer.instance = booking
             
-            # Auto-send Direct Message to User on success
+                                                         
             if user and restaurant.owner:
                 from chat.models import Conversation, Message
                 try:
@@ -589,14 +652,14 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
             raise drf_serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else str(e))
 
     def _is_restaurant_staff(self, request, booking):
-        """Check if user is restaurant staff for this booking's restaurant."""
+        
         user = request.user
         if not user or not user.is_authenticated:
             return False
         return self._can_manage_restaurant(user, booking.restaurant)
 
     def destroy(self, request, *args, **kwargs):
-        """DELETE behaves as cancellation for MVP API compatibility."""
+        
         booking = self.get_object()
         is_owner = booking.user and booking.user == request.user
         is_restaurant_staff = self._is_restaurant_staff(request, booking)
@@ -606,10 +669,10 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
         try:
             if is_restaurant_staff and not is_owner:
-                # Restaurant admin is cancelling
+                                                
                 StatusMachine.transition(booking, Booking.CANCELLED_BY_RESTAURANT, actor=request.user)
             else:
-                # User is cancelling their own booking
+                                                      
                 StatusMachine.transition(booking, Booking.CANCELLED_BY_USER, actor=request.user)
                 if booking.restaurant.owner:
                     NotificationService.notify_user(
@@ -621,18 +684,28 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         except ValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
 
-        # Auto-promote next waitlisted user
+                                           
         WaitlistService.promote_next(booking.restaurant, booking.date, booking.time)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
     @action(detail=False, methods=['post'], permission_classes=[CanManageReservations])
     def create_manual(self, request):
-        """Allows admins to manually create a booking for a walk-in guest."""
+        
         from .services import BookingService
         from django.core.exceptions import ValidationError as DjangoValidationError
 
         serializer = AdminBookingSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+        payload_hash = self._request_payload_hash(request.data)
+        submission_cache_key = self._submission_cache_key(
+            self._request_scope(request),
+            "create_manual",
+            payload_hash,
+        )
+        existing = self._existing_booking_from_cache(submission_cache_key)
+        if existing:
+            response_serializer = BookingSerializer(existing)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
 
         restaurant = serializer.validated_data['restaurant']
         date = serializer.validated_data['date']
@@ -643,7 +716,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         if not self._can_manage_restaurant(request.user, restaurant):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
 
-        # Extract booking data — pop 'status' separately to avoid duplicate kwarg
+                                                                                 
         requested_status = serializer.validated_data.get('status', Booking.CONFIRMED)
         preferred_table_id = serializer.validated_data.get('table_id')
         if preferred_table_id is None:
@@ -669,7 +742,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
         try:
             booking = BookingService.create_booking(
-                user=None,  # Manual booking, no user
+                user=None,                           
                 restaurant=restaurant,
                 booking_date=date,
                 start_time=time_val,
@@ -678,18 +751,19 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
                 preferred_table_id=preferred_table_id,
                 **booking_data
             )
-            # Apply the requested status (create_booking sets PENDING/PAYMENT_PENDING by default)
+                                                                                                 
             if booking.status != requested_status and requested_status in (Booking.CONFIRMED, Booking.PENDING):
                 booking.status = requested_status
                 booking.save(update_fields=['status'])
-            # Return the created booking data
+                                             
             response_serializer = BookingSerializer(booking)
+            self._store_booking_cache(submission_cache_key, booking.id, payload_hash)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         except DjangoValidationError as e:
             return api_error(str(e), status.HTTP_400_BAD_REQUEST)
     @action(detail=False, methods=['get'], permission_classes=[CanManageReservations])
     def my_restaurant(self, request):
-        """Get all bookings for the admin's restaurant."""
+        
         restaurant = get_user_restaurant(request.user)
         
         if not restaurant:
@@ -740,7 +814,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def attach_order(self, request, pk=None):
-        """Attach an existing order to an existing booking (preorder flow after booking creation)."""
+        
         from orders.models import Order
 
         booking = self.get_object()
@@ -772,10 +846,6 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         return Response(self.get_serializer(booking).data, status=status.HTTP_200_OK)
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def available_slots(self, request):
-        """
-        Public endpoint to get available time slots for a restaurant.
-        Query params: restaurant_id, date, guests, duration_minutes (default 90)
-        """
         from restaurants.models import Restaurant
         from .services import BookingService
         
@@ -822,7 +892,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
             )
             
         slots = BookingService.get_available_slots(restaurant, date_obj, guests, duration)
-        # Keep legacy "slots" while exposing a stable, explicit shape for web/mobile.
+                                                                                     
         return Response(
             {
                 "slots": slots,
@@ -878,11 +948,6 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def available_tables(self, request):
-        """
-        Public endpoint to get available tables for a specific time slot.
-        Query params: restaurant_id, date, time, duration_minutes (default 90)
-        Returns: {"available_tables": [table objects]}
-        """
         from restaurants.models import Restaurant
         from restaurants.serializers import TableSerializer
         from .services import BookingService
@@ -933,10 +998,6 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=True, methods=['get'], permission_classes=[CanManageReservations])
     def smart_tables(self, request, pk=None):
-        """
-        Returns the smallest suitable table suggestions for a reservation,
-        respecting the restaurant turnover window and current occupancy.
-        """
         booking = self.get_object()
         if not self._is_restaurant_staff(request, booking):
             return api_error("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -967,7 +1028,6 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def cancel(self, request, pk=None):
-        """User cancels their own booking: PENDING/APPROVED → CANCELLED_BY_USER."""
         booking = self.get_object()
         if booking.user != request.user:
             return Response({"detail": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
@@ -983,16 +1043,13 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
         except ValidationError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Auto-promote next waitlisted user
         WaitlistService.promote_next(booking.restaurant, booking.date, booking.time)
 
         return Response(self.get_serializer(booking).data)
 
-    # ── Waitlist endpoints ──────────────────────────────────────────────
-
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def join_waitlist(self, request):
-        """User joins the waitlist for a fully-booked slot."""
+        
         serializer = WaitlistEntrySerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         try:
@@ -1006,7 +1063,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=False, methods=['get', 'delete'], permission_classes=[permissions.AllowAny], url_path=r'waitlist/public/(?P<public_token>[^/.]+)')
     def public_waitlist(self, request, public_token=None):
-        """Public lookup/cancel endpoint for anonymous or token-based waitlist entries."""
+        
         try:
             entry = (
                 WaitlistEntry.objects.select_related('restaurant', 'user', 'promoted_booking')
@@ -1027,7 +1084,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def leave_waitlist(self, request):
-        """User cancels their waitlist entry."""
+        
         entry_id = request.data.get('waitlist_id')
         if not entry_id:
             return Response({"detail": "waitlist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1043,7 +1100,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def my_waitlist(self, request):
-        """List the current user's active waitlist entries."""
+        
         entries = WaitlistEntry.objects.filter(
             user=request.user,
             status__in=[WaitlistEntry.WAITING, WaitlistEntry.NOTIFIED],
@@ -1052,7 +1109,6 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def confirm_waitlist(self, request):
-        """User confirms a waitlist notification → creates a real booking."""
         from .services import BookingService
 
         entry = None
@@ -1081,13 +1137,11 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
             except WaitlistEntry.DoesNotExist:
                 return Response({"detail": "Not found or already expired."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if the notification hasn't expired (15 min window)
         if entry.notified_at and (timezone.now() - entry.notified_at).total_seconds() > 900:
             entry.status = WaitlistEntry.EXPIRED
             entry.save()
             return Response({"detail": "Время подтверждения истекло."}, status=status.HTTP_410_GONE)
 
-        # Try to create actual booking
         duration = 90
         if not BookingService.acquire_booking_lock(entry.restaurant_id, entry.date, entry.time, duration_minutes=duration):
             return Response(

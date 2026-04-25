@@ -2,7 +2,7 @@ export const fontFamily = {
   sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
   serif: ['Playfair Display', 'serif'],
   mono: ['JetBrains Mono', 'Consolas', 'monospace'],
-  display: ['Outfit', 'sans-serif'], // Keep existing
+  display: ['Outfit', 'sans-serif'], 
 } as const;
 
 export const fontSize = {

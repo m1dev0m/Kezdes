@@ -32,10 +32,6 @@ class OptionalPaginationMixin:
 
 
 class TenantModelViewSet(viewsets.ModelViewSet):
-    """
-    Base ViewSet for multi-tenant isolation.
-    Ensures that users can only access data belonging to their assigned restaurant.
-    """
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
         from .utils import get_user_restaurant

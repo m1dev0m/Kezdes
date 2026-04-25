@@ -7,8 +7,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from core.views import RegisterView
 urlpatterns = [
     path(f'{settings.ADMIN_URL}/', admin.site.urls),
-    # Developer-friendly alias: keep the real admin path secret in production, but
-    # allow local access via /admin/ during DEBUG.
+                                                                                  
+                                                  
     *(
         [path('admin/', RedirectView.as_view(url=f'/{settings.ADMIN_URL}/', permanent=False))]
         if settings.DEBUG

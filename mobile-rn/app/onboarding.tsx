@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     logoContainer: {
-        backgroundColor: colors.primary + '1A', // 10% opacity primary
+        backgroundColor: colors.primary + '1A', 
         padding: 8,
         borderRadius: 32,
         alignItems: 'center',
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     },
     heroImage: {
         width: '100%',
-        aspectRatio: 4 / 3, // Maintains the 4:3 box from the design
+        aspectRatio: 4 / 3, 
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.2)', // from-black/20
+        backgroundColor: 'rgba(0,0,0,0.2)', 
         top: '50%',
         bottom: 0,
     },
@@ -146,12 +146,12 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     title: {
-        fontSize: 30, // text-3xl
-        fontWeight: '800', // font-extrabold
+        fontSize: 30, 
+        fontWeight: '800', 
         color: colors.text,
         textAlign: 'center',
-        lineHeight: 33, // leading-[1.1]
-        letterSpacing: -0.5, // tracking-tight
+        lineHeight: 33, 
+        letterSpacing: -0.5, 
     },
     subtitle: {
         fontSize: 16,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     footer: {
         paddingHorizontal: 24,
         paddingTop: 24,
-        paddingBottom: 48, // ample space for home bar
+        paddingBottom: 48, 
         gap: 16,
     },
     startButton: {

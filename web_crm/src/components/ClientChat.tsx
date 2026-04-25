@@ -27,11 +27,11 @@ export default function ClientChat({ restaurantId, restaurantName, isOpen, onClo
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // WebSocket connection
+    
     const handleWsMessage = useCallback((data: any) => {
         if (data.content && data.sender) {
             setMessages(prev => {
-                // Avoid duplicates
+                
                 if (prev.some(m => m.id === data.id)) return prev;
                 return [...prev, data as Message];
             });
@@ -64,7 +64,7 @@ export default function ClientChat({ restaurantId, restaurantName, isOpen, onClo
             setLoading(true);
             loadMessages().finally(() => setLoading(false));
 
-            // Fallback to polling only if WebSocket is not connected
+            
             if (!isConnected) {
                 const interval = setInterval(loadMessages, 5000);
                 return () => clearInterval(interval);
@@ -79,11 +79,11 @@ export default function ClientChat({ restaurantId, restaurantName, isOpen, onClo
         setSending(true);
         try {
             if (isConnected) {
-                // Use WebSocket for instant delivery
+                
                 wsSend({ message: newMessage.trim() });
                 setNewMessage('');
             } else {
-                // Fallback to REST API
+                
                 const res = await api.post('/chat/messages/', {
                     restaurant: restaurantId,
                     content: newMessage.trim(),

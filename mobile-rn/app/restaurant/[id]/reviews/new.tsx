@@ -12,7 +12,7 @@ export default function NewReviewScreen() {
     const { user } = useAuth();
     const restaurantId = params.id as string;
 
-    // Support deep link query params where booking id might be passed
+    
     const bookingId = params.booking_id as string | undefined;
 
     const [rating, setRating] = useState(0);

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../lib/auth-context';
-import { fetchMyRestaurantBookings, seatBooking, updateBookingStatus } from '../../lib/api';
+import { fetchMyRestaurantBookings, fetchTableStatus, seatBooking, updateBookingStatus } from '../../lib/api';
 import { useResponsive } from '../../hooks/useResponsive';
 
 import BookingCard from '../../components/BookingCard';
@@ -51,6 +51,12 @@ export default function AdminBookingsScreen() {
         initData();
     }, [initData]);
 
+    useFocusEffect(
+        React.useCallback(() => {
+            void initData(true);
+        }, [initData])
+    );
+
     useEffect(() => {
         if (params.filter === 'pending') {
             setFilter('pending');
@@ -67,10 +73,10 @@ export default function AdminBookingsScreen() {
             return;
         }
         try {
-            await updateBookingStatus(bookingId, action, token);
-            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: action === 'confirm' ? 'approved' : 'rejected' } : b));
-        } catch (error) {
-            Alert.alert('Ошибка', 'Не удалось обновить статус');
+            const updated = await updateBookingStatus(bookingId, action, token) as any;
+            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...updated } : b));
+        } catch (error: any) {
+            Alert.alert('Ошибка', error?.message || 'Не удалось обновить статус');
         }
     }, [user?.access]);
 
@@ -81,11 +87,11 @@ export default function AdminBookingsScreen() {
             return;
         }
         try {
-            await updateBookingStatus(bookingId, status, token);
+            const updated = await updateBookingStatus(bookingId, status, token) as any;
             const nextStatus = status === 'complete' ? 'completed' : 'no_show';
-            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: nextStatus } : b));
-        } catch (error) {
-            Alert.alert('Ошибка', 'Не удалось обновить статус');
+            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...updated, status: updated?.status || nextStatus } : b));
+        } catch (error: any) {
+            Alert.alert('Ошибка', error?.message || 'Не удалось обновить статус');
         }
     }, [user?.access]);
 
@@ -95,13 +101,72 @@ export default function AdminBookingsScreen() {
             Alert.alert('Ошибка', 'Сессия истекла. Войдите заново.');
             return;
         }
-        try {
-            await seatBooking(bookingId, token);
-            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'seated' } : b));
-        } catch (error) {
-            Alert.alert('Ошибка', 'Не удалось посадить гостя');
+
+        const booking = bookings.find((item) => item.id === bookingId);
+        if (!booking) {
+            Alert.alert('Ошибка', 'Не удалось найти бронь в текущем списке.');
+            return;
         }
-    }, [user?.access]);
+
+        const assignAndSeat = async (tableId?: number | null) => {
+            const updated = await seatBooking(bookingId, token, tableId);
+            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...(updated as any), status: (updated as any)?.status || 'seated' } : b));
+        };
+
+        try {
+            if (booking.table_number || booking.table || booking.table_id) {
+                await assignAndSeat(null);
+                return;
+            }
+
+            const tableStatus = await fetchTableStatus(token, booking.date, booking.time);
+            const freeTables = (Array.isArray(tableStatus) ? tableStatus : [])
+                .filter((table: any) => table?.status === 'free')
+                .filter((table: any) => {
+                    const seats = Number(table?.seats || table?.capacity || 0);
+                    return seats >= Number(booking.guests || 0);
+                })
+                .sort((left: any, right: any) => {
+                    const leftSeats = Number(left?.seats || left?.capacity || 0);
+                    const rightSeats = Number(right?.seats || right?.capacity || 0);
+                    return leftSeats - rightSeats;
+                });
+
+            if (freeTables.length === 0) {
+                Alert.alert('Нет свободного стола', 'На это время нет подходящего свободного стола для посадки.');
+                return;
+            }
+
+            if (freeTables.length === 1) {
+                await assignAndSeat(freeTables[0].id);
+                return;
+            }
+
+            const alertButtons = freeTables.slice(0, 5).map((table: any) => {
+                const label = table.number || table.name || `#${table.id}`;
+                const seats = table.seats || table.capacity || '?';
+                return {
+                    text: `Стол ${label} · ${seats} мест`,
+                    onPress: () => {
+                        void assignAndSeat(table.id).catch((error: any) => {
+                            Alert.alert('Ошибка', error?.message || 'Не удалось посадить гостя');
+                        });
+                    },
+                };
+            });
+
+            Alert.alert(
+                'Выберите стол',
+                'Для этой брони ещё не назначен стол. Выберите свободный стол для посадки.',
+                [
+                    ...alertButtons,
+                    { text: 'Отмена', style: 'cancel' },
+                ],
+            );
+        } catch (error: any) {
+            Alert.alert('Ошибка', error?.message || 'Не удалось посадить гостя');
+        }
+    }, [bookings, user?.access]);
 
     const handleChat = React.useCallback((id: string | number, name: string) => {
         router.push({ pathname: '/chat', params: { id, name } });
