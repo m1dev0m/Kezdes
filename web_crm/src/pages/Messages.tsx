@@ -60,6 +60,10 @@ type RealtimeChatMessage = {
     restaurant_id?: number | null;
 };
 
+function isPageVisible() {
+    return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
 export default function MessagesPage() {
     const { t } = useI18n();
     const { user } = useAuth();
@@ -195,10 +199,21 @@ export default function MessagesPage() {
 
     useEffect(() => {
         void fetchAll();
+        const handleVisibilityChange = () => {
+            if (isPageVisible()) {
+                void fetchAll({ silent: true });
+            }
+        };
         const interval = setInterval(() => {
-            void fetchAll({ silent: true });
+            if (isPageVisible()) {
+                void fetchAll({ silent: true });
+            }
         }, 10000);
-        return () => clearInterval(interval);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [fetchAll]);
 
     const markConversationRead = useCallback(async (conv: Conversation) => {
@@ -306,7 +321,11 @@ export default function MessagesPage() {
             void markConversationRead(selectedConv);
             if (pollRef.current) clearInterval(pollRef.current);
             if (!isConnected) {
-                pollRef.current = setInterval(() => void fetchMessages(selectedConv), 3000);
+                pollRef.current = setInterval(() => {
+                    if (isPageVisible()) {
+                        void fetchMessages(selectedConv);
+                    }
+                }, 3000);
             }
         }
         return () => {

@@ -12,7 +12,7 @@ import {
 } from '@/features/reservations/shared';
 
 type ManagedTable = TableRecord & {
-  table_type?: 'rectangle' | 'square' | 'circle' | string;
+  table_type?: 'rectangle' | 'square' | 'circle' | string | null;
 };
 
 type TableFormState = {

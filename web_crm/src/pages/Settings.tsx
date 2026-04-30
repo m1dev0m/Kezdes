@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Building2, Clock3, Mail, MapPin, Phone, Save, ShieldCheck, Store, Timer } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Building2, Clock3, ImagePlus, Mail, MapPin, Phone, Save, ShieldCheck, Store, Timer } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
@@ -9,13 +10,15 @@ interface RestaurantSettings {
   name?: string;
   description?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phone?: string;
   email?: string;
-  photo_url?: string;
+  image?: string | null;
+  image_url?: string | null;
+  photo_url?: string | null;
   opening_time?: string;
   closing_time?: string;
-  total_tables?: number;
-  total_capacity?: number;
   slot_duration_minutes?: number;
   deposit_min_guests?: number | null;
   deposit_amount_per_guest?: number | null;
@@ -41,6 +44,7 @@ export default function Settings() {
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const loadRestaurant = useCallback(async () => {
     setLoadingData(true);
@@ -57,6 +61,21 @@ export default function Settings() {
   useEffect(() => {
     void loadRestaurant();
   }, [loadRestaurant]);
+
+  const photoPreview = useMemo(() => {
+    if (imageFile) {
+      return URL.createObjectURL(imageFile);
+    }
+    return restaurant?.photo_url || restaurant?.image_url || null;
+  }, [imageFile, restaurant?.photo_url, restaurant?.image_url]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
 
   useEffect(() => {
     if (tab !== 'business') return;
@@ -131,37 +150,82 @@ export default function Settings() {
     };
   }, [restaurant?.address, tab]);
 
+  const update = <K extends keyof RestaurantSettings>(key: K, value: RestaurantSettings[K]) => {
+    setRestaurant((current) => (current ? { ...current, [key]: value } : current));
+  };
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setImageFile(file);
+  };
+
+  const clearSelectedPhoto = () => {
+    setImageFile(null);
+  };
+
+  const handlePhotoUrlChange = (value: string) => {
+    if (imageFile) {
+      setImageFile(null);
+    }
+    update('image_url', value);
+  };
+
+  const handleSelectAddressSuggestion = (suggestion: AddressSuggestion) => {
+    setRestaurant((current) =>
+      current
+        ? {
+            ...current,
+            address: suggestion.label,
+            latitude: suggestion.point?.lat ?? current.latitude ?? null,
+            longitude: suggestion.point?.lon ?? current.longitude ?? null,
+          }
+        : current,
+    );
+    setAddressSuggestions([]);
+  };
+
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!restaurant) return;
     setLoading(true);
     try {
-      await api.patch('/restaurants/me/', {
+      const payload = {
         name: restaurant.name,
         description: restaurant.description,
         address: restaurant.address,
+        latitude: restaurant.latitude,
+        longitude: restaurant.longitude,
         phone: restaurant.phone,
-        email: restaurant.email,
-        opening_time: restaurant.opening_time,
-        closing_time: restaurant.closing_time,
-        total_tables: restaurant.total_tables,
-        total_capacity: restaurant.total_capacity,
-        slot_duration_minutes: restaurant.slot_duration_minutes,
+        image_url: restaurant.image_url,
         deposit_min_guests: restaurant.deposit_min_guests,
         deposit_amount_per_guest: restaurant.deposit_amount_per_guest,
         slug: restaurant.slug,
         turnover_default_min: restaurant.turnover_default_min,
-      });
+      };
+
+      if (imageFile) {
+        const formData = new FormData();
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            formData.append(key, String(value));
+          }
+        });
+        formData.append('image', imageFile);
+        await api.patch('/restaurants/me/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await api.patch('/restaurants/me/', payload);
+      }
+
+      await loadRestaurant();
+      setImageFile(null);
       toast.success('Settings saved');
-    } catch {
-      toast.error('Failed to save settings');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to save settings');
     } finally {
       setLoading(false);
     }
-  };
-
-  const update = <K extends keyof RestaurantSettings>(key: K, value: RestaurantSettings[K]) => {
-    setRestaurant((current) => (current ? { ...current, [key]: value } : current));
   };
 
   const tabs = [
@@ -184,9 +248,32 @@ export default function Settings() {
         <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Settings</div>
         <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900">Настройки ресторана</h1>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-          Основные данные ресторана, часы работы и параметры бронирования. Всё, что влияет на ежедневную работу CRM и публичную страницу.
+          Основные данные ресторана, фото, адрес и параметры бронирования. Схема зала и выбор столов уже работают через отдельные разделы CRM.
         </p>
       </header>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Link
+          to="/app/floor"
+          className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)] transition hover:border-blue-200 hover:bg-blue-50/40"
+        >
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Схема зала</div>
+          <div className="mt-2 text-lg font-black tracking-tight text-slate-900">Настроить карту столов</div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Расставьте столы и формы на схеме, чтобы команда видела зал, а гости могли выбирать конкретный столик.
+          </p>
+        </Link>
+        <Link
+          to="/app/tables"
+          className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)] transition hover:border-blue-200 hover:bg-blue-50/40"
+        >
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Столы</div>
+          <div className="mt-2 text-lg font-black tracking-tight text-slate-900">Добавить и настроить столы</div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Создайте столы с вместимостью и формой. Они автоматически появятся и в схеме зала, и в публичном выборе стола.
+          </p>
+        </Link>
+      </div>
 
       <div className="flex flex-wrap gap-3">
         {tabs.map((item) => (
@@ -208,15 +295,29 @@ export default function Settings() {
           <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
             <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
               <div className="rounded-[24px] border border-slate-200 bg-[#fafaf9] p-6">
-                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-white border border-slate-200">
-                  {restaurant.photo_url ? (
-                    <img src={restaurant.photo_url} alt={restaurant.name || 'Restaurant'} className="h-full w-full object-cover" />
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt={restaurant.name || 'Restaurant'} className="h-full w-full object-cover" />
                   ) : (
                     <Store size={32} className="text-slate-400" />
                   )}
                 </div>
                 <div className="mt-5 text-lg font-bold tracking-tight text-slate-900">{restaurant.name || 'Restaurant'}</div>
-                <div className="mt-2 text-sm leading-6 text-slate-500">Публичная информация, адрес и базовые контактные данные.</div>
+                <div className="mt-2 text-sm leading-6 text-slate-500">Публичная карточка ресторана, фото и контактные данные.</div>
+                <label className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-[#1d4ed8]">
+                  <ImagePlus size={16} />
+                  <span>{imageFile ? 'Фото выбрано' : 'Загрузить фото'}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                </label>
+                {imageFile ? (
+                  <button
+                    type="button"
+                    onClick={clearSelectedPhoto}
+                    className="mt-3 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 transition hover:text-slate-600"
+                  >
+                    Убрать выбранный файл
+                  </button>
+                ) : null}
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
@@ -227,14 +328,10 @@ export default function Settings() {
                 <div className="md:col-span-2">
                   <Field label="Address" value={restaurant.address || ''} onChange={(v) => update('address', v)} icon={<MapPin size={18} />} />
                   {addressLoading ? (
-                    <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      Ищем подходящие адреса...
-                    </div>
+                    <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Ищем подходящие адреса...</div>
                   ) : null}
                   {addressError ? (
-                    <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
-                      {addressError}
-                    </div>
+                    <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">{addressError}</div>
                   ) : null}
                   {addressSuggestions.length > 0 ? (
                     <div className="mt-3 rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -242,10 +339,7 @@ export default function Settings() {
                         <button
                           key={suggestion.id}
                           type="button"
-                          onClick={() => {
-                            update('address', suggestion.label);
-                            setAddressSuggestions([]);
-                          }}
+                          onClick={() => handleSelectAddressSuggestion(suggestion)}
                           className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 last:border-b-0"
                         >
                           <MapPin size={16} className="text-slate-400" />
@@ -255,6 +349,9 @@ export default function Settings() {
                     </div>
                   ) : null}
                 </div>
+                <div className="md:col-span-2">
+                  <Field label="Photo URL" value={restaurant.image_url || ''} onChange={handlePhotoUrlChange} icon={<ImagePlus size={18} />} />
+                </div>
               </div>
             </div>
           </section>
@@ -262,6 +359,9 @@ export default function Settings() {
 
         {tab === 'operational' && restaurant ? (
           <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.22)]">
+            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+              Часы работы и шаг слотов настраиваются отдельно через расписание и бронь-движок. В этом экране сохраняются только параметры, которые реально поддерживает текущий backend ресторана.
+            </div>
             <div className="grid gap-6 md:grid-cols-2">
               <Field label="Opening time" type="time" value={restaurant.opening_time || ''} onChange={(v) => update('opening_time', v)} icon={<Clock3 size={18} />} />
               <Field label="Closing time" type="time" value={restaurant.closing_time || ''} onChange={(v) => update('closing_time', v)} icon={<Clock3 size={18} />} />

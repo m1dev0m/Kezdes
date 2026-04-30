@@ -17,6 +17,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self._validated_conversations = {}
         self._owner_id = None
         self._is_staff = False
+        self._profile = None
 
         user = self.scope.get('user', AnonymousUser())
         if user.is_anonymous:
@@ -28,12 +29,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         self._owner_id = self._access_cache.get("owner_id")
-        self._is_staff = self._access_cache.get("is_staff")
+        self._is_staff = self._access_cache.get("is_staff", False)
 
         self.user = user
         self.groups_joined = []
 
-        if await self.is_restaurant_staff(user, self.restaurant_id):
+        # Use cached staff flag from user_has_access; no extra DB call
+        if self._is_staff:
             self.groups_joined.append(f'chat_restaurant_{self.restaurant_id}')
         else:
             self.groups_joined.append(f'chat_user_{user.id}')
@@ -211,7 +213,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if owner_id == user.id:
             return True
 
-        profile = self._profile
+        profile = getattr(self, "_profile", None)
         if profile is None:
             return False
         if getattr(profile, "role", None) == "global_admin":

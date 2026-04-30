@@ -672,6 +672,26 @@ class BookingAPITests(TestCase):
         }, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
+    def test_authenticated_waitlist_create_without_profile_does_not_500(self):
+        self.customer.profile.delete()
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.post(
+            "/api/v1/bookings/waitlist/",
+            {
+                "restaurant": self.restaurant.id,
+                "date": str(_tomorrow()),
+                "time": "18:20",
+                "guests": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
+        entry = WaitlistEntry.objects.get(id=response.data["id"])
+        self.assertEqual(entry.restaurant_id, self.restaurant.id)
+        self.assertEqual(entry.user_id, self.customer.id)
+
     def test_staff_can_create_walk_in_waitlist_entry(self):
         
         self.client.force_authenticate(user=self.owner)

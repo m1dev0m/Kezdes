@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import WaitlistEntry
+from core.utils import get_user_profile
 
 
 class WaitlistEntrySerializer(serializers.ModelSerializer):
@@ -64,9 +65,7 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        profile = None
-        if user and user.is_authenticated and hasattr(user, 'profile'):
-            profile = user.profile
+        profile = get_user_profile(user) if user and user.is_authenticated else None
 
         is_staff_actor = bool(profile and (getattr(profile, 'is_staff_member', False) or getattr(profile, 'is_global_admin', False)))
 
@@ -91,8 +90,8 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
         else:
             if not attrs.get('guest_name'):
                 attrs['guest_name'] = user.get_full_name() or user.username
-            if not attrs.get('guest_phone') and hasattr(user, 'profile') and getattr(user.profile, 'phone', None):
-                attrs['guest_phone'] = user.profile.phone
+            if not attrs.get('guest_phone') and profile and getattr(profile, 'phone', None):
+                attrs['guest_phone'] = profile.phone
             if not attrs.get('guest_email') and getattr(user, 'email', None):
                 attrs['guest_email'] = user.email
         return attrs

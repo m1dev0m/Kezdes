@@ -51,11 +51,13 @@ export default function TableSelection({
     const [tables, setTables] = useState<RealTable[]>([]);
     const [availableIds, setAvailableIds] = useState<number[] | null>(null);
     const [loading, setLoading] = useState(false);
+    const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isOpen || !restaurantId) return;
         setLoading(true);
         setAvailableIds(null);
+        setAvailabilityError(null);
 
         const fetchTables = api
             .get(`/restaurants/${restaurantId}/`)
@@ -70,7 +72,10 @@ export default function TableSelection({
                 ? api
                       .get(`/bookings/available_tables/?restaurant_id=${restaurantId}&date=${date}&time=${time}`)
                       .then(res => setAvailableIds(res.data.available_table_ids ?? []))
-                      .catch(() => setAvailableIds([]))
+                      .catch(() => {
+                          setAvailableIds(null);
+                          setAvailabilityError('Не удалось проверить доступность столов. Повторите попытку.');
+                      })
                 : Promise.resolve();
 
         Promise.all([fetchTables, fetchAvail]).finally(() => setLoading(false));
@@ -101,7 +106,7 @@ export default function TableSelection({
     const vbW = PAD * 2 + COLS * CELL_W;
     const vbH = PAD * 2 + rows * CELL_H;
 
-    const isAvailable = (id: number) => (availableIds === null ? true : availableIds.includes(id));
+    const isAvailable = (id: number) => availableIds !== null && availableIds.includes(id);
     const fitsGuests = (t: RealTable) => (t.capacity || t.seats) >= guests;
 
     const label = (t: RealTable) => t.name || t.number || String(t.id);
@@ -139,6 +144,11 @@ export default function TableSelection({
                     </div>
 
                     <div className="p-6">
+                        {availabilityError ? (
+                            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                {availabilityError}
+                            </div>
+                        ) : null}
                         {loading ? (
                             <div className="h-56 flex flex-col items-center justify-center gap-3 text-slate-400">
                                 <Loader2 className="w-7 h-7 animate-spin text-primary" />
@@ -149,6 +159,12 @@ export default function TableSelection({
                                 <Users className="w-9 h-9" />
                                 <span className="text-sm font-semibold">Столы не найдены</span>
                                 <span className="text-xs">У ресторана пока нет столов</span>
+                            </div>
+                        ) : availableIds === null ? (
+                            <div className="h-56 flex flex-col items-center justify-center gap-3 text-slate-400">
+                                <Users className="w-9 h-9" />
+                                <span className="text-sm font-semibold">Доступность столов не загружена</span>
+                                <span className="text-xs">Закройте окно и попробуйте снова.</span>
                             </div>
                         ) : (
                             <div className="w-full overflow-auto rounded-xl border border-slate-200 bg-slate-50">

@@ -42,6 +42,10 @@ const PAGE_SIZE = 25;
 const SEARCH_PAGE_SIZE = 100;
 const MAX_SEARCH_PAGES = 10;
 
+function isPageVisible() {
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
 function normalizeStatus(status: string): string {
   if (status === 'approved') return 'confirmed';
   if (status === 'cancelled') return 'cancelled';
@@ -147,6 +151,7 @@ export default function Bookings() {
   const [smartTables, setSmartTables] = useState<SmartTablesResponse | null>(null);
   const [smartTablesLoading, setSmartTablesLoading] = useState(false);
   const [tablesLoading, setTablesLoading] = useState(false);
+  const [tablePickerError, setTablePickerError] = useState<string | null>(null);
   const [inFlightId, setInFlightId] = useState<number | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [manualBookingOpen, setManualBookingOpen] = useState(false);
@@ -294,10 +299,21 @@ export default function Bookings() {
   }, [effectiveTimeFilter, parseReservationsResponse, searchParams, statusFilter, useFullDataset]);
   useEffect(() => {
     void loadReservations(currentPage);
+    const handleVisibilityChange = () => {
+      if (isPageVisible()) {
+        void loadReservations(currentPage);
+      }
+    };
     const intervalId = window.setInterval(() => {
-      void loadReservations(currentPage);
+      if (isPageVisible()) {
+        void loadReservations(currentPage);
+      }
     }, 15000);
-    return () => window.clearInterval(intervalId);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [currentPage, loadReservations]);
 
   const selectedReservation = useMemo(
@@ -471,6 +487,7 @@ export default function Bookings() {
 
   const loadTableOptions = useCallback(async (reservation: ReservationRecord) => {
     setTablesLoading(true);
+    setTablePickerError(null);
     try {
       const response = await api.get<{ available_tables: TableRecord[] }>('/bookings/available_tables/', {
         params: {
@@ -484,7 +501,9 @@ export default function Bookings() {
         (response.data.available_tables ?? []).filter((table) => getTableCapacity(table) >= reservation.guests),
       );
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Не удалось загрузить доступные столы.'));
+      const message = getApiErrorMessage(error, 'Не удалось загрузить доступные столы.');
+      setTablePickerError(message);
+      toast.error(message);
       setAvailableTables([]);
     } finally {
       setTablesLoading(false);
@@ -582,6 +601,59 @@ export default function Bookings() {
       }
     },
     [tablePickerReservation, updateReservationLocally],
+  );
+
+  const handleSeatToSuggestedTable = useCallback(
+    async (reservation: ReservationRecord, tableId: number) => {
+      if (inFlightId === reservation.id) return;
+
+      const previousReservation = { ...reservation };
+      setInFlightId(reservation.id);
+      updateReservationLocally(reservation.id, (current) => ({
+        ...current,
+        status: 'seated',
+        table_id: tableId,
+      }));
+
+      try {
+        const response = await api.post(`/bookings/${reservation.id}/seat/`, { table_id: tableId });
+        const nextReservation = response.data as ReservationRecord;
+        updateReservationLocally(reservation.id, () => nextReservation);
+        toast.success('Гость посажен на лучший стол.');
+      } catch (error) {
+        updateReservationLocally(reservation.id, () => previousReservation);
+        toast.error(getApiErrorMessage(error, 'Не удалось посадить гостя на предложенный стол.'));
+      } finally {
+        setInFlightId(null);
+      }
+    },
+    [inFlightId, updateReservationLocally],
+  );
+
+  const handleConfirmAndSeatToSuggestedTable = useCallback(
+    async (reservation: ReservationRecord, tableId: number) => {
+      if (inFlightId === reservation.id) return;
+
+      const previousReservation = { ...reservation };
+      setInFlightId(reservation.id);
+
+      try {
+        const confirmResponse = await api.post(`/bookings/${reservation.id}/confirm/`);
+        const confirmedReservation = confirmResponse.data as ReservationRecord;
+        updateReservationLocally(reservation.id, () => confirmedReservation);
+
+        const seatResponse = await api.post(`/bookings/${reservation.id}/seat/`, { table_id: tableId });
+        const seatedReservation = seatResponse.data as ReservationRecord;
+        updateReservationLocally(reservation.id, () => seatedReservation);
+        toast.success('Бронь подтверждена и гость сразу посажен.');
+      } catch (error) {
+        updateReservationLocally(reservation.id, () => previousReservation);
+        toast.error(getApiErrorMessage(error, 'Не удалось подтвердить и посадить гостя.'));
+      } finally {
+        setInFlightId(null);
+      }
+    },
+    [inFlightId, updateReservationLocally],
   );
 
   const loadSmartTables = useCallback(async (reservation: ReservationRecord) => {
@@ -1042,6 +1114,30 @@ export default function Bookings() {
                                 </span>
                               ))}
                             </div>
+                            {smartTables.suggested_tables[0] ? (
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {['approved', 'confirmed'].includes(selectedReservation.status) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleSeatToSuggestedTable(selectedReservation, smartTables.suggested_tables[0].id)}
+                                    disabled={inFlightId === selectedReservation.id}
+                                    className="rounded-xl bg-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:opacity-50"
+                                  >
+                                    Посадить на лучший стол
+                                  </button>
+                                ) : null}
+                                {selectedReservation.status === 'pending' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleConfirmAndSeatToSuggestedTable(selectedReservation, smartTables.suggested_tables[0].id)}
+                                    disabled={inFlightId === selectedReservation.id}
+                                    className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                                  >
+                                    Подтвердить и посадить
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
                           </div>
                         ) : (
                           <div className="text-sm text-slate-500">
@@ -1234,10 +1330,12 @@ export default function Bookings() {
           mode={tablePickerMode}
           tables={availableTables}
           loading={tablesLoading}
+          error={tablePickerError}
           onClose={() => setTablePickerReservation(null)}
           onConfirm={(tableId) =>
             void (tablePickerMode === 'seat' ? handleSeatWithTable(tableId) : handleAssignTableWithTable(tableId))
           }
+          onRetry={() => void loadTableOptions(tablePickerReservation)}
         />
       ) : null}
 
@@ -1360,15 +1458,19 @@ function TablePicker({
   mode,
   tables,
   loading,
+  error,
   onClose,
   onConfirm,
+  onRetry,
 }: {
   reservation: ReservationRecord;
   mode: 'seat' | 'assign';
   tables: TableRecord[];
   loading: boolean;
+  error: string | null;
   onClose: () => void;
   onConfirm: (tableId: number) => void;
+  onRetry: () => void;
 }) {
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
 
@@ -1397,6 +1499,17 @@ function TablePicker({
             <div className="flex flex-col items-center justify-center gap-3 py-10 text-sm text-slate-500">
               <span className="material-symbols-outlined animate-spin text-4xl text-blue-700">refresh</span>
               Проверяем доступные столы...
+            </div>
+          ) : error ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-8 text-center text-sm text-rose-700">
+              <p>{error}</p>
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-4 rounded-xl border border-rose-200 bg-white px-4 py-2 font-medium text-rose-700 transition hover:bg-rose-50"
+              >
+                Повторить
+              </button>
             </div>
           ) : tables.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">

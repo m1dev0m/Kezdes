@@ -338,6 +338,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
     availabilities = AvailabilitySerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
     tables = TableSerializer(many=True, read_only=True)
+    floor_shapes = FloorMapShapeSerializer(many=True, read_only=True)
     photo_url = serializers.SerializerMethodField()
     plan = serializers.CharField(read_only=True)
     payment_status = serializers.CharField(read_only=True)
@@ -348,7 +349,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'address', 'latitude', 'longitude',
             'phone', 'image_url', 'image', 'photo_url', 'source', 'is_claimed', 'is_verified',
             'capacity', 'average_price', 'rating', 'price_level', 'plan', 'payment_status', 'views_count', 'availabilities',
-            'reviews', 'tables', 'floor', 'entrance', 'extra_address_info', 'city', 'status',
+            'reviews', 'tables', 'floor_shapes', 'floor', 'entrance', 'extra_address_info', 'city', 'status',
             'deposit_min_guests', 'deposit_amount_per_guest',
             'slug', 'turnover_default_min', 'has_namazhana', 'has_parking', 'has_kids_zone',
             'has_wifi', 'has_terrace', 'deposit_required', 'birthday_service_available',
@@ -368,22 +369,19 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
 class RestaurantListSerializer(serializers.ModelSerializer):
     photo_url = serializers.SerializerMethodField()
-    plan = serializers.CharField(read_only=True)
-    payment_status = serializers.CharField(read_only=True)
 
     class Meta:
         model = Restaurant
         fields = [
             'id', 'name', 'description', 'address', 'latitude', 'longitude',
-            'phone', 'image_url', 'image', 'photo_url', 'source', 'is_claimed', 'is_verified',
-            'capacity', 'average_price', 'rating', 'price_level', 'plan', 'payment_status', 'views_count',
-            'floor', 'entrance', 'extra_address_info', 'city', 'status',
-            'deposit_min_guests', 'deposit_amount_per_guest',
-            'slug', 'turnover_default_min', 'has_namazhana', 'has_parking', 'has_kids_zone',
+            'image_url', 'image', 'photo_url', 'is_verified',
+            'capacity', 'average_price', 'rating', 'price_level', 'views_count',
+            'city', 'slug',
+            'has_namazhana', 'has_parking', 'has_kids_zone',
             'has_wifi', 'has_terrace', 'deposit_required', 'birthday_service_available',
-            'wheelchair_accessible', 'max_party_size', 'current_period_starts_at', 'current_period_ends_at', 'grace_until',
+            'wheelchair_accessible', 'max_party_size',
         ]
-        read_only_fields = ['views_count', 'rating', 'plan', 'payment_status', 'current_period_starts_at', 'current_period_ends_at', 'grace_until', 'status']
+        read_only_fields = ['views_count', 'rating']
 
     def get_photo_url(self, obj):
         request = self.context.get('request')
@@ -591,15 +589,20 @@ class RestaurantClaimSerializer(serializers.Serializer):
     restaurant_id = serializers.IntegerField()
 from django.contrib.auth.models import User
 class StaffSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source='profile.role')
+    role = serializers.SerializerMethodField(read_only=True)
+    role_input = serializers.CharField(source='profile.role', write_only=True, required=False)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'role', 'password']
+        fields = ['id', 'username', 'first_name', 'role', 'role_input', 'password']
         extra_kwargs = {
             'password': {'write_only': True},
-            'email': {'required': False, 'allow_blank': True},
             'first_name': {'required': False, 'allow_blank': True}
         }
+
+    def get_role(self, obj):
+        profile = get_user_profile(obj)
+        return profile.role if profile else 'customer'
     def create(self, validated_data):
         profile_data = validated_data.pop('profile', {})
         role = profile_data.get('role', 'manager')

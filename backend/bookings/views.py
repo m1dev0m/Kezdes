@@ -274,7 +274,7 @@ class BookingViewSet(OptionalPaginationMixin, BookingLifecycleMixin, viewsets.Mo
 
                                                                                         
                                                                      
-        qs = qs[:2000]
+        qs = qs[:500]
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 

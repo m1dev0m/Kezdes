@@ -54,23 +54,24 @@ export interface ReservationRecord {
 
 export interface TableRecord {
   id: number;
-  name?: string;
-  number?: string;
-  capacity?: number;
-  seats?: number;
+  name?: string | null;
+  number?: string | null;
+  table_number?: string | null;
+  capacity?: number | null;
+  seats?: number | null;
   x?: number | null;
   y?: number | null;
-  width?: number;
-  height?: number;
-  rotation?: number;
-  table_type?: 'rectangle' | 'square' | 'circle' | string;
+  width?: number | null;
+  height?: number | null;
+  rotation?: number | null;
+  table_type?: 'rectangle' | 'square' | 'circle' | string | null;
   zone?: number | null;
-  grid_x?: number;
-  grid_y?: number;
-  grid_w?: number;
-  grid_h?: number;
-  status?: 'free' | 'reserved' | 'occupied' | 'cleaning' | string;
-  is_active?: boolean;
+  grid_x?: number | null;
+  grid_y?: number | null;
+  grid_w?: number | null;
+  grid_h?: number | null;
+  status?: 'free' | 'reserved' | 'occupied' | 'cleaning' | string | null;
+  is_active?: boolean | null;
   current_booking?: {
     id: number;
     guest_name: string;
@@ -78,6 +79,23 @@ export interface TableRecord {
     time: string;
     duration_minutes: number;
   };
+}
+
+export interface FloorShapeRecord {
+  id: number;
+  zone?: number | null;
+  name?: string;
+  shape_type: 'rectangle' | 'circle' | 'label' | 'line' | string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  fill_color?: string;
+  stroke_color?: string;
+  text_color?: string;
+  z_index?: number;
+  is_visible?: boolean;
 }
 
 export interface GuestRecord {
@@ -108,6 +126,8 @@ export interface RestaurantRecord {
   closing_time?: string | null;
   rating?: number | null;
   max_party_size?: number | null;
+  tables?: TableRecord[];
+  floor_shapes?: FloorShapeRecord[];
   reviews?: ReviewRecord[];
 }
 
@@ -175,10 +195,12 @@ export function getTableLabel(
   record: (Pick<ReservationRecord, 'table_number' | 'table' | 'table_id'> | TableRecord) | null | undefined,
 ): string {
   if (!record) return '—';
-  const value =
-    'table_number' in record
-      ? record.table_number ?? record.table ?? record.table_id?.toString()
-      : (record as TableRecord).name || (record as TableRecord).number;
+  const isReservationShape = 'table' in record || 'table_id' in record || 'table_number' in record;
+  const value = isReservationShape
+    ? (record as Pick<ReservationRecord, 'table_number' | 'table' | 'table_id'>).table_number ??
+      (record as Pick<ReservationRecord, 'table_number' | 'table' | 'table_id'>).table ??
+      (record as Pick<ReservationRecord, 'table_number' | 'table' | 'table_id'>).table_id?.toString()
+    : (record as TableRecord).name || (record as TableRecord).number;
   return value?.toString().trim() || '—';
 }
 
@@ -265,7 +287,7 @@ export function getReservationCustomerSignals(reservation: ReservationRecord): A
   return signals;
 }
 
-export function getTableStatusMeta(status?: string): {
+export function getTableStatusMeta(status?: string | null): {
   label: string;
   className: string;
 } {

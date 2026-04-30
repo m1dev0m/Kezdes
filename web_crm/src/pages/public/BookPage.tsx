@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Clock3, Phone, TimerReset, UserRound, Users } from 'lucide-react';
 import api from '@/services/api';
-import { getApiErrorMessage, getLocalDateString, type RestaurantRecord } from '@/features/reservations/shared';
+import {
+  getApiErrorMessage,
+  getLocalDateString,
+  getTableCapacity,
+  getTableLabel,
+  type FloorShapeRecord,
+  type RestaurantRecord,
+  type TableRecord,
+} from '@/features/reservations/shared';
 import { useAuth } from '@/modules/auth/logic/AuthContext';
 
 type BookingFormState = {
@@ -26,6 +34,13 @@ type AvailableTable = {
   table_number?: string | null;
   capacity?: number | null;
   seats?: number | null;
+  x?: number | null;
+  y?: number | null;
+  width?: number | null;
+  height?: number | null;
+  rotation?: number | null;
+  table_type?: string | null;
+  is_active?: boolean;
 };
 
 const INITIAL_STATE: BookingFormState = {
@@ -280,6 +295,30 @@ export default function BookPage() {
     [form.phone],
   );
   const effectiveForm = form;
+  const availableTableIds = useMemo(
+    () => new Set(availableTables.map((table) => table.id)),
+    [availableTables],
+  );
+  const visualTables = useMemo(() => {
+    if (!restaurant?.tables?.length) return [] as TableRecord[];
+    if (availableTables.length > 0) {
+      return restaurant.tables
+        .filter((table) => availableTableIds.has(table.id))
+        .map((table) => {
+          const liveTable = availableTables.find((candidate) => candidate.id === table.id);
+          return liveTable ? { ...table, ...liveTable } : table;
+        });
+    }
+    return restaurant.tables.filter((table) => table.is_active !== false);
+  }, [availableTableIds, availableTables, restaurant?.tables]);
+  const visualShapes = useMemo(
+    () => (restaurant?.floor_shapes || []).filter((shape) => shape.is_visible !== false),
+    [restaurant?.floor_shapes],
+  );
+  const hasVisualSeatMap = useMemo(() => {
+    const hasPlacedTable = visualTables.some((table) => table.x != null && table.y != null);
+    return hasPlacedTable || visualShapes.length > 0;
+  }, [visualShapes.length, visualTables]);
   const hasExactAvailability = availableSlots.includes(form.time);
   const showWaitlistAction = wantsWaitlist || (!loadingSlots && (!hasExactAvailability || Boolean(availabilityError)));
   const requiresManualTableChoice = tableMode === 'manual' && hasExactAvailability;
@@ -705,29 +744,40 @@ export default function BookPage() {
                   ) : tableError ? (
                     <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{tableError}</div>
                   ) : availableTables.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {availableTables.map((table) => {
-                        const isSelected = selectedTableId === table.id;
-                        const tableLabel = table.table_number || table.name || table.number || `Стол ${table.id}`;
-                        const seats = Number(table.capacity ?? table.seats ?? 0);
-                        return (
-                          <button
-                            key={table.id}
-                            type="button"
-                            onClick={() => setSelectedTableId(table.id)}
-                            className={`rounded-2xl border px-4 py-3 text-left transition ${
-                              isSelected
-                                ? 'border-[#1d4ed8] bg-blue-50 text-blue-700'
-                                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className="text-sm font-semibold">{tableLabel}</div>
-                            <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
-                              До {seats} гостей
-                            </div>
-                          </button>
-                        );
-                      })}
+                    <div className="space-y-4">
+                      {hasVisualSeatMap ? (
+                        <PublicFloorPicker
+                          tables={visualTables}
+                          shapes={visualShapes}
+                          availableTableIds={availableTableIds}
+                          selectedTableId={selectedTableId}
+                          onSelectTable={setSelectedTableId}
+                        />
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {availableTables.map((table) => {
+                          const isSelected = selectedTableId === table.id;
+                          const tableLabel = table.table_number || table.name || table.number || `Стол ${table.id}`;
+                          const seats = Number(table.capacity ?? table.seats ?? 0);
+                          return (
+                            <button
+                              key={table.id}
+                              type="button"
+                              onClick={() => setSelectedTableId(table.id)}
+                              className={`rounded-2xl border px-4 py-3 text-left transition ${
+                                isSelected
+                                  ? 'border-[#1d4ed8] bg-blue-50 text-blue-700'
+                                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold">{tableLabel}</div>
+                              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+                                До {seats} гостей
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     <div className="text-sm leading-7 text-slate-600">
@@ -805,6 +855,205 @@ export default function BookPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PublicFloorPicker({
+  tables,
+  shapes,
+  availableTableIds,
+  selectedTableId,
+  onSelectTable,
+}: {
+  tables: TableRecord[];
+  shapes: FloorShapeRecord[];
+  availableTableIds: Set<number>;
+  selectedTableId: number | null;
+  onSelectTable: (tableId: number) => void;
+}) {
+  const bounds = useMemo(() => {
+    const points: Array<{ x: number; y: number; width: number; height: number }> = [];
+
+    shapes.forEach((shape) => {
+      points.push({
+        x: Number(shape.x || 0),
+        y: Number(shape.y || 0),
+        width: Number(shape.width || 0),
+        height: Number(shape.height || 0),
+      });
+    });
+
+    tables.forEach((table) => {
+      points.push({
+        x: Number(table.x || 0),
+        y: Number(table.y || 0),
+        width: Number(table.width || 60),
+        height: Number(table.height || 60),
+      });
+    });
+
+    const minX = Math.min(...points.map((item) => item.x), 0);
+    const minY = Math.min(...points.map((item) => item.y), 0);
+    const maxX = Math.max(...points.map((item) => item.x + item.width), 600);
+    const maxY = Math.max(...points.map((item) => item.y + item.height), 360);
+    return {
+      minX,
+      minY,
+      width: Math.max(maxX - minX + 32, 640),
+      height: Math.max(maxY - minY + 32, 380),
+    };
+  }, [shapes, tables]);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Выбор на схеме</div>
+            <div className="mt-1 text-sm text-slate-600">Нажмите на свободный столик. Заблокированные варианты на карте не активны.</div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <LegendDot className="bg-emerald-500" label="Свободен" />
+            <LegendDot className="bg-[#1d4ed8]" label="Выбран" />
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-[22px] border border-slate-200 bg-white">
+          <div
+            className="relative h-[320px] w-full overflow-auto bg-[radial-gradient(circle_at_1px_1px,_rgba(148,163,184,0.18)_1px,_transparent_0)] [background-size:22px_22px]"
+          >
+            <div
+              className="relative mx-auto"
+              style={{
+                width: `${bounds.width}px`,
+                height: `${bounds.height}px`,
+              }}
+            >
+              {shapes.map((shape) => (
+                <FloorShapeView key={shape.id} shape={shape} bounds={bounds} />
+              ))}
+              {tables.map((table) => {
+                const isAvailable = availableTableIds.has(table.id);
+                const isSelected = selectedTableId === table.id;
+                return (
+                  <FloorTableView
+                    key={table.id}
+                    table={table}
+                    bounds={bounds}
+                    isAvailable={isAvailable}
+                    isSelected={isSelected}
+                    onClick={() => isAvailable && onSelectTable(table.id)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FloorShapeView({
+  shape,
+  bounds,
+}: {
+  shape: FloorShapeRecord;
+  bounds: { minX: number; minY: number; width: number; height: number };
+}) {
+  const style = {
+    left: `${shape.x - bounds.minX + 16}px`,
+    top: `${shape.y - bounds.minY + 16}px`,
+    width: `${shape.width}px`,
+    height: `${Math.max(shape.height, shape.shape_type === 'line' ? 2 : shape.height)}px`,
+    transform: `rotate(${shape.rotation || 0}deg)`,
+    backgroundColor: shape.shape_type === 'line' || shape.shape_type === 'label' ? 'transparent' : shape.fill_color || '#F8FAFC',
+    borderColor: shape.stroke_color || '#CBD5E1',
+    color: shape.text_color || '#334155',
+    zIndex: shape.z_index || 0,
+  } as const;
+
+  if (shape.shape_type === 'label') {
+    return (
+      <div className="pointer-events-none absolute flex items-center px-3 text-xs font-semibold uppercase tracking-[0.14em]" style={style}>
+        {shape.name || 'Зона'}
+      </div>
+    );
+  }
+
+  if (shape.shape_type === 'line') {
+    return <div className="pointer-events-none absolute rounded-full border-0" style={{ ...style, backgroundColor: shape.stroke_color || '#CBD5E1' }} />;
+  }
+
+  return (
+    <div
+      className={`pointer-events-none absolute border ${shape.shape_type === 'circle' ? 'rounded-full' : 'rounded-[24px]'}`}
+      style={style}
+    />
+  );
+}
+
+function FloorTableView({
+  table,
+  bounds,
+  isAvailable,
+  isSelected,
+  onClick,
+}: {
+  table: TableRecord;
+  bounds: { minX: number; minY: number; width: number; height: number };
+  isAvailable: boolean;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const left = (table.x ?? 0) - bounds.minX + 16;
+  const top = (table.y ?? 0) - bounds.minY + 16;
+  const width = Math.max(Number(table.width ?? 60), 44);
+  const height = Math.max(Number(table.height ?? 60), 44);
+  const seats = getTableCapacity(table);
+  const label = getTableLabel(table);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!isAvailable}
+      className={`absolute flex items-center justify-center border text-center transition ${
+        table.table_type === 'circle' ? 'rounded-full' : 'rounded-[20px]'
+      } ${
+        isSelected
+          ? 'border-[#1d4ed8] bg-blue-600 text-white shadow-[0_14px_30px_-18px_rgba(29,78,216,0.85)]'
+          : isAvailable
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100'
+            : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70'
+      }`}
+      style={{
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+        transform: `rotate(${table.rotation || 0}deg)`,
+        zIndex: 20,
+      }}
+      title={`${label} · до ${seats} гостей`}
+      aria-label={`table-${table.id}`}
+    >
+      <div className="px-2">
+        <div className="text-sm font-bold leading-none">{label}</div>
+        <div className={`mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${isSelected ? 'text-blue-100' : 'opacity-80'}`}>
+          {seats} мест
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function LegendDot({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${className}`} />
+      <span>{label}</span>
+    </span>
   );
 }
 

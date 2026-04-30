@@ -48,6 +48,10 @@ type RealtimeChatMessage = {
     restaurant_id?: number | null;
 };
 
+function isPageVisible() {
+    return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
 export default function GuestMessages() {
     const { user } = useAuth();
     const location = useLocation();
@@ -71,8 +75,21 @@ export default function GuestMessages() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 10000); 
-        return () => clearInterval(interval);
+        const handleVisibilityChange = () => {
+            if (isPageVisible()) {
+                void fetchData();
+            }
+        };
+        const interval = setInterval(() => {
+            if (isPageVisible()) {
+                void fetchData();
+            }
+        }, 10000);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -217,10 +234,14 @@ export default function GuestMessages() {
 
     useEffect(() => {
         if (selectedConv) {
-            fetchMessages(selectedConv);
+            void fetchMessages(selectedConv);
             if (pollRef.current) clearInterval(pollRef.current);
             if (!isConnected) {
-                pollRef.current = setInterval(() => fetchMessages(selectedConv), 3000); 
+                pollRef.current = setInterval(() => {
+                    if (isPageVisible()) {
+                        void fetchMessages(selectedConv);
+                    }
+                }, 3000); 
             }
         }
         return () => {

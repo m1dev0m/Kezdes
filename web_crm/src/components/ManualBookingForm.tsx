@@ -47,12 +47,14 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
 
     setSubmitError(null);
     setAvailableIds(null);
+    setAvailabilityError(null);
     setFormData(initialState());
   }, [isOpen]);
 
@@ -74,6 +76,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
     if (!isOpen || !formData.date || !formData.time || !restaurantId) return;
 
     setLoadingAvailability(true);
+    setAvailabilityError(null);
     try {
       const response = await api.get('/bookings/available_tables/', {
         params: {
@@ -86,6 +89,8 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
       setAvailableIds(response.data.available_table_ids ?? []);
     } catch {
       setAvailableIds(null);
+      setAvailabilityError('Не удалось проверить доступность столов. Выберите автоназначение или повторите позже.');
+      setFormData((current) => (current.table_id ? { ...current, table_id: '' } : current));
     } finally {
       setLoadingAvailability(false);
     }
@@ -99,7 +104,7 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
     () =>
       allTables.filter((table) => {
         const capacity = getTableCapacity(table);
-        const isAvailable = availableIds === null || availableIds.includes(table.id);
+        const isAvailable = availableIds !== null && availableIds.includes(table.id);
         return table.is_active !== false && isAvailable && capacity >= formData.guests;
       }),
     [allTables, availableIds, formData.guests],
@@ -188,6 +193,12 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
               {submitError ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {submitError}
+                </div>
+              ) : null}
+
+              {availabilityError ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {availabilityError}
                 </div>
               ) : null}
 
@@ -311,6 +322,8 @@ export function ManualBookingForm({ isOpen, onClose, onSuccess }: ManualBookingF
                     <span>
                       {loadingTables || loadingAvailability
                         ? 'Проверяем доступные столы...'
+                        : availabilityError
+                          ? 'Доступность столов не подтверждена. Ручной выбор временно отключён.'
                         : filteredTables.length > 0
                           ? `${filteredTables.length} столов подходят по размеру`
                           : 'Нет подходящих столов для такого количества гостей'}

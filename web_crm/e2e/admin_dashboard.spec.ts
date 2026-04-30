@@ -8,7 +8,7 @@ test.describe('Admin dashboard', () => {
     await page.locator('input[type="text"], input[type="email"]').first().fill('Meatp');
     await page.locator('input[type="password"]').first().fill('testpass123');
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/\/app\
+    await page.waitForURL(/\/app/, { timeout: 10000 });
   });
 
   test('dashboard exposes operational quick actions', async ({ page }) => {

@@ -154,7 +154,6 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
                                                                         
-                                                                
         if 'date' in attrs and attrs['date'] is None:
             raise serializers.ValidationError({
                 'date': 'Неверный формат даты.'
@@ -167,25 +166,23 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-                                                                            
-                                                                                        
-                                                                                       
-                                                                              
-                                                                                          
         status_val = data.get('status')
         if status_val == Booking.CONFIRMED:
             data['status'] = 'confirmed'
         elif status_val == Booking.SEATED:
             data['status'] = 'seated'
-                                                                                        
-                                                                                            
 
         if instance.user:
             data['user_name'] = instance.user.get_full_name() or instance.user.username or data.get('user_name')
-            if not data.get('user_phone'):
-                profile = get_user_profile(instance.user)
-                if profile and profile.phone:
-                    data['user_phone'] = profile.phone
+
+        # Return saved booking phone; only fallback to profile if truly empty
+        saved_phone = (instance.user_phone or '').strip()
+        if saved_phone:
+            data['user_phone'] = saved_phone
+        elif instance.user:
+            profile = get_user_profile(instance.user)
+            if profile and getattr(profile, 'phone', None):
+                data['user_phone'] = profile.phone
 
         return data
 
@@ -358,14 +355,14 @@ class AdminBookingSerializer(serializers.ModelSerializer):
         restaurant = attrs.get('restaurant')
         if not restaurant:
             request = self.context.get('request')
-            if request and hasattr(request.user, 'profile'):
+            if request and request.user and request.user.is_authenticated:
                 from core.utils import get_user_restaurant
                 restaurant = get_user_restaurant(request.user)
                 if not restaurant:
                     raise serializers.ValidationError({"restaurant": "Не удалось определить ресторан пользователя."})
                 attrs['restaurant'] = restaurant
             else:
-                 raise serializers.ValidationError({"restaurant": "Обязательное поле."})
+                raise serializers.ValidationError({"restaurant": "Обязательное поле."})
 
         booking_date = attrs.get('date')
         start_time = attrs.get('time')

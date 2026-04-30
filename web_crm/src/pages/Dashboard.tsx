@@ -36,6 +36,10 @@ function formatShiftClock(value?: string | null) {
   return trimmed.slice(0, 5);
 }
 
+function isPageVisible() {
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { summary } = useRestaurantSubscriptionSummary();
@@ -88,10 +92,21 @@ export default function Dashboard() {
 
   useEffect(() => {
     void fetchData();
+    const handleVisibilityChange = () => {
+      if (isPageVisible()) {
+        void fetchData();
+      }
+    };
     const interval = window.setInterval(() => {
-      void fetchData();
+      if (isPageVisible()) {
+        void fetchData();
+      }
     }, 15000);
-    return () => window.clearInterval(interval);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchData]);
 
   const stats = useMemo(() => {

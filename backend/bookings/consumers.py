@@ -3,6 +3,7 @@ import logging
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
+from core.utils import get_user_profile
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ class BookingConsumer(AsyncJsonWebsocketConsumer):
         if restaurant.owner == user:
             return True
 
-        profile = getattr(user, 'profile', None)
+        profile = get_user_profile(user)
         if profile is None:
             return False
         if getattr(profile, 'role', None) == 'global_admin':

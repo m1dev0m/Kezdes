@@ -88,6 +88,7 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
             queryset = Restaurant.objects.select_related("owner").prefetch_related(
                 "operating_hours",
                 "tables",
+                "floor_shapes",
                 "availabilities",
                 Prefetch("reviews", queryset=Review.objects.select_related("user")),
             )
@@ -246,6 +247,7 @@ class RestaurantViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
                 .prefetch_related(
                     "operating_hours",
                     "tables",
+                    "floor_shapes",
                     "availabilities",
                     Prefetch("reviews", queryset=Review.objects.select_related("user")),
                 )

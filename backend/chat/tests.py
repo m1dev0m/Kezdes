@@ -186,6 +186,43 @@ class ChatMessagesAPITests(APITestCase):
         )
         self.assertEqual(res.status_code, 400)
 
+    def test_mark_read_empty_body_returns_400(self):
+        """mark_read with no scope key must return 400."""
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.post(
+            "/api/v1/chat/messages/mark_read/",
+            {},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_mark_read_invalid_booking_returns_400(self):
+        """mark_read with bogus booking id returns 400."""
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.post(
+            "/api/v1/chat/messages/mark_read/",
+            {"booking": "not_a_number"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_staff_mark_read_via_booking_scopes_correctly(self):
+        """Staff can mark_read scoped to a specific booking → 200."""
+        conversation = Conversation.objects.create(restaurant=self.restaurant, guest=self.customer)
+        Message.objects.create(
+            conversation=conversation,
+            restaurant=self.restaurant,
+            sender=self.customer,
+            content="unread from guest",
+        )
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.post(
+            "/api/v1/chat/messages/mark_read/",
+            {"booking": self.booking1.id},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+
     def test_rest_create_broadcasts_realtime_message(self):
         mock_layer = Mock()
         self.client.force_authenticate(user=self.customer)

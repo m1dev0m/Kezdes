@@ -147,6 +147,10 @@ const FLOOR_TONE_MAP: Record<string, { border: string; bg: string; text: string;
   },
 };
 
+function isPageVisible() {
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -162,13 +166,13 @@ function normalizeColorInput(value: string | null | undefined, fallback = '#ffff
   return fallback;
 }
 
-function getTablePreset(tableType?: string) {
+function getTablePreset(tableType?: string | null) {
   if (tableType === 'circle') return TABLE_PRESETS.circle;
   if (tableType === 'square') return TABLE_PRESETS.square;
   return TABLE_PRESETS.rectangle;
 }
 
-function getTableTypeLabel(tableType?: string) {
+function getTableTypeLabel(tableType?: string | null) {
   if (tableType === 'circle') return 'Круглый';
   if (tableType === 'square') return 'Квадратный';
   return 'Прямоугольный';
@@ -178,7 +182,7 @@ function getShapeTypeLabel(shapeType: FloorShapeType) {
   return SHAPE_TYPE_OPTIONS.find((option) => option.value === shapeType)?.label ?? shapeType;
 }
 
-function getDefaultTableLayout(tableType: string | undefined, index: number) {
+function getDefaultTableLayout(tableType: string | null | undefined, index: number) {
   const preset = getTablePreset(tableType);
   const columns = 5;
   const column = index % columns;
@@ -273,7 +277,7 @@ function validateShapeForm(form: ShapeFormState): FormErrors {
   return errors;
 }
 
-function getFloorTone(status: string | undefined, active: boolean) {
+function getFloorTone(status: string | null | undefined, active: boolean) {
   if (!active) return FLOOR_TONE_MAP.inactive;
   if (status === 'occupied') return FLOOR_TONE_MAP.occupied;
   if (status === 'reserved') return FLOOR_TONE_MAP.reserved;
@@ -689,9 +693,20 @@ export default function FloorView() {
   useEffect(() => {
     setLoading(true);
     void load();
-    intervalRef.current = setInterval(() => void load(true), 20000);
+    const handleVisibilityChange = () => {
+      if (isPageVisible()) {
+        void load(true);
+      }
+    };
+    intervalRef.current = setInterval(() => {
+      if (isPageVisible()) {
+        void load(true);
+      }
+    }, 20000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [load]);
 

@@ -14,6 +14,18 @@ interface UseWebSocketReturn {
     lastMessage: any | null;
 }
 
+function getStoredAccessToken() {
+    try {
+        return localStorage.getItem('accessToken');
+    } catch {
+        try {
+            return sessionStorage.getItem('accessToken');
+        } catch {
+            return null;
+        }
+    }
+}
+
 function isLocalLikeHostname(hostname: string) {
     return (
         hostname === 'localhost' ||
@@ -63,16 +75,6 @@ export function useWebSocket({
     onMessageRef.current = onMessage;
 
     const getWsUrl = useCallback(() => {
-        let token: string | null = null;
-        try {
-            token = localStorage.getItem('accessToken');
-        } catch {
-            try {
-                token = sessionStorage.getItem('accessToken');
-            } catch {
-                token = null;
-            }
-        }
         const configuredWsHost = import.meta.env.VITE_WS_URL || '';
         const host = (
             shouldIgnoreLoopbackWsUrl(configuredWsHost)
@@ -80,8 +82,7 @@ export function useWebSocket({
                 : configuredWsHost || getDefaultWebSocketBaseUrl()
         ).replace(/\/+$/, '');
         const normalized = url.replace(/^\/+/, '');
-        const separator = normalized.includes('?') ? '&' : '?';
-        return `${host}/${normalized}${token ? `${separator}token=${token}` : ''}`;
+        return `${host}/${normalized}`;
     }, [url]);
 
     const connect = useCallback(() => {
@@ -90,7 +91,9 @@ export function useWebSocket({
 
         try {
             const fullUrl = getWsUrl();
-            const ws = new WebSocket(fullUrl);
+            const token = getStoredAccessToken();
+            const protocols = token ? [`bearer.${token}`] : undefined;
+            const ws = protocols ? new WebSocket(fullUrl, protocols) : new WebSocket(fullUrl);
             wsRef.current = ws;
 
             ws.onopen = () => {

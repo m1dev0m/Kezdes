@@ -19,8 +19,8 @@ class OptionalPaginationMixin:
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         if 'page' not in request.query_params and 'page_size' not in request.query_params:
-          
-            queryset = queryset[:2000]
+            # Safety cap: prevent accidental unbounded responses
+            queryset = queryset[:500]
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         page = self.paginate_queryset(queryset)
