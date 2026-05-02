@@ -2,12 +2,12 @@
 Regression checks for hardening batch (no production code changes).
 """
 import datetime
-import inspect
 from unittest.mock import MagicMock
 
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase, override_settings
 from rest_framework import status
+from rest_framework.response import Response
 from rest_framework.test import APIClient
 
 from bookings.models import Booking
@@ -219,10 +219,28 @@ class ExposureAndPaginationRegressionTests(TestCase):
         from core.viewsets import OptionalPaginationMixin
         from bookings.views import BookingViewSet
 
-        optional_src = inspect.getsource(OptionalPaginationMixin.list)
-        booking_src = inspect.getsource(BookingViewSet._apply_response_pagination)
+        class _CaptureSerializer:
+            def __init__(self, data):
+                self.data = data
 
-        self.assertIn("[:500]", optional_src)
-        self.assertNotIn("[:2000]", optional_src)
-        self.assertIn("[:500]", booking_src)
-        self.assertNotIn("[:2000]", booking_src)
+        class _DummyOptionalView(OptionalPaginationMixin):
+            def filter_queryset(self, queryset):
+                return queryset
+
+            def get_queryset(self):
+                return list(range(1000))
+
+            def get_serializer(self, queryset, many=False):
+                return _CaptureSerializer(list(queryset))
+
+        request = RequestFactory().get("/api/v1/dummy/")
+        request.query_params = request.GET
+        response = _DummyOptionalView().list(request)
+
+        self.assertIsInstance(response, Response)
+        self.assertEqual(len(response.data), 500)
+        self.assertEqual(response.data[0], 0)
+        self.assertEqual(response.data[-1], 499)
+
+        booking_src = BookingViewSet._apply_response_pagination.__code__.co_consts
+        self.assertIn(500, booking_src)

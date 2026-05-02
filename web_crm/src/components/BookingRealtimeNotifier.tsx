@@ -109,7 +109,7 @@ function RealtimeToast({
 }) {
   return (
     <div
-      className="relative w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]"
+      className="relative w-[calc(100vw-1.5rem)] max-w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]"
     >
       <div className="flex items-start gap-3">
         <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${accentClass}`}>

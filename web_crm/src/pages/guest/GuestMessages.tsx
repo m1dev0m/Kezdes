@@ -302,11 +302,12 @@ export default function GuestMessages() {
         const matchesTab = activeTab === 'archived' ? isArchived : !isArchived;
         return matchesSearch && matchesTab;
     });
+    const hasSelectedConversation = Boolean(selectedConv);
 
     return (
-        <div className="mx-auto max-w-[1280px] px-6 py-4 h-[calc(100vh-100px)] flex flex-col">
-            <main className="flex-1 flex flex-col overflow-hidden border border-slate-200 rounded-3xl bg-white shadow-xl shadow-slate-200/50">
-                <header className="h-20 border-b border-slate-200 bg-white flex items-center justify-between px-8 shrink-0">
+        <div className="mx-auto flex min-h-[calc(100dvh-88px)] max-w-[1280px] flex-col px-3 py-3 sm:px-4 md:px-6">
+            <main className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
+                <header className="flex shrink-0 flex-col gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:h-20 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-0">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#1d4ed8]">
                             <MessageSquare size={20} />
@@ -316,8 +317,8 @@ export default function GuestMessages() {
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 leading-none">Центр поддержки и чат с ресторанами</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <div className="relative w-64">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:gap-6">
+                        <div className="relative w-full sm:w-64">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                                 className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1d4ed8]/20"
@@ -327,7 +328,7 @@ export default function GuestMessages() {
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-end gap-3">
                             <button type="button" className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-lg" aria-label="Notifications">
                                 <Bell className="w-5 h-5" />
                                 <span className="absolute top-2 right-2 w-2 h-2 bg-[#1d4ed8] rounded-full border-2 border-white" />
@@ -339,8 +340,8 @@ export default function GuestMessages() {
                     </div>
                 </header>
 
-                <div className="flex-1 flex overflow-hidden">
-                    <section className="w-80 border-r border-slate-200 flex flex-col bg-white">
+                <div className="flex flex-1 overflow-hidden">
+                    <section className={`flex flex-col bg-white md:w-80 md:shrink-0 md:border-r md:border-slate-200 ${hasSelectedConversation ? 'hidden md:flex' : 'w-full'}`}>
                         {conversationError && (
                             <div className="m-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
                                 <div className="flex items-start justify-between gap-3">
@@ -453,11 +454,11 @@ export default function GuestMessages() {
                         </div>
                     </section>
 
-                    <section className="flex-1 flex flex-col bg-brand-cream">
+                    <section className={`flex-1 flex-col bg-brand-cream ${hasSelectedConversation ? 'flex' : 'hidden md:flex'}`}>
                         {selectedConv ? (
                             <>
                                 {messageError && (
-                                    <div className="px-6 pt-4">
+                                    <div className="px-4 pt-4 sm:px-6">
                                         <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700 flex items-center justify-between gap-3">
                                             <span>{messageError}</span>
                                             <button type="button" onClick={() => fetchMessages(selectedConv)} className="font-bold uppercase tracking-widest text-[#1d4ed8] shrink-0">
@@ -466,8 +467,16 @@ export default function GuestMessages() {
                                         </div>
                                     </div>
                                 )}
-                                <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-                                    <div className="flex items-center gap-4">
+                                <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 md:h-16 md:flex-row md:items-center md:justify-between md:py-0">
+                                    <div className="flex items-center gap-3 sm:gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedConv(null)}
+                                            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 md:hidden"
+                                            aria-label="Назад к списку"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
                                         <div className="w-10 h-10 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center font-bold text-[#1d4ed8] border border-blue-100">
                                             {selectedConv.title?.[0]?.toUpperCase()}
                                         </div>
@@ -479,7 +488,7 @@ export default function GuestMessages() {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <button
                                             type="button"
                                             className="p-2 text-slate-400 hover:text-[#1d4ed8] transition-colors"
@@ -498,7 +507,7 @@ export default function GuestMessages() {
                                         {selectedConv.type === 'booking' && (
                                             <button
                                                 type="button"
-                                                className="px-4 py-2 bg-[#1d4ed8] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md uppercase tracking-widest"
+                                                className="px-3 py-2 bg-[#1d4ed8] text-white rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-2 shadow-md uppercase tracking-widest"
                                             >
                                                 <Calendar className="w-4 h-4" />
                                                 Бронь
@@ -507,7 +516,7 @@ export default function GuestMessages() {
                                         <button
                                             type="button"
                                             onClick={() => setSelectedConv(null)}
-                                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                            className="hidden p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors md:inline-flex"
                                             aria-label="Close chat"
                                         >
                                             <X className="w-5 h-5" />
@@ -515,7 +524,7 @@ export default function GuestMessages() {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                                <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/50 sm:p-6">
                                     <div className="flex justify-center">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white border border-slate-100 px-3 py-1 rounded-full shadow-sm">Сегодня</span>
                                     </div>
@@ -538,7 +547,7 @@ export default function GuestMessages() {
                                                         key={msg.id}
                                                         initial={{ opacity: 0, y: 10 }}
                                                         animate={{ opacity: 1, y: 0 }}
-                                                        className={isMe ? 'flex flex-row-reverse gap-3 max-w-[80%] ml-auto' : 'flex gap-3 max-w-[80%]'}
+                                                        className={isMe ? 'flex flex-row-reverse gap-3 max-w-[92%] sm:max-w-[80%] ml-auto' : 'flex gap-3 max-w-[92%] sm:max-w-[80%]'}
                                                     >
                                                         <div className={`w-8 h-8 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ${isMe ? 'bg-blue-100 text-[#1d4ed8]' : 'bg-white border border-slate-200 text-slate-700'}`}>
                                                             {(isMe ? (user?.username?.[0] || 'G') : (msg.sender_name?.[0] || 'R')).toUpperCase()}
@@ -567,8 +576,8 @@ export default function GuestMessages() {
                                     <div ref={messagesEndRef} />
                                 </div>
 
-                                <div className="p-4 bg-white border-t border-slate-200 shrink-0">
-                                    <div className="flex items-end gap-3 max-w-5xl mx-auto">
+                                <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0">
+                                    <div className="flex items-end gap-2 sm:gap-3 max-w-5xl mx-auto">
                                         <div className="flex-1 relative">
                                             <input
                                                 className="w-full py-3 px-4 bg-slate-100 border-none rounded-2xl text-sm focus:ring-2 focus:ring-[#1d4ed8]/20"
@@ -583,7 +592,7 @@ export default function GuestMessages() {
                                             type="button"
                                             onClick={handleSend}
                                             disabled={!newMsg.trim() || sending}
-                                            className="mb-1 p-3 bg-[#1d4ed8] hover:bg-[#1e40af] disabled:opacity-50 text-white rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center transition-all active:scale-[0.98]"
+                                            className="mb-1 p-3 bg-[#1d4ed8] hover:bg-[#1e40af] disabled:opacity-50 text-white rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center transition-all active:scale-[0.98] shrink-0"
                                             aria-label="Send"
                                         >
                                             {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}

@@ -20,6 +20,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from bookings.models import Booking
+from core.utils import get_user_profile
 from restaurants.models import Restaurant, Table
 
 
@@ -191,9 +192,10 @@ class Command(BaseCommand):
                                                                     
             owners = User.objects.filter(owned_restaurant__id__in=restaurant_ids)
             for u in owners:
-                if hasattr(u, "profile") and getattr(u.profile, "restaurant_id", None) in restaurant_ids:
-                    u.profile.restaurant_id = None
-                    u.profile.save(update_fields=["restaurant"])
+                profile = get_user_profile(u)
+                if profile and getattr(profile, "restaurant_id", None) in restaurant_ids:
+                    profile.restaurant_id = None
+                    profile.save(update_fields=["restaurant"])
             restaurants_qs.delete()
 
         User.objects.filter(username__startswith=f"{prefix.lower()}_").delete()
@@ -206,9 +208,10 @@ class Command(BaseCommand):
                 email=f"{prefix.lower()}_owner_{i}@test.local",
                 password="pass1234",
             )
-            if hasattr(owner, "profile"):
-                owner.profile.role = "restaurant_admin"
-                owner.profile.save()
+            profile = get_user_profile(owner)
+            if profile:
+                profile.role = "restaurant_admin"
+                profile.save()
 
             r = Restaurant.objects.create(
                 name=f"{prefix} Restaurant {i+1}",
@@ -219,9 +222,9 @@ class Command(BaseCommand):
                 owner=owner,
                 capacity=random.choice([20, 30, 40, 50, 60]),
             )
-            if hasattr(owner, "profile"):
-                owner.profile.restaurant = r
-                owner.profile.save(update_fields=["restaurant"])
+            if profile:
+                profile.restaurant = r
+                profile.save(update_fields=["restaurant"])
 
             restaurants.append(r)
         return restaurants
@@ -260,10 +263,11 @@ class Command(BaseCommand):
                 email=f"{prefix.lower()}_guest_{i}@test.local",
                 password="pass1234",
             )
-            if hasattr(u, "profile"):
-                u.profile.role = "customer"
-                u.profile.phone = _rand_phone(i)
-                u.profile.save()
+            profile = get_user_profile(u)
+            if profile:
+                profile.role = "customer"
+                profile.phone = _rand_phone(i)
+                profile.save()
             guests.append(u)
         return guests
 

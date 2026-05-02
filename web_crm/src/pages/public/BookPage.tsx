@@ -899,15 +899,15 @@ function PublicFloorPicker({
     return {
       minX,
       minY,
-      width: Math.max(maxX - minX + 32, 640),
-      height: Math.max(maxY - minY + 32, 380),
+      width: Math.max(maxX - minX + 32, 520),
+      height: Math.max(maxY - minY + 32, 320),
     };
   }, [shapes, tables]);
 
   return (
     <div className="space-y-3">
       <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Выбор на схеме</div>
             <div className="mt-1 text-sm text-slate-600">Нажмите на свободный столик. Заблокированные варианты на карте не активны.</div>
@@ -920,10 +920,10 @@ function PublicFloorPicker({
 
         <div className="mt-4 overflow-hidden rounded-[22px] border border-slate-200 bg-white">
           <div
-            className="relative h-[320px] w-full overflow-auto bg-[radial-gradient(circle_at_1px_1px,_rgba(148,163,184,0.18)_1px,_transparent_0)] [background-size:22px_22px]"
+            className="relative h-[280px] w-full overflow-auto bg-[radial-gradient(circle_at_1px_1px,_rgba(148,163,184,0.18)_1px,_transparent_0)] [background-size:22px_22px] sm:h-[320px]"
           >
             <div
-              className="relative mx-auto"
+              className="relative mx-auto min-w-full"
               style={{
                 width: `${bounds.width}px`,
                 height: `${bounds.height}px`,

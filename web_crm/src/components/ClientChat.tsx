@@ -105,7 +105,7 @@ export default function ClientChat({ restaurantId, restaurantName, isOpen, onClo
 
     if (!user) {
         return (
-            <div className="fixed bottom-6 right-6 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden flex flex-col h-96">
+            <div className="fixed inset-x-3 bottom-3 z-50 flex h-[min(32rem,calc(100dvh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-80 sm:h-96">
                 <div className="bg-slate-900 p-4 flex items-center justify-between text-white">
                     <h3 className="font-bold text-sm tracking-wide">Chat with {restaurantName}</h3>
                     <button onClick={onClose} className="hover:bg-white/20 p-1.5 rounded-lg transition-colors">
@@ -123,13 +123,13 @@ export default function ClientChat({ restaurantId, restaurantName, isOpen, onClo
     }
 
     return (
-        <div className="fixed bottom-6 right-6 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden flex flex-col h-[500px] max-h-[80vh]">
+        <div className="fixed inset-x-3 bottom-3 z-50 flex h-[min(36rem,calc(100dvh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-96 sm:max-w-[calc(100vw-3rem)] sm:h-[500px] sm:max-h-[80vh]">
             <div className="bg-slate-900 p-4 flex items-center justify-between text-white shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
                         <MessageCircle className="w-4 h-4" />
                     </div>
-                    <h3 className="font-bold text-sm tracking-wide truncate max-w-[200px]">{restaurantName}</h3>
+                    <h3 className="font-bold text-sm tracking-wide truncate max-w-[140px] sm:max-w-[200px]">{restaurantName}</h3>
                     <div className="flex items-center" title={isConnected ? 'Live connection' : 'Polling mode'}>
                         {isConnected
                             ? <Wifi className="w-3 h-3 text-emerald-400" />
@@ -156,7 +156,7 @@ export default function ClientChat({ restaurantId, restaurantName, isOpen, onClo
                         const isMine = msg.sender === user.id;
                         return (
                             <div key={msg.id || i} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${isMine
+                                <div className={`max-w-[92%] sm:max-w-[85%] p-3 rounded-2xl text-sm ${isMine
                                     ? 'bg-primary text-white rounded-tr-sm'
                                     : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm shadow-sm'
                                     }`}>

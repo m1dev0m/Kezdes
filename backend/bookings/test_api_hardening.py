@@ -9,6 +9,7 @@ from unittest.mock import patch
 from bookings.models import Booking, WaitlistEntry
 from bookings.serializers import BookingSerializer
 from crm.models import Customer
+from core.utils import get_user_profile
 from restaurants.models import Restaurant, Table
 from bookings.services import WaitlistService
 
@@ -20,16 +21,18 @@ class BookingApiHardeningTests(APITestCase):
             email="customer_hardening@test.local",
             password="test-pass-123",
         )
-        self.customer.profile.role = "customer"
-        self.customer.profile.save()
+        customer_profile = get_user_profile(self.customer)
+        customer_profile.role = "customer"
+        customer_profile.save()
 
         self.admin = User.objects.create_user(
             username="admin_hardening",
             email="admin_hardening@test.local",
             password="test-pass-123",
         )
-        self.admin.profile.role = "restaurant_admin"
-        self.admin.profile.save()
+        admin_profile = get_user_profile(self.admin)
+        admin_profile.role = "restaurant_admin"
+        admin_profile.save()
 
         self.restaurant = Restaurant.objects.create(
             name="Hardening Test Restaurant",
@@ -109,7 +112,9 @@ class BookingApiHardeningTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-                                                                   
+        self.assertIn("error", response.data)
+        self.assertIn("message", response.data["error"])
+
         error_text = str(response.data).lower()
         self.assertTrue(
             "верификац" in error_text or "restaurant" in error_text or "verified" in error_text,
@@ -141,8 +146,9 @@ class BookingApiHardeningTests(APITestCase):
             email="customer_hardening_2@test.local",
             password="test-pass-123",
         )
-        another_customer.profile.role = "customer"
-        another_customer.profile.save()
+        another_profile = get_user_profile(another_customer)
+        another_profile.role = "customer"
+        another_profile.save()
         login2 = self.client.post(
             "/api/v1/auth/login/",
             {"username": another_customer.username, "password": "test-pass-123"},
@@ -192,8 +198,9 @@ class BookingApiHardeningTests(APITestCase):
             email="duration_overlap_customer@test.local",
             password="test-pass-123",
         )
-        another_customer.profile.role = "customer"
-        another_customer.profile.save()
+        another_profile = get_user_profile(another_customer)
+        another_profile.role = "customer"
+        another_profile.save()
         login2 = self.client.post(
             "/api/v1/auth/login/",
             {"username": another_customer.username, "password": "test-pass-123"},
@@ -510,11 +517,10 @@ class BookingApiHardeningTests(APITestCase):
             self.assertIn("detail", response.data)
             self.assertIn("error", response.data)
             self.assertIn("details", response.data["error"])
-            self.assertTrue(response.data["error"]["details"] is not None)
+            self.assertIsNotNone(response.data["error"]["details"])
 
                                                
-            if expected_field in response.data["error"]["details"]:
-                self.assertTrue(True)
+            self.assertIn(expected_field, response.data["error"]["details"])
 
     def test_my_restaurant_search_filters_admin_workflow_fields(self):
         self._auth_as_admin()
@@ -926,8 +932,9 @@ class BookingApiHardeningTests(APITestCase):
 
     def test_tenant_isolation_for_tables_and_bookings(self):
         admin2 = User.objects.create_user(username="admin_hardening2", email="admin_hardening2@test.local", password="test-pass-123")
-        admin2.profile.role = "restaurant_admin"
-        admin2.profile.save()
+        admin2_profile = get_user_profile(admin2)
+        admin2_profile.role = "restaurant_admin"
+        admin2_profile.save()
         restaurant2 = Restaurant.objects.create(name="Other Restaurant", address="R2", latitude=10, longitude=10, owner=admin2, is_claimed=True, is_verified=True)
 
         table_a = Table.objects.create(restaurant=self.restaurant, number="A1", seats=4, is_active=True)
